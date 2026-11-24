@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetUserActivityOverviewRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetUserActivityOverview.",
+  "properties": {
+    "fromDate": {
+      "type": "string"
+    },
+    "login": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "toDate": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetUserActivityOverviewRequest",
+  "type": "object"
+}

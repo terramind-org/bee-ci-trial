@@ -1,0 +1,7 @@
+{
+  "note": "Shared seed: content on main, an issue, a change request.",
+  "steps": [
+    {"commit": {"repo": "{{repo}}", "parent": "main", "files": {"README.md": "# playground\n", "src/lib.rs": "pub fn hello() {}\n"}, "message": "seed content", "change": 1, "land": "main"}, "save": "base"},
+    {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "Seed issue", "body": "seeded"}, "save": "issue"}
+  ]
+}

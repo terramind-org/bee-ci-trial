@@ -1,0 +1,40 @@
+{
+  "service": "bee.v1.SponsorService",
+  "note": "CreateSponsorTier makes the org `sponsor-fixture-org` (with repo `sponsor-fixture-org/sponsor-only`) and its first published tier; the dev user then sponsors that org. Payments are offline on a dev server, so sponsorships are active at once.",
+  "fixtures": [
+    {"method": "CreateSponsorTier",
+     "setup": [
+       {"call": "OrgService/CreateOrg", "request": {"name": "sponsor-fixture-org", "display": "Sponsor fixture org"}},
+       {"call": "RepoService/CreateRepo", "request": {"org": "sponsor-fixture-org", "name": "sponsor-only", "visibility": "VISIBILITY_PRIVATE", "description": "sponsor-only content", "autoInit": true}}
+     ],
+     "request": {"login": "sponsor-fixture-org", "name": "Supporter", "description": "Thanks for supporting the project.", "amountCents": "500", "frequency": "SPONSOR_FREQUENCY_MONTHLY", "customAmount": true, "sponsorOnlyRepos": [{"fullName": "sponsor-fixture-org/sponsor-only"}], "welcomeMessage": "Welcome aboard!", "publish": true}},
+    {"method": "UpdateSponsorProfile",
+     "request": {"login": "sponsor-fixture-org", "enabled": true, "introduction": "We build **sponsor fixtures**.", "goalCents": "100000", "goalDescription": "One maintainer full time", "currency": "USD"}},
+    {"method": "GetSponsorProfile", "request": {"login": "sponsor-fixture-org"}},
+    {"method": "ListSponsorTiers", "request": {"login": "sponsor-fixture-org", "includeDrafts": true, "includeRetired": true}},
+    {"method": "UpdateSponsorTier",
+     "setup": [{"call": "SponsorService/CreateSponsorTier", "save": "t", "request": {"login": "sponsor-fixture-org", "name": "update-sponsor-tier-fixture", "description": "draft", "amountCents": "700", "frequency": "SPONSOR_FREQUENCY_MONTHLY"}}],
+     "request": {"tierId": "{{t.id}}", "name": "Backer", "description": "Updated by the UpdateSponsorTier fixture.", "welcomeMessage": "Hello, backer!", "state": "SPONSOR_TIER_STATE_PUBLISHED"}},
+    {"method": "DeleteSponsorTier",
+     "setup": [{"call": "SponsorService/CreateSponsorTier", "save": "t", "request": {"login": "sponsor-fixture-org", "name": "delete-sponsor-tier-fixture", "description": "draft", "amountCents": "900", "frequency": "SPONSOR_FREQUENCY_ONE_TIME"}}],
+     "request": {"tierId": "{{t.id}}"}},
+    {"method": "CreateSponsorship",
+     "setup": [{"call": "SponsorService/ListSponsorTiers", "save": "tiers", "request": {"login": "sponsor-fixture-org"}}],
+     "request": {"maintaineeLogin": "sponsor-fixture-org", "tierId": "{{tiers.tiers.0.id}}", "frequency": "SPONSOR_FREQUENCY_MONTHLY", "private": false, "note": "create-sponsorship-fixture"}},
+    {"method": "GetSponsorship",
+     "setup": [{"call": "SponsorService/ListSponsorships", "save": "l", "request": {"role": "SPONSORSHIP_ROLE_SPONSOR"}}],
+     "request": {"sponsorshipId": "{{l.sponsorships.0.id}}"}},
+    {"method": "ListSponsorships", "request": {"role": "SPONSORSHIP_ROLE_MAINTAINEE", "login": "sponsor-fixture-org", "includeEnded": true, "includePrivate": true}},
+    {"method": "ListSponsorContentAccess", "request": {"login": "sponsor-fixture-org", "repo": {"fullName": "sponsor-fixture-org/sponsor-only"}}},
+    {"method": "CancelSponsorship",
+     "setup": [{"call": "SponsorService/ListSponsorships", "save": "l", "request": {"role": "SPONSORSHIP_ROLE_SPONSOR"}}],
+     "request": {"sponsorshipId": "{{l.sponsorships.0.id}}"}},
+    {"method": "GetSponsorFundingFile",
+     "setup": [{"commit": {"repo": "{{repo}}", "parent": "main", "files": {".github/FUNDING.yml": "github: [dev]\nko_fi: devfixture\ncustom: [\"https://example.com/donate\"]\n"}, "message": "add FUNDING.yml for the sponsor fixture", "change": 3001, "createRef": "fixtures/sponsor-funding"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "fixtures/sponsor-funding"}}},
+    {"method": "GetSponsorFiscalHost", "request": {"login": "sponsor-fixture-org"},
+     "expect": "NOT_FOUND",
+     "note": "A fiscal host is set only by admin tooling (Sponsors::set_fiscal_host); no RPC can set one, so on a dev server every sponsorable answers NOT_FOUND."},
+    {"method": "GetSponsorPayoutSummary", "request": {"login": "sponsor-fixture-org"}}
+  ]
+}

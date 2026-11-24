@@ -1,0 +1,34 @@
+# event push action=-
+run .github/workflows/go.yml "Go"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job build decided=true
+    instance "build"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Set up Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+      step 3 "Build"
+        run: "go build -v ./..."
+        shell: default -> "bash -e {0}"
+      step 4 "Test"
+        run: "go test -race -coverprofile=coverage.txt ./..."
+        shell: default -> "bash -e {0}"
+  job lint decided=true
+    instance "lint"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run golangci/golangci-lint-action@v6"
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: "v1.60"
+          args: "--timeout=5m"

@@ -1,0 +1,20 @@
+# event workflow_run action=completed
+run .github/workflows/deploy-after-ci.yml "Deploy after CI"
+  run-name: "Deploy after CI"
+  event: workflow_run ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: default
+  job deploy if="${{ github.event.workflow_run.conclusion == 'success' }}" decided=true
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/download-artifact@v4"
+        uses: actions/download-artifact@v4
+        with:
+          run-id: "9001"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      step 2 "Run ./deploy.sh 2222222222222222222222222222222222222222"
+        run: "./deploy.sh 2222222222222222222222222222222222222222"
+        shell: default -> "bash -e {0}"
+  job on-failure if="${{ github.event.workflow_run.conclusion == 'failure' }}" decided=false
+    skipped

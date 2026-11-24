@@ -1,0 +1,608 @@
+{
+  "$defs": {
+    "bee.v1.IssueDependencySummary": {
+      "description": "Dependency counts for an issue.",
+      "properties": {
+        "blockedBy": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blockedByOpen": {
+          "description": "blockers still open",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blocking": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.IssueDependencySummary",
+      "type": "object"
+    },
+    "bee.v1.IssueFieldKind": {
+      "description": "Value type of a custom issue field.",
+      "enum": [
+        "ISSUE_FIELD_KIND_UNSPECIFIED",
+        "ISSUE_FIELD_KIND_TEXT",
+        "ISSUE_FIELD_KIND_NUMBER",
+        "ISSUE_FIELD_KIND_DATE",
+        "ISSUE_FIELD_KIND_SINGLE_SELECT",
+        "ISSUE_FIELD_KIND_ITERATION"
+      ],
+      "title": "bee.v1.IssueFieldKind",
+      "type": "string"
+    },
+    "bee.v1.IssueFieldValue": {
+      "description": "A field value on an issue. Exactly one value matching the field's kind is set.\n\nOneof `value`: at most one of `text`, `number`, `dateOn`, `optionId`, `iterationId` is set.",
+      "properties": {
+        "dateOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "fieldName": {
+          "description": "filled by the server; may be used instead of id on input",
+          "type": "string"
+        },
+        "iterationId": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.IssueFieldKind",
+          "description": "filled by the server"
+        },
+        "number": {
+          "type": "number"
+        },
+        "optionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueFieldValue",
+      "type": "object"
+    },
+    "bee.v1.IssueLockReason": {
+      "description": "Why a conversation was locked.",
+      "enum": [
+        "ISSUE_LOCK_REASON_UNSPECIFIED",
+        "ISSUE_LOCK_REASON_OFF_TOPIC",
+        "ISSUE_LOCK_REASON_TOO_HEATED",
+        "ISSUE_LOCK_REASON_RESOLVED",
+        "ISSUE_LOCK_REASON_SPAM"
+      ],
+      "title": "bee.v1.IssueLockReason",
+      "type": "string"
+    },
+    "bee.v1.IssueRef": {
+      "description": "Names an issue by id, or by repo and number. Used for cross-repo relations.",
+      "properties": {
+        "id": {
+          "description": "alternative to repo + number",
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.IssueRef",
+      "type": "object"
+    },
+    "bee.v1.IssueState": {
+      "description": "Open or closed.",
+      "enum": [
+        "ISSUE_STATE_UNSPECIFIED",
+        "ISSUE_STATE_OPEN",
+        "ISSUE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.IssueState",
+      "type": "string"
+    },
+    "bee.v1.IssueStateReason": {
+      "description": "Why an issue is in its current state.",
+      "enum": [
+        "ISSUE_STATE_REASON_UNSPECIFIED",
+        "ISSUE_STATE_REASON_COMPLETED",
+        "ISSUE_STATE_REASON_NOT_PLANNED",
+        "ISSUE_STATE_REASON_DUPLICATE",
+        "ISSUE_STATE_REASON_REOPENED"
+      ],
+      "title": "bee.v1.IssueStateReason",
+      "type": "string"
+    },
+    "bee.v1.IssueSubIssueProgress": {
+      "description": "Progress of an issue's direct and nested sub-issues.",
+      "properties": {
+        "completed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "percentCompleted": {
+          "description": "0..100, over all descendants",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.IssueSubIssueProgress",
+      "type": "object"
+    },
+    "bee.v1.IssueSummary": {
+      "description": "Short identity of a related issue, returned inside other resources.",
+      "properties": {
+        "assignees": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Principal"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issueTypeName": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.IssueState"
+        },
+        "stateReason": {
+          "$ref": "#/$defs/bee.v1.IssueStateReason"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueSummary",
+      "type": "object"
+    },
+    "bee.v1.IssueTaskListProgress": {
+      "description": "Checkbox counts derived from Markdown task lists in the body.",
+      "properties": {
+        "completed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.IssueTaskListProgress",
+      "type": "object"
+    },
+    "bee.v1.IssueType": {
+      "description": "An org-defined issue type such as Bug, Feature or Task.",
+      "properties": {
+        "color": {
+          "description": "six hex digits, no '#'",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "description": "disabled types stay on existing issues",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "orgId": {
+          "type": "string"
+        },
+        "position": {
+          "description": "display order",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.IssueType",
+      "type": "object"
+    },
+    "bee.v1.Label": {
+      "description": "A repo label shared by issues, change requests and discussions.",
+      "properties": {
+        "color": {
+          "description": "six hex digits, no '#'",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDefault": {
+          "description": "part of the repo's default label set",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Label",
+      "type": "object"
+    },
+    "bee.v1.Milestone": {
+      "description": "A repo milestone with progress.",
+      "properties": {
+        "closedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "closedItems": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "dueOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "openItems": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.MilestoneState"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Milestone",
+      "type": "object"
+    },
+    "bee.v1.MilestoneState": {
+      "description": "Open or closed state of a milestone.",
+      "enum": [
+        "MILESTONE_STATE_UNSPECIFIED",
+        "MILESTONE_STATE_OPEN",
+        "MILESTONE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.MilestoneState",
+      "type": "string"
+    },
+    "bee.v1.PostRef": {
+      "description": "A reference to a post, as carried by the issues and change requests it inspired. Empty when\nthe reader cannot read the post's repo.",
+      "properties": {
+        "changeNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeTitle": {
+          "type": "string"
+        },
+        "postId": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.PostRef",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReactionContent": {
+      "description": "Reaction emoji, matching GitHub's fixed set.",
+      "enum": [
+        "REACTION_CONTENT_UNSPECIFIED",
+        "REACTION_CONTENT_THUMBS_UP",
+        "REACTION_CONTENT_THUMBS_DOWN",
+        "REACTION_CONTENT_LAUGH",
+        "REACTION_CONTENT_HOORAY",
+        "REACTION_CONTENT_CONFUSED",
+        "REACTION_CONTENT_HEART",
+        "REACTION_CONTENT_ROCKET",
+        "REACTION_CONTENT_EYES"
+      ],
+      "title": "bee.v1.ReactionContent",
+      "type": "string"
+    },
+    "bee.v1.ReactionGroup": {
+      "description": "Count of one reaction on a subject, and whether the caller is among them.",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/bee.v1.ReactionContent"
+        },
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "viewerReacted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.ReactionGroup",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Issue.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An issue.",
+  "properties": {
+    "activeAgentRunIds": {
+      "description": "agent runs working this issue now",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "assignees": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Principal"
+      },
+      "type": "array"
+    },
+    "author": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "authorAssociation": {
+      "description": "\"OWNER\", \"MEMBER\", \"CONTRIBUTOR\", ...",
+      "type": "string"
+    },
+    "body": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "bodyHtml": {
+      "description": "sanitized rendering, when requested",
+      "type": "string"
+    },
+    "closedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "closedBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "commentCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "dependencies": {
+      "$ref": "#/$defs/bee.v1.IssueDependencySummary"
+    },
+    "duplicateOf": {
+      "$ref": "#/$defs/bee.v1.IssueRef",
+      "description": "set when closed as a duplicate"
+    },
+    "fieldValues": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueFieldValue"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "inspiredBy": {
+      "$ref": "#/$defs/bee.v1.PostRef",
+      "description": "the post that inspired it; empty when its repo is unreadable"
+    },
+    "issueType": {
+      "$ref": "#/$defs/bee.v1.IssueType"
+    },
+    "labels": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Label"
+      },
+      "type": "array"
+    },
+    "linkedChangeRequestIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "lockReason": {
+      "$ref": "#/$defs/bee.v1.IssueLockReason"
+    },
+    "locked": {
+      "type": "boolean"
+    },
+    "milestone": {
+      "$ref": "#/$defs/bee.v1.Milestone"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "parent": {
+      "$ref": "#/$defs/bee.v1.IssueSummary"
+    },
+    "pinned": {
+      "type": "boolean"
+    },
+    "reactions": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ReactionGroup"
+      },
+      "type": "array"
+    },
+    "repoFullName": {
+      "type": "string"
+    },
+    "repoId": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.IssueState"
+    },
+    "stateReason": {
+      "$ref": "#/$defs/bee.v1.IssueStateReason"
+    },
+    "subIssues": {
+      "$ref": "#/$defs/bee.v1.IssueSubIssueProgress"
+    },
+    "taskList": {
+      "$ref": "#/$defs/bee.v1.IssueTaskListProgress"
+    },
+    "title": {
+      "type": "string"
+    },
+    "transferredFrom": {
+      "$ref": "#/$defs/bee.v1.IssueRef",
+      "description": "set on an issue moved from another repo"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.Issue",
+  "type": "object"
+}

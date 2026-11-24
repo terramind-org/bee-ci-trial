@@ -1,0 +1,27 @@
+{
+  "id": "GHSA-aaaa-bbbb-cccc",
+  "modified": "2022-01-01T00:00:00Z",
+  "withdrawn": "2022-01-01T00:00:00Z",
+  "summary": "Withdrawn: not a vulnerability",
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "9.0.0"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

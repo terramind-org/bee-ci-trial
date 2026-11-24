@@ -1,0 +1,46 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.VerifyAuditChainResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for VerifyAuditChain.",
+  "properties": {
+    "failure": {
+      "description": "\"hash_mismatch\", \"prev_hash_mismatch\", \"gap\", \"head_mismatch\"",
+      "type": "string"
+    },
+    "firstBrokenSeq": {
+      "description": "0 when ok",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "headHash": {
+      "contentEncoding": "base64",
+      "description": "hash of verified_to_seq",
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "verifiedFromSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "verifiedToSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.VerifyAuditChainResponse",
+  "type": "object"
+}

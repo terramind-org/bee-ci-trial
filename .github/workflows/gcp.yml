@@ -1,0 +1,26 @@
+name: Validate GCP Terraform
+
+on:
+  pull_request:
+    paths:
+      - "deploy/gcp/**"
+      - "deploy/helm/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Check formatting
+        run: terraform -chdir=deploy/gcp fmt -check -recursive
+      - name: Initialize providers
+        run: terraform -chdir=deploy/gcp init -backend=false
+      - name: Validate configuration
+        run: terraform -chdir=deploy/gcp validate

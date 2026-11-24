@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "bee.v1.IssueTimelineEventKind": {
+      "description": "Kind of an issue timeline event.",
+      "enum": [
+        "ISSUE_TIMELINE_EVENT_KIND_UNSPECIFIED",
+        "ISSUE_TIMELINE_EVENT_KIND_COMMENTED",
+        "ISSUE_TIMELINE_EVENT_KIND_LABELED",
+        "ISSUE_TIMELINE_EVENT_KIND_UNLABELED",
+        "ISSUE_TIMELINE_EVENT_KIND_ASSIGNED",
+        "ISSUE_TIMELINE_EVENT_KIND_UNASSIGNED",
+        "ISSUE_TIMELINE_EVENT_KIND_MILESTONED",
+        "ISSUE_TIMELINE_EVENT_KIND_DEMILESTONED",
+        "ISSUE_TIMELINE_EVENT_KIND_RENAMED",
+        "ISSUE_TIMELINE_EVENT_KIND_CLOSED",
+        "ISSUE_TIMELINE_EVENT_KIND_REOPENED",
+        "ISSUE_TIMELINE_EVENT_KIND_LOCKED",
+        "ISSUE_TIMELINE_EVENT_KIND_UNLOCKED",
+        "ISSUE_TIMELINE_EVENT_KIND_PINNED",
+        "ISSUE_TIMELINE_EVENT_KIND_UNPINNED",
+        "ISSUE_TIMELINE_EVENT_KIND_TRANSFERRED",
+        "ISSUE_TIMELINE_EVENT_KIND_CROSS_REFERENCED",
+        "ISSUE_TIMELINE_EVENT_KIND_REFERENCED",
+        "ISSUE_TIMELINE_EVENT_KIND_MENTIONED",
+        "ISSUE_TIMELINE_EVENT_KIND_CHANGE_LINKED",
+        "ISSUE_TIMELINE_EVENT_KIND_CHANGE_UNLINKED",
+        "ISSUE_TIMELINE_EVENT_KIND_MARKED_DUPLICATE",
+        "ISSUE_TIMELINE_EVENT_KIND_UNMARKED_DUPLICATE",
+        "ISSUE_TIMELINE_EVENT_KIND_TYPE_CHANGED",
+        "ISSUE_TIMELINE_EVENT_KIND_SUB_ISSUE_ADDED",
+        "ISSUE_TIMELINE_EVENT_KIND_SUB_ISSUE_REMOVED",
+        "ISSUE_TIMELINE_EVENT_KIND_PARENT_ADDED",
+        "ISSUE_TIMELINE_EVENT_KIND_PARENT_REMOVED",
+        "ISSUE_TIMELINE_EVENT_KIND_BLOCKED_BY_ADDED",
+        "ISSUE_TIMELINE_EVENT_KIND_BLOCKED_BY_REMOVED",
+        "ISSUE_TIMELINE_EVENT_KIND_BLOCKING_ADDED",
+        "ISSUE_TIMELINE_EVENT_KIND_BLOCKING_REMOVED",
+        "ISSUE_TIMELINE_EVENT_KIND_FIELD_CHANGED",
+        "ISSUE_TIMELINE_EVENT_KIND_ADDED_TO_PROJECT",
+        "ISSUE_TIMELINE_EVENT_KIND_REMOVED_FROM_PROJECT",
+        "ISSUE_TIMELINE_EVENT_KIND_PROJECT_STATUS_CHANGED",
+        "ISSUE_TIMELINE_EVENT_KIND_BRANCH_CREATED",
+        "ISSUE_TIMELINE_EVENT_KIND_AGENT_RUN_STARTED",
+        "ISSUE_TIMELINE_EVENT_KIND_AGENT_RUN_FINISHED",
+        "ISSUE_TIMELINE_EVENT_KIND_CONVERTED_TO_DISCUSSION",
+        "ISSUE_TIMELINE_EVENT_KIND_COMMENT_DELETED"
+      ],
+      "title": "bee.v1.IssueTimelineEventKind",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListIssueTimelineRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListIssueTimeline.",
+  "properties": {
+    "kinds": {
+      "description": "empty = all",
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueTimelineEventKind"
+      },
+      "type": "array"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.ListIssueTimelineRequest",
+  "type": "object"
+}

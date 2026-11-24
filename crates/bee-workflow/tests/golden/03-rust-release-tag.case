@@ -1,0 +1,50 @@
+event: push refs/tags/v1.4.0 files=
+--- .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build-${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            ext: .exe
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release --target ${{ matrix.target }}
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: widget-${{ github.ref_name }}-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/widget${{ matrix.ext }}
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: widget-*/*
+          tag_name: ${{ github.ref_name }}
+--- .github/workflows/ci.yml
+on:
+  push:
+    branches: ['**']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cargo test

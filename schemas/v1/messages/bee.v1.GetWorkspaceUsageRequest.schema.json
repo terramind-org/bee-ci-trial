@@ -1,0 +1,24 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetWorkspaceUsageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetWorkspaceUsage.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "description": "empty = whole org",
+      "type": "string"
+    },
+    "windowEnd": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "windowStart": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetWorkspaceUsageRequest",
+  "type": "object"
+}

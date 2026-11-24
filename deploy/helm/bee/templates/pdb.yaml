@@ -1,0 +1,29 @@
+{{- if .Values.server.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "bee.fullname" . }}-server
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  maxUnavailable: {{ .Values.server.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "bee.selectorLabels" (dict "ctx" . "component" "server") | nindent 6 }}
+{{- end }}
+{{- if and .Values.web.enabled .Values.web.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "bee.fullname" . }}-web
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  maxUnavailable: {{ .Values.web.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "bee.selectorLabels" (dict "ctx" . "component" "web") | nindent 6 }}
+{{- end }}

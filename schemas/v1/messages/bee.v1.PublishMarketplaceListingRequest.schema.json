@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PublishMarketplaceListingRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for PublishMarketplaceListing.",
+  "properties": {
+    "listing": {
+      "type": "string"
+    },
+    "unpublish": {
+      "description": "take a published listing down; existing purchases continue",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.PublishMarketplaceListingRequest",
+  "type": "object"
+}

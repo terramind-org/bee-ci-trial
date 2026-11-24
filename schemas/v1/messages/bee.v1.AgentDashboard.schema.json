@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "bee.v1.AgentDailyStats": {
+      "description": "Daily stats point for dashboard charts.",
+      "properties": {
+        "date": {
+          "description": "YYYY-MM-DD, UTC",
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/bee.v1.AgentStats"
+        }
+      },
+      "title": "bee.v1.AgentDailyStats",
+      "type": "object"
+    },
+    "bee.v1.AgentOutcomes": {
+      "description": "Outcomes of an agent's landed and closed work.",
+      "properties": {
+        "changeRequestsClosed": {
+          "description": "closed without landing",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestsLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestsOpened": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesReverted": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "reviewsSubmitted": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "runsFailed": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "runsSucceeded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentOutcomes",
+      "type": "object"
+    },
+    "bee.v1.AgentStats": {
+      "description": "Aggregated stats for one agent over a window.",
+      "properties": {
+        "activeLeases": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "activeRuns": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost",
+          "description": "summed from provenance claims"
+        },
+        "outcomes": {
+          "$ref": "#/$defs/bee.v1.AgentOutcomes"
+        },
+        "workItems": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentStats",
+      "type": "object"
+    },
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AgentDashboard.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One agent's dashboard.",
+  "properties": {
+    "daily": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentDailyStats"
+      },
+      "type": "array"
+    },
+    "models": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "onBehalfOf": {
+      "description": "delegation chain back to a human or service root",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "principal": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "topRepoIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "totals": {
+      "$ref": "#/$defs/bee.v1.AgentStats"
+    },
+    "windowEnd": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "windowStart": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AgentDashboard",
+  "type": "object"
+}

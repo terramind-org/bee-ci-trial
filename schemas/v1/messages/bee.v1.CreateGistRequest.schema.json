@@ -1,0 +1,22 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateGistRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateGist.",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "files": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "filename -> content",
+      "type": "object"
+    },
+    "public": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.CreateGistRequest",
+  "type": "object"
+}

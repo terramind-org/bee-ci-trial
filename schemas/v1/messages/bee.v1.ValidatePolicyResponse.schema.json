@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "bee.v1.PolicyIssueSeverity": {
+      "description": "How serious a validation finding is.",
+      "enum": [
+        "POLICY_ISSUE_SEVERITY_UNSPECIFIED",
+        "POLICY_ISSUE_SEVERITY_ERROR",
+        "POLICY_ISSUE_SEVERITY_WARNING"
+      ],
+      "title": "bee.v1.PolicyIssueSeverity",
+      "type": "string"
+    },
+    "bee.v1.PolicyReplayDecision": {
+      "description": "How one recent change request would be decided under a proposed policy (gap G3).",
+      "properties": {
+        "changeRequestId": {
+          "type": "string"
+        },
+        "currentAllowed": {
+          "type": "boolean"
+        },
+        "diffClass": {
+          "type": "string"
+        },
+        "missing": {
+          "description": "What the proposed policy would still require.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "proposedAllowed": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PolicyReplayDecision",
+      "type": "object"
+    },
+    "bee.v1.PolicyValidationIssue": {
+      "description": "One policy validation finding with its location.",
+      "properties": {
+        "column": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "file": {
+          "description": "e.g. \".bee/policy.toml\"",
+          "type": "string"
+        },
+        "keyPath": {
+          "description": "e.g. \"land.main.approvals[1].diff_class\"",
+          "type": "string"
+        },
+        "line": {
+          "description": "1-based; 0 when not tied to a line",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.PolicyIssueSeverity"
+        },
+        "subcode": {
+          "description": "snake_case rule, e.g. \"unknown_group\", \"group_cycle\", \"bad_glob\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PolicyValidationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ValidatePolicyResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ValidatePolicy.",
+  "properties": {
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PolicyValidationIssue"
+      },
+      "type": "array"
+    },
+    "normalizedJson": {
+      "description": "effective policy if it landed (when valid)",
+      "type": "string"
+    },
+    "replay": {
+      "description": "How recent change requests would be decided under the proposed policy.",
+      "items": {
+        "$ref": "#/$defs/bee.v1.PolicyReplayDecision"
+      },
+      "type": "array"
+    },
+    "resultingEpoch": {
+      "type": "string"
+    },
+    "ruleSummaries": {
+      "description": "One plain-language line per rule in the proposed policy (gap G3).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "valid": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.ValidatePolicyResponse",
+  "type": "object"
+}

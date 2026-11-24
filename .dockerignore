@@ -1,0 +1,21 @@
+# Build output and caches
+target/
+**/target/
+**/node_modules
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+
+# Local state
+.git
+.terramind
+.claude
+.bee-dev/
+.DS_Store
+
+# Web e2e artefacts
+apps/web/test-results
+apps/web/playwright-report
+apps/web/e2e/**/*.png
+apps/web/e2e/screenshots
+apps/web/e2e/.auth

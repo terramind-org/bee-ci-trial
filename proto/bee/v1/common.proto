@@ -1,0 +1,459 @@
+// Shared types for bee.v1. See SPEC.md §3–§5 and §12.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).
+message ObjectId {
+  bytes raw = 1;
+}
+
+enum ObjectKind {
+  OBJECT_KIND_UNSPECIFIED = 0;
+  OBJECT_KIND_BLOB = 1;
+  OBJECT_KIND_TREE = 2;
+  OBJECT_KIND_CHANGESET = 3;
+  OBJECT_KIND_META = 4;
+}
+
+// File mode as stored in trees (SPEC §4.2).
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_FILE = 1;
+  MODE_EXECUTABLE = 2;
+  MODE_SYMLINK = 3;
+  MODE_TREE = 4;
+}
+
+// 16-byte stable identity of a piece of work (SPEC §3.3).
+message ChangeId {
+  bytes raw = 1;
+}
+
+// Every repo-scoped request names its repo by id or by "org/name".
+message RepoRef {
+  oneof repo {
+    string id = 1;        // ULID
+    string full_name = 2; // "org/name"
+  }
+}
+
+// A revision expression: ref name, ref@version, changeset id or unique prefix.
+message Revision {
+  string expr = 1;
+}
+
+message Signature {
+  string name = 1;
+  google.protobuf.Timestamp time = 2;
+  sint32 tz_offset_minutes = 3;
+}
+
+message Principal {
+  string id = 1; // ULID
+  PrincipalKind kind = 2;
+  string display = 3;
+  string owner_id = 4;      // agents only
+  string runtime = 5;       // agents only, e.g. "claude-code"
+  repeated string external_ids = 6;
+}
+
+enum PrincipalKind {
+  PRINCIPAL_KIND_UNSPECIFIED = 0;
+  PRINCIPAL_KIND_HUMAN = 1;
+  PRINCIPAL_KIND_AGENT = 2;
+  PRINCIPAL_KIND_SERVICE = 3;
+}
+
+// Provenance claims recorded in Meta (SPEC §10.4).
+message Provenance {
+  repeated string principal_chain = 1; // filled by the server
+  string runtime = 2;
+  string model = 3;
+  string session = 4;
+  bytes prompt_digest = 5;
+  repeated LocalCheck checks_run = 6;
+  Cost cost = 7;
+}
+
+message LocalCheck {
+  string name = 1;
+  string result = 2;
+  uint64 duration_ms = 3;
+}
+
+message Cost {
+  uint64 input_tokens = 1;
+  uint64 output_tokens = 2;
+  uint64 usd_micros = 3;
+}
+
+message Meta {
+  string author = 1;
+  Signature author_time = 2;
+  string committer = 3;
+  Signature committer_time = 4;
+  string creator = 5;
+  string message = 6;
+  Provenance provenance = 7;
+  repeated MetaExtension extensions = 8; // e.g. key 64: original git commit headers (SPEC §17.4)
+}
+
+// An extension entry in Meta, keyed by a small integer (SPEC §4.3).
+message MetaExtension {
+  uint32 key = 1;
+  bytes value = 2;
+}
+
+message DeltaEntry {
+  bytes path = 1;
+  oneof op {
+    Put put = 2;
+    bool delete = 3;
+  }
+}
+
+message Put {
+  Mode mode = 1;
+  ObjectId blob = 2;
+  uint64 size = 3;
+}
+
+message Changeset {
+  ObjectId id = 1;
+  repeated ObjectId parents = 2;
+  ObjectId root = 3;
+  ObjectId meta_id = 4;
+  ChangeId change_id = 5;
+  repeated DeltaEntry delta = 6;
+  Meta meta = 7;          // included when requested and readable
+  bool filtered = 8;      // true when unreadable delta entries were dropped (SPEC §9.3)
+  uint64 generation = 9;
+}
+
+message Ref {
+  string name = 1;
+  ObjectId target = 2;
+  uint64 version = 3;
+}
+
+// Stable machine-readable error detail attached to every failed RPC (SPEC §12.2).
+message ErrorDetail {
+  string reason = 1;    // an ErrorReason name without its prefix, e.g. MERGE_CONFLICT
+  string message = 2;
+  bool retryable = 3;
+  string subcode = 4;         // finer rule for INVALID_ARGUMENT and others, snake_case
+  uint64 retry_after_ms = 5;  // set with RESOURCE_EXHAUSTED and other retryable reasons
+  string request_id = 6;      // correlates with server logs
+  oneof payload {
+    ConflictSet conflicts = 10;
+    LeaseConflict lease_conflict = 11;
+    PolicyDenial policy_denial = 12;
+    VersionMismatch version_mismatch = 13;
+    AmbiguousPrefix ambiguous_prefix = 14;
+    LimitExceeded limit_exceeded = 15;
+    MissingObjects missing_objects = 16;
+    PushProtectionBlock push_protection = 17;
+  }
+}
+
+enum ConflictKind {
+  CONFLICT_KIND_UNSPECIFIED = 0;
+  CONFLICT_KIND_CONTENT = 1;
+  CONFLICT_KIND_ADD_ADD = 2;
+  CONFLICT_KIND_MODIFY_DELETE = 3;
+  CONFLICT_KIND_SYMLINK = 4;
+  CONFLICT_KIND_BINARY = 5;
+  CONFLICT_KIND_REDACTED = 6;
+  CONFLICT_KIND_MODE = 7;
+  CONFLICT_KIND_FILE_DIRECTORY = 8;
+}
+
+message ConflictSide {
+  Mode mode = 1;
+  ObjectId blob = 2;
+}
+
+message ConflictHunk {
+  uint32 base_start = 1;
+  uint32 base_len = 2;
+  uint32 ours_start = 3;
+  uint32 ours_len = 4;
+  uint32 theirs_start = 5;
+  uint32 theirs_len = 6;
+}
+
+message Conflict {
+  bytes path = 1;
+  ConflictKind kind = 2;
+  ConflictSide base = 3;
+  ConflictSide ours = 4;
+  ConflictSide theirs = 5;
+  repeated ConflictHunk hunks = 6;
+}
+
+// Structured conflicts: the server never writes markers (SPEC §7.3.2).
+message ConflictSet {
+  repeated Conflict conflicts = 1;
+  repeated DeltaEntry clean_entries = 2;
+  ObjectId base = 3;
+  ObjectId ours = 4;
+  ObjectId theirs = 5;
+}
+
+message LeaseConflict {
+  repeated string lease_ids = 1;
+  repeated bytes paths = 2;
+}
+
+message PolicyDenial {
+  string rule = 1;
+  repeated string missing = 2; // e.g. "approval:owner:src/auth", "check:test"
+}
+
+message PageRequest {
+  uint32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+}
+
+// ---------- Error contract (SPEC §12.2) ----------
+//
+// `ErrorDetail.reason` is a string so that clients built before a reason existed can still
+// read it. The full set of reasons is the `ErrorReason` enum below: the string sent on the wire
+// is the value name without the `ERROR_REASON_` prefix (for example
+// `ERROR_REASON_MERGE_CONFLICT` is sent as `MERGE_CONFLICT`). Each value documents its gRPC
+// status code, its Connect error code and whether the identical request may succeed if retried
+// (`retryable`). SPEC §12.2 carries the same table; the bee-proto tests check the two
+// against each other. Reasons may be added; a reason is never renamed or removed.
+enum ErrorReason {
+  ERROR_REASON_UNSPECIFIED = 0;
+  // UNAUTHENTICATED / unauthenticated / not retryable. No credential, or it does not verify.
+  ERROR_REASON_UNAUTHENTICATED = 1;
+  // UNAUTHENTICATED / unauthenticated / not retryable. The token is past its expiry.
+  ERROR_REASON_TOKEN_EXPIRED = 2;
+  // UNAUTHENTICATED / unauthenticated / not retryable. The token or an ancestor was revoked.
+  ERROR_REASON_TOKEN_REVOKED = 3;
+  // PERMISSION_DENIED / permission_denied / not retryable. The principal lacks the permission.
+  ERROR_REASON_PERMISSION_DENIED = 4;
+  // PERMISSION_DENIED / permission_denied / not retryable. A policy rule refused the action;
+  // payload `policy_denial` lists the rule and what is missing (approvals, checks, leases).
+  ERROR_REASON_POLICY_DENIED = 5;
+  // RESOURCE_EXHAUSTED / resource_exhausted / not retryable. The token's budget is spent (SPEC §9.2).
+  ERROR_REASON_BUDGET_EXHAUSTED = 6;
+  // RESOURCE_EXHAUSTED / resource_exhausted / retryable. Throttled by admission control
+  // (SPEC §15.4); `retry_after_ms` and the `retry-after` header say when to retry.
+  ERROR_REASON_RESOURCE_EXHAUSTED = 7;
+  // RESOURCE_EXHAUSTED / resource_exhausted / not retryable. A quota or spending limit
+  // (per delegation root, org plan or billing budget) is reached.
+  ERROR_REASON_QUOTA_EXCEEDED = 8;
+  // NOT_FOUND / not_found / not retryable. The object does not exist or is not visible.
+  ERROR_REASON_NOT_FOUND = 9;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. A referenced object has no
+  // row (SPEC §6.2); payload `missing_objects` lists the ids to upload first.
+  ERROR_REASON_MISSING_OBJECT = 10;
+  // NOT_FOUND / not_found / not retryable. The object was redacted (SPEC §13).
+  ERROR_REASON_REDACTED = 11;
+  // ALREADY_EXISTS / already_exists / not retryable. A resource with this name or key exists.
+  ERROR_REASON_ALREADY_EXISTS = 12;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The ChangeId already landed on
+  // this ref from a different source changeset (SPEC §7.4).
+  ERROR_REASON_ALREADY_LANDED = 13;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The result would be an empty
+  // change and `allow_empty` was not set.
+  ERROR_REASON_EMPTY_CHANGE = 14;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. Three-way merge produced
+  // conflicts; payload `conflicts` carries them as data (SPEC §7.3.2).
+  ERROR_REASON_MERGE_CONFLICT = 15;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. No usable merge base exists.
+  ERROR_REASON_AMBIGUOUS_MERGE_BASE = 16;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. An exclusive lease held by
+  // another principal covers a path; payload `lease_conflict` names it (SPEC §11.5).
+  ERROR_REASON_LEASED = 17;
+  // ABORTED / aborted / not retryable. Compare-and-swap failed: the expected version is stale;
+  // payload `version_mismatch` carries the current version. Re-read, then retry with it.
+  ERROR_REASON_VERSION_MISMATCH = 18;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The update is not a
+  // fast-forward and `allow_non_fast_forward` was not set or not permitted.
+  ERROR_REASON_NOT_FAST_FORWARD = 19;
+  // INVALID_ARGUMENT / invalid_argument / not retryable. A revision prefix matches several
+  // objects; payload `ambiguous_prefix` lists the candidates.
+  ERROR_REASON_AMBIGUOUS_PREFIX = 20;
+  // INVALID_ARGUMENT / invalid_argument / not retryable. The request is malformed;
+  // `subcode` names the rule (for example `missing_field`, `bad_path`, `noop_put`).
+  ERROR_REASON_INVALID_ARGUMENT = 21;
+  // INVALID_ARGUMENT / invalid_argument / not retryable. A size or count limit (SPEC §4.6) is
+  // exceeded; payload `limit_exceeded` names the limit.
+  ERROR_REASON_TOO_LARGE = 22;
+  // DATA_LOSS / data_loss / retryable. Bytes did not match their id; another replica or tier
+  // may serve correct bytes.
+  ERROR_REASON_INTEGRITY = 23;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. CreateChangeset's computed root
+  // differs from `expected_root_tree`.
+  ERROR_REASON_ROOT_TREE_MISMATCH = 24;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. Rebase of a changeset with
+  // more than one parent.
+  ERROR_REASON_MULTI_PARENT = 25;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. A land stack contains a merge
+  // changeset and the land method does not allow one.
+  ERROR_REASON_MERGE_IN_STACK = 26;
+  // UNAVAILABLE / unavailable / retryable. The land attempt budget ran out under contention.
+  ERROR_REASON_LAND_CONTENTION = 27;
+  // UNAVAILABLE / unavailable / retryable. A dependency or the primary is unreachable.
+  ERROR_REASON_UNAVAILABLE = 28;
+  // DEADLINE_EXCEEDED / deadline_exceeded / retryable. The request deadline passed.
+  ERROR_REASON_DEADLINE_EXCEEDED = 29;
+  // CANCELLED / canceled / retryable. The caller cancelled the request.
+  ERROR_REASON_CANCELLED = 30;
+  // UNIMPLEMENTED / unimplemented / not retryable. The service or method is not served here.
+  ERROR_REASON_UNIMPLEMENTED = 31;
+  // INTERNAL / internal / not retryable. A server bug; `request_id` identifies it in logs.
+  ERROR_REASON_INTERNAL = 32;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. Unredact or purge of an object
+  // that is not in quarantine (SPEC §13).
+  ERROR_REASON_NOT_QUARANTINED = 33;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The object kind cannot be
+  // redacted (trees and changesets).
+  ERROR_REASON_NOT_REDACTABLE = 34;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. Push protection found a secret;
+  // payload `push_protection` lists findings and whether a bypass may be requested.
+  ERROR_REASON_SECRET_DETECTED = 35;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The repo is archived (read-only).
+  ERROR_REASON_ARCHIVED = 36;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The conversation is locked.
+  ERROR_REASON_LOCKED = 37;
+  // PERMISSION_DENIED / permission_denied / not retryable. The caller is blocked by the owner.
+  ERROR_REASON_BLOCKED = 38;
+  // PERMISSION_DENIED / permission_denied / not retryable. Interaction limits exclude the caller.
+  ERROR_REASON_INTERACTION_LIMITED = 39;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The change request is a draft.
+  ERROR_REASON_DRAFT = 40;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. Git access is off for the repo.
+  ERROR_REASON_GIT_DISABLED = 41;
+  // PERMISSION_DENIED / permission_denied / not retryable. The org requires an SSO session.
+  ERROR_REASON_SSO_REQUIRED = 42;
+  // PERMISSION_DENIED / permission_denied / not retryable. The org requires two-factor auth.
+  ERROR_REASON_TWO_FACTOR_REQUIRED = 43;
+  // PERMISSION_DENIED / permission_denied / not retryable. The source address is not allowed.
+  ERROR_REASON_IP_NOT_ALLOWED = 44;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. A human approval is required
+  // first (environment protection, first-time contributor run approval).
+  ERROR_REASON_APPROVAL_REQUIRED = 45;
+  // FAILED_PRECONDITION / failed_precondition / not retryable. The object is in the wrong
+  // state for this operation (for example reopening a landed change request).
+  ERROR_REASON_INVALID_STATE = 46;
+}
+
+// Current state when a compare-and-swap failed (reason VERSION_MISMATCH).
+message VersionMismatch {
+  string ref = 1;              // ref name, or the resource id for forge objects
+  uint64 expected_version = 2;
+  uint64 current_version = 3;
+  ObjectId current_target = 4; // refs only
+}
+
+// Candidates for an ambiguous revision prefix (reason AMBIGUOUS_PREFIX).
+message AmbiguousPrefix {
+  string prefix = 1;
+  repeated ObjectId candidates = 2;
+}
+
+// The limit a request exceeded (reason TOO_LARGE or QUOTA_EXCEEDED).
+message LimitExceeded {
+  string limit = 1; // e.g. "max_blob_bytes", "max_path_bytes", "open_change_requests"
+  uint64 maximum = 2;
+  uint64 actual = 3;
+}
+
+// Objects the server has no row for (reason MISSING_OBJECT).
+message MissingObjects {
+  repeated ObjectId ids = 1;
+}
+
+// One secret found by push protection.
+message SecretFinding {
+  bytes path = 1;
+  ObjectId blob = 2;
+  uint32 line = 3;
+  string secret_type = 4; // e.g. "aws_access_key_id"
+  string pattern_id = 5;
+}
+
+// Secrets that blocked a write (reason SECRET_DETECTED, PRODUCT §4.18).
+message PushProtectionBlock {
+  repeated SecretFinding findings = 1;
+  bool bypass_allowed = 2; // the caller may request a bypass through SecurityService
+  string bypass_request_url = 3;
+}
+
+// ---------- Forge subjects ----------
+
+// The kind of forge object a SubjectRef names.
+enum SubjectKind {
+  SUBJECT_KIND_UNSPECIFIED = 0;
+  SUBJECT_KIND_REPO = 1;
+  SUBJECT_KIND_ISSUE = 2;
+  SUBJECT_KIND_CHANGE_REQUEST = 3;
+  SUBJECT_KIND_DISCUSSION = 4;
+  SUBJECT_KIND_COMMENT = 5;
+  SUBJECT_KIND_CHANGESET = 6;
+  SUBJECT_KIND_RELEASE = 7;
+  SUBJECT_KIND_GIST = 8;
+  SUBJECT_KIND_WIKI_PAGE = 9;
+  SUBJECT_KIND_CHECK_RUN = 10;
+  SUBJECT_KIND_WORKFLOW_RUN = 11;
+  SUBJECT_KIND_SECURITY_ALERT = 12;
+  SUBJECT_KIND_PROJECT = 13;
+  SUBJECT_KIND_PACKAGE = 14;
+  SUBJECT_KIND_DEPLOYMENT = 15;
+  SUBJECT_KIND_USER = 16;
+  SUBJECT_KIND_ORG = 17;
+  SUBJECT_KIND_TEAM = 18;
+  SUBJECT_KIND_AGENT_RUN = 19;
+  SUBJECT_KIND_ADVISORY = 20;
+  SUBJECT_KIND_POST = 21;
+}
+
+// Names any forge object generically, for reactions, notifications, moderation, search hits
+// and project items. `id` is the object's ULID, or for issues and change requests its number
+// in decimal; `repo` is unset for objects that are not repo-scoped.
+message SubjectRef {
+  SubjectKind kind = 1;
+  RepoRef repo = 2;
+  string id = 3;
+}
+
+// Per-item outcome in a batch read; one failed item never fails the batch.
+enum ItemStatus {
+  ITEM_STATUS_UNSPECIFIED = 0;
+  ITEM_STATUS_OK = 1;
+  ITEM_STATUS_NOT_FOUND = 2;
+  ITEM_STATUS_PERMISSION_DENIED = 3;
+  ITEM_STATUS_REDACTED = 4;
+}
+
+// Whether an object is readable by every repo reader or only by principals allowed on a
+// restricted path (SPEC §9.3, §10.2).
+enum AccessClass {
+  ACCESS_CLASS_UNSPECIFIED = 0;
+  ACCESS_CLASS_ROOT = 1;
+  ACCESS_CLASS_RESTRICTED = 2;
+}
+
+// Byte encoding of object data on the wire.
+enum ObjectEncoding {
+  OBJECT_ENCODING_UNSPECIFIED = 0; // same as RAW
+  OBJECT_ENCODING_RAW = 1;
+  OBJECT_ENCODING_ZSTD = 2;        // the stored zstd frame, served unchanged
+}
+
+// A key/value pair with a string value (metadata, custom properties, variables).
+message KeyValue {
+  string key = 1;
+  string value = 2;
+}

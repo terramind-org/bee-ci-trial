@@ -1,0 +1,14 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+        with:
+          node-version: 20
+      - uses: ./.github/actions/local
+      - uses: docker://alpine:3.19
+  call:
+    uses: acme/shared/.github/workflows/release.yml@v2

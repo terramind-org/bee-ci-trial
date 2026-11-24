@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/enterprise.update-ip-allow-list-entry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.EnterpriseService/UpdateIpAllowListEntry: `data` is a bee.v1.IpAllowListEntry in proto3-JSON. `bee enterprise update-ip-allow-list-entry --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.IpAllowListEntry.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.enterprise.update-ip-allow-list-entry"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee enterprise update-ip-allow-list-entry",
+  "type": "object"
+}

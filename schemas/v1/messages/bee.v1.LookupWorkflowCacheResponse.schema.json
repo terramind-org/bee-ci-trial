@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "bee.v1.WorkflowCache": {
+      "description": "One `actions/cache` entry. Entries are scoped by ref: a job reads its own ref's entries,\nthen its base ref's, then the default ref's.",
+      "properties": {
+        "committed": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "lastAccessedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "version": {
+          "description": "hash of paths and compression, set by the cache client",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkflowCache",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LookupWorkflowCacheResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for LookupWorkflowCache.",
+  "properties": {
+    "cache": {
+      "$ref": "#/$defs/bee.v1.WorkflowCache"
+    },
+    "downloadUrl": {
+      "type": "string"
+    },
+    "exactMatch": {
+      "description": "matched `key` rather than a restore key",
+      "type": "boolean"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.LookupWorkflowCacheResponse",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/check.get-bisect-session.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.CheckService/GetBisectSession: `data` is a bee.v1.BisectSession in proto3-JSON. `bee check get-bisect-session --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BisectSession.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.check.get-bisect-session"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee check get-bisect-session",
+  "type": "object"
+}

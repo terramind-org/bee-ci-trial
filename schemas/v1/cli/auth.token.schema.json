@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/auth.token.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee auth token --json`: one such document with `schema` = bee.v1.auth.token. Mint an attenuated token for yourself or an agent (AuthService/MintToken). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.MintTokenResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.auth.token"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee auth token",
+  "type": "object"
+}

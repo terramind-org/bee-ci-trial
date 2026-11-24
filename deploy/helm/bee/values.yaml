@@ -1,0 +1,390 @@
+# Default values for the Beehive chart. Every key is documented here and checked by
+# values.schema.json. README.md has the install walkthrough.
+#
+# Postgres 17 and an S3-compatible bucket are not part of this chart: create them first and
+# put their credentials in the Secret named by `secrets.existingSecret`.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Pull secrets for private registries, applied to every pod: [{name: my-registry}].
+imagePullSecrets: []
+
+# ---------------------------------------------------------------------------------------------
+# Server configuration. The chart renders these values into server.toml (a ConfigMap), which
+# docs/spec/server.md section 2 defines key by key. Settings that are not here go in `extraToml`.
+# ---------------------------------------------------------------------------------------------
+config:
+  # "enterprise" is the self-hosted edition. "cloud" turns on the hosted-service surfaces
+  # (sign-up, pricing, billing); only the hosted service sets it.
+  edition: enterprise
+  # REQUIRED. The URL agents, the CLI and git reach this instance at, no trailing slash: it is
+  # in signed URLs, login redirects and the clone URLs the web app shows.
+  publicUrl: ""
+  # Reported by GetServerInfo.
+  cell: main
+  region: local
+  # Take the client address from X-Forwarded-For. True behind an ingress or load balancer you
+  # control; false when clients reach the server directly (the header would be spoofable).
+  trustForwardedFor: true
+  # Principal ids of site administrators, who are also operators. Principal ids exist only after
+  # someone has signed in, so this is empty at first (README, "First admin").
+  siteAdmins: []
+
+  postgres:
+    # Schema of the metadata tables (created if missing). The forge's tables are in the schema
+    # that the forgeDatabase URL in the Secret names.
+    schema: bee
+    maxConnections: 16
+
+  s3:
+    # S3 endpoint, path style. Empty means AWS S3 itself (virtual-host style); any other
+    # S3-compatible store needs its endpoint here. Google Cloud Storage: https://storage.googleapis.com.
+    endpoint: ""
+    # REQUIRED. The bucket must exist; the chart does not create it.
+    bucket: ""
+    region: us-east-1
+    # Prefix of blob objects, and of backups (the same bucket holds both).
+    blobPrefix: blobs/
+    backupPrefix: bee-backups/
+    backupRetentionDays: 30
+
+  # Sign-in. An instance needs one method before anyone can use it. Set one of these two.
+  login:
+    # Any OIDC provider: the issuer URL and the client id its id_tokens carry as audience.
+    oidcIssuer: ""
+    oidcClientId: ""
+    # GitHub device flow: the client id of a GitHub OAuth app.
+    githubClientId: ""
+    # Organisation that new principals join.
+    defaultOrg: ""
+
+  admission:
+    perPrincipalRps: 200
+    perRootRps: 400
+
+  # Deadline for each forge lookup, in milliseconds (100 to 60000).
+  forgeLookupDeadlineMs: 3000
+
+  logging:
+    level: info # error, warn, info, debug
+    requests: true
+
+  # OTLP/HTTP collector base URL; spans go to <url>/v1/traces. Empty exports nothing.
+  tracingOtlpEndpoint: ""
+
+  # Directories that local-path imports may read. Keep it away from "/".
+  importAllowedRoots:
+    - /data/imports
+
+  # TOML appended to the generated server.toml, for keys not listed above. Add only tables the
+  # chart does not render (a table defined twice is a configuration error): [tls], [limits],
+  # [land], [[auth.services]] and so on.
+  extraToml: ""
+
+  # Use your own ConfigMap instead of the generated one (its key must be server.toml). The
+  # chart then renders no ConfigMap and the keys above are ignored; the environment variables
+  # the pods get (BEE_PUBLIC_URL, BEE_ADVERTISE_URL, BEE_POSTGRES_URL,
+  # BEE_FORGE_DATABASE, BEE_S3_*, BEE_SIGNING_KEY_HEX) are still set.
+  existingConfigMap: ""
+
+# ---------------------------------------------------------------------------------------------
+# Credentials. The chart never creates a Secret: you do (an operator, sealed-secrets, External
+# Secrets, Secret Manager CSI, ...), so no credential passes through values or release history.
+# ---------------------------------------------------------------------------------------------
+secrets:
+  # REQUIRED. The Secret holding the keys below, in the release's namespace.
+  existingSecret: ""
+  # Key names inside that Secret.
+  keys:
+    # postgres://user:password@host:5432/dbname (URL-safe password)
+    postgresUrl: postgres-url
+    # The same database, forge tables in their own schema:
+    # postgres://user:password@host:5432/dbname?schema=bee_forge
+    forgeDatabase: forge-database
+    s3AccessKey: s3-access-key
+    s3SecretKey: s3-secret-key
+    # 64 hex digits (openssl rand -hex 32), shared by every replica. Losing it signs everyone
+    # out; changing it invalidates every issued token.
+    signingKeyHex: signing-key-hex
+    # Shared keys (see `sharedKeys`): url_key_hex, 64 hex digits (openssl rand -hex 32), the HMAC
+    # key of signed blob, CI transfer and media URLs; and oidc_key_pkcs8_hex, the hex of a PKCS#8
+    # P-256 key (openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER |
+    # xxd -p | tr -d '\n'), which signs the OpenID provider's id_tokens and JWKS, Actions OIDC
+    # tokens and attestations.
+    urlKeyHex: url-key-hex
+    oidcKeyPkcs8Hex: oidc-key-pkcs8-hex
+  # Replicas that share one database and bucket must share two more keys. Without them each pod
+  # generates its own in its own /data: a signed URL issued by one pod is refused by the others, and
+  # the JWKS a client fetches from one pod does not verify what another pod signed. With
+  # `enabled: true` (the default) the chart reads both keys from the Secret above and sets
+  # blobs.url_key_hex and auth.oidc_key_pkcs8_hex in server.toml. `enabled: false` is only allowed
+  # with a single replica (server.replicas 1 and no autoscaling above 1): the render fails
+  # otherwise. (A single replica that restarts still gets new keys without them, because /data is
+  # an emptyDir.)
+  sharedKeys:
+    enabled: true
+
+# ---------------------------------------------------------------------------------------------
+# The server.
+# ---------------------------------------------------------------------------------------------
+server:
+  image:
+    repository: ghcr.io/terramind-org/bee-server
+    # Default: the chart's appVersion.
+    tag: ""
+    # A digest ("sha256:...") wins over the tag.
+    digest: ""
+    pullPolicy: IfNotPresent
+
+  # Stateless replicas on one Postgres and one bucket. Each ref has one coalescer owner at a
+  # time (a fenced lease in Postgres); other replicas forward lands to it, so any count works
+  # and a killed replica's refs move to a survivor within the lease (6 s by default).
+  # Ignored when autoscaling.enabled.
+  replicas: 2
+
+  # Rolling updates replace one pod at a time and never remove a ready one first.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+  # Time pods get to finish: preStopSleepSeconds (endpoints stop sending traffic) plus the
+  # server's own 20 s drain after SIGTERM, plus margin.
+  terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 5
+
+  # The API, git over HTTP and MCP. h2c (HTTP/2 without TLS) is how gRPC and HTTP/JSON share
+  # the port; gateways that read appProtocol route gRPC correctly.
+  service:
+    type: ClusterIP
+    port: 7420
+    annotations: {}
+
+  # Runs as the image's own user (uid 10001). The root filesystem is read-only; /data and /tmp
+  # are volumes.
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+
+  # /data holds the SSH host key when none is provided, import staging and restored data
+  # directories. With Postgres and S3 nothing in it is the system of record.
+  data:
+    # Size cap of the per-pod emptyDir.
+    sizeLimit: 2Gi
+    # A claim to mount instead (ReadWriteMany if replicas share it; backup restores write to
+    # /data/restores/<cell>).
+    existingClaim: ""
+
+  # Spread replicas over zones and nodes. The chart fills in each constraint's labelSelector.
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+
+  # With 2 or more replicas, voluntary disruptions (node drains) take down at most this many.
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+
+  # Horizontal Pod Autoscaler (needs metrics-server). When on, `replicas` is not rendered.
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: null
+
+  # Probes. /healthz answers while the process serves; /readyz answers 200 when the metadata
+  # store answers, 503 otherwise. The startup probe covers schema migrations.
+  startupProbe:
+    periodSeconds: 2
+    failureThreshold: 90
+  livenessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  readinessProbe:
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+
+# ---------------------------------------------------------------------------------------------
+# Git over SSH.
+# ---------------------------------------------------------------------------------------------
+ssh:
+  enabled: true
+  service:
+    # ClusterIP keeps SSH inside the cluster. LoadBalancer or NodePort publishes it.
+    type: ClusterIP
+    port: 2222
+    annotations: {}
+  # The server's host identity. Every replica must present the same key, or clients see a
+  # changed-host-key warning on every other connection. Create a Secret that holds an OpenSSH
+  # private key (ssh-keygen -t ed25519 -N "" -f key; kubectl create secret generic ... --from-file=ssh_host_ed25519_key=key)
+  # and name it here. Without one, each pod generates its own key at start.
+  hostKeySecret:
+    name: ""
+    key: ssh_host_ed25519_key
+
+# ---------------------------------------------------------------------------------------------
+# The web app.
+# ---------------------------------------------------------------------------------------------
+web:
+  enabled: true
+  image:
+    repository: ghcr.io/terramind-org/bee-web
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  terminationGracePeriodSeconds: 30
+  preStopSleepSeconds: 5
+  service:
+    type: ClusterIP
+    port: 3100
+    annotations: {}
+  # Runs as the image's `node` user (uid 1000).
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: null
+  extraEnv: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+
+# ---------------------------------------------------------------------------------------------
+# ServiceAccount. The pods do not call the Kubernetes API, so its token is not mounted. Use
+# `annotations` for workload identity (GKE: iam.gke.io/gcp-service-account; EKS:
+# eks.amazonaws.com/role-arn).
+# ---------------------------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+# ---------------------------------------------------------------------------------------------
+# Ingress: one host that serves the web app and the API, the way deploy/Caddyfile does.
+#
+# Routing needs paths no Kubernetes `Prefix` can express (git smart HTTP lives at
+# /<owner>/<repo>.git/, and /bee.v1.<Service>/<Method> has no path element boundary after
+# the prefix), so the defaults are regular expressions (pathType ImplementationSpecific) for
+# ingress-nginx with its `use-regex` annotation. Another controller needs its own spelling of
+# the same paths: override apiPaths and gitPath (README, "Ingress").
+#
+# gRPC: ingress-nginx sends a whole Ingress either to a gRPC backend or to an HTTP one, so gRPC
+# clients get their own host (`grpc`, below). HTTP/JSON, MCP and git, which the CLI and agents
+# use, need no gRPC host.
+# ---------------------------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Pushes and large objects are not capped by the proxy; streams (event subscriptions) stay open.
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  # REQUIRED when enabled; the host of config.publicUrl.
+  host: ""
+  # TLS: the Secret that holds the certificate (cert-manager creates it when you add its
+  # annotation above). Empty serves plain HTTP.
+  tlsSecretName: ""
+  # Paths sent to the server; everything else goes to the web app. They match deploy/Caddyfile.
+  apiPaths:
+    - /bee\.v1\.
+    - /mcp
+    - /blob/
+    - /healthz
+    - /readyz
+    - /webhooks/
+    - /login/oauth/
+    - /login/device/
+    - /\.well-known/
+    - /saml/
+    - /scim/
+    - /_ci/
+    - /_evidence/
+    - /social-previews/
+  # Git smart HTTP.
+  gitPath: /[^/]+/[^/]+\.git/
+  pathType: ImplementationSpecific
+  # gRPC clients (grpcurl, generated stubs) on a host of their own, backend protocol GRPC.
+  grpc:
+    enabled: false
+    host: ""
+    tlsSecretName: ""
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"

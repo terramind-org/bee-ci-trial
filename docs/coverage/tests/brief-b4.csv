@@ -1,0 +1,4 @@
+feature_id,test
+F413-044,crates/bee-server/tests/briefs.rs::uploaded_documents_are_served_as_attachments
+F413-045,crates/bee-server/tests/briefs.rs::evidence_urls_redecide_repo_access
+F413-046,crates/bee-server/tests/briefs.rs::checklist_follows_the_brief_and_evidence

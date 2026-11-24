@@ -1,0 +1,32 @@
+{
+  "service": "bee.v1.RefService",
+  "fixtures": [
+    {"method": "ListRefs", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "CreateRef",
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/create-ref", "target": "{{base.objectId}}",
+                 "reason": "create ref fixture"}},
+    {"method": "UpdateRef",
+     "setup": [
+       {"call": "RefService/CreateRef", "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/update-ref",
+        "target": "{{base.objectId}}"}, "save": "r"},
+       {"commit": {"repo": "{{repo}}", "parent": "{{base.id}}", "files": {"docs/update-ref.md": "update\n"},
+                   "message": "update ref fixture", "change": 301}, "save": "c"}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/update-ref", "target": "{{c.objectId}}",
+                 "expectedVersion": "{{r.version}}", "reason": "update ref fixture"}},
+    {"method": "DeleteRef",
+     "setup": [
+       {"call": "RefService/CreateRef", "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/delete-ref",
+        "target": "{{base.objectId}}"}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/delete-ref", "reason": "delete ref fixture"}},
+    {"method": "GetRefLog", "request": {"repo": {"fullName": "{{repo}}"}, "name": "main"}},
+    {"method": "RenameRef",
+     "setup": [
+       {"call": "RefService/CreateRef", "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/rename-ref",
+        "target": "{{base.objectId}}"}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "conformance/rename-ref", "newName": "conformance/renamed-ref",
+                 "reason": "rename ref fixture"}}
+  ]
+}

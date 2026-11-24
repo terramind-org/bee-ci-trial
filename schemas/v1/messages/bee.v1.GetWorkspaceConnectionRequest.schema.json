@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetWorkspaceConnectionRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetWorkspaceConnection.",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetWorkspaceConnectionRequest",
+  "type": "object"
+}

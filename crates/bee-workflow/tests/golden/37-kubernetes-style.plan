@@ -1,0 +1,76 @@
+# event pull_request action=synchronize
+run .github/workflows/verify.yml "verify"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: read-all
+  job unit decided=true
+    instance "unit (pkg/...)"
+      matrix: {"package":"pkg/..."}
+      strategy: index=0 total=3 fail-fast=false max-parallel=2
+      runs-on: ["ubuntu-latest"]
+      permissions: read-all
+      timeout-minutes: 90
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+      step 2 "Run actions/setup-go@v5"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+      step 3 "Run make test WHAT=./pkg/... KUBE_TIMEOUT=--timeout=80m"
+        run: "make test WHAT=./pkg/... KUBE_TIMEOUT=--timeout=80m"
+        shell: default -> "bash -e {0}"
+    instance "unit (cmd/...)"
+      matrix: {"package":"cmd/..."}
+      strategy: index=1 total=3 fail-fast=false max-parallel=2
+      runs-on: ["ubuntu-latest"]
+      permissions: read-all
+      timeout-minutes: 90
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+      step 2 "Run actions/setup-go@v5"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+      step 3 "Run make test WHAT=./cmd/... KUBE_TIMEOUT=--timeout=80m"
+        run: "make test WHAT=./cmd/... KUBE_TIMEOUT=--timeout=80m"
+        shell: default -> "bash -e {0}"
+    instance "unit (staging/...)"
+      matrix: {"package":"staging/..."}
+      strategy: index=2 total=3 fail-fast=false max-parallel=2
+      runs-on: ["ubuntu-latest"]
+      permissions: read-all
+      timeout-minutes: 90
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+      step 2 "Run actions/setup-go@v5"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+      step 3 "Run make test WHAT=./staging/... KUBE_TIMEOUT=--timeout=80m"
+        run: "make test WHAT=./staging/... KUBE_TIMEOUT=--timeout=80m"
+        shell: default -> "bash -e {0}"
+  job verify decided=true
+    instance "verify"
+      runs-on: ["ubuntu-latest"]
+      permissions: read-all
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run hack/verify-gofmt.sh"
+        run: "hack/verify-gofmt.sh"
+        shell: default -> "bash -e {0}"
+      step 3 "Run hack/verify-codegen.sh"
+        run: "hack/verify-codegen.sh"
+        shell: default -> "bash -e {0}"
+        continue-on-error: "true"
+      step 4 "Run hack/verify-golint.sh"
+        run: "hack/verify-golint.sh"
+        shell: default -> "bash -e {0}"
+        timeout-minutes: "20"
+# event pull_request_target action=synchronize

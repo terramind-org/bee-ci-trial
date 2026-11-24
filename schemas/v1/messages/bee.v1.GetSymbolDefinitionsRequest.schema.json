@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetSymbolDefinitionsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetSymbolDefinitions.",
+  "properties": {
+    "at": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    },
+    "column": {
+      "description": "0-based UTF-8 byte column",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "crossRepo": {
+      "description": "also look in other repos the caller can read",
+      "type": "boolean"
+    },
+    "line": {
+      "description": "1-based",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "path": {
+      "contentEncoding": "base64",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.GetSymbolDefinitionsRequest",
+  "type": "object"
+}

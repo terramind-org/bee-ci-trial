@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/change.list-land-conflicts.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ChangeService/ListLandConflicts: `data` is a bee.v1.ListLandConflictsResponse in proto3-JSON. `bee change list-land-conflicts --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListLandConflictsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.change.list-land-conflicts"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee change list-land-conflicts",
+  "type": "object"
+}

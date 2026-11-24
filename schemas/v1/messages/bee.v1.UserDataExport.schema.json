@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "bee.v1.UserDataExportState": {
+      "description": "State of a data export.",
+      "enum": [
+        "USER_DATA_EXPORT_STATE_UNSPECIFIED",
+        "USER_DATA_EXPORT_STATE_PENDING",
+        "USER_DATA_EXPORT_STATE_RUNNING",
+        "USER_DATA_EXPORT_STATE_READY",
+        "USER_DATA_EXPORT_STATE_FAILED",
+        "USER_DATA_EXPORT_STATE_EXPIRED"
+      ],
+      "title": "bee.v1.UserDataExportState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserDataExport.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A user migration archive.",
+  "properties": {
+    "completedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "downloadUrl": {
+      "description": "signed; READY only",
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "sha256": {
+      "contentEncoding": "base64",
+      "type": "string"
+    },
+    "size": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.UserDataExportState"
+    },
+    "urlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UserDataExport",
+  "type": "object"
+}

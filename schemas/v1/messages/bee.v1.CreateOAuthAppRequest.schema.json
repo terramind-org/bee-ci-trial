@@ -1,0 +1,31 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateOAuthAppRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateOAuthApp.",
+  "properties": {
+    "callbackUrls": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "deviceFlowEnabled": {
+      "type": "boolean"
+    },
+    "homepageUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "description": "owning org; empty = the caller's user account",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateOAuthAppRequest",
+  "type": "object"
+}

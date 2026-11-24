@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.TeamInvitation": {
+      "description": "A pending invitation to join a team (the invitee is not yet an org member).",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "inviteeEmail": {
+          "description": "set when inviting by email",
+          "type": "string"
+        },
+        "inviteePrincipalId": {
+          "description": "set for an existing principal",
+          "type": "string"
+        },
+        "inviter": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.TeamMemberRole"
+        },
+        "teamId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TeamInvitation",
+      "type": "object"
+    },
+    "bee.v1.TeamMemberRole": {
+      "description": "A principal's role inside a team.",
+      "enum": [
+        "TEAM_MEMBER_ROLE_UNSPECIFIED",
+        "TEAM_MEMBER_ROLE_MEMBER",
+        "TEAM_MEMBER_ROLE_MAINTAINER"
+      ],
+      "title": "bee.v1.TeamMemberRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTeamInvitationsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListTeamInvitations.",
+  "properties": {
+    "invitations": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.TeamInvitation"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListTeamInvitationsResponse",
+  "type": "object"
+}

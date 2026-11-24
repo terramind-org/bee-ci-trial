@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkflowRequirementScope": {
+      "description": "Which repos a required workflow applies to.",
+      "enum": [
+        "WORKFLOW_REQUIREMENT_SCOPE_UNSPECIFIED",
+        "WORKFLOW_REQUIREMENT_SCOPE_ALL",
+        "WORKFLOW_REQUIREMENT_SCOPE_SELECTED"
+      ],
+      "title": "bee.v1.WorkflowRequirementScope",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateRequiredWorkflowRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateRequiredWorkflow.",
+  "properties": {
+    "enforced": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.WorkflowRequirementScope"
+    },
+    "selectedRepos": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "sourcePath": {
+      "type": "string"
+    },
+    "sourceRef": {
+      "type": "string"
+    },
+    "sourceRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.CreateRequiredWorkflowRequest",
+  "type": "object"
+}

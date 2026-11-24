@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "bee.v1.CommitStatusState": {
+      "description": "State of a legacy commit status.",
+      "enum": [
+        "COMMIT_STATUS_STATE_UNSPECIFIED",
+        "COMMIT_STATUS_STATE_PENDING",
+        "COMMIT_STATUS_STATE_SUCCESS",
+        "COMMIT_STATUS_STATE_FAILURE",
+        "COMMIT_STATUS_STATE_ERROR"
+      ],
+      "title": "bee.v1.CommitStatusState",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CommitStatus.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A legacy commit status (GitHub's statuses API), mapped onto a check run.",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "context": {
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "creator": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.CommitStatusState"
+    },
+    "targetUrl": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CommitStatus",
+  "type": "object"
+}

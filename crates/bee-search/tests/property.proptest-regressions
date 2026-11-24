@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 93eb7912a2c0d9f762bce0426818052b49d86963898d3e5ae67af55741cad0f3 # shrinks to repos = [{"src/main.rs": []}], shape = Or(Lit("foo"), Lit("foo")), cs = true

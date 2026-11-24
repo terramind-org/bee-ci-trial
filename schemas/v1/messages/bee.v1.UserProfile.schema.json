@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.UserSocialAccount": {
+      "description": "A linked social account on a profile.",
+      "properties": {
+        "provider": {
+          "description": "e.g. \"mastodon\", \"linkedin\", \"x\", \"bluesky\", \"generic\"",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.UserSocialAccount",
+      "type": "object"
+    },
+    "bee.v1.UserStatus": {
+      "description": "A user's status.",
+      "properties": {
+        "busy": {
+          "description": "\"limited availability\"",
+          "type": "boolean"
+        },
+        "emoji": {
+          "description": "shortcode, e.g. \":palm_tree:\"",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "org": {
+          "description": "visible only to this org's members; empty = everyone",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.UserStatus",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserProfile.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A user's profile.",
+  "properties": {
+    "avatarUrl": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "followerCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "followingCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "followsViewer": {
+      "type": "boolean"
+    },
+    "hireable": {
+      "type": "boolean"
+    },
+    "isSiteAdmin": {
+      "type": "boolean"
+    },
+    "location": {
+      "type": "string"
+    },
+    "login": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "orgs": {
+      "description": "public org memberships, for badges",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "principal": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "pronouns": {
+      "type": "string"
+    },
+    "publicEmail": {
+      "type": "string"
+    },
+    "publicGistCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "publicRepoCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "readmeHtml": {
+      "description": "rendered profile README",
+      "type": "string"
+    },
+    "readmeRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "the `<login>/<login>` profile README repo, if any"
+    },
+    "socialAccounts": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.UserSocialAccount"
+      },
+      "type": "array"
+    },
+    "sponsorable": {
+      "type": "boolean"
+    },
+    "starCount": {
+      "description": "repos starred",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.UserStatus"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "viewerIsFollowing": {
+      "type": "boolean"
+    },
+    "website": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UserProfile",
+  "type": "object"
+}

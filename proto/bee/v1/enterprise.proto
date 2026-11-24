@@ -1,0 +1,679 @@
+// Enterprise accounts and org/enterprise security settings for bee.v1: managed users, SAML
+// SSO, SCIM provisioning, IP allow lists, verified domains, required 2FA and enterprise
+// policies. See PRODUCT.md §4.20.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Enterprise accounts and the identity and network controls that apply to an org or an
+// enterprise. Settings set at enterprise level override the same setting on its orgs.
+service EnterpriseService {
+  // Returns an enterprise account.
+  rpc GetEnterprise(GetEnterpriseRequest) returns (Enterprise);
+  // Changes an enterprise's profile or managed-users mode.
+  rpc UpdateEnterprise(UpdateEnterpriseRequest) returns (Enterprise);
+  // Lists the orgs in an enterprise.
+  rpc ListEnterpriseOrgs(ListEnterpriseOrgsRequest) returns (ListEnterpriseOrgsResponse);
+  // Adds an existing org to an enterprise (the caller must own both) or creates a new one in it.
+  rpc AddEnterpriseOrg(AddEnterpriseOrgRequest) returns (EnterpriseOrg);
+  // Removes an org from an enterprise; enterprise policies stop applying to it.
+  rpc RemoveEnterpriseOrg(RemoveEnterpriseOrgRequest) returns (RemoveEnterpriseOrgResponse);
+  // Lists enterprise owners.
+  rpc ListEnterpriseOwners(ListEnterpriseOwnersRequest) returns (ListEnterpriseOwnersResponse);
+  // Makes a principal an enterprise owner.
+  rpc AddEnterpriseOwner(AddEnterpriseOwnerRequest) returns (EnterpriseOwner);
+  // Removes an enterprise owner. The last owner cannot be removed (INVALID_STATE).
+  rpc RemoveEnterpriseOwner(RemoveEnterpriseOwnerRequest) returns (RemoveEnterpriseOwnerResponse);
+
+  // Returns the SAML SSO configuration of an org or enterprise.
+  rpc GetSamlSsoConfig(GetSamlSsoConfigRequest) returns (SamlSsoConfig);
+  // Changes the SAML SSO configuration. Turning on enforcement makes every request by a member
+  // without a live SSO session fail with SSO_REQUIRED (tokens included). Refused with
+  // INVALID_STATE (subcode `sso_untested`) until a test sign-in succeeded.
+  rpc UpdateSamlSsoConfig(UpdateSamlSsoConfigRequest) returns (SamlSsoConfig);
+  // Validates IdP metadata and returns a URL to perform a test sign-in.
+  rpc TestSamlSsoConfig(TestSamlSsoConfigRequest) returns (TestSamlSsoConfigResponse);
+  // Lists the SAML identities linked to principals.
+  rpc ListSamlIdentities(ListSamlIdentitiesRequest) returns (ListSamlIdentitiesResponse);
+  // Ends a principal's SSO session (and optionally unlinks its identity); its tokens stop
+  // authorizing access to SSO-protected resources until it signs in again.
+  rpc RevokeSamlSession(RevokeSamlSessionRequest) returns (RevokeSamlSessionResponse);
+
+  // Returns the SCIM provisioning configuration. The SCIM 2.0 protocol itself (/Users,
+  // /Groups, RFC 7643/7644) is served over HTTP at `endpoint_url`, not over this API.
+  rpc GetScimConfig(GetScimConfigRequest) returns (ScimConfig);
+  // Enables or disables SCIM provisioning.
+  rpc UpdateScimConfig(UpdateScimConfigRequest) returns (ScimConfig);
+  // Mints a SCIM bearer token for the IdP; shown once. Revoke it with AuthService.Revoke.
+  rpc CreateScimToken(CreateScimTokenRequest) returns (CreateScimTokenResponse);
+  // Lists identities provisioned through SCIM.
+  rpc ListScimIdentities(ListScimIdentitiesRequest) returns (ListScimIdentitiesResponse);
+
+  // Returns IP allow list enforcement settings.
+  rpc GetIpAllowListSettings(GetIpAllowListSettingsRequest) returns (IpAllowListSettings);
+  // Turns IP allow list enforcement on or off. Refused with INVALID_ARGUMENT (subcode
+  // `would_lock_out`) when the caller's own address is not allowed. Once on, requests from
+  // other addresses fail with IP_NOT_ALLOWED.
+  rpc UpdateIpAllowListSettings(UpdateIpAllowListSettingsRequest) returns (IpAllowListSettings);
+  // Lists IP allow list entries.
+  rpc ListIpAllowListEntries(ListIpAllowListEntriesRequest) returns (ListIpAllowListEntriesResponse);
+  // Adds an IP allow list entry.
+  rpc CreateIpAllowListEntry(CreateIpAllowListEntryRequest) returns (IpAllowListEntry);
+  // Changes an IP allow list entry.
+  rpc UpdateIpAllowListEntry(UpdateIpAllowListEntryRequest) returns (IpAllowListEntry);
+  // Deletes an IP allow list entry.
+  rpc DeleteIpAllowListEntry(DeleteIpAllowListEntryRequest) returns (DeleteIpAllowListEntryResponse);
+
+  // Adds a domain and returns the DNS TXT challenge to publish (or adds it as approved only).
+  rpc AddVerifiedDomain(AddVerifiedDomainRequest) returns (VerifiedDomain);
+  // Looks up the DNS TXT challenge now and marks the domain verified when it matches.
+  rpc CheckVerifiedDomain(CheckVerifiedDomainRequest) returns (VerifiedDomain);
+  // Lists verified, pending and approved domains.
+  rpc ListVerifiedDomains(ListVerifiedDomainsRequest) returns (ListVerifiedDomainsResponse);
+  // Deletes a domain.
+  rpc DeleteVerifiedDomain(DeleteVerifiedDomainRequest) returns (DeleteVerifiedDomainResponse);
+  // Returns domain-related settings (notification restriction).
+  rpc GetVerifiedDomainSettings(GetVerifiedDomainSettingsRequest) returns (VerifiedDomainSettings);
+  // Changes domain-related settings. Restricting notifications needs one verified or
+  // approved domain (INVALID_STATE otherwise).
+  rpc UpdateVerifiedDomainSettings(UpdateVerifiedDomainSettingsRequest) returns (VerifiedDomainSettings);
+
+  // Returns whether two-factor authentication is required.
+  rpc GetTwoFactorRequirement(GetTwoFactorRequirementRequest) returns (EnterpriseTwoFactorRequirement);
+  // Requires (or stops requiring) two-factor authentication. Members without it then fail
+  // with TWO_FACTOR_REQUIRED, or are removed when remove_noncompliant is set.
+  rpc UpdateTwoFactorRequirement(UpdateTwoFactorRequirementRequest) returns (UpdateTwoFactorRequirementResponse);
+  // Lists members and outside collaborators who have not enabled two-factor authentication.
+  rpc ListTwoFactorNoncompliantMembers(ListTwoFactorNoncompliantMembersRequest) returns (ListTwoFactorNoncompliantMembersResponse);
+
+  // Returns an enterprise's member and repo policies.
+  rpc GetEnterprisePolicies(GetEnterprisePoliciesRequest) returns (EnterprisePolicies);
+  // Changes enterprise policies; NO_POLICY leaves the choice to each org.
+  rpc UpdateEnterprisePolicies(UpdateEnterprisePoliciesRequest) returns (EnterprisePolicies);
+}
+
+// ---------- Scope ----------
+
+// An org or an enterprise account: the owner of a setting, a bill or a cost center.
+message EnterpriseScope {
+  oneof scope {
+    string org = 1; // org name or id
+    string enterprise = 2; // enterprise slug or id
+  }
+}
+
+// ---------- Enterprise accounts ----------
+
+// An enterprise account above a set of orgs.
+message Enterprise {
+  string id = 1; // ULID
+  string slug = 2;
+  string name = 3;
+  string description = 4;
+  string website_url = 5;
+  // Enterprise managed users: every member principal is provisioned by the IdP (SCIM),
+  // cannot create public content and cannot join orgs outside the enterprise.
+  bool managed_users = 6;
+  string managed_users_shortcode = 7; // suffix appended to managed usernames, e.g. "_acme"
+  uint32 org_count = 8;
+  uint32 member_count = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// An org's membership in an enterprise.
+message EnterpriseOrg {
+  string enterprise_id = 1;
+  string org = 2; // org name
+  string org_id = 3;
+  uint32 member_count = 4;
+  uint32 repo_count = 5;
+  google.protobuf.Timestamp joined_at = 6;
+}
+
+// An enterprise owner.
+message EnterpriseOwner {
+  Principal principal = 1;
+  google.protobuf.Timestamp added_at = 2;
+}
+
+// Request for GetEnterprise.
+message GetEnterpriseRequest {
+  string enterprise = 1; // slug or id
+}
+
+// Request for UpdateEnterprise. Unset fields are unchanged.
+message UpdateEnterpriseRequest {
+  string enterprise = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string website_url = 4;
+  // Can be turned on only while every member is IdP-provisioned (INVALID_STATE otherwise).
+  optional bool managed_users = 5;
+  optional string managed_users_shortcode = 6;
+}
+
+// Request for ListEnterpriseOrgs.
+message ListEnterpriseOrgsRequest {
+  string enterprise = 1;
+  string query = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListEnterpriseOrgs.
+message ListEnterpriseOrgsResponse {
+  repeated EnterpriseOrg orgs = 1;
+  PageResponse page = 2;
+}
+
+// Request for AddEnterpriseOrg.
+message AddEnterpriseOrgRequest {
+  string enterprise = 1;
+  string org = 2; // existing org name, or the name of a new org
+  bool create = 3; // create a new org with this name
+  string display = 4; // new org only
+}
+
+// Request for RemoveEnterpriseOrg.
+message RemoveEnterpriseOrgRequest {
+  string enterprise = 1;
+  string org = 2;
+}
+
+// Response for RemoveEnterpriseOrg.
+message RemoveEnterpriseOrgResponse {}
+
+// Request for ListEnterpriseOwners.
+message ListEnterpriseOwnersRequest {
+  string enterprise = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListEnterpriseOwners.
+message ListEnterpriseOwnersResponse {
+  repeated EnterpriseOwner owners = 1;
+  PageResponse page = 2;
+}
+
+// Request for AddEnterpriseOwner.
+message AddEnterpriseOwnerRequest {
+  string enterprise = 1;
+  string principal_id = 2;
+}
+
+// Request for RemoveEnterpriseOwner.
+message RemoveEnterpriseOwnerRequest {
+  string enterprise = 1;
+  string principal_id = 2;
+}
+
+// Response for RemoveEnterpriseOwner.
+message RemoveEnterpriseOwnerResponse {}
+
+// ---------- SAML SSO ----------
+
+// SAML single sign-on settings for an org or enterprise.
+message SamlSsoConfig {
+  EnterpriseScope scope = 1;
+  bool enabled = 2; // members may link and use SSO
+  bool enforced = 3; // members must have a live SSO session
+  string idp_metadata_url = 4; // fetched and refreshed by the server
+  string idp_metadata_xml = 5; // alternative to the URL
+  string idp_entity_id = 6; // issuer
+  string idp_sso_url = 7;
+  string idp_certificate_pem = 8; // signing certificate
+  google.protobuf.Timestamp idp_certificate_expires_at = 9;
+  string sp_entity_id = 10; // Beehive's entity id for this scope (read only)
+  string sp_acs_url = 11; // assertion consumer service URL (read only)
+  string signature_method = 12; // e.g. "rsa-sha256"
+  string digest_method = 13; // e.g. "sha256"
+  uint32 session_lifetime_seconds = 14; // how long an SSO session authorizes access
+  google.protobuf.Timestamp last_tested_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// Request for GetSamlSsoConfig.
+message GetSamlSsoConfigRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateSamlSsoConfig. Unset fields are unchanged.
+message UpdateSamlSsoConfigRequest {
+  EnterpriseScope scope = 1;
+  optional bool enabled = 2;
+  optional bool enforced = 3;
+  optional string idp_metadata_url = 4;
+  optional string idp_metadata_xml = 5;
+  optional string idp_entity_id = 6;
+  optional string idp_sso_url = 7;
+  optional string idp_certificate_pem = 8;
+  optional string signature_method = 9;
+  optional string digest_method = 10;
+  optional uint32 session_lifetime_seconds = 11;
+}
+
+// Request for TestSamlSsoConfig. Tests the stored configuration, or the overrides given.
+message TestSamlSsoConfigRequest {
+  EnterpriseScope scope = 1;
+  string idp_metadata_url = 2;
+  string idp_metadata_xml = 3;
+}
+
+// Response for TestSamlSsoConfig.
+message TestSamlSsoConfigResponse {
+  bool metadata_ok = 1;
+  repeated string problems = 2; // e.g. "certificate expires in 6 days"
+  string test_sign_in_url = 3; // open in a browser to complete a test sign-in
+}
+
+// A SAML identity linked to a principal.
+message SamlIdentity {
+  Principal principal = 1;
+  string name_id = 2;
+  string email = 3;
+  repeated string groups = 4; // IdP group ids from the last assertion
+  bool scim_provisioned = 5;
+  google.protobuf.Timestamp linked_at = 6;
+  google.protobuf.Timestamp last_sign_in_at = 7;
+  google.protobuf.Timestamp session_expires_at = 8; // unset when no live session
+}
+
+// Request for ListSamlIdentities.
+message ListSamlIdentitiesRequest {
+  EnterpriseScope scope = 1;
+  string query = 2; // name id, email or principal display
+  PageRequest page = 3;
+}
+
+// Response for ListSamlIdentities.
+message ListSamlIdentitiesResponse {
+  repeated SamlIdentity identities = 1;
+  PageResponse page = 2;
+}
+
+// Request for RevokeSamlSession.
+message RevokeSamlSessionRequest {
+  EnterpriseScope scope = 1;
+  string principal_id = 2;
+  bool unlink_identity = 3; // also remove the linked identity
+}
+
+// Response for RevokeSamlSession.
+message RevokeSamlSessionResponse {}
+
+// ---------- SCIM ----------
+
+// SCIM provisioning settings for an org or enterprise.
+message ScimConfig {
+  EnterpriseScope scope = 1;
+  bool enabled = 2;
+  string endpoint_url = 3; // SCIM 2.0 base URL served over HTTP, e.g. https://host/scim/v2/enterprises/acme
+  bool provisions_teams = 4; // SCIM Groups map to teams
+  uint32 active_token_count = 5;
+  uint64 provisioned_count = 6;
+  google.protobuf.Timestamp last_request_at = 7;
+}
+
+// Request for GetScimConfig.
+message GetScimConfigRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateScimConfig. Unset fields are unchanged.
+message UpdateScimConfigRequest {
+  EnterpriseScope scope = 1;
+  optional bool enabled = 2;
+  optional bool provisions_teams = 3;
+}
+
+// Request for CreateScimToken.
+message CreateScimTokenRequest {
+  EnterpriseScope scope = 1;
+  string description = 2;
+  uint32 ttl_seconds = 3; // 0 = no expiry
+}
+
+// Response for CreateScimToken. The token appears only here.
+message CreateScimTokenResponse {
+  string token = 1;
+  string token_id = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// An identity provisioned through SCIM.
+message ScimIdentity {
+  string scim_id = 1; // the SCIM resource id we assigned
+  string external_id = 2; // the IdP's id
+  Principal principal = 3;
+  string user_name = 4;
+  string display_name = 5;
+  repeated string emails = 6;
+  bool active = 7; // false = deprovisioned; access removed everywhere
+  repeated string groups = 8; // SCIM group ids
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Request for ListScimIdentities.
+message ListScimIdentitiesRequest {
+  EnterpriseScope scope = 1;
+  string query = 2;
+  bool include_inactive = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListScimIdentities.
+message ListScimIdentitiesResponse {
+  repeated ScimIdentity identities = 1;
+  PageResponse page = 2;
+}
+
+// ---------- IP allow lists ----------
+
+// IP allow list enforcement settings.
+message IpAllowListSettings {
+  EnterpriseScope scope = 1;
+  bool enabled = 2; // enforced at admission for every request touching the scope
+  // Installed apps may declare their own ranges; when true those ranges are added to the list.
+  bool include_installed_app_ranges = 3;
+  // Whether the list also applies to installation and user-to-server tokens of installed apps.
+  bool applies_to_installed_apps = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// One allowed address range.
+message IpAllowListEntry {
+  string id = 1; // ULID
+  EnterpriseScope scope = 2;
+  string cidr = 3; // IPv4 or IPv6, e.g. "203.0.113.0/24"
+  string description = 4;
+  bool active = 5;
+  string app_id = 6; // set when the range was declared by an installed app (read only)
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Request for GetIpAllowListSettings.
+message GetIpAllowListSettingsRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateIpAllowListSettings. Unset fields are unchanged.
+message UpdateIpAllowListSettingsRequest {
+  EnterpriseScope scope = 1;
+  optional bool enabled = 2;
+  optional bool include_installed_app_ranges = 3;
+  optional bool applies_to_installed_apps = 4;
+}
+
+// Request for ListIpAllowListEntries.
+message ListIpAllowListEntriesRequest {
+  EnterpriseScope scope = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListIpAllowListEntries.
+message ListIpAllowListEntriesResponse {
+  repeated IpAllowListEntry entries = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateIpAllowListEntry.
+message CreateIpAllowListEntryRequest {
+  EnterpriseScope scope = 1;
+  string cidr = 2;
+  string description = 3;
+  bool active = 4;
+}
+
+// Request for UpdateIpAllowListEntry. Unset fields are unchanged.
+message UpdateIpAllowListEntryRequest {
+  EnterpriseScope scope = 1;
+  string entry_id = 2;
+  optional string cidr = 3;
+  optional string description = 4;
+  optional bool active = 5;
+}
+
+// Request for DeleteIpAllowListEntry.
+message DeleteIpAllowListEntryRequest {
+  EnterpriseScope scope = 1;
+  string entry_id = 2;
+}
+
+// Response for DeleteIpAllowListEntry.
+message DeleteIpAllowListEntryResponse {}
+
+// ---------- Domains ----------
+
+// Verification state of a domain.
+enum VerifiedDomainState {
+  VERIFIED_DOMAIN_STATE_UNSPECIFIED = 0;
+  VERIFIED_DOMAIN_STATE_PENDING = 1; // waiting for the DNS TXT record
+  VERIFIED_DOMAIN_STATE_VERIFIED = 2;
+  VERIFIED_DOMAIN_STATE_FAILED = 3; // challenge expired without a match
+  VERIFIED_DOMAIN_STATE_APPROVED = 4; // not owned, but approved for notifications
+}
+
+// A domain claimed by an org or enterprise.
+message VerifiedDomain {
+  string id = 1; // ULID
+  EnterpriseScope scope = 2;
+  string domain = 3;
+  VerifiedDomainState state = 4;
+  string dns_txt_record_name = 5; // e.g. "_beehive-challenge-acme.example.com"
+  string dns_txt_record_value = 6;
+  google.protobuf.Timestamp challenge_expires_at = 7;
+  google.protobuf.Timestamp last_checked_at = 8;
+  google.protobuf.Timestamp verified_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// Domain-related settings.
+message VerifiedDomainSettings {
+  EnterpriseScope scope = 1;
+  // Email notifications about the scope go only to addresses on verified or approved domains.
+  bool restrict_notifications = 2;
+}
+
+// Request for AddVerifiedDomain.
+message AddVerifiedDomainRequest {
+  EnterpriseScope scope = 1;
+  string domain = 2;
+  bool approved_only = 3; // add as approved (no ownership check), for notifications only
+}
+
+// Request for CheckVerifiedDomain.
+message CheckVerifiedDomainRequest {
+  EnterpriseScope scope = 1;
+  string domain_id = 2;
+}
+
+// Request for ListVerifiedDomains.
+message ListVerifiedDomainsRequest {
+  EnterpriseScope scope = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListVerifiedDomains.
+message ListVerifiedDomainsResponse {
+  repeated VerifiedDomain domains = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteVerifiedDomain.
+message DeleteVerifiedDomainRequest {
+  EnterpriseScope scope = 1;
+  string domain_id = 2;
+}
+
+// Response for DeleteVerifiedDomain.
+message DeleteVerifiedDomainResponse {}
+
+// Request for GetVerifiedDomainSettings.
+message GetVerifiedDomainSettingsRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateVerifiedDomainSettings. Unset fields are unchanged.
+message UpdateVerifiedDomainSettingsRequest {
+  EnterpriseScope scope = 1;
+  optional bool restrict_notifications = 2;
+}
+
+// ---------- Two-factor authentication ----------
+
+// Whether members of an org or enterprise must use two-factor authentication.
+message EnterpriseTwoFactorRequirement {
+  EnterpriseScope scope = 1;
+  bool required = 2;
+  bool secure_methods_only = 3; // passkeys and security keys only, no SMS or TOTP
+  uint32 noncompliant_count = 4;
+  google.protobuf.Timestamp required_since = 5;
+}
+
+// A member or collaborator without two-factor authentication.
+message EnterpriseTwoFactorMember {
+  Principal principal = 1;
+  string org = 2; // the org through which the principal is a member
+  bool outside_collaborator = 3;
+}
+
+// Request for GetTwoFactorRequirement.
+message GetTwoFactorRequirementRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateTwoFactorRequirement. Unset fields are unchanged.
+message UpdateTwoFactorRequirementRequest {
+  EnterpriseScope scope = 1;
+  optional bool required = 2;
+  optional bool secure_methods_only = 3;
+  bool remove_noncompliant = 4; // remove members without 2FA instead of blocking them
+}
+
+// Response for UpdateTwoFactorRequirement.
+message UpdateTwoFactorRequirementResponse {
+  EnterpriseTwoFactorRequirement requirement = 1;
+  repeated string removed_principal_ids = 2;
+}
+
+// Request for ListTwoFactorNoncompliantMembers.
+message ListTwoFactorNoncompliantMembersRequest {
+  EnterpriseScope scope = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListTwoFactorNoncompliantMembers.
+message ListTwoFactorNoncompliantMembersResponse {
+  repeated EnterpriseTwoFactorMember members = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Enterprise policies ----------
+
+// Who may create repos in the enterprise's orgs.
+enum EnterpriseRepoCreationPolicy {
+  ENTERPRISE_REPO_CREATION_POLICY_UNSPECIFIED = 0;
+  ENTERPRISE_REPO_CREATION_POLICY_NO_POLICY = 1; // each org decides
+  ENTERPRISE_REPO_CREATION_POLICY_DISABLED = 2; // only org owners
+  ENTERPRISE_REPO_CREATION_POLICY_PRIVATE = 3; // members may create private repos
+  ENTERPRISE_REPO_CREATION_POLICY_PRIVATE_INTERNAL = 4; // private and internal
+  ENTERPRISE_REPO_CREATION_POLICY_ALL = 5; // private, internal and public
+}
+
+// Where repos in the enterprise may be forked.
+enum EnterpriseForkingPolicy {
+  ENTERPRISE_FORKING_POLICY_UNSPECIFIED = 0;
+  ENTERPRISE_FORKING_POLICY_NO_POLICY = 1;
+  ENTERPRISE_FORKING_POLICY_DISABLED = 2;
+  ENTERPRISE_FORKING_POLICY_WITHIN_ORG = 3;
+  ENTERPRISE_FORKING_POLICY_WITHIN_ENTERPRISE = 4;
+  ENTERPRISE_FORKING_POLICY_ANYWHERE = 5; // including user accounts
+}
+
+// Base repo permission every org member gets on every repo.
+enum EnterpriseBasePermission {
+  ENTERPRISE_BASE_PERMISSION_UNSPECIFIED = 0;
+  ENTERPRISE_BASE_PERMISSION_NO_POLICY = 1;
+  ENTERPRISE_BASE_PERMISSION_NONE = 2;
+  ENTERPRISE_BASE_PERMISSION_READ = 3;
+  ENTERPRISE_BASE_PERMISSION_WRITE = 4;
+  ENTERPRISE_BASE_PERMISSION_ADMIN = 5;
+}
+
+// A yes/no member privilege that the enterprise may fix or leave to orgs.
+enum EnterprisePolicyToggle {
+  ENTERPRISE_POLICY_TOGGLE_UNSPECIFIED = 0;
+  ENTERPRISE_POLICY_TOGGLE_NO_POLICY = 1;
+  ENTERPRISE_POLICY_TOGGLE_ALLOWED = 2;
+  ENTERPRISE_POLICY_TOGGLE_DISABLED = 3;
+}
+
+// Which orgs may use Actions.
+enum EnterpriseActionsEnablement {
+  ENTERPRISE_ACTIONS_ENABLEMENT_UNSPECIFIED = 0;
+  ENTERPRISE_ACTIONS_ENABLEMENT_NO_POLICY = 1;
+  ENTERPRISE_ACTIONS_ENABLEMENT_ALL_ORGS = 2;
+  ENTERPRISE_ACTIONS_ENABLEMENT_SELECTED_ORGS = 3;
+  ENTERPRISE_ACTIONS_ENABLEMENT_DISABLED = 4;
+}
+
+// Which actions and reusable workflows may run.
+enum EnterpriseAllowedActions {
+  ENTERPRISE_ALLOWED_ACTIONS_UNSPECIFIED = 0;
+  ENTERPRISE_ALLOWED_ACTIONS_NO_POLICY = 1;
+  ENTERPRISE_ALLOWED_ACTIONS_ALL = 2;
+  ENTERPRISE_ALLOWED_ACTIONS_LOCAL_ONLY = 3; // defined in the enterprise
+  ENTERPRISE_ALLOWED_ACTIONS_SELECTED = 4; // local plus allowed_action_patterns
+}
+
+// Enterprise-wide Actions policy (details of runs live with the workflow service).
+message EnterpriseActionsPolicy {
+  EnterpriseActionsEnablement enablement = 1;
+  repeated string enabled_orgs = 2; // with SELECTED_ORGS
+  EnterpriseAllowedActions allowed_actions = 3;
+  repeated string allowed_action_patterns = 4; // e.g. "acme/*", "org/action@v2"
+  bool allow_verified_creators = 5;
+  string workflow_policy_id = 6; // reference to a detailed workflow policy, if any
+}
+
+// Typed enterprise policies that bind every org in the enterprise.
+message EnterprisePolicies {
+  string enterprise_id = 1;
+  EnterpriseRepoCreationPolicy repo_creation = 2;
+  EnterpriseForkingPolicy forking = 3;
+  EnterpriseBasePermission base_permission = 4;
+  EnterprisePolicyToggle members_can_delete_repos = 5;
+  EnterprisePolicyToggle members_can_change_repo_visibility = 6;
+  EnterprisePolicyToggle members_can_invite_outside_collaborators = 7;
+  EnterprisePolicyToggle members_can_create_teams = 8;
+  EnterprisePolicyToggle members_can_install_apps = 9;
+  EnterprisePolicyToggle agents_can_land_without_human_approval = 10;
+  EnterpriseActionsPolicy actions = 11;
+  repeated string org_ruleset_ids = 12; // enterprise rulesets applied to every org (PolicyService)
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// Request for GetEnterprisePolicies.
+message GetEnterprisePoliciesRequest {
+  string enterprise = 1;
+}
+
+// Request for UpdateEnterprisePolicies. Unset fields are unchanged.
+message UpdateEnterprisePoliciesRequest {
+  string enterprise = 1;
+  optional EnterpriseRepoCreationPolicy repo_creation = 2;
+  optional EnterpriseForkingPolicy forking = 3;
+  optional EnterpriseBasePermission base_permission = 4;
+  optional EnterprisePolicyToggle members_can_delete_repos = 5;
+  optional EnterprisePolicyToggle members_can_change_repo_visibility = 6;
+  optional EnterprisePolicyToggle members_can_invite_outside_collaborators = 7;
+  optional EnterprisePolicyToggle members_can_create_teams = 8;
+  optional EnterprisePolicyToggle members_can_install_apps = 9;
+  optional EnterprisePolicyToggle agents_can_land_without_human_approval = 10;
+  EnterpriseActionsPolicy actions = 11; // replaces the actions policy when set
+}

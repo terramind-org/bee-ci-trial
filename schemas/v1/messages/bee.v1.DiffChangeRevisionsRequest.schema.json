@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DiffChangeRevisionsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changeRequestId": {
+      "type": "string"
+    },
+    "contextLines": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fromRevision": {
+      "description": "0 = the revision the caller last reviewed",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ignoreWhitespace": {
+      "description": "whitespace-only line changes are not reported",
+      "type": "boolean"
+    },
+    "includeHunks": {
+      "type": "boolean"
+    },
+    "paths": {
+      "description": "only these paths and the paths under them; empty = all",
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "toRevision": {
+      "description": "0 = current",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.DiffChangeRevisionsRequest",
+  "type": "object"
+}

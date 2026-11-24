@@ -1,0 +1,71 @@
+id: AS-COLLAB-01
+area: "4.16"
+title: Cut a release with generated notes from the CRs since the last tag
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - commit: { repo: "${repo.fullName}", ref: main, message: "Seed", files: { app/VERSION: "1.0.0\n" } }
+  # One CR before the tag (must not appear in the new notes).
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/old, change: old, message: "Old feature", files: { app/old.py: "OLD = 1\n" } }
+    save: oldHead
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${oldHead.id}", title: "Add the legacy exporter" }
+    save: { crOld: "$" }
+  - call: ChangeService/LandChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${crOld.id}" }
+  - name: the last release tag
+    call: ReleaseService/CreateRelease
+    request: { repo: { fullName: "${repo.fullName}" }, tagName: v1.0.0, target: { expr: main }, name: "v1.0.0" }
+  # Three CRs after the tag.
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/csv, change: csv, message: "CSV", files: { app/csv.py: "CSV = 1\n" } }
+    save: h1
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${h1.id}", title: "Add CSV import" }
+    save: { cr1: "$" }
+  - call: ChangeService/LandChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr1.id}" }
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/tz, change: tz, message: "TZ", files: { app/tz.py: "TZ = 'UTC'\n" } }
+    save: h2
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${h2.id}", title: "Fix timezone handling in reports" }
+    save: { cr2: "$" }
+  - call: ChangeService/LandChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr2.id}" }
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/dark, change: dark, message: "Dark", files: { app/theme.py: "DARK = True\n" } }
+    save: h3
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${h3.id}", title: "Dark mode for the dashboard" }
+    save: { cr3: "$" }
+  - call: ChangeService/LandChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr3.id}" }
+  - call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: main }
+    save: { tip: ref.target }
+  - name: release rights for the worker
+    call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${worker.id}", role: REPO_ROLE_MAINTAIN }
+agent:
+  token: "${workerToken}"
+prompt: |
+  Cut release v1.1.0 of the bee repository ${repo.fullName} from the current main. Its notes
+  must be generated from the change requests that landed since the previous release, v1.0.0.
+  Publish it (not a draft).
+assertions:
+  - name: v1.1.0 is published at the tip of main with generated notes listing exactly the new CRs
+    call: ReleaseService/GetReleaseByTag
+    request: { repo: { fullName: "${repo.fullName}" }, tagName: v1.1.0 }
+    expect:
+      - { path: draft, absent: true }
+      - { path: target.raw, eq: "${tip.raw}" }
+      - { path: body, contains: "Add CSV import" }
+      - { path: body, contains: "Fix timezone handling in reports" }
+      - { path: body, contains: "Dark mode for the dashboard" }
+      - { path: body, not_contains: "Add the legacy exporter" }
+      - { path: author.id, eq: "${worker.id}" }
+  - name: it is the latest release
+    call: ReleaseService/GetLatestRelease
+    request: { repo: { fullName: "${repo.fullName}" } }
+    expect:
+      - { path: tagName, eq: v1.1.0 }

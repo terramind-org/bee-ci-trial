@@ -1,0 +1,78 @@
+id: AS-API-02
+area: "4.8"
+title: Subscribe to events and react to a failing check within one second of it failing
+surfaces: both
+timeout: 1200
+budget: { max_turns: 80 }
+notes: >
+  The harness reports the failing check only after the agent signals (file READY) that its
+  watcher is running. Reaction time is measured from the server's own event time for the check
+  to the server's creation time of the agent's comment.
+fixtures: [base]
+setup:
+  - commit: { repo: "${repo.fullName}", ref: main, message: "Seed", files: { src/app.py: "print('hi')\n" } }
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      as: "${workerToken}"
+      land: false
+      ref_name: ws/greeting
+      change: greeting
+      message: "Friendlier greeting"
+      files: { src/app.py: "print('hello there')\n" }
+    save: head
+  - call: ChangeService/OpenChange
+    as: "${workerToken}"
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${head.id}", title: "Friendlier greeting" }
+    save: { cr: "$" }
+  - name: CI is running
+    call: CheckService/ReportCheck
+    request: { repo: { fullName: "${repo.fullName}" }, changeset: "${head.id}", name: ci/integration, status: CHECK_STATUS_RUNNING }
+agent:
+  token: "${workerToken}"
+prompt: |
+  Your change request #${cr.number} in the bee repository ${repo.fullName} is waiting for CI.
+  Set up something that watches the server, so that the moment a check on that change request
+  fails, a comment is posted on the change request saying which check failed. The comment must
+  appear within one second of the failure. Polling is too slow for that.
+
+  When your watcher is running, create an empty file named READY in the current directory. A
+  check will fail some time after that. Once the comment has been posted, stop the watcher and
+  finish.
+during:
+  - wait_for_file: READY
+    wait_timeout_s: 900
+    steps:
+      - sleep_ms: 5000
+      - name: CI fails
+        call: CheckService/ReportCheck
+        request:
+          repo: { fullName: "${repo.fullName}" }
+          changeset: "${head.id}"
+          name: ci/integration
+          status: CHECK_STATUS_FAILED
+          summary: "3 tests failed"
+      - sleep_ms: 15000
+assertions:
+  - name: when the check failed, according to the server
+    call: EventService/ListEvents
+    request: { repo: { fullName: "${repo.fullName}" }, kinds: ["check.*"] }
+    expect:
+      - path: events
+        some:
+          - { path: check.status, eq: CHECK_STATUS_FAILED }
+    save: { checkEvents: events }
+  - name: the failure event
+    call: CheckService/ListChecks
+    request: { repo: { fullName: "${repo.fullName}" }, changeset: "${head.id}", name: ci/integration, latestOnly: true }
+    expect:
+      - { path: "checks[0].status", eq: CHECK_STATUS_FAILED }
+  - name: the worker commented about the failed check within one second
+    call: ChangeService/ListChangeComments
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${cr.id}" }
+    expect:
+      - path: comments
+        some:
+          - { path: author.id, eq: "${worker.id}" }
+          - { path: body, contains: ci/integration }
+          - { path: createdAt, within: { from: "${checkEvents[-1].time}", ms: 1000 } }

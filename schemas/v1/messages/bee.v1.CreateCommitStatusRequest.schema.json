@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "bee.v1.CommitStatusState": {
+      "description": "State of a legacy commit status.",
+      "enum": [
+        "COMMIT_STATUS_STATE_UNSPECIFIED",
+        "COMMIT_STATUS_STATE_PENDING",
+        "COMMIT_STATUS_STATE_SUCCESS",
+        "COMMIT_STATUS_STATE_FAILURE",
+        "COMMIT_STATUS_STATE_ERROR"
+      ],
+      "title": "bee.v1.CommitStatusState",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateCommitStatusRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "context": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.CommitStatusState"
+    },
+    "targetUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateCommitStatusRequest",
+  "type": "object"
+}

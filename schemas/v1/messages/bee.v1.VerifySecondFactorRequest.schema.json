@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.VerifySecondFactorRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "challengeId": {
+      "type": "string"
+    },
+    "recoveryCode": {
+      "type": "string"
+    },
+    "totpCode": {
+      "type": "string"
+    },
+    "webauthnAssertionJson": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.VerifySecondFactorRequest",
+  "type": "object"
+}

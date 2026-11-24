@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/pages.delete-pages-site.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PagesService/DeletePagesSite: `data` is a bee.v1.DeletePagesSiteResponse in proto3-JSON. `bee pages delete-pages-site --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeletePagesSiteResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.pages.delete-pages-site"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee pages delete-pages-site",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+feature_id,test
+F416-058,crates/bee-forge/tests/adopt.rs::inspired_by_needs_a_published_post_the_caller_reads
+F416-058,crates/bee-forge/tests/adopt.rs::change_requests_carry_inspired_by_and_adoptions_are_filtered_per_caller
+F416-058,crates/bee-forge/tests/adopt.rs::an_adoption_follows_its_issue_across_a_transfer
+F416-058,crates/bee-conformance/tests/adopt.rs::an_agent_adopts_a_followed_repos_upgrade_exactly_once
+F416-059,crates/bee-forge/tests/adopt.rs::feed_triggers_are_configured_by_maintainers_for_their_agents
+F416-059,crates/bee-forge/tests/adopt.rs::a_followed_post_starts_one_debounced_adopt_run_that_opens_an_inspired_issue
+F416-059,crates/bee-forge/tests/adopt.rs::not_relevant_runs_open_nothing_and_spent_days_skip_runs
+F416-059,crates/bee-forge/tests/adopt.rs::posts_the_agent_cannot_read_start_nothing
+F416-059,crates/bee-conformance/tests/adopt.rs::an_agent_adopts_a_followed_repos_upgrade_exactly_once

@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "bee.v1.ModerationThrottledPrincipal": {
+      "description": "A principal held back by flood limits.",
+      "properties": {
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "limit": {
+          "description": "which limit tripped, e.g. \"max_new_change_requests_per_hour_per_owner\"",
+          "type": "string"
+        },
+        "ownerId": {
+          "description": "the agent's owner, for agents",
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "recentCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reputation": {
+          "type": "number"
+        },
+        "throttledAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ModerationThrottledPrincipal",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListThrottledPrincipalsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListThrottledPrincipals.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "principals": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ModerationThrottledPrincipal"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListThrottledPrincipalsResponse",
+  "type": "object"
+}

@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AppendRunnerJobLogResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for AppendRunnerJobLog.",
+  "properties": {
+    "storedEnd": {
+      "description": "next offset to write",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.AppendRunnerJobLogResponse",
+  "type": "object"
+}

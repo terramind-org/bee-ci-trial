@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.TrendingWindow": {
+      "description": "Time window for trending.",
+      "enum": [
+        "TRENDING_WINDOW_UNSPECIFIED",
+        "TRENDING_WINDOW_DAILY",
+        "TRENDING_WINDOW_WEEKLY",
+        "TRENDING_WINDOW_MONTHLY"
+      ],
+      "title": "bee.v1.TrendingWindow",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTrendingReposRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListTrendingRepos.",
+  "properties": {
+    "language": {
+      "description": "empty = all languages",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "spokenLanguage": {
+      "description": "ISO 639-1 code of the README language",
+      "type": "string"
+    },
+    "window": {
+      "$ref": "#/$defs/bee.v1.TrendingWindow"
+    }
+  },
+  "title": "bee.v1.ListTrendingReposRequest",
+  "type": "object"
+}

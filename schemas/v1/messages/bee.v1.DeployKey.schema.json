@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeployKey.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An SSH key that can read (or write) one repo over git.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "lastUsedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "principalId": {
+      "description": "the service principal the key acts as",
+      "type": "string"
+    },
+    "publicKey": {
+      "type": "string"
+    },
+    "readOnly": {
+      "type": "boolean"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeployKey",
+  "type": "object"
+}

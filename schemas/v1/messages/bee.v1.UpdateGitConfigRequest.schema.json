@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "bee.v1.GitObjectFormat": {
+      "description": "Hash function of a repo's git representation. One format per repo.",
+      "enum": [
+        "GIT_OBJECT_FORMAT_UNSPECIFIED",
+        "GIT_OBJECT_FORMAT_SHA1",
+        "GIT_OBJECT_FORMAT_SHA256"
+      ],
+      "title": "bee.v1.GitObjectFormat",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateGitConfigRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateGitConfig. Unset fields are unchanged.",
+  "properties": {
+    "gitEnabled": {
+      "type": "boolean"
+    },
+    "lfsEnabled": {
+      "type": "boolean"
+    },
+    "minClientVersion": {
+      "type": "string"
+    },
+    "objectFormat": {
+      "$ref": "#/$defs/bee.v1.GitObjectFormat"
+    },
+    "pushAutoChange": {
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "requireChangeIdTrailer": {
+      "type": "boolean"
+    },
+    "seedPacksEnabled": {
+      "type": "boolean"
+    },
+    "sshEnabled": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateGitConfigRequest",
+  "type": "object"
+}

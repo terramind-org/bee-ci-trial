@@ -1,0 +1,8 @@
+manifest package-lock.json npm lock=true count=6
+manifest package.json npm lock=false count=3
+package-lock.json npm accepts@1.3.8 runtime indirect req=- pkg:npm/accepts@1.3.8 -> npm/mime-types@2.1.35
+package-lock.json npm express@4.17.1 runtime direct req=^4.17.1 pkg:npm/express@4.17.1 -> npm/accepts@1.3.8
+package-lock.json npm jest@29.7.0 dev direct req=^29.7.0 pkg:npm/jest@29.7.0 -> npm/mime-types@2.1.0
+package-lock.json npm lodash@4.17.20 runtime direct req=4.17.20 pkg:npm/lodash@4.17.20
+package-lock.json npm mime-types@2.1.0 dev indirect req=- pkg:npm/mime-types@2.1.0
+package-lock.json npm mime-types@2.1.35 runtime indirect req=- pkg:npm/mime-types@2.1.35

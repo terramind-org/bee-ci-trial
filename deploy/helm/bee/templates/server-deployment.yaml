@@ -1,0 +1,163 @@
+{{- include "bee.validate" . }}
+{{- $selector := include "bee.selectorLabels" (dict "ctx" . "component" "server") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bee.fullname" . }}-server
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  {{- if not .Values.server.autoscaling.enabled }}
+  replicas: {{ .Values.server.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    {{- toYaml .Values.server.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- $selector | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if not .Values.config.existingConfigMap }}
+        # A configuration change rolls the pods.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "bee.labels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+        {{- with .Values.server.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bee.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- with .Values.server.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.server.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.server.podSecurityContext | nindent 8 }}
+      initContainers:
+        # A configuration this binary rejects stops the pod here, before it replaces a working one.
+        - name: check-config
+          image: {{ include "bee.image" (dict "ctx" . "image" .Values.server.image) | quote }}
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          args: ["--config", "/etc/bee/server.toml", "--check-config"]
+          env:
+            {{- include "bee.server.env" . | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.server.securityContext | nindent 12 }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/bee
+              readOnly: true
+      containers:
+        - name: server
+          image: {{ include "bee.image" (dict "ctx" . "image" .Values.server.image) | quote }}
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          args: ["--config", "/etc/bee/server.toml"]
+          env:
+            {{- include "bee.server.env" . | nindent 12 }}
+          ports:
+            - name: api
+              containerPort: 7420
+              protocol: TCP
+            {{- if .Values.ssh.enabled }}
+            - name: ssh
+              containerPort: 2222
+              protocol: TCP
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: api
+            {{- toYaml .Values.server.startupProbe | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: api
+            {{- toYaml .Values.server.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: api
+            {{- toYaml .Values.server.readinessProbe | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", {{ .Values.server.preStopSleepSeconds | quote }}]
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.server.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/bee
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            {{- if and .Values.ssh.enabled .Values.ssh.hostKeySecret.name }}
+            - name: ssh-host-key
+              mountPath: /etc/bee-ssh
+              readOnly: true
+            {{- end }}
+            {{- with .Values.server.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "bee.configMapName" . }}
+        - name: data
+          {{- if .Values.server.data.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.server.data.existingClaim }}
+          {{- else }}
+          emptyDir:
+            sizeLimit: {{ .Values.server.data.sizeLimit }}
+          {{- end }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+        {{- if and .Values.ssh.enabled .Values.ssh.hostKeySecret.name }}
+        - name: ssh-host-key
+          secret:
+            secretName: {{ .Values.ssh.hostKeySecret.name }}
+            defaultMode: 0440
+        {{- end }}
+        {{- with .Values.server.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.server.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- include "bee.topologySpread" (dict "constraints" . "selector" (include "bee.selectorLabels" (dict "ctx" $ "component" "server") | fromYaml)) | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,183 @@
+{
+  "$defs": {
+    "bee.v1.AppInstallation": {
+      "description": "An app installed on an account.",
+      "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "appSlug": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "installedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "permissions": {
+          "description": "granted (may lag the app's requested set)",
+          "items": {
+            "$ref": "#/$defs/bee.v1.AppPermission"
+          },
+          "type": "array"
+        },
+        "permissionsUpdatePending": {
+          "description": "the app requests more than was accepted",
+          "type": "boolean"
+        },
+        "principalId": {
+          "description": "principal tokens of this installation act as",
+          "type": "string"
+        },
+        "repositorySelection": {
+          "$ref": "#/$defs/bee.v1.AppRepositorySelection"
+        },
+        "suspended": {
+          "type": "boolean"
+        },
+        "suspendedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "suspendedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "target": {
+          "description": "org name or user login",
+          "type": "string"
+        },
+        "targetKind": {
+          "$ref": "#/$defs/bee.v1.AppInstallationTargetKind"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppInstallation",
+      "type": "object"
+    },
+    "bee.v1.AppInstallationTargetKind": {
+      "description": "Kind of account an app is installed on.",
+      "enum": [
+        "APP_INSTALLATION_TARGET_KIND_UNSPECIFIED",
+        "APP_INSTALLATION_TARGET_KIND_ORG",
+        "APP_INSTALLATION_TARGET_KIND_USER"
+      ],
+      "title": "bee.v1.AppInstallationTargetKind",
+      "type": "string"
+    },
+    "bee.v1.AppPermission": {
+      "description": "One resource permission, e.g. contents:write or issues:read.",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/bee.v1.AppPermissionLevel"
+        },
+        "resource": {
+          "description": "Resource name from the permission catalog, e.g. \"contents\", \"metadata\", \"issues\",\n\"change_requests\", \"checks\", \"workflows\", \"members\", \"administration\".",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPermission",
+      "type": "object"
+    },
+    "bee.v1.AppPermissionLevel": {
+      "description": "Access level an app requests or holds on one resource.",
+      "enum": [
+        "APP_PERMISSION_LEVEL_UNSPECIFIED",
+        "APP_PERMISSION_LEVEL_READ",
+        "APP_PERMISSION_LEVEL_WRITE",
+        "APP_PERMISSION_LEVEL_ADMIN"
+      ],
+      "title": "bee.v1.AppPermissionLevel",
+      "type": "string"
+    },
+    "bee.v1.AppRepositorySelection": {
+      "description": "Which repos of the account an installation covers.",
+      "enum": [
+        "APP_REPOSITORY_SELECTION_UNSPECIFIED",
+        "APP_REPOSITORY_SELECTION_ALL",
+        "APP_REPOSITORY_SELECTION_SELECTED"
+      ],
+      "title": "bee.v1.AppRepositorySelection",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAppInstallationsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAppInstallations.",
+  "properties": {
+    "installations": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AppInstallation"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListAppInstallationsResponse",
+  "type": "object"
+}

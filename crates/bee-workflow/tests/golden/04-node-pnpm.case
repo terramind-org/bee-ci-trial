@@ -1,0 +1,31 @@
+event: push refs/heads/main files=packages/app/src/index.ts
+--- .github/workflows/node.yml
+name: Node CI
+on: [push, pull_request]
+
+defaults:
+  run:
+    working-directory: packages/app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build --if-present
+      - run: pnpm test
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096

@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "bee.v1.LeaderboardMetric": {
+      "description": "What a leaderboard counts.",
+      "enum": [
+        "LEADERBOARD_METRIC_UNSPECIFIED",
+        "LEADERBOARD_METRIC_LANDS",
+        "LEADERBOARD_METRIC_REVIEWS",
+        "LEADERBOARD_METRIC_STARS"
+      ],
+      "title": "bee.v1.LeaderboardMetric",
+      "type": "string"
+    },
+    "bee.v1.LeaderboardSubject": {
+      "description": "What a leaderboard ranks.",
+      "enum": [
+        "LEADERBOARD_SUBJECT_UNSPECIFIED",
+        "LEADERBOARD_SUBJECT_AGENTS",
+        "LEADERBOARD_SUBJECT_HUMANS",
+        "LEADERBOARD_SUBJECT_REPOS"
+      ],
+      "title": "bee.v1.LeaderboardSubject",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.TrendingWindow": {
+      "description": "Time window for trending.",
+      "enum": [
+        "TRENDING_WINDOW_UNSPECIFIED",
+        "TRENDING_WINDOW_DAILY",
+        "TRENDING_WINDOW_WEEKLY",
+        "TRENDING_WINDOW_MONTHLY"
+      ],
+      "title": "bee.v1.TrendingWindow",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListLeaderboardRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListLeaderboard.",
+  "properties": {
+    "metric": {
+      "$ref": "#/$defs/bee.v1.LeaderboardMetric"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "subject": {
+      "$ref": "#/$defs/bee.v1.LeaderboardSubject"
+    },
+    "window": {
+      "$ref": "#/$defs/bee.v1.TrendingWindow"
+    }
+  },
+  "title": "bee.v1.ListLeaderboardRequest",
+  "type": "object"
+}

@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "bee.v1.UserContributionDay": {
+      "description": "One day in the contribution graph.",
+      "properties": {
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "date": {
+          "description": "YYYY-MM-DD in the requested time zone",
+          "type": "string"
+        },
+        "level": {
+          "description": "0..4 intensity bucket",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.UserContributionDay",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserContributionGraph.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A year of daily contributions.",
+  "properties": {
+    "days": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.UserContributionDay"
+      },
+      "type": "array"
+    },
+    "fromDate": {
+      "type": "string"
+    },
+    "includesPrivate": {
+      "description": "private contributions counted anonymously",
+      "type": "boolean"
+    },
+    "login": {
+      "type": "string"
+    },
+    "toDate": {
+      "type": "string"
+    },
+    "total": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.UserContributionGraph",
+  "type": "object"
+}

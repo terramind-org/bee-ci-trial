@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkflowRequirementRepos": {
+      "description": "The full selected repo set, wrapped so an update can tell \"unchanged\" from \"empty\".",
+      "properties": {
+        "repos": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RepoRef"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.WorkflowRequirementRepos",
+      "type": "object"
+    },
+    "bee.v1.WorkflowRequirementScope": {
+      "description": "Which repos a required workflow applies to.",
+      "enum": [
+        "WORKFLOW_REQUIREMENT_SCOPE_UNSPECIFIED",
+        "WORKFLOW_REQUIREMENT_SCOPE_ALL",
+        "WORKFLOW_REQUIREMENT_SCOPE_SELECTED"
+      ],
+      "title": "bee.v1.WorkflowRequirementScope",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateRequiredWorkflowRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateRequiredWorkflow.",
+  "properties": {
+    "enforced": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "requiredWorkflowId": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.WorkflowRequirementScope"
+    },
+    "selectedRepos": {
+      "$ref": "#/$defs/bee.v1.WorkflowRequirementRepos",
+      "description": "unset = unchanged"
+    },
+    "sourcePath": {
+      "type": "string"
+    },
+    "sourceRef": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateRequiredWorkflowRequest",
+  "type": "object"
+}

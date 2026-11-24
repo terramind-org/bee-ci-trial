@@ -1,0 +1,17 @@
+{
+  "service": "bee.v1.LeaseService",
+  "fixtures": [
+    {"method": "AcquireLease",
+     "request": {"repo": {"fullName": "{{repo}}"}, "ref": "main", "paths": ["ZG9jcy9hY3F1aXJlLWxlYXNlLw=="], "mode": "LEASE_MODE_ADVISORY", "ttlSeconds": 600, "note": "acquire-lease fixture"}},
+    {"method": "RenewLease",
+     "setup": [{"call": "LeaseService/AcquireLease", "save": "l", "request": {"repo": {"fullName": "{{repo}}"}, "ref": "main", "paths": ["ZG9jcy9yZW5ldy1sZWFzZS8="], "mode": "LEASE_MODE_ADVISORY", "ttlSeconds": 600, "note": "renew-lease fixture"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "id": "{{l.lease.id}}", "ttlSeconds": 1200}},
+    {"method": "ReleaseLease",
+     "setup": [{"call": "LeaseService/AcquireLease", "save": "l", "request": {"repo": {"fullName": "{{repo}}"}, "ref": "main", "paths": ["ZG9jcy9yZWxlYXNlLWxlYXNlLw=="], "mode": "LEASE_MODE_EXCLUSIVE", "ttlSeconds": 600, "note": "release-lease fixture"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "id": "{{l.lease.id}}"}},
+    {"method": "ListLeases", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "GetLease",
+     "setup": [{"call": "LeaseService/AcquireLease", "save": "l", "request": {"repo": {"fullName": "{{repo}}"}, "ref": "main", "paths": ["ZG9jcy9nZXQtbGVhc2Uv"], "mode": "LEASE_MODE_ADVISORY", "ttlSeconds": 600, "note": "get-lease fixture"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "id": "{{l.lease.id}}"}}
+  ]
+}

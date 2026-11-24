@@ -1,0 +1,22 @@
+# event issues action=opened
+run .github/workflows/triage.yml "Triage"
+  run-name: "Triage"
+  event: issues ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: issues=write
+  job label decided=true
+    instance "label"
+      runs-on: ["ubuntu-latest"]
+      permissions: issues=write
+      timeout-minutes: 360
+      step 1 "Run actions/github-script@v7"
+        uses: actions/github-script@v7
+        with:
+          script: "await github.rest.issues.addLabels({\n  owner: context.repo.owner,\n  repo: context.repo.repo,\n  issue_number: 7,\n  labels: ['needs-triage']\n})\n"
+  job bug if="contains(github.event.issue.labels.*.name, 'bug')" decided=true
+    instance "bug"
+      runs-on: ["ubuntu-latest"]
+      permissions: issues=write
+      timeout-minutes: 360
+      step 1 "Run echo \"Bug 'Crash when parsing empty file' filed\""
+        run: "echo \"Bug 'Crash when parsing empty file' filed\""
+        shell: default -> "bash -e {0}"

@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowJobSummary.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Markdown a job wrote to its step summary.",
+  "properties": {
+    "jobId": {
+      "type": "string"
+    },
+    "markdown": {
+      "type": "string"
+    },
+    "truncated": {
+      "description": "over the 1 MiB summary limit",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.WorkflowJobSummary",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/package.begin-package-upload.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PackageService/BeginPackageUpload: `data` is a bee.v1.BeginPackageUploadResponse in proto3-JSON. `bee package begin-package-upload --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BeginPackageUploadResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.package.begin-package-upload"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee package begin-package-upload",
+  "type": "object"
+}

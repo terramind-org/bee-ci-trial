@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "bee.v1.DependencyManifest": {
+      "description": "A detected manifest or lockfile.",
+      "properties": {
+        "dependencyCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "detector": {
+          "description": "\"static\" or the submitting tool name",
+          "type": "string"
+        },
+        "ecosystem": {
+          "type": "string"
+        },
+        "isLockfile": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.DependencyManifest",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDependencyManifestsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListDependencyManifests.",
+  "properties": {
+    "manifests": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DependencyManifest"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListDependencyManifestsResponse",
+  "type": "object"
+}

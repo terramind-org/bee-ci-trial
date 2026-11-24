@@ -1,0 +1,79 @@
+id: AS-AUTH-01
+area: "4.9"
+title: Mint a token for a sub-agent limited to docs/ with a budget of five changesets; the sixth commit and writes outside docs/ are refused
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+notes: >
+  The agent delivers the token in subagent.token; the harness then acts as the sub-agent with it,
+  so the refusals are observed on the server, not reported by the agent. The agent is told not to
+  spend the budget itself.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        docs/index.md: "# Docs\n"
+        src/main.py: "print('main')\n"
+  - name: the sub-agent principal, owned by the worker
+    call: AuthService/CreateAgent
+    as: "${workerToken}"
+    request: { display: "docs-writer-${run.ns}", runtime: claude-code, purpose: "documentation", org: "${run.ns}" }
+    save: { docsAgent: "$" }
+  - name: let docsAgent join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${docsAgent.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${docsAgent.id}", role: REPO_ROLE_WRITE }
+agent:
+  token: "${workerToken}"
+prompt: |
+  You are delegating documentation work in the bee repository ${repo.fullName} to a sub-agent
+  whose principal id is ${docsAgent.id}. Give it a token that acts as that sub-agent, can only
+  write under `docs/` in this repository, and can create at most five changesets in total. Do
+  not use the token yourself.
+
+  Write the token (and nothing else) to the file `subagent.token` in the current directory.
+assertions:
+  - name: the token acts as the sub-agent with a five-changeset budget, writing only under docs/
+    call: AuthService/WhoAmI
+    as: "${file:subagent.token}"
+    request: {}
+    expect:
+      - { path: principal.id, eq: "${docsAgent.id}" }
+      - { path: remaining.maxChangesets, eq: 5 }
+      - { path: "effectiveScope.writePaths", len: 1 }
+      - { path: "effectiveScope.writePaths[0]", decode: base64, matches: "^/?docs/?$" }
+  - name: a write outside docs/ is refused by policy
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      as: "${file:subagent.token}"
+      land: false
+      change: outside
+      message: "Sneak a source change in"
+      files: { src/main.py: "print('pwned')\n" }
+      expect_error: { reason: POLICY_DENIED }
+  - { name: docs changeset 1, commit: { repo: "${repo.fullName}", ref: main, as: "${file:subagent.token}", land: false, change: d1, message: "Docs 1", files: { docs/one.md: "1\n" } } }
+  - { name: docs changeset 2, commit: { repo: "${repo.fullName}", ref: main, as: "${file:subagent.token}", land: false, change: d2, message: "Docs 2", files: { docs/two.md: "2\n" } } }
+  - { name: docs changeset 3, commit: { repo: "${repo.fullName}", ref: main, as: "${file:subagent.token}", land: false, change: d3, message: "Docs 3", files: { docs/three.md: "3\n" } } }
+  - { name: docs changeset 4, commit: { repo: "${repo.fullName}", ref: main, as: "${file:subagent.token}", land: false, change: d4, message: "Docs 4", files: { docs/four.md: "4\n" } } }
+  - { name: docs changeset 5, commit: { repo: "${repo.fullName}", ref: main, as: "${file:subagent.token}", land: false, change: d5, message: "Docs 5", files: { docs/five.md: "5\n" } } }
+  - name: the sixth changeset is refused for budget
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      as: "${file:subagent.token}"
+      land: false
+      change: d6
+      message: "Docs 6"
+      files: { docs/six.md: "6\n" }
+      expect_error: { reason: BUDGET_EXHAUSTED }
+  - name: the budget is spent
+    call: AuthService/WhoAmI
+    as: "${file:subagent.token}"
+    request: {}
+    expect:
+      - { path: remaining.maxChangesets, eq: 0 }

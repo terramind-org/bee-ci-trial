@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateStarListRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateStarList.",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "private": {
+      "type": "boolean"
+    },
+    "starListId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateStarListRequest",
+  "type": "object"
+}

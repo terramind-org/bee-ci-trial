@@ -1,0 +1,51 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LandingEvaluation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What policy says about landing the current revision right now.",
+  "properties": {
+    "allowed": {
+      "type": "boolean"
+    },
+    "diffClass": {
+      "type": "string"
+    },
+    "mergeable": {
+      "description": "no conflict with the target tip",
+      "type": "boolean"
+    },
+    "missing": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "reason": {
+      "description": "When not allowed: the ErrorReason name LandChange would fail with now (\"POLICY_DENIED\",\n\"LEASED\", \"DRAFT\", \"INVALID_STATE\").",
+      "type": "string"
+    },
+    "revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "rule": {
+      "description": "the policy rule that decided (e.g. a [[land]] rule's id), when any",
+      "type": "string"
+    },
+    "satisfied": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "unresolvedThreadIds": {
+      "description": "when policy requires resolved threads",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.LandingEvaluation",
+  "type": "object"
+}

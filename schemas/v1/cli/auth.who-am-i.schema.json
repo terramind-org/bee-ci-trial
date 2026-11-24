@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/auth.who-am-i.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AuthService/WhoAmI: `data` is a bee.v1.WhoAmIResponse in proto3-JSON. `bee auth who-am-i --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WhoAmIResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.auth.who-am-i"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee auth who-am-i",
+  "type": "object"
+}

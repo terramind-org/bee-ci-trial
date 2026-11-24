@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteProjectViewRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteProjectView.",
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "viewId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteProjectViewRequest",
+  "type": "object"
+}

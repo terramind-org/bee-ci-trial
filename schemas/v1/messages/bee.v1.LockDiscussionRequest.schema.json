@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "bee.v1.DiscussionLockReason": {
+      "description": "Why a discussion was locked.",
+      "enum": [
+        "DISCUSSION_LOCK_REASON_UNSPECIFIED",
+        "DISCUSSION_LOCK_REASON_OFF_TOPIC",
+        "DISCUSSION_LOCK_REASON_TOO_HEATED",
+        "DISCUSSION_LOCK_REASON_RESOLVED",
+        "DISCUSSION_LOCK_REASON_SPAM"
+      ],
+      "title": "bee.v1.DiscussionLockReason",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LockDiscussionRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for LockDiscussion.",
+  "properties": {
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "org": {
+      "type": "string"
+    },
+    "reason": {
+      "$ref": "#/$defs/bee.v1.DiscussionLockReason"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.LockDiscussionRequest",
+  "type": "object"
+}

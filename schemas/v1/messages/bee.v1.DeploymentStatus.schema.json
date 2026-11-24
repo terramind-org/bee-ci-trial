@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "bee.v1.DeploymentState": {
+      "description": "The state carried by a deployment status (GitHub-compatible set).",
+      "enum": [
+        "DEPLOYMENT_STATE_UNSPECIFIED",
+        "DEPLOYMENT_STATE_PENDING",
+        "DEPLOYMENT_STATE_QUEUED",
+        "DEPLOYMENT_STATE_IN_PROGRESS",
+        "DEPLOYMENT_STATE_SUCCESS",
+        "DEPLOYMENT_STATE_FAILURE",
+        "DEPLOYMENT_STATE_ERROR",
+        "DEPLOYMENT_STATE_INACTIVE"
+      ],
+      "title": "bee.v1.DeploymentState",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeploymentStatus.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One status in a deployment's history.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "creator": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "deploymentId": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "environmentUrl": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "logUrl": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.DeploymentState"
+    }
+  },
+  "title": "bee.v1.DeploymentStatus",
+  "type": "object"
+}

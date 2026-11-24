@@ -1,0 +1,46 @@
+{
+  "service": "bee.v1.WriteService",
+  "fixtures": [
+    {"method": "UploadObjects",
+     "request": [
+       {"repo": {"fullName": "{{repo}}"}, "id": "{{base.blobs.README\\.md.objectId}}", "offset": "0",
+        "data": "{{base.blobs.README\\.md.data}}", "last": true}
+     ]},
+    {"method": "CreateChangeset",
+     "request": {"repo": {"fullName": "{{repo}}"}, "parents": ["{{base.objectId}}"],
+                 "delta": [{"path": "UkVBRE1FLm1k", "delete": true}],
+                 "changeId": {"raw": "AAAAAAAAAMgAAAAAAAAAAA=="}, "author": "conformance",
+                 "authorTime": {"name": "conformance", "time": "2026-10-02T00:00:00Z"},
+                 "message": "create changeset fixture"}},
+    {"method": "Rebase",
+     "setup": [
+       {"commit": {"repo": "{{repo}}", "parent": "{{base.id}}", "files": {"docs/rebase.md": "rebase\n"},
+                   "message": "rebase fixture", "change": 201}, "save": "c"}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "changeset": "{{c.objectId}}", "onto": {"expr": "main"}}},
+    {"method": "Merge",
+     "setup": [
+       {"commit": {"repo": "{{repo}}", "parent": "main", "files": {"docs/ours.md": "ours\n"},
+                   "message": "merge fixture ours", "change": 202, "createRef": "conformance/merge-ours"}},
+       {"commit": {"repo": "{{repo}}", "parent": "main", "files": {"docs/theirs.md": "theirs\n"},
+                   "message": "merge fixture theirs", "change": 203, "createRef": "conformance/merge-theirs"}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "ours": {"expr": "conformance/merge-ours"},
+                 "theirs": {"expr": "conformance/merge-theirs"}, "message": "merge fixture",
+                 "changeId": {"raw": "AAAAAAAAAMwAAAAAAAAAAA=="}, "author": "conformance",
+                 "authorTime": {"name": "conformance", "time": "2026-10-02T00:00:00Z"}}},
+    {"method": "Land",
+     "setup": [
+       {"commit": {"repo": "{{repo}}", "parent": "main", "files": {"docs/land.md": "land\n"},
+                   "message": "land fixture", "change": 205}, "save": "c"}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "ref": "main", "head": "{{c.objectId}}"}},
+    {"method": "Revert",
+     "setup": [
+       {"commit": {"repo": "{{repo}}", "parent": "main", "files": {"docs/revert.md": "revert\n"},
+                   "message": "revert fixture", "change": 206, "land": "main"}, "save": "c"}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "changeset": "{{c.objectId}}", "onto": {"expr": "main"},
+                 "changeId": {"raw": "AAAAAAAAAM8AAAAAAAAAAA=="}}}
+  ]
+}

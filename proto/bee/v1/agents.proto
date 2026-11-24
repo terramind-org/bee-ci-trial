@@ -1,0 +1,1281 @@
+// Agents for bee.v1: runtime registry, agent principals and dashboards, the native agent
+// runner, repo instructions, memory, context bundles and component watchers ("superfans").
+// See docs/PRODUCT.md §4.19 and SPEC.md §10.4, §11.5.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/forge.proto";
+
+// Agent registry, runs and agent-facing context. Agent principals themselves are created
+// through AuthService.CreateAgent; this service runs and observes them. Every agent action is
+// attributable through provenance and the audit log to a human or service root.
+service AgentService {
+  // ---- Runtime registry ----
+
+  // Registers an agent runtime definition (Claude Code, Codex, others) for an org.
+  // ALREADY_EXISTS when the org already has a runtime with this name and version.
+  rpc RegisterAgentRuntime(RegisterAgentRuntimeRequest) returns (AgentRuntime);
+  // Fetches one runtime definition.
+  rpc GetAgentRuntime(GetAgentRuntimeRequest) returns (AgentRuntime);
+  // Lists runtimes registered for an org, plus public marketplace runtimes when asked.
+  rpc ListAgentRuntimes(ListAgentRuntimesRequest) returns (ListAgentRuntimesResponse);
+  // Updates a runtime definition. Unset fields are unchanged.
+  rpc UpdateAgentRuntime(UpdateAgentRuntimeRequest) returns (AgentRuntime);
+  // Deletes a runtime definition. INVALID_STATE while runs using it are active.
+  rpc DeleteAgentRuntime(DeleteAgentRuntimeRequest) returns (DeleteAgentRuntimeResponse);
+
+  // ---- Principals and dashboards ----
+
+  // Lists agent principals owned by a principal or belonging to an org, with summary stats.
+  rpc ListAgentPrincipals(ListAgentPrincipalsRequest) returns (ListAgentPrincipalsResponse);
+  // Returns one agent's dashboard: work, cost from provenance and outcomes over a window.
+  rpc GetAgentDashboard(GetAgentDashboardRequest) returns (AgentDashboard);
+  // Lists an agent's recent work items (changesets, CRs, reviews, runs), newest first.
+  rpc ListAgentWorkItems(ListAgentWorkItemsRequest) returns (ListAgentWorkItemsResponse);
+
+  // ---- Runs ----
+
+  // Starts an agent run on an issue, a CR review or a free-form task. The run gets an
+  // attenuated token no broader than the caller's. BUDGET_EXHAUSTED or QUOTA_EXCEEDED when
+  // the delegation root's limits are spent; PERMISSION_DENIED when the scope is too broad.
+  rpc StartAgentRun(StartAgentRunRequest) returns (AgentRun);
+  // Fetches one run.
+  rpc GetAgentRun(GetAgentRunRequest) returns (AgentRun);
+  // Lists runs filtered by repo, agent, state and task kind.
+  rpc ListAgentRuns(ListAgentRunsRequest) returns (ListAgentRunsResponse);
+  // Cancels a queued or running run. INVALID_STATE when it already finished.
+  rpc CancelAgentRun(CancelAgentRunRequest) returns (AgentRun);
+  // Starts a new run with the same task as a finished run, optionally changing the runtime.
+  rpc RetryAgentRun(RetryAgentRunRequest) returns (AgentRun);
+  // Streams a run's session events live. Resume by passing the last seen sequence number;
+  // events after it are replayed first. Ends when the run finishes.
+  rpc StreamAgentRunEvents(StreamAgentRunEventsRequest) returns (stream AgentRunEvent);
+  // Lists a run's recorded session events (the session log), oldest first.
+  rpc ListAgentRunEvents(ListAgentRunEventsRequest) returns (ListAgentRunEventsResponse);
+  // Posts a steering message to a running or waiting run. INVALID_STATE when finished.
+  rpc SendAgentRunMessage(SendAgentRunMessageRequest) returns (AgentRunEvent);
+
+  // ---- Instructions ----
+
+  // Resolves the agent instructions that apply to a set of paths at a revision, read from
+  // AGENTS.md, CLAUDE.md, .github/copilot-instructions.md and .github/agents/*.md, nearest
+  // directory first.
+  rpc ResolveAgentInstructions(ResolveAgentInstructionsRequest) returns (ResolveAgentInstructionsResponse);
+  // Lists every instruction and custom agent file in a repo at a revision.
+  rpc ListAgentInstructionFiles(ListAgentInstructionFilesRequest) returns (ListAgentInstructionFilesResponse);
+
+  // ---- Memory ----
+
+  // Creates or replaces a memory under a key. With expected_version set, VERSION_MISMATCH
+  // when stale.
+  rpc PutAgentMemory(PutAgentMemoryRequest) returns (AgentMemory);
+  // Fetches one memory by scope and key.
+  rpc GetAgentMemory(GetAgentMemoryRequest) returns (AgentMemory);
+  // Lists memories in a scope, filtered by tag and key prefix.
+  rpc ListAgentMemories(ListAgentMemoriesRequest) returns (ListAgentMemoriesResponse);
+  // Deletes a memory.
+  rpc DeleteAgentMemory(DeleteAgentMemoryRequest) returns (DeleteAgentMemoryResponse);
+  // Searches memories by text, ranked by relevance.
+  rpc SearchAgentMemories(SearchAgentMemoriesRequest) returns (SearchAgentMemoriesResponse);
+
+  // ---- Context bundles ----
+
+  // Saves a named set of paths, issues, CRs, docs and URLs as a context bundle.
+  rpc CreateContextBundle(CreateContextBundleRequest) returns (ContextBundle);
+  // Fetches one bundle definition.
+  rpc GetContextBundle(GetContextBundleRequest) returns (ContextBundle);
+  // Lists bundles in a repo or org.
+  rpc ListContextBundles(ListContextBundlesRequest) returns (ListContextBundlesResponse);
+  // Updates a bundle. Unset fields are unchanged; a non-empty item list replaces the items.
+  rpc UpdateContextBundle(UpdateContextBundleRequest) returns (ContextBundle);
+  // Deletes a bundle.
+  rpc DeleteContextBundle(DeleteContextBundleRequest) returns (DeleteContextBundleResponse);
+  // Resolves a bundle at a revision into content references (blob ids, subject refs, URLs)
+  // the caller is allowed to read. Unreadable items report a per-item status.
+  rpc MaterializeContextBundle(MaterializeContextBundleRequest) returns (MaterializeContextBundleResponse);
+
+  // ---- Component watchers ----
+
+  // Creates a watcher: an agent scoped to one component's paths, service and telemetry.
+  rpc CreateComponentWatcher(CreateComponentWatcherRequest) returns (Watcher);
+  // Fetches one watcher.
+  rpc GetComponentWatcher(GetComponentWatcherRequest) returns (Watcher);
+  // Lists watchers in a repo.
+  rpc ListComponentWatchers(ListComponentWatchersRequest) returns (ListComponentWatchersResponse);
+  // Updates a watcher's scope, selectors, thresholds or state.
+  rpc UpdateComponentWatcher(UpdateComponentWatcherRequest) returns (Watcher);
+  // Deletes a watcher. Its anomalies stay readable.
+  rpc DeleteComponentWatcher(DeleteComponentWatcherRequest) returns (DeleteComponentWatcherResponse);
+
+  // ---- Anomaly feed ----
+
+  // Records an anomaly a watcher detected, with its evidence.
+  rpc ReportWatcherAnomaly(ReportWatcherAnomalyRequest) returns (Anomaly);
+  // Lists anomalies for a repo or watcher, newest first.
+  rpc ListWatcherAnomalies(ListWatcherAnomaliesRequest) returns (ListWatcherAnomaliesResponse);
+  // Fetches one anomaly.
+  rpc GetWatcherAnomaly(GetWatcherAnomalyRequest) returns (Anomaly);
+  // Streams new and updated anomalies live. Resume with the last seen sequence number.
+  rpc StreamWatcherAnomalies(StreamWatcherAnomaliesRequest) returns (stream Anomaly);
+  // Acknowledges an anomaly so other watchers and humans know it is being handled.
+  rpc AcknowledgeWatcherAnomaly(AcknowledgeWatcherAnomalyRequest) returns (Anomaly);
+  // Links an anomaly to an issue (existing, or a new one created with the evidence).
+  rpc LinkWatcherAnomalyToIssue(LinkWatcherAnomalyToIssueRequest) returns (Anomaly);
+
+  // ---- Review assignment ----
+
+  // Returns which agent reviews change requests automatically, and when.
+  rpc GetAgentReviewConfig(GetAgentReviewConfigRequest) returns (AgentReviewConfig);
+  // Sets the automatic agent review configuration for a repo.
+  rpc SetAgentReviewConfig(SetAgentReviewConfigRequest) returns (AgentReviewConfig);
+
+  // ---- Feed triggers ----
+
+  // Configures one agent's feed trigger in a repo: the agent follows the `sources` repos, and
+  // each post published in a repo it follows starts an ADOPT_EVALUATE run here (at most one per
+  // post, folded within the check interval, within the daily budget and run cap). Needs repo
+  // maintain; the agent must be enabled in the repo's org.
+  rpc SetAgentFeedTrigger(SetAgentFeedTriggerRequest) returns (AgentFeedTrigger);
+  // Fetches one agent's feed trigger in a repo. NOT_FOUND when none is configured.
+  rpc GetAgentFeedTrigger(GetAgentFeedTriggerRequest) returns (AgentFeedTrigger);
+  // Lists the feed triggers configured in a repo.
+  rpc ListAgentFeedTriggers(ListAgentFeedTriggersRequest) returns (ListAgentFeedTriggersResponse);
+
+  // ---- Agent definitions ----
+
+  // Defines an agent principal (created by AuthService.CreateAgent) in an org: runtime,
+  // model, instructions file, allowed toolsets, default budget, owners and schedules. Only
+  // agents with an enabled definition take work. ALREADY_EXISTS when the org already defines
+  // the agent or another agent has the name.
+  rpc RegisterAgent(RegisterAgentRequest) returns (AgentDefinition);
+  // Fetches one agent's definition in an org.
+  rpc GetAgent(GetAgentRequest) returns (AgentDefinition);
+  // Lists the agent definitions of an org by name, optionally only one owner's.
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  // Updates a definition. Unset fields are unchanged; a set list replaces the list.
+  rpc UpdateAgent(UpdateAgentRequest) returns (AgentDefinition);
+  // Deletes a definition. The principal stays; it no longer takes work.
+  rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse);
+
+  // ---- Owner budgets ----
+
+  // Sets the monthly (UTC) limits of one owner's agents in an org; 0 = unlimited.
+  rpc SetAgentBudget(SetAgentBudgetRequest) returns (AgentOwnerBudget);
+  // Returns an owner's monthly limits and this month's spend.
+  rpc GetAgentBudget(GetAgentBudgetRequest) returns (AgentOwnerBudget);
+
+  // ---- Sessions and activity ----
+
+  // The agent sessions that produced a changeset or a change request ("which session
+  // produced this"): model, runtime, prompt digest, delegation chain and cost.
+  rpc GetSessionsForChange(GetSessionsForChangeRequest) returns (GetSessionsForChangeResponse);
+  // The agent activity stream of an org: events acted by one agent, or on behalf of one
+  // delegation root (the human or service at the end of the chain). Resume with next_seq.
+  rpc ListAgentActivity(ListAgentActivityRequest) returns (ListAgentActivityResponse);
+}
+
+// ---------- Runtime registry ----------
+
+// Sandbox an agent runtime needs.
+message AgentSandboxRequirements {
+  string machine_type = 1;    // WorkspaceService machine type name; empty = default
+  string devcontainer_path = 2;
+  uint32 min_cpus = 3;
+  uint64 min_memory_bytes = 4;
+  bool network_egress = 5;    // needs outbound network beyond the model gateway
+  repeated string egress_domains = 6;
+  bool gpu = 7;
+}
+
+// A registered agent runtime.
+message AgentRuntime {
+  string id = 1;
+  string org = 2;             // empty = public marketplace runtime
+  string name = 3;            // e.g. "claude-code"
+  string vendor = 4;          // e.g. "anthropic"
+  string version = 5;
+  string description = 6;
+  repeated string capabilities = 7; // "code", "review", "triage", "security_fix", "watch"
+  string mcp_endpoint = 8;    // URL the runtime's MCP server listens on, if remote
+  string image = 9;           // container image reference for the native runner
+  AgentSandboxRequirements sandbox = 10;
+  repeated string default_models = 11;
+  bool enabled = 12;
+  Principal registered_by = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Request for RegisterAgentRuntime.
+message RegisterAgentRuntimeRequest {
+  string org = 1;
+  string name = 2;
+  string vendor = 3;
+  string version = 4;
+  string description = 5;
+  repeated string capabilities = 6;
+  string mcp_endpoint = 7;
+  string image = 8;
+  AgentSandboxRequirements sandbox = 9;
+  repeated string default_models = 10;
+}
+
+// Request for GetAgentRuntime.
+message GetAgentRuntimeRequest {
+  string id = 1;
+}
+
+// Request for ListAgentRuntimes.
+message ListAgentRuntimesRequest {
+  string org = 1;
+  string capability = 2;
+  bool include_public = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListAgentRuntimes.
+message ListAgentRuntimesResponse {
+  repeated AgentRuntime runtimes = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateAgentRuntime.
+message UpdateAgentRuntimeRequest {
+  string id = 1;
+  optional string version = 2;
+  optional string description = 3;
+  repeated string capabilities = 4; // empty = unchanged
+  optional string mcp_endpoint = 5;
+  optional string image = 6;
+  AgentSandboxRequirements sandbox = 7; // unset = unchanged
+  optional bool enabled = 8;
+}
+
+// Request for DeleteAgentRuntime.
+message DeleteAgentRuntimeRequest {
+  string id = 1;
+}
+
+// Response for DeleteAgentRuntime.
+message DeleteAgentRuntimeResponse {}
+
+// ---------- Principals and dashboards ----------
+
+// Outcomes of an agent's landed and closed work.
+message AgentOutcomes {
+  uint64 change_requests_opened = 1;
+  uint64 change_requests_landed = 2;
+  uint64 change_requests_closed = 3;  // closed without landing
+  uint64 changes_reverted = 4;
+  uint64 reviews_submitted = 5;
+  uint64 runs_succeeded = 6;
+  uint64 runs_failed = 7;
+}
+
+// Aggregated stats for one agent over a window.
+message AgentStats {
+  uint64 changesets = 1;
+  uint64 work_items = 2;
+  Cost cost = 3;              // summed from provenance claims
+  AgentOutcomes outcomes = 4;
+  uint64 active_leases = 5;
+  uint64 active_runs = 6;
+}
+
+// An agent principal with summary stats.
+message AgentPrincipalSummary {
+  Principal principal = 1;
+  string purpose = 2;
+  AgentStats stats = 3;
+  google.protobuf.Timestamp last_active_at = 4;
+  // Model of the agent's most recent changeset (gap G1).
+  string last_model = 5;
+  // Session of the agent's most recent changeset.
+  string last_session = 6;
+  // Change requests the agent authored that are still open.
+  uint64 open_change_requests = 7;
+}
+
+// Request for ListAgentPrincipals.
+message ListAgentPrincipalsRequest {
+  string org = 1;
+  string owner_id = 2;        // filter by owning principal
+  string runtime = 3;
+  google.protobuf.Timestamp window_start = 4;
+  PageRequest page = 5;
+  // Restrict to these principal ids (gap G6).
+  repeated string principal_ids = 6;
+}
+
+// Response for ListAgentPrincipals.
+message ListAgentPrincipalsResponse {
+  repeated AgentPrincipalSummary agents = 1;
+  PageResponse page = 2;
+}
+
+// Daily stats point for dashboard charts.
+message AgentDailyStats {
+  string date = 1;            // YYYY-MM-DD, UTC
+  AgentStats stats = 2;
+}
+
+// One agent's dashboard.
+message AgentDashboard {
+  Principal principal = 1;
+  repeated string on_behalf_of = 2; // delegation chain back to a human or service root
+  AgentStats totals = 3;
+  repeated AgentDailyStats daily = 4;
+  repeated string top_repo_ids = 5;
+  repeated string models = 6;
+  google.protobuf.Timestamp window_start = 7;
+  google.protobuf.Timestamp window_end = 8;
+}
+
+// Request for GetAgentDashboard.
+message GetAgentDashboardRequest {
+  string principal_id = 1;
+  google.protobuf.Timestamp window_start = 2;
+  google.protobuf.Timestamp window_end = 3;
+  string repo_id = 4;         // empty = all repos
+}
+
+// One unit of agent work.
+message AgentWorkItem {
+  SubjectRef subject = 1;     // changeset, CR, review comment, agent run
+  string title = 2;
+  string state = 3;           // "open", "landed", "closed", "reverted", ...
+  Cost cost = 4;
+  string session = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// Request for ListAgentWorkItems.
+message ListAgentWorkItemsRequest {
+  string principal_id = 1;
+  string repo_id = 2;
+  google.protobuf.Timestamp since = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListAgentWorkItems.
+message ListAgentWorkItemsResponse {
+  repeated AgentWorkItem items = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Runs ----------
+
+// What a run is asked to do.
+enum AgentTaskKind {
+  AGENT_TASK_KIND_UNSPECIFIED = 0;
+  AGENT_TASK_KIND_ISSUE = 1;          // resolve an issue and open a CR
+  AGENT_TASK_KIND_REVIEW = 2;         // review a change request
+  AGENT_TASK_KIND_FREEFORM = 3;       // a prompt
+  AGENT_TASK_KIND_SECURITY_FIX = 4;   // fix a security alert
+  AGENT_TASK_KIND_REVISE = 5;         // iterate on review comments of its own CR
+  AGENT_TASK_KIND_ADOPT_EVALUATE = 6; // decide whether a followed repo's post applies here
+}
+
+// Run lifecycle.
+enum AgentRunState {
+  AGENT_RUN_STATE_UNSPECIFIED = 0;
+  AGENT_RUN_STATE_QUEUED = 1;
+  AGENT_RUN_STATE_PROVISIONING = 2;
+  AGENT_RUN_STATE_RUNNING = 3;
+  AGENT_RUN_STATE_WAITING_FOR_REVIEW = 4;
+  AGENT_RUN_STATE_SUCCEEDED = 5;
+  AGENT_RUN_STATE_FAILED = 6;
+  AGENT_RUN_STATE_CANCELLED = 7;
+}
+
+// The access a run's token is attenuated to; never broader than the starter's.
+message AgentRunScope {
+  repeated bytes read_paths = 1;   // prefixes; empty = inherit
+  repeated bytes write_paths = 2;
+  repeated string refs = 3;        // patterns, e.g. "ws/*"
+  repeated string actions = 4;     // read, commit, land, review, lease
+}
+
+// Spending and time limits for a run.
+message AgentRunBudget {
+  uint64 max_input_tokens = 1;
+  uint64 max_output_tokens = 2;
+  uint64 max_usd_micros = 3;
+  uint64 max_duration_seconds = 4;
+  uint64 max_changesets = 5;
+  uint64 max_landed = 6;
+}
+
+// The task given to a run.
+message AgentTask {
+  AgentTaskKind kind = 1;
+  string issue = 2;           // issue number, for ISSUE
+  string change_request = 3;  // CR number, for REVIEW and REVISE
+  string prompt = 4;          // FREEFORM, or extra guidance for other kinds
+  SubjectRef alert = 5;       // SECURITY_FIX
+  repeated string context_bundle_ids = 6;
+  string post_id = 7;         // ADOPT_EVALUATE: the post to evaluate
+}
+
+// An agent run (session).
+message AgentRun {
+  string id = 1;
+  RepoRef repo = 2;
+  AgentTask task = 3;
+  string runtime_id = 4;
+  string model = 5;
+  Principal agent = 6;        // the agent principal doing the work
+  Principal started_by = 7;
+  AgentRunState state = 8;
+  string base_ref = 9;
+  string work_ref = 10;       // e.g. "ws/<agent>/<run>"
+  AgentRunScope scope = 11;
+  AgentRunBudget budget = 12;
+  Cost cost = 13;             // spent so far
+  string workspace_id = 14;
+  repeated string change_requests = 15; // CR numbers produced
+  repeated ObjectId changesets = 16;
+  repeated string lease_ids = 17;
+  string session = 18;        // provenance session id
+  string failure_reason = 19; // an ErrorReason name or runner-specific code
+  string summary = 20;        // agent's final summary, Markdown
+  uint64 last_event_seq = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp started_at = 23;
+  google.protobuf.Timestamp finished_at = 24;
+  string url = 25;
+  // Blob reference of the run's transcript, set when the run finished.
+  string transcript_ref = 26;
+  // Blob reference of the run's raw log, set when the run finished.
+  string log_ref = 27;
+  // What started the run: "manual", "issue_assignment", "mention", "watcher",
+  // "review_config", "schedule", "revise", "retry" or "feed".
+  string trigger = 28;
+  // The trigger's subject: comment id, watcher id, schedule id, the retried run's id, or the
+  // post id for "feed".
+  string trigger_ref = 29;
+}
+
+// Request for StartAgentRun.
+message StartAgentRunRequest {
+  RepoRef repo = 1;
+  AgentTask task = 2;
+  string runtime_id = 3;      // empty = repo default
+  string agent_principal_id = 4; // empty = create or reuse the caller's default agent
+  string model = 5;
+  string base_ref = 6;        // empty = default branch
+  AgentRunScope scope = 7;
+  AgentRunBudget budget = 8;
+  string machine_type = 9;
+  string idempotency_key = 10; // same key returns the existing run
+}
+
+// Request for GetAgentRun.
+message GetAgentRunRequest {
+  string id = 1;
+}
+
+// Request for ListAgentRuns.
+message ListAgentRunsRequest {
+  RepoRef repo = 1;           // unset = all repos visible to the caller
+  string agent_principal_id = 2;
+  repeated AgentRunState states = 3;
+  AgentTaskKind task_kind = 4;
+  string started_by_id = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListAgentRuns.
+message ListAgentRunsResponse {
+  repeated AgentRun runs = 1;
+  PageResponse page = 2;
+}
+
+// Request for CancelAgentRun.
+message CancelAgentRunRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+// Request for RetryAgentRun.
+message RetryAgentRunRequest {
+  string id = 1;
+  string runtime_id = 2;      // empty = same runtime
+  AgentRunBudget budget = 3;  // unset = same budget
+}
+
+// Kind of session event.
+enum AgentRunEventKind {
+  AGENT_RUN_EVENT_KIND_UNSPECIFIED = 0;
+  AGENT_RUN_EVENT_KIND_STATE_CHANGED = 1;
+  AGENT_RUN_EVENT_KIND_LOG = 2;
+  AGENT_RUN_EVENT_KIND_THOUGHT = 3;      // summary of reasoning the runtime chose to share
+  AGENT_RUN_EVENT_KIND_TOOL_CALL = 4;
+  AGENT_RUN_EVENT_KIND_TOOL_RESULT = 5;
+  AGENT_RUN_EVENT_KIND_CHANGESET_CREATED = 6;
+  AGENT_RUN_EVENT_KIND_CHANGE_REQUEST_OPENED = 7;
+  AGENT_RUN_EVENT_KIND_LEASE_ACQUIRED = 8;
+  AGENT_RUN_EVENT_KIND_CHECK_RESULT = 9;
+  AGENT_RUN_EVENT_KIND_STEERING_MESSAGE = 10;
+  AGENT_RUN_EVENT_KIND_COST_UPDATE = 11;
+  AGENT_RUN_EVENT_KIND_ERROR = 12;
+}
+
+// One event in a run's session log.
+message AgentRunEvent {
+  string run_id = 1;
+  uint64 seq = 2;             // strictly increasing per run
+  AgentRunEventKind kind = 3;
+  google.protobuf.Timestamp time = 4;
+  AgentRunState state = 5;    // STATE_CHANGED
+  string text = 6;            // LOG, THOUGHT, STEERING_MESSAGE, ERROR
+  string tool_name = 7;       // TOOL_CALL, TOOL_RESULT
+  string tool_payload = 8;    // JSON arguments or result, truncated and secret-scrubbed
+  SubjectRef subject = 9;     // the changeset, CR, lease or check this event concerns
+  Cost cost = 10;             // COST_UPDATE: cumulative
+  Principal author = 11;      // STEERING_MESSAGE sender
+}
+
+// Request for StreamAgentRunEvents.
+message StreamAgentRunEventsRequest {
+  string run_id = 1;
+  uint64 after_seq = 2;       // 0 = from the start
+  repeated AgentRunEventKind kinds = 3; // empty = all
+}
+
+// Request for ListAgentRunEvents.
+message ListAgentRunEventsRequest {
+  string run_id = 1;
+  uint64 after_seq = 2;
+  repeated AgentRunEventKind kinds = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListAgentRunEvents.
+message ListAgentRunEventsResponse {
+  repeated AgentRunEvent events = 1;
+  PageResponse page = 2;
+}
+
+// Request for SendAgentRunMessage.
+message SendAgentRunMessageRequest {
+  string run_id = 1;
+  string body = 2;            // Markdown
+}
+
+// ---------- Instructions ----------
+
+// Where an instruction file came from.
+enum AgentInstructionSource {
+  AGENT_INSTRUCTION_SOURCE_UNSPECIFIED = 0;
+  AGENT_INSTRUCTION_SOURCE_AGENTS_MD = 1;
+  AGENT_INSTRUCTION_SOURCE_CLAUDE_MD = 2;
+  AGENT_INSTRUCTION_SOURCE_COPILOT_INSTRUCTIONS = 3;
+  AGENT_INSTRUCTION_SOURCE_CUSTOM_AGENT = 4;     // .github/agents/*.md
+  AGENT_INSTRUCTION_SOURCE_PATH_INSTRUCTIONS = 5; // .github/instructions/*.instructions.md
+  AGENT_INSTRUCTION_SOURCE_ORG = 6;              // org-level instructions
+}
+
+// One instruction file.
+message AgentInstructionFile {
+  bytes path = 1;
+  AgentInstructionSource source = 2;
+  ObjectId blob = 3;
+  string name = 4;            // custom agent name from front matter, if any
+  repeated string applies_to = 5; // glob patterns from front matter, if any
+  string content = 6;         // set when requested
+  repeated bytes includes = 7; // files pulled in with "@path" references
+}
+
+// Request for ResolveAgentInstructions.
+message ResolveAgentInstructionsRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  repeated bytes paths = 3;   // empty = repo root
+  string runtime = 4;         // e.g. "claude-code" picks CLAUDE.md where present
+  string custom_agent = 5;    // name of a .github/agents/*.md agent to include
+}
+
+// Response for ResolveAgentInstructions.
+message ResolveAgentInstructionsResponse {
+  repeated AgentInstructionFile files = 1; // in precedence order, most specific last
+  string combined = 2;        // concatenated Markdown with file headers
+  ObjectId changeset = 3;
+}
+
+// Request for ListAgentInstructionFiles.
+message ListAgentInstructionFilesRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  bool include_content = 3;
+}
+
+// Response for ListAgentInstructionFiles.
+message ListAgentInstructionFilesResponse {
+  repeated AgentInstructionFile files = 1;
+}
+
+// ---------- Memory ----------
+
+// Owner scope of a memory.
+message AgentMemoryScope {
+  oneof scope {
+    RepoRef repo = 1;
+    string org = 2;
+    string agent_principal_id = 3;
+  }
+}
+
+// One stored memory.
+message AgentMemory {
+  AgentMemoryScope scope = 1;
+  string key = 2;
+  string value = 3;           // text or Markdown document
+  string content_type = 4;    // "text/plain", "text/markdown", "application/json"
+  repeated string tags = 5;
+  repeated SubjectRef sources = 6; // where the fact came from
+  Principal author = 7;
+  uint64 version = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  google.protobuf.Timestamp expires_at = 11;
+}
+
+// Request for PutAgentMemory.
+message PutAgentMemoryRequest {
+  AgentMemoryScope scope = 1;
+  string key = 2;
+  string value = 3;
+  string content_type = 4;
+  repeated string tags = 5;
+  repeated SubjectRef sources = 6;
+  uint64 expected_version = 7; // 0 = any
+  uint64 ttl_seconds = 8;      // 0 = no expiry
+}
+
+// Request for GetAgentMemory.
+message GetAgentMemoryRequest {
+  AgentMemoryScope scope = 1;
+  string key = 2;
+}
+
+// Request for ListAgentMemories.
+message ListAgentMemoriesRequest {
+  AgentMemoryScope scope = 1;
+  string key_prefix = 2;
+  repeated string tags = 3;   // all must match
+  PageRequest page = 4;
+}
+
+// Response for ListAgentMemories.
+message ListAgentMemoriesResponse {
+  repeated AgentMemory memories = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteAgentMemory.
+message DeleteAgentMemoryRequest {
+  AgentMemoryScope scope = 1;
+  string key = 2;
+}
+
+// Response for DeleteAgentMemory.
+message DeleteAgentMemoryResponse {}
+
+// Request for SearchAgentMemories.
+message SearchAgentMemoriesRequest {
+  AgentMemoryScope scope = 1;
+  string query = 2;
+  repeated string tags = 3;
+  uint32 limit = 4;
+}
+
+// A memory search hit.
+message AgentMemoryHit {
+  AgentMemory memory = 1;
+  double score = 2;
+}
+
+// Response for SearchAgentMemories.
+message SearchAgentMemoriesResponse {
+  repeated AgentMemoryHit hits = 1;
+}
+
+// ---------- Context bundles ----------
+
+// One item in a context bundle.
+message ContextBundleItem {
+  oneof item {
+    bytes path = 1;           // file or directory prefix in the bundle's repo
+    SubjectRef subject = 2;   // issue, CR, discussion, wiki page
+    string url = 3;           // external doc
+    string note = 4;          // inline text
+  }
+  string label = 5;
+}
+
+// A saved set of context.
+message ContextBundle {
+  string id = 1;
+  RepoRef repo = 2;           // set for repo bundles
+  string org = 3;             // set for org bundles
+  string name = 4;
+  string description = 5;
+  repeated ContextBundleItem items = 6;
+  Principal owner = 7;
+  bool shared = 8;            // visible to every reader of the repo or org
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Request for CreateContextBundle.
+message CreateContextBundleRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string name = 3;
+  string description = 4;
+  repeated ContextBundleItem items = 5;
+  bool shared = 6;
+}
+
+// Request for GetContextBundle.
+message GetContextBundleRequest {
+  string id = 1;
+}
+
+// Request for ListContextBundles.
+message ListContextBundlesRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string owner_id = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListContextBundles.
+message ListContextBundlesResponse {
+  repeated ContextBundle bundles = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateContextBundle.
+message UpdateContextBundleRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  repeated ContextBundleItem items = 4; // non-empty replaces the items
+  optional bool shared = 5;
+}
+
+// Request for DeleteContextBundle.
+message DeleteContextBundleRequest {
+  string id = 1;
+}
+
+// Response for DeleteContextBundle.
+message DeleteContextBundleResponse {}
+
+// One resolved bundle item.
+message ContextBundleResolvedItem {
+  ContextBundleItem item = 1;
+  ItemStatus status = 2;
+  repeated ContextBundleResolvedFile files = 3; // for path items
+  string title = 4;           // for subject items
+  string body = 5;            // subject body or note, when include_bodies
+}
+
+// A file resolved from a path item.
+message ContextBundleResolvedFile {
+  bytes path = 1;
+  ObjectId blob = 2;
+  uint64 size = 3;
+}
+
+// Request for MaterializeContextBundle.
+message MaterializeContextBundleRequest {
+  string id = 1;
+  Revision revision = 2;      // unset = default branch tip
+  bool include_bodies = 3;
+  uint64 max_files = 4;
+}
+
+// Response for MaterializeContextBundle.
+message MaterializeContextBundleResponse {
+  repeated ContextBundleResolvedItem items = 1;
+  ObjectId changeset = 2;
+  bool truncated = 3;
+}
+
+// ---------- Component watchers ----------
+
+// Telemetry a watcher reads. Selectors use OpsService metric names and label matchers.
+message WatcherTelemetrySelector {
+  repeated string metric_names = 1;
+  repeated KeyValue label_matchers = 2; // exact matches, e.g. service=checkout
+  repeated string log_components = 3;
+  string trace_service = 4;
+}
+
+// Watcher lifecycle.
+enum WatcherState {
+  WATCHER_STATE_UNSPECIFIED = 0;
+  WATCHER_STATE_ACTIVE = 1;
+  WATCHER_STATE_PAUSED = 2;
+  WATCHER_STATE_ERROR = 3;
+}
+
+// An agent scoped to one component.
+message Watcher {
+  string id = 1;
+  RepoRef repo = 2;
+  string name = 3;
+  string component = 4;       // human name of the component
+  repeated bytes paths = 5;   // code owned by the component
+  string service_name = 6;
+  WatcherTelemetrySelector telemetry = 7;
+  string runtime_id = 8;
+  Principal agent = 9;
+  WatcherState state = 10;
+  string instructions = 11;   // extra guidance, Markdown
+  bool auto_open_issues = 12;
+  repeated string labels = 13; // labels for issues it opens
+  uint64 check_interval_seconds = 14;
+  AgentRunBudget budget = 15; // per day
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+// Request for CreateComponentWatcher.
+message CreateComponentWatcherRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  string component = 3;
+  repeated bytes paths = 4;
+  string service_name = 5;
+  WatcherTelemetrySelector telemetry = 6;
+  string runtime_id = 7;
+  string instructions = 8;
+  bool auto_open_issues = 9;
+  repeated string labels = 10;
+  uint64 check_interval_seconds = 11;
+  AgentRunBudget budget = 12;
+  // The watching agent. Empty = one of the caller's enabled agents in the org (matching
+  // runtime_id when set). Otherwise the agent must be enabled in the org and the caller must
+  // be the agent or one of its owners.
+  string agent_principal_id = 13;
+}
+
+// Request for GetComponentWatcher.
+message GetComponentWatcherRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for ListComponentWatchers.
+message ListComponentWatchersRequest {
+  RepoRef repo = 1;
+  WatcherState state = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListComponentWatchers.
+message ListComponentWatchersResponse {
+  repeated Watcher watchers = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateComponentWatcher.
+message UpdateComponentWatcherRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  optional string name = 3;
+  repeated bytes paths = 4;   // non-empty replaces
+  optional string service_name = 5;
+  WatcherTelemetrySelector telemetry = 6; // unset = unchanged
+  optional WatcherState state = 7;
+  optional string instructions = 8;
+  optional bool auto_open_issues = 9;
+  optional uint64 check_interval_seconds = 10;
+}
+
+// Request for DeleteComponentWatcher.
+message DeleteComponentWatcherRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Response for DeleteComponentWatcher.
+message DeleteComponentWatcherResponse {}
+
+// ---------- Anomalies ----------
+
+// How bad an anomaly is.
+enum AnomalySeverity {
+  ANOMALY_SEVERITY_UNSPECIFIED = 0;
+  ANOMALY_SEVERITY_INFO = 1;
+  ANOMALY_SEVERITY_WARNING = 2;
+  ANOMALY_SEVERITY_CRITICAL = 3;
+}
+
+// Anomaly lifecycle.
+enum AnomalyState {
+  ANOMALY_STATE_UNSPECIFIED = 0;
+  ANOMALY_STATE_OPEN = 1;
+  ANOMALY_STATE_ACKNOWLEDGED = 2;
+  ANOMALY_STATE_RESOLVED = 3;
+}
+
+// One piece of evidence behind an anomaly.
+message AnomalyEvidence {
+  string kind = 1;            // "metric", "log", "trace", "changeset"
+  string metric_name = 2;
+  repeated KeyValue labels = 3;
+  double baseline = 4;
+  double observed = 5;
+  string trace_id = 6;
+  string log_query = 7;
+  ObjectId suspect_changeset = 8;
+  string note = 9;
+}
+
+// Something a watcher noticed.
+message Anomaly {
+  string id = 1;
+  uint64 seq = 2;             // per repo, for stream resume
+  RepoRef repo = 3;
+  string watcher_id = 4;
+  string title = 5;
+  string description = 6;     // Markdown
+  AnomalySeverity severity = 7;
+  AnomalyState state = 8;
+  repeated AnomalyEvidence evidence = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp detected_at = 11;
+  google.protobuf.Timestamp resolved_at = 12;
+  Principal acknowledged_by = 13;
+  string issue = 14;          // linked issue number
+  string fingerprint = 15;    // dedup key across watchers
+}
+
+// Request for ReportWatcherAnomaly.
+message ReportWatcherAnomalyRequest {
+  RepoRef repo = 1;
+  string watcher_id = 2;
+  string title = 3;
+  string description = 4;
+  AnomalySeverity severity = 5;
+  repeated AnomalyEvidence evidence = 6;
+  google.protobuf.Timestamp started_at = 7;
+  string fingerprint = 8;     // an open anomaly with the same fingerprint is updated instead
+}
+
+// Request for ListWatcherAnomalies.
+message ListWatcherAnomaliesRequest {
+  RepoRef repo = 1;
+  string watcher_id = 2;
+  repeated AnomalyState states = 3;
+  AnomalySeverity min_severity = 4;
+  google.protobuf.Timestamp since = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListWatcherAnomalies.
+message ListWatcherAnomaliesResponse {
+  repeated Anomaly anomalies = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWatcherAnomaly.
+message GetWatcherAnomalyRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for StreamWatcherAnomalies.
+message StreamWatcherAnomaliesRequest {
+  RepoRef repo = 1;
+  string watcher_id = 2;      // empty = all watchers in the repo
+  uint64 after_seq = 3;
+  AnomalySeverity min_severity = 4;
+}
+
+// Request for AcknowledgeWatcherAnomaly.
+message AcknowledgeWatcherAnomalyRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string note = 3;
+  bool resolve = 4;           // mark RESOLVED instead of ACKNOWLEDGED
+}
+
+// Request for LinkWatcherAnomalyToIssue.
+message LinkWatcherAnomalyToIssueRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string issue = 3;           // existing issue number; empty = open a new issue
+  string title = 4;           // for a new issue; empty = anomaly title
+  repeated string labels = 5;
+}
+
+// ---------- Review assignment ----------
+
+// When the review agent is requested.
+enum AgentReviewTrigger {
+  AGENT_REVIEW_TRIGGER_UNSPECIFIED = 0;
+  AGENT_REVIEW_TRIGGER_DISABLED = 1;
+  AGENT_REVIEW_TRIGGER_ON_OPEN = 2;
+  AGENT_REVIEW_TRIGGER_ON_EVERY_REVISION = 3;
+  AGENT_REVIEW_TRIGGER_ON_REQUEST = 4;
+}
+
+// Automatic agent review settings for a repo.
+message AgentReviewConfig {
+  RepoRef repo = 1;
+  AgentReviewTrigger trigger = 2;
+  string runtime_id = 3;
+  string agent_principal_id = 4;
+  repeated bytes paths = 5;   // only CRs touching these prefixes; empty = all
+  bool include_drafts = 6;
+  bool review_agent_authored = 7; // also review CRs opened by agents
+  string instructions = 8;
+  AgentRunBudget budget = 9;  // per review
+}
+
+// Request for GetAgentReviewConfig.
+message GetAgentReviewConfigRequest {
+  RepoRef repo = 1;
+}
+
+// Request for SetAgentReviewConfig.
+message SetAgentReviewConfigRequest {
+  RepoRef repo = 1;
+  optional AgentReviewTrigger trigger = 2;
+  optional string runtime_id = 3;
+  optional string agent_principal_id = 4;
+  repeated bytes paths = 5;   // non-empty replaces
+  optional bool include_drafts = 6;
+  optional bool review_agent_authored = 7;
+  optional string instructions = 8;
+  AgentRunBudget budget = 9;  // unset = unchanged
+}
+
+// ---------- Feed triggers ----------
+
+// An agent's feed trigger in a repo: posts published in repos the agent follows start
+// ADOPT_EVALUATE runs in this repo.
+message AgentFeedTrigger {
+  RepoRef repo = 1;
+  Principal agent = 2;
+  bool enabled = 3;
+  double daily_usd_budget = 4;          // 0 = unlimited
+  uint32 max_runs_per_day = 5;          // 0 = unlimited
+  repeated RepoRef sources = 6;         // repos the agent follows for this trigger
+  uint64 check_interval_seconds = 7;    // posts arriving within it are folded into one run
+  uint32 runs_today = 8;                // runs started since 00:00 UTC
+  double spent_usd_today = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Request for SetAgentFeedTrigger. Creates the trigger or replaces its settings.
+message SetAgentFeedTriggerRequest {
+  RepoRef repo = 1;
+  string agent = 2;                     // agent principal id or login
+  bool enabled = 3;
+  double daily_usd_budget = 4;          // 0 = unlimited
+  uint32 max_runs_per_day = 5;          // 0 = unlimited
+  repeated RepoRef sources = 6;         // replaces the followed set; each must be readable by the agent
+}
+
+// Request for GetAgentFeedTrigger.
+message GetAgentFeedTriggerRequest {
+  RepoRef repo = 1;
+  string agent = 2;                     // agent principal id or login
+}
+
+// Request for ListAgentFeedTriggers.
+message ListAgentFeedTriggersRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListAgentFeedTriggers.
+message ListAgentFeedTriggersResponse {
+  repeated AgentFeedTrigger triggers = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Agent definitions ----------
+
+// A scheduled run of an agent.
+message AgentSchedule {
+  string id = 1;              // assigned when empty
+  string repo_id = 2;         // repo the run works in
+  string cron = 3;            // five-field cron expression, UTC
+  string prompt = 4;          // the task prompt
+  google.protobuf.Timestamp last_fired_at = 5; // read-only
+}
+
+// An agent definition: what an agent principal is, runs with, may do and may spend in an org.
+message AgentDefinition {
+  string org = 1;             // org id
+  Principal agent = 2;        // the agent principal
+  string name = 3;            // unique per org
+  string runtime_id = 4;      // registered runtime id, if any
+  string runtime = 5;         // runtime name: "claude-code", "codex" or a custom name
+  string model = 6;           // default model
+  string instructions_path = 7; // repo file read in addition to AGENTS.md and friends
+  // Policy action names the run token may carry ("read", "commit", "lease", "review", ...).
+  repeated string toolsets = 8;
+  AgentRunBudget default_budget = 9; // a run's budget is never larger
+  repeated string owners = 10;  // principal ids, primary first; the primary owner's budget pays
+  string purpose = 11;
+  bool enabled = 12;          // takes work (assignment, mentions, watchers, schedules)
+  repeated AgentSchedule schedules = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Request for RegisterAgent. Needs org membership and being the agent's owner, or org
+// owner/admin.
+message RegisterAgentRequest {
+  string org = 1;             // org name or id
+  string agent_principal_id = 2;
+  string name = 3;
+  string runtime_id = 4;
+  string runtime = 5;         // with runtime_id empty too: the agent principal's runtime
+  string model = 6;
+  string instructions_path = 7;
+  repeated string toolsets = 8;
+  AgentRunBudget default_budget = 9;
+  repeated string owners = 10; // empty = the agent's owner
+  string purpose = 11;
+  optional bool enabled = 12;  // unset = enabled
+  repeated AgentSchedule schedules = 13;
+}
+
+// Request for GetAgent. Needs org membership.
+message GetAgentRequest {
+  string org = 1;
+  string agent_principal_id = 2;
+}
+
+// Request for ListAgents. Needs org membership.
+message ListAgentsRequest {
+  string org = 1;
+  string owner_id = 2;        // only definitions this principal owns
+  PageRequest page = 3;
+}
+
+// Response for ListAgents.
+message ListAgentsResponse {
+  repeated AgentDefinition agents = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateAgent. Needs being an owner of the agent, or org owner/admin.
+message UpdateAgentRequest {
+  string org = 1;
+  string agent_principal_id = 2;
+  optional string name = 3;
+  optional string runtime_id = 4;
+  optional string runtime = 5;
+  optional string model = 6;
+  optional string instructions_path = 7;
+  repeated string toolsets = 8;   // replaces when non-empty or replace_toolsets
+  bool replace_toolsets = 9;      // set toolsets even when the list is empty
+  AgentRunBudget default_budget = 10; // unset = unchanged
+  repeated string owners = 11;    // non-empty replaces
+  optional string purpose = 12;
+  optional bool enabled = 13;
+  repeated AgentSchedule schedules = 14; // replaces when non-empty or replace_schedules
+  bool replace_schedules = 15;
+}
+
+// Request for DeleteAgent. Needs being an owner of the agent, or org owner/admin.
+message DeleteAgentRequest {
+  string org = 1;
+  string agent_principal_id = 2;
+}
+
+// Response for DeleteAgent.
+message DeleteAgentResponse {}
+
+// ---------- Owner budgets ----------
+
+// One owner's monthly limits (0 = unlimited) and spend this UTC month.
+message AgentOwnerBudget {
+  string org = 1;
+  string owner_id = 2;
+  uint64 max_usd_micros = 3;
+  uint64 max_input_tokens = 4;
+  uint64 max_output_tokens = 5;
+  uint64 max_runs = 6;
+  Cost spent = 7;             // this month: tokens and USD
+  uint64 runs_started = 8;    // this month
+  // The limit already reached ("usd", "input_tokens", "output_tokens", "runs"), or empty.
+  string exhausted = 9;
+}
+
+// Request for SetAgentBudget. Needs org owner/admin.
+message SetAgentBudgetRequest {
+  string org = 1;
+  string owner_id = 2;        // empty = the caller
+  uint64 max_usd_micros = 3;
+  uint64 max_input_tokens = 4;
+  uint64 max_output_tokens = 5;
+  uint64 max_runs = 6;
+}
+
+// Request for GetAgentBudget. The owner itself, or org owner/admin.
+message GetAgentBudgetRequest {
+  string org = 1;
+  string owner_id = 2;        // empty = the caller
+}
+
+// ---------- Sessions and activity ----------
+
+// An agent session: one run's provenance.
+message AgentSession {
+  string session = 1;
+  string run_id = 2;
+  string agent_principal_id = 3;
+  string model = 4;
+  string runtime = 5;
+  bytes prompt_digest = 6;    // BLAKE3 of the prompt the runner received
+  repeated string chain = 7;  // delegation chain, agent first, root last
+  repeated ObjectId changesets = 8;
+  repeated string change_request_ids = 9;
+  Cost cost = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Request for GetSessionsForChange. Needs `read` on the repo; at least one of changeset and
+// change_request.
+message GetSessionsForChangeRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string change_request = 3;  // CR number or id
+}
+
+// Response for GetSessionsForChange.
+message GetSessionsForChangeResponse {
+  repeated AgentSession sessions = 1;
+}
+
+// Request for ListAgentActivity. Needs org membership.
+message ListAgentActivityRequest {
+  string org = 1;
+  string agent_principal_id = 2; // only events acted by this agent
+  string delegation_root = 3;    // only events whose delegation chain ends here
+  repeated string kinds = 4;     // exact, "prefix.*" or "*"; empty = all
+  uint64 from_seq = 5;           // 0 = oldest retained
+  uint32 limit = 6;              // default 100, at most 1000
+}
+
+// Response for ListAgentActivity.
+message ListAgentActivityResponse {
+  repeated Event events = 1;
+  uint64 next_seq = 2;        // pass as from_seq to resume
+}

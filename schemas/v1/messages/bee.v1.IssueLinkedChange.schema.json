@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "bee.v1.IssueLinkSource": {
+      "description": "How a change request came to be linked to an issue.",
+      "enum": [
+        "ISSUE_LINK_SOURCE_UNSPECIFIED",
+        "ISSUE_LINK_SOURCE_MANUAL",
+        "ISSUE_LINK_SOURCE_CLOSING_KEYWORD",
+        "ISSUE_LINK_SOURCE_BRANCH",
+        "ISSUE_LINK_SOURCE_AGENT_RUN"
+      ],
+      "title": "bee.v1.IssueLinkSource",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IssueLinkedChange.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A change request linked to an issue.",
+  "properties": {
+    "changeRequestId": {
+      "type": "string"
+    },
+    "closes": {
+      "description": "landing closes the issue",
+      "type": "boolean"
+    },
+    "linkedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "linkedBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "repoFullName": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/bee.v1.IssueLinkSource"
+    },
+    "state": {
+      "description": "\"open\", \"landed\", \"closed\"",
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.IssueLinkedChange",
+  "type": "object"
+}

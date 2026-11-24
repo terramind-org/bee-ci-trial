@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.OpsLogEntry": {
+      "description": "One structured log entry. Never contains raw paths or secrets.",
+      "properties": {
+        "cell": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "errorReason": {
+          "description": "an ErrorReason name, when the entry records a failure",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "level": {
+          "$ref": "#/$defs/bee.v1.OpsLogLevel"
+        },
+        "message": {
+          "type": "string"
+        },
+        "node": {
+          "type": "string"
+        },
+        "pathHashes": {
+          "description": "hashed paths, never raw paths",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "principalId": {
+          "type": "string"
+        },
+        "repoId": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "rpc": {
+          "description": "e.g. \"bee.v1.WriteService/Land\"",
+          "type": "string"
+        },
+        "time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsLogEntry",
+      "type": "object"
+    },
+    "bee.v1.OpsLogLevel": {
+      "description": "Log severity.",
+      "enum": [
+        "OPS_LOG_LEVEL_UNSPECIFIED",
+        "OPS_LOG_LEVEL_DEBUG",
+        "OPS_LOG_LEVEL_INFO",
+        "OPS_LOG_LEVEL_WARN",
+        "OPS_LOG_LEVEL_ERROR"
+      ],
+      "title": "bee.v1.OpsLogLevel",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.QueryOpsLogsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for QueryOpsLogs.",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsLogEntry"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.QueryOpsLogsResponse",
+  "type": "object"
+}

@@ -1,0 +1,17 @@
+event: push refs/heads/main
+--- .github/workflows/anchors.yml
+name: Anchors
+on: push
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    env: &common-env
+      RUST_BACKTRACE: 1
+      CARGO_INCREMENTAL: 0
+    steps: &steps
+      - uses: actions/checkout@v4
+      - run: cargo test
+  integration:
+    runs-on: ubuntu-latest
+    env: *common-env
+    steps: *steps

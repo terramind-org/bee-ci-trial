@@ -1,0 +1,73 @@
+id: AS-CORE-04
+area: "4.1"
+title: Answer "what changed in src/auth since yesterday" without fetching file contents
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: three days ago
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Initial auth module"
+      author_time: "${time:-72h}"
+      files:
+        src/auth/legacy.py: "def legacy_login(): ...\n"
+        src/auth/session.py: "SESSION_TTL = 3600\n"
+        src/auth/login.py: "def login(user, password): ...\n"
+        src/web/app.py: "app = None\n"
+  - name: two days ago
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Document legacy login"
+      author_time: "${time:-48h}"
+      files:
+        src/auth/legacy.py: "# deprecated\ndef legacy_login(): ...\n"
+  - name: five hours ago - modify login
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Rate-limit login"
+      author_time: "${time:-5h}"
+      files:
+        src/auth/login.py: "def login(user, password, limiter=None): ...\n"
+  - name: three hours ago - add tokens, delete session, touch web
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Replace sessions with tokens"
+      author_time: "${time:-3h}"
+      files:
+        src/auth/tokens.py: "TOKEN_TTL = 900\n"
+        src/auth/session.py: null
+        src/web/app.py: "app = object()\n"
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, which files under `src/auth/` changed on main since
+  ${time:-24h} (that is, in the last 24 hours)? Include files that were added or deleted. Answer
+  from history and metadata; do not download file contents.
+
+  Write your answer to `answer.json` in the current directory as:
+  {"paths": ["src/auth/...", ...]}
+assertions:
+  - name: ground truth - two recent changesets touch src/auth
+    call: QueryService/Log
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      from: { expr: main }
+      path: "${b64:src/auth}"
+      since: "${time:-24h}"
+    expect:
+      - { path: changesets, len: 2 }
+  - name: the agent listed exactly the three recently changed auth files
+    answer:
+      file: answer.json
+      expect:
+        - { path: paths, len: 3 }
+        - { path: paths, contains: src/auth/login.py }
+        - { path: paths, contains: src/auth/tokens.py }
+        - { path: paths, contains: src/auth/session.py }
+        - { path: paths, not_contains: src/auth/legacy.py }

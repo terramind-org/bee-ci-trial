@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/notification.mark-notification-threads-read.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.NotificationService/MarkNotificationThreadsRead: `data` is a bee.v1.MarkNotificationThreadsReadResponse in proto3-JSON. `bee notification mark-notification-threads-read --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.MarkNotificationThreadsReadResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.notification.mark-notification-threads-read"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee notification mark-notification-threads-read",
+  "type": "object"
+}

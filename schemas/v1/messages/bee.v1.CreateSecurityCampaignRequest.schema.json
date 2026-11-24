@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "bee.v1.SecurityAlertFilter": {
+      "description": "Which alerts a campaign targets.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SecurityAlertKind"
+        },
+        "query": {
+          "description": "free text with qualifiers, e.g. \"rule:js/xss\"",
+          "type": "string"
+        },
+        "repoIds": {
+          "description": "empty = all org repos",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "severities": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SecuritySeverity"
+          },
+          "type": "array"
+        },
+        "toolName": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecurityAlertFilter",
+      "type": "object"
+    },
+    "bee.v1.SecurityAlertKind": {
+      "description": "Kind of alert counted by the overview and targeted by campaigns.",
+      "enum": [
+        "SECURITY_ALERT_KIND_UNSPECIFIED",
+        "SECURITY_ALERT_KIND_DEPENDENCY",
+        "SECURITY_ALERT_KIND_CODE_SCANNING",
+        "SECURITY_ALERT_KIND_SECRET_SCANNING",
+        "SECURITY_ALERT_KIND_CODE_QUALITY"
+      ],
+      "title": "bee.v1.SecurityAlertKind",
+      "type": "string"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateSecurityCampaignRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateSecurityCampaign.",
+  "properties": {
+    "assigneePrincipalIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "assigneeTeamIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "dueAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "filter": {
+      "$ref": "#/$defs/bee.v1.SecurityAlertFilter"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "startAgentRuns": {
+      "description": "start an agent run per alert for agent assignees",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.CreateSecurityCampaignRequest",
+  "type": "object"
+}

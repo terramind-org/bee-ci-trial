@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/policy.list-policy-permissions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PolicyService/ListPolicyPermissions: `data` is a bee.v1.ListPolicyPermissionsResponse in proto3-JSON. `bee policy list-policy-permissions --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListPolicyPermissionsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.policy.list-policy-permissions"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee policy list-policy-permissions",
+  "type": "object"
+}

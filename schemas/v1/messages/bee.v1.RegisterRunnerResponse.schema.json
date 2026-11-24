@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Runner": {
+      "description": "A self-hosted or hosted runner.",
+      "properties": {
+        "arch": {
+          "$ref": "#/$defs/bee.v1.RunnerArch"
+        },
+        "busy": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "currentJobId": {
+          "type": "string"
+        },
+        "ephemeral": {
+          "type": "boolean"
+        },
+        "hosted": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RunnerLabel"
+          },
+          "type": "array"
+        },
+        "lastSeenAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "native": {
+          "description": "speaks the bee job protocol rather than actions/runner",
+          "type": "boolean"
+        },
+        "os": {
+          "$ref": "#/$defs/bee.v1.RunnerOs"
+        },
+        "runnerGroupId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.RunnerScope"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.RunnerStatus"
+        },
+        "version": {
+          "description": "runner software version",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Runner",
+      "type": "object"
+    },
+    "bee.v1.RunnerArch": {
+      "description": "CPU architecture of a runner or machine class.",
+      "enum": [
+        "RUNNER_ARCH_UNSPECIFIED",
+        "RUNNER_ARCH_X64",
+        "RUNNER_ARCH_ARM64"
+      ],
+      "title": "bee.v1.RunnerArch",
+      "type": "string"
+    },
+    "bee.v1.RunnerLabel": {
+      "description": "A label `runs-on` can match.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.RunnerLabelKind"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RunnerLabel",
+      "type": "object"
+    },
+    "bee.v1.RunnerLabelKind": {
+      "description": "Whether a label was set by the runner software or by a user.",
+      "enum": [
+        "RUNNER_LABEL_KIND_UNSPECIFIED",
+        "RUNNER_LABEL_KIND_DEFAULT",
+        "RUNNER_LABEL_KIND_CUSTOM"
+      ],
+      "title": "bee.v1.RunnerLabelKind",
+      "type": "string"
+    },
+    "bee.v1.RunnerOs": {
+      "description": "Operating system of a runner or machine class.",
+      "enum": [
+        "RUNNER_OS_UNSPECIFIED",
+        "RUNNER_OS_LINUX",
+        "RUNNER_OS_MACOS",
+        "RUNNER_OS_WINDOWS"
+      ],
+      "title": "bee.v1.RunnerOs",
+      "type": "string"
+    },
+    "bee.v1.RunnerScope": {
+      "description": "Names the repo or org that owns runners.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.RunnerScopeKind"
+        },
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.RunnerScope",
+      "type": "object"
+    },
+    "bee.v1.RunnerScopeKind": {
+      "description": "Whether a runner resource belongs to a repo or an org.",
+      "enum": [
+        "RUNNER_SCOPE_KIND_UNSPECIFIED",
+        "RUNNER_SCOPE_KIND_REPO",
+        "RUNNER_SCOPE_KIND_ORG"
+      ],
+      "title": "bee.v1.RunnerScopeKind",
+      "type": "string"
+    },
+    "bee.v1.RunnerStatus": {
+      "description": "Connection state of a runner.",
+      "enum": [
+        "RUNNER_STATUS_UNSPECIFIED",
+        "RUNNER_STATUS_ONLINE",
+        "RUNNER_STATUS_OFFLINE"
+      ],
+      "title": "bee.v1.RunnerStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RegisterRunnerResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for RegisterRunner.",
+  "properties": {
+    "credential": {
+      "description": "runner-scoped token for the job protocol; keep secret",
+      "type": "string"
+    },
+    "runner": {
+      "$ref": "#/$defs/bee.v1.Runner"
+    }
+  },
+  "title": "bee.v1.RegisterRunnerResponse",
+  "type": "object"
+}

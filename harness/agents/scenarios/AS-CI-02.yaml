@@ -1,0 +1,97 @@
+id: AS-CI-02
+area: "4.14"
+title: Introduce a regression; observe auto-bisect identify it and open a revert
+surfaces: both
+timeout: 2400
+budget: { max_turns: 100 }
+notes: >
+  Needs a runner for the post-land workflow (see AS-CI-01). While the agent works, the harness
+  lands two unrelated changes after it, so the bisect has a range to search.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add pricing with post-land tests"
+      files:
+        pricing.py: |
+          def price_with_vat(net_cents: int) -> int:
+              return net_cents + net_cents * 21 // 100
+        test_pricing.py: |
+          import unittest
+
+          from pricing import price_with_vat
+
+
+          class VatTest(unittest.TestCase):
+              def test_vat(self):
+                  self.assertEqual(price_with_vat(1000), 1210)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+        .github/workflows/post-land.yml: |
+          name: post-land
+          on:
+            push:
+              branches: [main]
+          jobs:
+            test:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - run: python -m unittest -v
+    save: seed
+agent:
+  token: "${workerToken}"
+prompt: |
+  We are testing the post-land safety net of the bee repository ${repo.fullName}. Land a change
+  on main that changes the VAT rate in `pricing.py` from 21% to 12% (and nothing else), which
+  breaks the tests. Then wait: the system should notice the failure on main, find the change
+  that caused it, and open a revert. Do not revert or fix it yourself.
+
+  When the system has opened the revert, write `answer.json` in the current directory as:
+  {"culprit": "<id of the changeset it blamed>", "revert_change_request": <number of the revert change request>}
+during:
+  - after_ms: 60000
+    steps:
+      - name: another agent lands unrelated work after the regression
+        commit: { repo: "${repo.fullName}", ref: main, message: "Docs: pricing", files: { docs/pricing.md: "VAT is applied at checkout.\n" } }
+      - commit: { repo: "${repo.fullName}", ref: main, message: "Docs: refunds", files: { docs/refunds.md: "Refunds take 5 days.\n" } }
+assertions:
+  - name: the regression is the worker's change to pricing.py
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, path: "${b64:pricing.py}", author: "${worker.id}", page: { pageSize: 1 }, includeMeta: true }
+    expect:
+      - { path: changesets, len: 1 }
+      - { path: "changesets[0].meta.provenance.session", eq: "${run.session}" }
+    save: { culprit: "changesets[0].id" }
+  - name: a bisect found it
+    call: CheckService/ListBisects
+    request: { repo: { fullName: "${repo.fullName}" }, state: BISECT_STATE_FOUND }
+    retry: { attempts: 30, interval_ms: 10000 }
+    expect:
+      - path: bisects
+        some:
+          - { path: firstBad.raw, eq: "${culprit.raw}" }
+          - { path: revertChangeRequestId, truthy: true }
+    save: { bisect: "bisects[0]" }
+  - name: the revert change request reverts the culprit
+    call: ChangeService/GetChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${bisect.revertChangeRequestId}" }
+    save: { revert: "$" }
+    expect:
+      - { path: state, in: [CHANGE_STATE_OPEN, CHANGE_STATE_LANDED] }
+  - name: the worker did not revert it by hand
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, authorId: "${worker.id}" }
+    expect:
+      - path: changes
+        none:
+          - { path: id, eq: "${bisect.revertChangeRequestId}" }
+  - name: the agent reported the system's findings
+    answer:
+      file: answer.json
+      expect:
+        - { path: culprit, prefix_of: "${id:culprit}" }
+        - { path: revert_change_request, eq: "${revert.number}" }

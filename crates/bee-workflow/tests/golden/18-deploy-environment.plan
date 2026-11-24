@@ -1,0 +1,25 @@
+# event push action=-
+run .github/workflows/deploy.yml "Deploy"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job build decided=true
+    instance "build"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run make dist"
+        run: "make dist"
+        shell: default -> "bash -e {0}"
+  job deploy needs=[build]
+    instance "deploy"
+      runs-on: ["linux", "deploy"] group="production-runners"
+      environment: "production" url="${{ steps.deploy.outputs.url }}"
+      concurrency: "production" cancel-in-progress=false
+      permissions: default
+      timeout-minutes: 15
+      step 1 "Run ./deploy.sh --region eu --url https://widget.example" id=deploy
+        run: "./deploy.sh --region eu --url https://widget.example"
+        shell: default -> "bash -e {0}"
+        env:
+          DEPLOY_KEY: "${{ secrets.DEPLOY_KEY }}"

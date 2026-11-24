@@ -1,0 +1,19 @@
+# event repository_dispatch action=deploy-service
+run .github/workflows/dispatch.yml "External deploy"
+  run-name: "External deploy"
+  event: repository_dispatch ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: default
+  job deploy decided=true
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./deploy api@1.2.3"
+        run: "./deploy api@1.2.3"
+        shell: default -> "bash -e {0}"
+      step 2 "Run ./canary deploy-service" if="github.event.client_payload.canary"
+        run: "./canary deploy-service"
+        shell: default -> "bash -e {0}"
+      step 3 "Run echo '{"
+        run: "echo '{\n  \"service\": \"api\",\n  \"version\": \"1.2.3\",\n  \"canary\": true\n}'"
+        shell: default -> "bash -e {0}"

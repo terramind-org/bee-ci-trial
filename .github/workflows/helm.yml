@@ -1,0 +1,34 @@
+# End-to-end check of the Helm chart (deploy/helm/bee): lints and validates it, builds both
+# images, installs the chart on a kind cluster and drives it with the CLI, git and HTTP
+# (scripts/check-helm.sh). The script uses a kubeconfig of its own and only ever touches the kind
+# cluster it creates.
+name: helm
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  helm-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      # The version the chart was tested with; the script itself pins kind, its node image and kubeconform.
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.1
+      - name: Check the Helm chart
+        env:
+          CI: "true"
+          # The hosted runner has 4 CPUs and 16 GiB: compile with all of them.
+          BEE_CHECK_CARGO_BUILD_JOBS: "4"
+        run: scripts/check-helm.sh

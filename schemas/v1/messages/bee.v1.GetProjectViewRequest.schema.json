@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetProjectViewRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetProjectView.",
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "viewId": {
+      "description": "id or number in decimal",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetProjectViewRequest",
+  "type": "object"
+}

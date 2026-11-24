@@ -1,0 +1,54 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateMarketplaceListingRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateMarketplaceListing. Unset fields are unchanged.",
+  "properties": {
+    "categories": {
+      "description": "replaces the list when replace_categories is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "fullDescription": {
+      "type": "string"
+    },
+    "listing": {
+      "description": "slug or id",
+      "type": "string"
+    },
+    "logoUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "privacyPolicyUrl": {
+      "type": "string"
+    },
+    "replaceCategories": {
+      "type": "boolean"
+    },
+    "replaceScreenshotUrls": {
+      "type": "boolean"
+    },
+    "screenshotUrls": {
+      "description": "replaces the list when replace_screenshot_urls is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "shortDescription": {
+      "type": "string"
+    },
+    "supportUrl": {
+      "type": "string"
+    },
+    "termsUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateMarketplaceListingRequest",
+  "type": "object"
+}

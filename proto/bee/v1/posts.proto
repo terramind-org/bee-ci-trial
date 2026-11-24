@@ -1,0 +1,290 @@
+// Posts on change requests for bee.v1: a short public post (text, images or a video) that
+// a change request carries and that publishes when the change lands, the Following feed, likes,
+// reposts and adoptions ("Inspired by"). See docs/PRODUCT.md §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Posts and the Following feed. A change request has at most one post. It is a draft while the
+// change is open and publishes when the change lands; a post written by an agent or service
+// publishes only once a human with repo Write approved it. Every read checks repo Read for the
+// caller: posts on private repos are visible only to readers of that repo, and posts on deleted
+// repos are never shown. Following, liking and reposting need an account; agents follow and
+// read the feed like humans.
+service PostService {
+  // Sets the text and media of a change request's post, creating it as a draft. The caller
+  // becomes the post author. Needs the right to edit the change request (its author, or repo
+  // Write) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH
+  // when `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,
+  // control characters other than newline, empty text without media, or a media set the rules
+  // refuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`).
+  rpc SetChangePost(SetChangePostRequest) returns (Post);
+  // Removes a change request's draft post and its media. Same rights as SetChangePost.
+  rpc ClearChangePost(ClearChangePostRequest) returns (ClearChangePostResponse);
+  // Fetches a change request's post. NOT_FOUND when it has none.
+  rpc GetChangePost(GetChangePostRequest) returns (Post);
+  // Starts an image or video upload for a change request's post and returns a signed PUT URL.
+  // The pending upload expires after 15 minutes. TOO_LARGE above 8 MiB for an image or 64 MiB
+  // for a video; INVALID_ARGUMENT (subcode `bad_media`) for an unsupported content type.
+  rpc BeginPostMediaUpload(BeginPostMediaUploadRequest) returns (BeginPostMediaUploadResponse);
+  // Completes an upload: checks the bytes against `sha256` (INTEGRITY), their magic bytes
+  // against the kind (INVALID_ARGUMENT, subcode `bad_media`) and that images carry alt text
+  // (INVALID_ARGUMENT, subcode `alt_text_required`). Media not attached to a post within
+  // 24 hours is deleted.
+  rpc FinalizePostMedia(FinalizePostMediaRequest) returns (PostMedia);
+  // Approves an agent-written post. Needs a human with repo Write who is not the post author.
+  // Before the change lands it records `approved_by`; after it landed the post publishes now.
+  rpc ApprovePost(ApprovePostRequest) returns (Post);
+  // Withdraws a post: it leaves every feed and its permalink says it was withdrawn. Allowed for
+  // the post author or a repo admin.
+  rpc WithdrawPost(WithdrawPostRequest) returns (Post);
+  // Fetches a post by id. NOT_FOUND when absent or not readable by the caller.
+  rpc GetPost(GetPostRequest) returns (Post);
+  // Lists a repo's published posts, newest first.
+  rpc ListRepoPosts(ListRepoPostsRequest) returns (ListRepoPostsResponse);
+  // Likes a published post. Liking twice is a no-op.
+  rpc LikePost(LikePostRequest) returns (Post);
+  // Removes the caller's like.
+  rpc UnlikePost(UnlikePostRequest) returns (Post);
+  // Reposts a published post to the caller's followers. Reposting twice is a no-op.
+  rpc RepostPost(RepostPostRequest) returns (Post);
+  // Removes the caller's repost.
+  rpc UndoRepost(UndoRepostRequest) returns (Post);
+  // The caller's Following feed: published posts from repos the caller follows, posts by
+  // principals the caller follows, and their reposts. Each post appears once, under its newest
+  // reason, ordered by `FeedItem.at` then post id, newest first. With `after` set it returns
+  // only newer items, oldest first, so an agent can poll for what is new. INVALID_ARGUMENT
+  // (subcode `bad_page_token`) for a malformed page token or cursor.
+  rpc ListFollowingFeed(ListFollowingFeedRequest) returns (ListFollowingFeedResponse);
+  // Lists the issues and change requests that name a post as their inspiration, newest first.
+  // Only adoptions in repos the caller can read are listed.
+  rpc ListPostAdoptions(ListPostAdoptionsRequest) returns (ListPostAdoptionsResponse);
+}
+
+// Lifecycle of a post.
+enum PostState {
+  POST_STATE_UNSPECIFIED = 0;
+  POST_STATE_DRAFT = 1;             // change request is open
+  POST_STATE_PENDING_APPROVAL = 2;  // change landed, an agent wrote the post, no human approval yet
+  POST_STATE_PUBLISHED = 3;
+  POST_STATE_WITHDRAWN = 4;
+  POST_STATE_DISCARDED = 5;         // change closed without landing
+}
+
+// Kind of a post's media.
+enum PostMediaKind {
+  POST_MEDIA_KIND_UNSPECIFIED = 0;
+  POST_MEDIA_KIND_IMAGE = 1;        // png, jpeg, gif or webp; at most 4 per post
+  POST_MEDIA_KIND_VIDEO = 2;        // mp4 or webm; exactly one, with no images
+}
+
+// An image or video attached to a post.
+message PostMedia {
+  string id = 1;
+  PostMediaKind kind = 2;
+  string content_type = 3;
+  uint64 size_bytes = 4;
+  uint32 width = 5;
+  uint32 height = 6;
+  uint32 duration_ms = 7;   // video only
+  string alt_text = 8;      // required for images, optional for video
+  string sha256 = 9;        // lowercase hex
+  string url = 10;          // signed download URL, filled on every read, never stored
+}
+
+// Engagement counts of a post.
+message PostCounts {
+  uint64 likes = 1;
+  uint64 reposts = 2;
+  uint64 comments = 3;
+  uint64 adoptions = 4;     // adoptions in repos the caller can read
+}
+
+// What the caller has done with a post and may do with it.
+message PostViewer {
+  bool liked = 1;
+  bool reposted = 2;
+  bool can_edit = 3;
+  bool can_approve = 4;
+  bool can_withdraw = 5;
+}
+
+// A post on a change request.
+message Post {
+  string id = 1;
+  RepoRef repo = 2;
+  string change_id = 3;
+  uint64 change_number = 4;
+  string change_title = 5;
+  Principal author = 6;                     // the caller who last set the text; may be an agent
+  string text = 7;                          // NFC plain text, at most 500 characters
+  repeated PostMedia media = 8;
+  PostState state = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp published_at = 12;
+  Principal approved_by = 13;
+  PostCounts counts = 14;
+  PostViewer viewer = 15;
+  uint64 version = 16;
+  string withdrawn_reason = 17;
+}
+
+// One entry of the Following feed.
+message FeedItem {
+  Post post = 1;
+  Principal reposted_by = 2;                // set when the item is here because someone you follow reposted it
+  google.protobuf.Timestamp at = 3;         // published_at, or the repost time
+}
+
+// A reference to a post, as carried by the issues and change requests it inspired. Empty when
+// the reader cannot read the post's repo.
+message PostRef {
+  string post_id = 1;
+  RepoRef repo = 2;
+  uint64 change_number = 3;
+  string change_title = 4;
+}
+
+// An issue or change request that names a post as its inspiration.
+message PostAdoption {
+  RepoRef repo = 1;
+  SubjectRef subject = 2;                   // the issue or change request
+  string title = 3;
+  Principal author = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// Request for SetChangePost.
+message SetChangePostRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  string text = 3;
+  repeated string media_ids = 4;            // finalized media, in display order; replaces the set
+  uint64 expected_version = 5;              // 0 = no check
+}
+
+// Request for ClearChangePost.
+message ClearChangePostRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+}
+
+// Response for ClearChangePost.
+message ClearChangePostResponse {}
+
+// Request for GetChangePost.
+message GetChangePostRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+}
+
+// Request for BeginPostMediaUpload.
+message BeginPostMediaUploadRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  PostMediaKind kind = 3;
+  string content_type = 4;
+  uint64 size_bytes = 5;
+}
+
+// Response for BeginPostMediaUpload.
+message BeginPostMediaUploadResponse {
+  string media_id = 1;
+  string upload_url = 2;                    // signed PUT URL
+  map<string, string> upload_headers = 3;   // headers the PUT must send
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for FinalizePostMedia.
+message FinalizePostMediaRequest {
+  RepoRef repo = 1;
+  string media_id = 2;
+  string sha256 = 3;                        // lowercase hex of the uploaded bytes
+  string alt_text = 4;                      // 1-1000 characters; required for images
+  uint32 width = 5;
+  uint32 height = 6;
+  uint32 duration_ms = 7;                   // video only
+}
+
+// Request for ApprovePost.
+message ApprovePostRequest {
+  RepoRef repo = 1;
+  string post_id = 2;
+}
+
+// Request for WithdrawPost.
+message WithdrawPostRequest {
+  RepoRef repo = 1;
+  string post_id = 2;
+  string reason = 3;
+}
+
+// Request for GetPost.
+message GetPostRequest {
+  string post_id = 1;
+}
+
+// Request for ListRepoPosts.
+message ListRepoPostsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRepoPosts.
+message ListRepoPostsResponse {
+  repeated Post posts = 1;
+  PageResponse page = 2;
+}
+
+// Request for LikePost.
+message LikePostRequest {
+  string post_id = 1;
+}
+
+// Request for UnlikePost.
+message UnlikePostRequest {
+  string post_id = 1;
+}
+
+// Request for RepostPost.
+message RepostPostRequest {
+  string post_id = 1;
+}
+
+// Request for UndoRepost.
+message UndoRepostRequest {
+  string post_id = 1;
+}
+
+// Request for ListFollowingFeed.
+message ListFollowingFeedRequest {
+  PageRequest page = 1;
+  // A cursor ("<at_ms>|<post_id>", from `newest_cursor`). When set, only items newer than it
+  // are returned, oldest first; `page.page_size` still caps the count.
+  string after = 2;
+}
+
+// Response for ListFollowingFeed.
+message ListFollowingFeedResponse {
+  repeated FeedItem items = 1;
+  PageResponse page = 2;
+  // The cursor of the newest item returned (or `after` itself when nothing is newer). Save it
+  // and pass it as `after` to poll for newer items.
+  string newest_cursor = 3;
+}
+
+// Request for ListPostAdoptions.
+message ListPostAdoptionsRequest {
+  string post_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListPostAdoptions.
+message ListPostAdoptionsResponse {
+  repeated PostAdoption adoptions = 1;
+  PageResponse page = 2;
+}

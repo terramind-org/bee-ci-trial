@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/insights.get-traffic-clones.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.InsightsService/GetTrafficClones: `data` is a bee.v1.GetTrafficClonesResponse in proto3-JSON. `bee insights get-traffic-clones --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GetTrafficClonesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.insights.get-traffic-clones"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee insights get-traffic-clones",
+  "type": "object"
+}

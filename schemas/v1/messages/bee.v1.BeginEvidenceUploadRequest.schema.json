@@ -1,0 +1,250 @@
+{
+  "$defs": {
+    "bee.v1.BenchmarkSeries": {
+      "description": "One measured series of a benchmark: the baseline (the target branch) and the change.",
+      "properties": {
+        "baseline": {
+          "type": "number"
+        },
+        "lowerIsBetter": {
+          "type": "boolean"
+        },
+        "name": {
+          "description": "e.g. \"p95 latency\"",
+          "type": "string"
+        },
+        "unit": {
+          "description": "e.g. \"ms\"",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "title": "bee.v1.BenchmarkSeries",
+      "type": "object"
+    },
+    "bee.v1.EvidenceAssetRole": {
+      "description": "The part an asset plays in its evidence item.",
+      "enum": [
+        "EVIDENCE_ASSET_ROLE_UNSPECIFIED",
+        "EVIDENCE_ASSET_ROLE_MAIN",
+        "EVIDENCE_ASSET_ROLE_BEFORE",
+        "EVIDENCE_ASSET_ROLE_AFTER",
+        "EVIDENCE_ASSET_ROLE_POSTER",
+        "EVIDENCE_ASSET_ROLE_CAPTIONS"
+      ],
+      "title": "bee.v1.EvidenceAssetRole",
+      "type": "string"
+    },
+    "bee.v1.EvidenceKind": {
+      "description": "What an evidence item shows. Each kind allows a fixed set of assets (by role); anything else\nis INVALID_ARGUMENT (subcode `bad_evidence`). Every image asset needs alt text.",
+      "enum": [
+        "EVIDENCE_KIND_UNSPECIFIED",
+        "EVIDENCE_KIND_SCREENSHOT",
+        "EVIDENCE_KIND_BEFORE_AFTER",
+        "EVIDENCE_KIND_VIDEO",
+        "EVIDENCE_KIND_BENCHMARK",
+        "EVIDENCE_KIND_IMAGE",
+        "EVIDENCE_KIND_AUDIO",
+        "EVIDENCE_KIND_DOCUMENT",
+        "EVIDENCE_KIND_PREVIEW_LINK",
+        "EVIDENCE_KIND_TEST_REPORT"
+      ],
+      "title": "bee.v1.EvidenceKind",
+      "type": "string"
+    },
+    "bee.v1.EvidenceSpec": {
+      "description": "What the author says about an evidence item.",
+      "properties": {
+        "benchmark": {
+          "description": "BENCHMARK only, 1-20 series",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BenchmarkSeries"
+          },
+          "type": "array"
+        },
+        "caption": {
+          "description": "at most 1000 characters, plain text",
+          "type": "string"
+        },
+        "hero": {
+          "description": "shown first; setting it clears the CR's previous hero",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.EvidenceKind"
+        },
+        "order": {
+          "description": "position in the gallery, ascending",
+          "format": "int32",
+          "type": "integer"
+        },
+        "paths": {
+          "description": "repo paths the item shows (UTF-8), at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testReport": {
+          "$ref": "#/$defs/bee.v1.TestReport",
+          "description": "TEST_REPORT only"
+        },
+        "title": {
+          "description": "1-120 characters",
+          "type": "string"
+        },
+        "url": {
+          "description": "PREVIEW_LINK only, https",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EvidenceSpec",
+      "type": "object"
+    },
+    "bee.v1.EvidenceUploadAsset": {
+      "description": "One file BeginEvidenceUpload should expect.",
+      "properties": {
+        "alt": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "height": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.EvidenceAssetRole"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "width": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.EvidenceUploadAsset",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.TestFailure": {
+      "description": "A failed test of a test report.",
+      "properties": {
+        "message": {
+          "description": "first lines of the failure, plain text",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TestFailure",
+      "type": "object"
+    },
+    "bee.v1.TestReport": {
+      "description": "The outcome of a test run, in numbers.",
+      "properties": {
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failures": {
+          "description": "at most 50",
+          "items": {
+            "$ref": "#/$defs/bee.v1.TestFailure"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "summary": {
+          "description": "one line in words, e.g. \"All 214 billing tests pass\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TestReport",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginEvidenceUploadRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for BeginEvidenceUpload.",
+  "properties": {
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.EvidenceUploadAsset"
+      },
+      "type": "array"
+    },
+    "changeId": {
+      "type": "string"
+    },
+    "checkRunId": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "revision": {
+      "description": "as in AddEvidenceRequest",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "spec": {
+      "$ref": "#/$defs/bee.v1.EvidenceSpec"
+    }
+  },
+  "title": "bee.v1.BeginEvidenceUploadRequest",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetModelUsageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetModelUsage.",
+  "properties": {
+    "groupByPrincipal": {
+      "type": "boolean"
+    },
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "description": "empty = whole org",
+      "type": "string"
+    },
+    "windowEnd": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "windowStart": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetModelUsageRequest",
+  "type": "object"
+}

@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetPackageUsageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetPackageUsage.",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "since": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetPackageUsageRequest",
+  "type": "object"
+}

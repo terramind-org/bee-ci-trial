@@ -1,0 +1,956 @@
+{
+  "$defs": {
+    "bee.v1.AutoMerge": {
+      "description": "Auto-merge settings on a CR.",
+      "properties": {
+        "commitMessage": {
+          "type": "string"
+        },
+        "enabledAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "enabledBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "method": {
+          "$ref": "#/$defs/bee.v1.LandMethod"
+        },
+        "onBehalfOf": {
+          "description": "Delegation chain the land is evaluated for (enabled_by first, the root last).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.AutoMerge",
+      "type": "object"
+    },
+    "bee.v1.BriefAsk": {
+      "description": "A decision the author asks a person to make. Answering posts a comment\n`Decision on \"<question>\": <option>` that agents read.",
+      "properties": {
+        "options": {
+          "description": "2-6 options, each at most 80 characters",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "question": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefAsk",
+      "type": "object"
+    },
+    "bee.v1.BriefHighlight": {
+      "description": "One thing the change does, with the paths that do it.",
+      "properties": {
+        "paths": {
+          "description": "repo paths (UTF-8), at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefHighlight",
+      "type": "object"
+    },
+    "bee.v1.BriefRisk": {
+      "description": "A risk the author sees, and what mitigates it.",
+      "properties": {
+        "mitigation": {
+          "description": "at most 280 characters",
+          "type": "string"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefRisk",
+      "type": "object"
+    },
+    "bee.v1.ChangeBrief": {
+      "description": "A change request's brief (SPEC §11.9): what a busy person reads first. Set through\nBriefService.SetChangeBrief or OpenChangeRequest.brief; fields 7-9 are set by the server.",
+      "properties": {
+        "asks": {
+          "description": "decisions the author wants from a person, at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefAsk"
+          },
+          "type": "array"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "highlights": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefHighlight"
+          },
+          "type": "array"
+        },
+        "outcome": {
+          "description": "one line: what is different for users, at most 280 characters",
+          "type": "string"
+        },
+        "risks": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefRisk"
+          },
+          "type": "array"
+        },
+        "rollback": {
+          "description": "how to undo it, in words",
+          "type": "string"
+        },
+        "tryItUrl": {
+          "description": "https URL where the change can be tried",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "writtenForRevision": {
+          "description": "the current revision when the brief was set",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.ChangeBrief",
+      "type": "object"
+    },
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.ChangeRequest": {
+      "properties": {
+        "allowMaintainerEdits": {
+          "description": "fork CRs: target-repo writers may push to head_ref",
+          "type": "boolean"
+        },
+        "assignees": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Principal"
+          },
+          "type": "array"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "autoMerge": {
+          "$ref": "#/$defs/bee.v1.AutoMerge",
+          "description": "set while auto-merge is enabled"
+        },
+        "body": {
+          "type": "string"
+        },
+        "brief": {
+          "$ref": "#/$defs/bee.v1.ChangeBrief",
+          "description": "what it does, in words (SPEC §11.9); unset until written"
+        },
+        "changeIds": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ChangeId"
+          },
+          "type": "array"
+        },
+        "closeReason": {
+          "type": "string"
+        },
+        "closedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "closingIssues": {
+          "description": "The linked issues that close when the CR lands (closing keywords, plus manual links\nmade with close_on_land), sorted; a subset of linked_issues.",
+          "items": {
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "type": "array"
+        },
+        "commentCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "dependsOn": {
+          "description": "parent CR id for stacked CRs",
+          "type": "string"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "headRef": {
+          "description": "ref (in head_repo_id, else this repo) the CR was opened from",
+          "type": "string"
+        },
+        "headRepoId": {
+          "description": "fork the head comes from; empty = this repo",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inspiredBy": {
+          "$ref": "#/$defs/bee.v1.PostRef",
+          "description": "the post that inspired it; empty when its repo is unreadable"
+        },
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Label"
+          },
+          "type": "array"
+        },
+        "landedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "landedRef": {
+          "$ref": "#/$defs/bee.v1.Ref",
+          "description": "ref and version the CR landed at"
+        },
+        "linkedIssues": {
+          "description": "issue numbers this CR implements",
+          "items": {
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "type": "array"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "mergeQueueEntry": {
+          "$ref": "#/$defs/bee.v1.MergeQueueEntry",
+          "description": "set while queued"
+        },
+        "milestone": {
+          "$ref": "#/$defs/bee.v1.Milestone"
+        },
+        "number": {
+          "description": "per-repo number shared with issues",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "post": {
+          "$ref": "#/$defs/bee.v1.Post",
+          "description": "the CR's post, read-only summary; unset when it has none"
+        },
+        "reactions": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ReactionGroup"
+          },
+          "type": "array"
+        },
+        "repoId": {
+          "type": "string"
+        },
+        "revertOf": {
+          "description": "CR id this CR reverts",
+          "type": "string"
+        },
+        "reviewRequests": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ReviewRequest"
+          },
+          "type": "array"
+        },
+        "revisions": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ChangeRevision"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.ChangeState"
+        },
+        "summary": {
+          "description": "agent- or human-authored summary",
+          "type": "string"
+        },
+        "summaryAuthor": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "targetRef": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ChangeRequest",
+      "type": "object"
+    },
+    "bee.v1.ChangeRevision": {
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "diffClass": {
+          "description": "highest-risk class in this revision",
+          "type": "string"
+        },
+        "head": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "n": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pusher": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "who pushed this revision"
+        }
+      },
+      "title": "bee.v1.ChangeRevision",
+      "type": "object"
+    },
+    "bee.v1.ChangeState": {
+      "enum": [
+        "CHANGE_STATE_UNSPECIFIED",
+        "CHANGE_STATE_OPEN",
+        "CHANGE_STATE_LANDED",
+        "CHANGE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.ChangeState",
+      "type": "string"
+    },
+    "bee.v1.Label": {
+      "description": "A repo label shared by issues, change requests and discussions.",
+      "properties": {
+        "color": {
+          "description": "six hex digits, no '#'",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDefault": {
+          "description": "part of the repo's default label set",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Label",
+      "type": "object"
+    },
+    "bee.v1.LandMethod": {
+      "description": "How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).",
+      "enum": [
+        "LAND_METHOD_UNSPECIFIED",
+        "LAND_METHOD_REBASE",
+        "LAND_METHOD_SQUASH",
+        "LAND_METHOD_MERGE_COMMIT"
+      ],
+      "title": "bee.v1.LandMethod",
+      "type": "string"
+    },
+    "bee.v1.MergeQueueEntry": {
+      "description": "One CR's place in a ref's merge queue.",
+      "properties": {
+        "changeNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestId": {
+          "type": "string"
+        },
+        "ejectReason": {
+          "description": "ErrorReason name when EJECTED",
+          "type": "string"
+        },
+        "enqueuedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "enqueuedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "estimatedLandAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "landMethod": {
+          "$ref": "#/$defs/bee.v1.LandMethod",
+          "description": "how the entry lands (UNSPECIFIED = the repo default)"
+        },
+        "onBehalfOf": {
+          "description": "Delegation chain the land is evaluated for (enqueued_by first, the root last).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "position": {
+          "description": "1 = next",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "priority": {
+          "description": "higher jumps ahead within policy limits",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "speculativeHead": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "the queued result being checked"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.MergeQueueState"
+        },
+        "title": {
+          "description": "Title of the change request in the queue (gap G9).",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.MergeQueueEntry",
+      "type": "object"
+    },
+    "bee.v1.MergeQueueState": {
+      "description": "State of a CR in a merge queue.",
+      "enum": [
+        "MERGE_QUEUE_STATE_UNSPECIFIED",
+        "MERGE_QUEUE_STATE_QUEUED",
+        "MERGE_QUEUE_STATE_CHECKING",
+        "MERGE_QUEUE_STATE_LANDING",
+        "MERGE_QUEUE_STATE_LANDED",
+        "MERGE_QUEUE_STATE_EJECTED"
+      ],
+      "title": "bee.v1.MergeQueueState",
+      "type": "string"
+    },
+    "bee.v1.Milestone": {
+      "description": "A repo milestone with progress.",
+      "properties": {
+        "closedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "closedItems": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "dueOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "openItems": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.MilestoneState"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Milestone",
+      "type": "object"
+    },
+    "bee.v1.MilestoneState": {
+      "description": "Open or closed state of a milestone.",
+      "enum": [
+        "MILESTONE_STATE_UNSPECIFIED",
+        "MILESTONE_STATE_OPEN",
+        "MILESTONE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.MilestoneState",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Post": {
+      "description": "A post on a change request.",
+      "properties": {
+        "approvedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "the caller who last set the text; may be an agent"
+        },
+        "changeId": {
+          "type": "string"
+        },
+        "changeNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeTitle": {
+          "type": "string"
+        },
+        "counts": {
+          "$ref": "#/$defs/bee.v1.PostCounts"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.PostMedia"
+          },
+          "type": "array"
+        },
+        "publishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.PostState"
+        },
+        "text": {
+          "description": "NFC plain text, at most 500 characters",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "viewer": {
+          "$ref": "#/$defs/bee.v1.PostViewer"
+        },
+        "withdrawnReason": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Post",
+      "type": "object"
+    },
+    "bee.v1.PostCounts": {
+      "description": "Engagement counts of a post.",
+      "properties": {
+        "adoptions": {
+          "description": "adoptions in repos the caller can read",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "comments": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "likes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "reposts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.PostCounts",
+      "type": "object"
+    },
+    "bee.v1.PostMedia": {
+      "description": "An image or video attached to a post.",
+      "properties": {
+        "altText": {
+          "description": "required for images, optional for video",
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "durationMs": {
+          "description": "video only",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "height": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PostMediaKind"
+        },
+        "sha256": {
+          "description": "lowercase hex",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "url": {
+          "description": "signed download URL, filled on every read, never stored",
+          "type": "string"
+        },
+        "width": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.PostMedia",
+      "type": "object"
+    },
+    "bee.v1.PostMediaKind": {
+      "description": "Kind of a post's media.",
+      "enum": [
+        "POST_MEDIA_KIND_UNSPECIFIED",
+        "POST_MEDIA_KIND_IMAGE",
+        "POST_MEDIA_KIND_VIDEO"
+      ],
+      "title": "bee.v1.PostMediaKind",
+      "type": "string"
+    },
+    "bee.v1.PostRef": {
+      "description": "A reference to a post, as carried by the issues and change requests it inspired. Empty when\nthe reader cannot read the post's repo.",
+      "properties": {
+        "changeNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeTitle": {
+          "type": "string"
+        },
+        "postId": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.PostRef",
+      "type": "object"
+    },
+    "bee.v1.PostState": {
+      "description": "Lifecycle of a post.",
+      "enum": [
+        "POST_STATE_UNSPECIFIED",
+        "POST_STATE_DRAFT",
+        "POST_STATE_PENDING_APPROVAL",
+        "POST_STATE_PUBLISHED",
+        "POST_STATE_WITHDRAWN",
+        "POST_STATE_DISCARDED"
+      ],
+      "title": "bee.v1.PostState",
+      "type": "string"
+    },
+    "bee.v1.PostViewer": {
+      "description": "What the caller has done with a post and may do with it.",
+      "properties": {
+        "canApprove": {
+          "type": "boolean"
+        },
+        "canEdit": {
+          "type": "boolean"
+        },
+        "canWithdraw": {
+          "type": "boolean"
+        },
+        "liked": {
+          "type": "boolean"
+        },
+        "reposted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.PostViewer",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReactionContent": {
+      "description": "Reaction emoji, matching GitHub's fixed set.",
+      "enum": [
+        "REACTION_CONTENT_UNSPECIFIED",
+        "REACTION_CONTENT_THUMBS_UP",
+        "REACTION_CONTENT_THUMBS_DOWN",
+        "REACTION_CONTENT_LAUGH",
+        "REACTION_CONTENT_HOORAY",
+        "REACTION_CONTENT_CONFUSED",
+        "REACTION_CONTENT_HEART",
+        "REACTION_CONTENT_ROCKET",
+        "REACTION_CONTENT_EYES"
+      ],
+      "title": "bee.v1.ReactionContent",
+      "type": "string"
+    },
+    "bee.v1.ReactionGroup": {
+      "description": "Count of one reaction on a subject, and whether the caller is among them.",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/bee.v1.ReactionContent"
+        },
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "viewerReacted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.ReactionGroup",
+      "type": "object"
+    },
+    "bee.v1.Ref": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Ref",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.ReviewRequest": {
+      "description": "A pending review request for a principal or a team.",
+      "properties": {
+        "autoAssigned": {
+          "type": "boolean"
+        },
+        "requestedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "requestedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "set for principals"
+        },
+        "teamId": {
+          "description": "set for teams",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ReviewRequest",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListChangesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ChangeRequest"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListChangesResponse",
+  "type": "object"
+}

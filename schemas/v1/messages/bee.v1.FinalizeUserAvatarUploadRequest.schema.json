@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.FinalizeUserAvatarUploadRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for FinalizeUserAvatarUpload.",
+  "properties": {
+    "sha256": {
+      "contentEncoding": "base64",
+      "type": "string"
+    },
+    "uploadId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.FinalizeUserAvatarUploadRequest",
+  "type": "object"
+}

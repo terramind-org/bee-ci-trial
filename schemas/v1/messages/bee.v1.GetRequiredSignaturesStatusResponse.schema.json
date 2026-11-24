@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PolicySignatureCheck": {
+      "description": "Signature state of one changeset.",
+      "properties": {
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "format": {
+          "description": "\"gpg\", \"ssh\", \"x509\", \"sigstore\"",
+          "type": "string"
+        },
+        "gitOid": {
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "signerPrincipalId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.PolicySignatureState"
+        }
+      },
+      "title": "bee.v1.PolicySignatureCheck",
+      "type": "object"
+    },
+    "bee.v1.PolicySignatureState": {
+      "description": "Verification state of a changeset's signature.",
+      "enum": [
+        "POLICY_SIGNATURE_STATE_UNSPECIFIED",
+        "POLICY_SIGNATURE_STATE_VERIFIED",
+        "POLICY_SIGNATURE_STATE_UNSIGNED",
+        "POLICY_SIGNATURE_STATE_UNKNOWN_KEY",
+        "POLICY_SIGNATURE_STATE_BAD_SIGNATURE",
+        "POLICY_SIGNATURE_STATE_EXPIRED_KEY",
+        "POLICY_SIGNATURE_STATE_REVOKED_KEY",
+        "POLICY_SIGNATURE_STATE_UNVERIFIED_EMAIL"
+      ],
+      "title": "bee.v1.PolicySignatureState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetRequiredSignaturesStatusResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetRequiredSignaturesStatus.",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PolicySignatureCheck"
+      },
+      "type": "array"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "requiredByPolicyFile": {
+      "type": "boolean"
+    },
+    "requiredByRulesetIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GetRequiredSignaturesStatusResponse",
+  "type": "object"
+}

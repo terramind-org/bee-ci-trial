@@ -1,0 +1,89 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/show.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee show --json`: one such document with `schema` = bee.v1.show. Show a changeset (default: the checked-out change): meta, provenance and its diff. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "changesets": {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GetChangesetsResponse.schema.json"
+        },
+        "files": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "additions": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "binary": {
+                "type": "boolean"
+              },
+              "deletions": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "newMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "oldMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "modified",
+                  "deleted",
+                  "renamed",
+                  "copied",
+                  "mode-changed"
+                ]
+              },
+              "unified": {
+                "description": "Unified diff text; empty for binary files.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "status",
+              "oldMode",
+              "newMode",
+              "binary",
+              "additions",
+              "deletions",
+              "unified"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "changesets",
+        "files"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.show"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee show",
+  "type": "object"
+}

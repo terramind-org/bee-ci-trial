@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "bee.v1.ProjectRoadmapZoom": {
+      "description": "Time scale of a roadmap view.",
+      "enum": [
+        "PROJECT_ROADMAP_ZOOM_UNSPECIFIED",
+        "PROJECT_ROADMAP_ZOOM_MONTH",
+        "PROJECT_ROADMAP_ZOOM_QUARTER",
+        "PROJECT_ROADMAP_ZOOM_YEAR"
+      ],
+      "title": "bee.v1.ProjectRoadmapZoom",
+      "type": "string"
+    },
+    "bee.v1.ProjectViewLayout": {
+      "description": "How a view lays out items.",
+      "enum": [
+        "PROJECT_VIEW_LAYOUT_UNSPECIFIED",
+        "PROJECT_VIEW_LAYOUT_TABLE",
+        "PROJECT_VIEW_LAYOUT_BOARD",
+        "PROJECT_VIEW_LAYOUT_ROADMAP"
+      ],
+      "title": "bee.v1.ProjectViewLayout",
+      "type": "string"
+    },
+    "bee.v1.ProjectViewSort": {
+      "description": "One sort key of a view.",
+      "properties": {
+        "descending": {
+          "type": "boolean"
+        },
+        "fieldId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectViewSort",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ProjectView.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A saved view of a project.",
+  "properties": {
+    "columnFieldId": {
+      "description": "board columns (single-select or iteration field)",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "filter": {
+      "description": "project filter syntax",
+      "type": "string"
+    },
+    "groupByFieldIds": {
+      "description": "table and roadmap grouping",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "layout": {
+      "$ref": "#/$defs/bee.v1.ProjectViewLayout"
+    },
+    "name": {
+      "type": "string"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "position": {
+      "description": "tab order",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "roadmapZoom": {
+      "$ref": "#/$defs/bee.v1.ProjectRoadmapZoom"
+    },
+    "sliceByFieldId": {
+      "type": "string"
+    },
+    "sortBy": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ProjectViewSort"
+      },
+      "type": "array"
+    },
+    "startDateFieldId": {
+      "description": "roadmap",
+      "type": "string"
+    },
+    "sumFieldIds": {
+      "description": "number fields summed in group headers",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "targetDateFieldId": {
+      "description": "roadmap",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "visibleFieldIds": {
+      "description": "table columns and card fields, in order",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ProjectView",
+  "type": "object"
+}

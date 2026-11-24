@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/check.update-check-run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.CheckService/UpdateCheckRun: `data` is a bee.v1.CheckRun in proto3-JSON. `bee check update-check-run --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CheckRun.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.check.update-check-run"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee check update-check-run",
+  "type": "object"
+}

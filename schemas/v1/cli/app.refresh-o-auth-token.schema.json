@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/app.refresh-o-auth-token.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AppService/RefreshOAuthToken: `data` is a bee.v1.RefreshOAuthTokenResponse in proto3-JSON. `bee app refresh-o-auth-token --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.RefreshOAuthTokenResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.app.refresh-o-auth-token"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee app refresh-o-auth-token",
+  "type": "object"
+}

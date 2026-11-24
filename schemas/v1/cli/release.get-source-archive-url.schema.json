@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/release.get-source-archive-url.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ReleaseService/GetSourceArchiveUrl: `data` is a bee.v1.GetSourceArchiveUrlResponse in proto3-JSON. `bee release get-source-archive-url --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GetSourceArchiveUrlResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.release.get-source-archive-url"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee release get-source-archive-url",
+  "type": "object"
+}

@@ -1,0 +1,54 @@
+{
+  "id": "GHSA-wq4h-7r42-5hrr",
+  "modified": "2022-06-01T00:00:00Z",
+  "aliases": [
+    "CVE-2022-30123"
+  ],
+  "summary": "Escape sequence injection in Rack::Lint",
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "RubyGems",
+        "name": "rack"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.2.0"
+            },
+            {
+              "fixed": "2.2.3.1"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.1.0"
+            },
+            {
+              "fixed": "2.1.4.1"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.0.0"
+            },
+            {
+              "fixed": "2.0.9.1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "database_specific": {
+    "severity": "CRITICAL"
+  }
+}

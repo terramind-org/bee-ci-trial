@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "bee.v1.TeamMemberRole": {
+      "description": "A principal's role inside a team.",
+      "enum": [
+        "TEAM_MEMBER_ROLE_UNSPECIFIED",
+        "TEAM_MEMBER_ROLE_MEMBER",
+        "TEAM_MEMBER_ROLE_MAINTAINER"
+      ],
+      "title": "bee.v1.TeamMemberRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddTeamMemberRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AddTeamMember.\n\nOneof `invitee`: at most one of `principalId`, `email` is set.",
+  "properties": {
+    "email": {
+      "description": "invites by email",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.TeamMemberRole",
+      "description": "default MEMBER"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AddTeamMemberRequest",
+  "type": "object"
+}

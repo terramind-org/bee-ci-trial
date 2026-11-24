@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/audit.delete-audit-sink.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AuditService/DeleteAuditSink: `data` is a bee.v1.DeleteAuditSinkResponse in proto3-JSON. `bee audit delete-audit-sink --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteAuditSinkResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.audit.delete-audit-sink"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee audit delete-audit-sink",
+  "type": "object"
+}

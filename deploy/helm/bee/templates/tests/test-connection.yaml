@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "bee.fullname" . }}-test
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: probe
+      image: {{ include "bee.image" (dict "ctx" . "image" .Values.server.image) | quote }}
+      imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+      # The server image carries curl. Both checks go through the Services, like a client does.
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          curl -fsS --max-time 10 http://{{ include "bee.fullname" . }}-server:{{ .Values.server.service.port }}/readyz
+          echo
+          curl -fsS --max-time 10 -o /dev/null -X POST -H 'Content-Type: application/json' -d '{}' \
+            http://{{ include "bee.fullname" . }}-server:{{ .Values.server.service.port }}/bee.v1.ObjectService/GetServerInfo
+          echo "server answers"
+          {{- if .Values.web.enabled }}
+          curl -fsS --max-time 20 -o /dev/null http://{{ include "bee.fullname" . }}-web:{{ .Values.web.service.port }}/
+          echo "web answers"
+          {{- end }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]

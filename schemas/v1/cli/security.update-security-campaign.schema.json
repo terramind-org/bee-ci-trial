@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.update-security-campaign.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/UpdateSecurityCampaign: `data` is a bee.v1.SecurityCampaign in proto3-JSON. `bee security update-security-campaign --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SecurityCampaign.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.update-security-campaign"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security update-security-campaign",
+  "type": "object"
+}

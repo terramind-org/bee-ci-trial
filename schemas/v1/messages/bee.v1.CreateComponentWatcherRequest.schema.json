@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "bee.v1.AgentRunBudget": {
+      "description": "Spending and time limits for a run.",
+      "properties": {
+        "maxChangesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxDurationSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxInputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxOutputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxUsdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentRunBudget",
+      "type": "object"
+    },
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WatcherTelemetrySelector": {
+      "description": "Telemetry a watcher reads. Selectors use OpsService metric names and label matchers.",
+      "properties": {
+        "labelMatchers": {
+          "description": "exact matches, e.g. service=checkout",
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "logComponents": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "metricNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "traceService": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WatcherTelemetrySelector",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateComponentWatcherRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateComponentWatcher.",
+  "properties": {
+    "agentPrincipalId": {
+      "description": "The watching agent. Empty = one of the caller's enabled agents in the org (matching\nruntime_id when set). Otherwise the agent must be enabled in the org and the caller must\nbe the agent or one of its owners.",
+      "type": "string"
+    },
+    "autoOpenIssues": {
+      "type": "boolean"
+    },
+    "budget": {
+      "$ref": "#/$defs/bee.v1.AgentRunBudget"
+    },
+    "checkIntervalSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "component": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "labels": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "paths": {
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "runtimeId": {
+      "type": "string"
+    },
+    "serviceName": {
+      "type": "string"
+    },
+    "telemetry": {
+      "$ref": "#/$defs/bee.v1.WatcherTelemetrySelector"
+    }
+  },
+  "title": "bee.v1.CreateComponentWatcherRequest",
+  "type": "object"
+}

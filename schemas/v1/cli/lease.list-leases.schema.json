@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/lease.list-leases.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.LeaseService/ListLeases: `data` is a bee.v1.ListLeasesResponse in proto3-JSON. `bee lease list-leases --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListLeasesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.lease.list-leases"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee lease list-leases",
+  "type": "object"
+}

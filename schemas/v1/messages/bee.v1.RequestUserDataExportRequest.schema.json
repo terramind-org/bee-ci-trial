@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RequestUserDataExportRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RequestUserDataExport.",
+  "properties": {
+    "includeAttachments": {
+      "type": "boolean"
+    },
+    "includeRepos": {
+      "description": "include owned repos' contents",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.RequestUserDataExportRequest",
+  "type": "object"
+}

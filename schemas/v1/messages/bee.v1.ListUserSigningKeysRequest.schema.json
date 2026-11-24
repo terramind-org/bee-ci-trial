@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.UserSigningKeyKind": {
+      "description": "Kind of signing key.",
+      "enum": [
+        "USER_SIGNING_KEY_KIND_UNSPECIFIED",
+        "USER_SIGNING_KEY_KIND_GPG",
+        "USER_SIGNING_KEY_KIND_SSH"
+      ],
+      "title": "bee.v1.UserSigningKeyKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListUserSigningKeysRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListUserSigningKeys.",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.UserSigningKeyKind",
+      "description": "UNSPECIFIED = both"
+    },
+    "login": {
+      "description": "empty = the caller",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    }
+  },
+  "title": "bee.v1.ListUserSigningKeysRequest",
+  "type": "object"
+}

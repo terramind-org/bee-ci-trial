@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/issue.mark-issue-duplicate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.IssueService/MarkIssueDuplicate: `data` is a bee.v1.Issue in proto3-JSON. `bee issue mark-issue-duplicate --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Issue.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.issue.mark-issue-duplicate"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee issue mark-issue-duplicate",
+  "type": "object"
+}

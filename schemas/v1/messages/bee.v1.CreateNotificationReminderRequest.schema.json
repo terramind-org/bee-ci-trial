@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "bee.v1.NotificationReminderChannel": {
+      "description": "Delivery channel for a scheduled reminder.",
+      "enum": [
+        "NOTIFICATION_REMINDER_CHANNEL_UNSPECIFIED",
+        "NOTIFICATION_REMINDER_CHANNEL_SLACK",
+        "NOTIFICATION_REMINDER_CHANNEL_TEAMS",
+        "NOTIFICATION_REMINDER_CHANNEL_EMAIL"
+      ],
+      "title": "bee.v1.NotificationReminderChannel",
+      "type": "string"
+    },
+    "bee.v1.NotificationReminderDay": {
+      "description": "Day of the week for reminder schedules.",
+      "enum": [
+        "NOTIFICATION_REMINDER_DAY_UNSPECIFIED",
+        "NOTIFICATION_REMINDER_DAY_MONDAY",
+        "NOTIFICATION_REMINDER_DAY_TUESDAY",
+        "NOTIFICATION_REMINDER_DAY_WEDNESDAY",
+        "NOTIFICATION_REMINDER_DAY_THURSDAY",
+        "NOTIFICATION_REMINDER_DAY_FRIDAY",
+        "NOTIFICATION_REMINDER_DAY_SATURDAY",
+        "NOTIFICATION_REMINDER_DAY_SUNDAY"
+      ],
+      "title": "bee.v1.NotificationReminderDay",
+      "type": "string"
+    },
+    "bee.v1.NotificationReminderFilter": {
+      "description": "Which review requests a reminder reports.",
+      "properties": {
+        "ignoreApproved": {
+          "description": "skip change requests with enough approvals",
+          "type": "boolean"
+        },
+        "ignoreDrafts": {
+          "type": "boolean"
+        },
+        "ignoreLabels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "includeAssignedIssues": {
+          "type": "boolean"
+        },
+        "includeMentions": {
+          "type": "boolean"
+        },
+        "includeTeamRequests": {
+          "type": "boolean"
+        },
+        "minAgeHours": {
+          "description": "only requests waiting at least this long",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "repos": {
+          "description": "empty = all repos in scope",
+          "items": {
+            "$ref": "#/$defs/bee.v1.RepoRef"
+          },
+          "type": "array"
+        },
+        "requireLabels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.NotificationReminderFilter",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateNotificationReminderRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateNotificationReminder.",
+  "properties": {
+    "channel": {
+      "$ref": "#/$defs/bee.v1.NotificationReminderChannel"
+    },
+    "channelTarget": {
+      "type": "string"
+    },
+    "days": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.NotificationReminderDay"
+      },
+      "type": "array"
+    },
+    "filter": {
+      "$ref": "#/$defs/bee.v1.NotificationReminderFilter"
+    },
+    "org": {
+      "description": "empty = personal reminder",
+      "type": "string"
+    },
+    "realTimeAlerts": {
+      "type": "boolean"
+    },
+    "teamId": {
+      "type": "string"
+    },
+    "timeZone": {
+      "type": "string"
+    },
+    "times": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.CreateNotificationReminderRequest",
+  "type": "object"
+}

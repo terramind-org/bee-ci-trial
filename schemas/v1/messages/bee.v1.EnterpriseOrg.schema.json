@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EnterpriseOrg.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An org's membership in an enterprise.",
+  "properties": {
+    "enterpriseId": {
+      "type": "string"
+    },
+    "joinedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "memberCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "org": {
+      "description": "org name",
+      "type": "string"
+    },
+    "orgId": {
+      "type": "string"
+    },
+    "repoCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.EnterpriseOrg",
+  "type": "object"
+}

@@ -1,0 +1,494 @@
+// Git gateway contract for bee.v1: the internal RPCs behind the smart HTTP and SSH frontends
+// (and the conformance tests), plus repo git settings, LFS, preflight and credentials.
+// See SPEC.md §17.4 and PRODUCT.md §4.11.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// The git gateway. Frontends speak git protocol v2 (and v0 for receive-pack) to clients and
+// translate each request into these RPCs, authenticated as the end user's principal. Every
+// read honors path permissions and redaction exactly as native reads do (SPEC §9.3, §13).
+// Every call on a repo with git disabled fails with GIT_DISABLED.
+service GitService {
+  // Streams git objects by git oid: type, size and bytes in chunks, or sizes only
+  // (protocol v2 `object-info`). Objects the caller cannot read are reported per object as
+  // PERMISSION_DENIED or NOT_FOUND, never as bytes. A redacted commit is served as its
+  // replacement commit, named through `refs/replace/<oid>` in GitListRefs.
+  rpc GetGitObjects(GetGitObjectsRequest) returns (stream GitObjectChunk);
+  // Lists refs as git sees them (protocol v2 `ls-refs`): refs/heads/*, refs/tags/*,
+  // refs/pull/<n>/head, refs/bee/c/* virtual refs and HEAD, with peeled tags and symrefs.
+  rpc GitListRefs(GitListRefsRequest) returns (GitListRefsResponse);
+  // Negotiates a fetch: given wants, haves, shallow and filter options, returns
+  // acknowledgements and, once ready, the pack plan (cache key, object count, seed pack,
+  // packfile-uris, bundle-uris and shallow updates). Packs are cached by
+  // (repo, wants, haves, options) digest; a clone never touches forge tables.
+  rpc GitPlanFetch(GitPlanFetchRequest) returns (GitPlanFetchResponse);
+  // Maps git oids to bee ids and bee ids to git oids, with a status per item.
+  rpc GitResolve(GitResolveRequest) returns (GitResolveResponse);
+  // Reserves a signed URL to upload a receive-pack packfile before GitIngestCommits.
+  rpc CreateGitPackUpload(CreateGitPackUploadRequest) returns (CreateGitPackUploadResponse);
+  // Ingests a push (receive-pack): validates the pack, imports its commits as changesets
+  // and applies each ref update. Pushing to refs/heads/ws/<name> updates the pusher's
+  // workspace ref; pushing to a protected ref is a Land under policy, leases and checks;
+  // pushing a new branch opens or revises a change request when push.autoChange is on.
+  // Per-ref failures come back as `ng` with an ErrorDetail (POLICY_DENIED, SECRET_DETECTED,
+  // NOT_FAST_FORWARD, LEASED, MERGE_CONFLICT, VERSION_MISMATCH, ...); with `atomic`, any
+  // failure rejects every ref.
+  rpc GitIngestCommits(GitIngestCommitsRequest) returns (GitIngestCommitsResponse);
+
+  // Returns a repo's git settings.
+  rpc GetGitConfig(GetGitConfigRequest) returns (GitRepoConfig);
+  // Changes a repo's git settings. The object format can only change while the repo has no
+  // history (INVALID_STATE otherwise).
+  rpc UpdateGitConfig(UpdateGitConfigRequest) returns (GitRepoConfig);
+  // The LFS batch API: returns signed upload, download or verify actions for LFS objects.
+  // Fails with INVALID_STATE (subcode `lfs_disabled`) when LFS is off for the repo.
+  rpc GitLfsBatch(GitLfsBatchRequest) returns (GitLfsBatchResponse);
+  // Checks a client's git version, protocol and credential setup for a repo and lists
+  // problems with fixes (backs `bee git preflight`).
+  rpc GitPreflight(GitPreflightRequest) returns (GitPreflightResponse);
+  // Exchanges the caller's token for an HTTP Basic credential for git (backs the credential
+  // helper). The password is a Biscuit attenuated to git use and the requested repos.
+  rpc CreateGitCredential(CreateGitCredentialRequest) returns (CreateGitCredentialResponse);
+  // Resolves an SSH public key presented to the SSH frontend to a principal and a short-lived
+  // session token. Unknown keys fail with UNAUTHENTICATED; an org IP allow list may fail it
+  // with IP_NOT_ALLOWED and SSO enforcement with SSO_REQUIRED.
+  rpc ResolveGitSshKey(ResolveGitSshKeyRequest) returns (ResolveGitSshKeyResponse);
+}
+
+// ---------- Shared ----------
+
+// Git object type.
+enum GitObjectType {
+  GIT_OBJECT_TYPE_UNSPECIFIED = 0;
+  GIT_OBJECT_TYPE_COMMIT = 1;
+  GIT_OBJECT_TYPE_TREE = 2;
+  GIT_OBJECT_TYPE_BLOB = 3;
+  GIT_OBJECT_TYPE_TAG = 4;
+}
+
+// Hash function of a repo's git representation. One format per repo.
+enum GitObjectFormat {
+  GIT_OBJECT_FORMAT_UNSPECIFIED = 0;
+  GIT_OBJECT_FORMAT_SHA1 = 1; // collision-detecting SHA-1
+  GIT_OBJECT_FORMAT_SHA256 = 2;
+}
+
+// ---------- Objects ----------
+
+// Request for GetGitObjects.
+message GetGitObjectsRequest {
+  RepoRef repo = 1;
+  repeated string oids = 2; // hex, 40 or 64 chars
+  bool sizes_only = 3; // object-info: type and size, no bytes
+  // Resume an interrupted stream: skip this many bytes of the first oid.
+  uint64 resume_offset = 4;
+  bool allow_signed_urls = 5; // accept signed URLs in place of large bytes
+}
+
+// One chunk of a git object. The first chunk of each object carries type and size.
+message GitObjectChunk {
+  string oid = 1;
+  GitObjectType type = 2;
+  uint64 size = 3; // full uncompressed size
+  uint64 offset = 4;
+  bytes data = 5; // raw object content without the git header
+  bool last = 6;
+  string error_reason = 7; // per-object failure, e.g. PERMISSION_DENIED, NOT_FOUND
+  // Set when the requested commit is redacted: the oid of its replacement commit, whose bytes
+  // this chunk carries instead (the original stays addressable through refs/replace/<oid>).
+  string replacement_oid = 8;
+  string signed_url = 9; // set instead of data when allowed
+  google.protobuf.Timestamp signed_url_expires_at = 10;
+}
+
+// ---------- Refs ----------
+
+// Request for GitListRefs (protocol v2 ls-refs options).
+message GitListRefsRequest {
+  RepoRef repo = 1;
+  repeated string ref_prefixes = 2; // `ref-prefix`; empty = all
+  bool peel = 3; // include peeled targets of annotated tags
+  bool symrefs = 4; // include symref targets (HEAD)
+  bool unborn = 5; // report HEAD even when it points to an unborn branch
+  bool include_virtual_refs = 6; // refs/bee/c/<change-id> for open change requests
+  bool include_pull_refs = 7; // refs/pull/<n>/head and refs/pull/<n>/merge
+  bool include_replace_refs = 8; // refs/replace/* for redacted commits
+  bool for_push = 9; // receive-pack advertisement: refs the caller may update
+}
+
+// One advertised ref.
+message GitRefAdvertisement {
+  string name = 1; // e.g. "refs/heads/main", "HEAD"
+  string oid = 2; // empty when unborn
+  string peeled_oid = 3; // annotated tag target
+  string symref_target = 4; // e.g. "refs/heads/main" for HEAD
+  bool unborn = 5;
+  uint64 version = 6; // bee ref version, for compare-and-swap on push
+}
+
+// Response for GitListRefs.
+message GitListRefsResponse {
+  repeated GitRefAdvertisement refs = 1;
+  GitObjectFormat object_format = 2;
+  repeated string capabilities = 3; // capabilities the frontend should advertise
+  string policy_epoch = 4;
+}
+
+// ---------- Fetch planning ----------
+
+// Parsed partial-clone filter.
+message GitFetchFilter {
+  oneof filter {
+    bool blob_none = 1; // blob:none
+    uint64 blob_limit = 2; // blob:limit=<n> bytes
+    uint32 tree_depth = 3; // tree:<n>
+  }
+  string spec = 4; // the filter spec as sent by the client, kept for the cache key
+}
+
+// Request for GitPlanFetch (one negotiation round).
+message GitPlanFetchRequest {
+  RepoRef repo = 1;
+  repeated string want_oids = 2;
+  repeated string want_refs = 3; // protocol v2 `want-ref`
+  repeated string have_oids = 4;
+  repeated string shallow_oids = 5; // client's current shallow boundary
+  uint32 deepen = 6; // depth; 0 = not shallow
+  google.protobuf.Timestamp deepen_since = 7;
+  repeated string deepen_not = 8; // ref names
+  bool deepen_relative = 9;
+  GitFetchFilter filter = 10;
+  bool done = 11; // the client sent `done`
+  bool thin_pack = 12;
+  bool ofs_delta = 13;
+  bool include_tag = 14;
+  repeated string packfile_uri_protocols = 15; // e.g. "https"; empty = no packfile-uris
+  bool bundle_uri = 16; // client supports bundle-uri
+  string client_agent = 17; // e.g. "git/2.45.1"
+}
+
+// Negotiation acknowledgements for one round.
+message GitFetchAcks {
+  repeated string common_oids = 1; // `ACK <oid>`
+  bool nak = 2; // no common objects found
+  bool ready = 3; // the server can send a pack now
+}
+
+// A pre-built pack offered through packfile-uris.
+message GitPackfileUri {
+  string pack_hash = 1; // hash of the pack file
+  string uri = 2; // signed
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// A bundle offered through bundle-uri.
+message GitBundleUri {
+  string id = 1;
+  string uri = 2; // signed
+  uint64 creation_token = 3; // ordering token for incremental bundles
+  string filter = 4; // filter the bundle was built with
+}
+
+// A want-ref resolved to an oid.
+message GitWantedRef {
+  string name = 1;
+  string oid = 2;
+}
+
+// Response for GitPlanFetch.
+message GitPlanFetchResponse {
+  GitFetchAcks acks = 1;
+  repeated GitWantedRef wanted_refs = 2;
+  repeated string shallow_oids = 3; // new shallow boundary commits
+  repeated string unshallow_oids = 4;
+  // Set once ready: the key of the planned pack. Stream its objects with GetGitObjects or
+  // fetch the cached pack at pack_url.
+  string pack_cache_key = 5;
+  bool pack_cached = 6;
+  string pack_url = 7; // signed URL of the cached pack, when built
+  google.protobuf.Timestamp pack_url_expires_at = 8;
+  uint64 object_count = 9;
+  uint64 estimated_bytes = 10;
+  repeated GitPackfileUri packfile_uris = 11; // seed packs the client downloads directly
+  repeated GitBundleUri bundle_uris = 12;
+  // Objects left out because the caller cannot read them or they are redacted; the client
+  // sees them as missing (promisor objects under a filter, otherwise an error).
+  uint64 omitted_count = 13;
+  string policy_epoch = 14;
+}
+
+// ---------- Id mapping ----------
+
+// One id to map, in either direction.
+message GitResolveQuery {
+  oneof id {
+    string git_oid = 1;
+    ObjectId bee_id = 2;
+  }
+}
+
+// The mapping for one query, in request order.
+message GitResolveResult {
+  ItemStatus status = 1;
+  string git_oid = 2;
+  GitObjectType git_type = 3;
+  ObjectId bee_id = 4; // changeset, tree or blob
+  ObjectKind bee_kind = 5;
+  ChangeId change_id = 6; // commits only
+  bool imported = 7; // the git object came from an import, byte-identical to the original
+}
+
+// Request for GitResolve.
+message GitResolveRequest {
+  RepoRef repo = 1;
+  repeated GitResolveQuery queries = 2; // maximum 1000
+}
+
+// Response for GitResolve.
+message GitResolveResponse {
+  repeated GitResolveResult results = 1;
+  GitObjectFormat object_format = 2;
+}
+
+// ---------- Push ingest ----------
+
+// Request for CreateGitPackUpload.
+message CreateGitPackUploadRequest {
+  RepoRef repo = 1;
+  uint64 size_bytes = 2;
+  string sha256 = 3; // hex digest of the pack bytes, checked on ingest
+}
+
+// Response for CreateGitPackUpload.
+message CreateGitPackUploadResponse {
+  string upload_id = 1;
+  string upload_url = 2; // signed PUT URL
+  google.protobuf.Timestamp expires_at = 3;
+  uint64 max_bytes = 4;
+}
+
+// One ref update from receive-pack.
+message GitRefUpdateCommand {
+  string ref_name = 1;
+  string old_oid = 2; // all zeros = create
+  string new_oid = 3; // all zeros = delete
+}
+
+// How an accepted ref update was applied.
+enum GitPushApplyKind {
+  GIT_PUSH_APPLY_KIND_UNSPECIFIED = 0;
+  GIT_PUSH_APPLY_KIND_WORKSPACE_UPDATE = 1; // refs/heads/ws/<name>
+  GIT_PUSH_APPLY_KIND_LAND = 2; // protected ref: landed under policy
+  GIT_PUSH_APPLY_KIND_CHANGE_REQUEST_OPENED = 3; // push.autoChange
+  GIT_PUSH_APPLY_KIND_CHANGE_REQUEST_REVISED = 4;
+  GIT_PUSH_APPLY_KIND_REF_UPDATE = 5; // ordinary unprotected ref or tag
+  GIT_PUSH_APPLY_KIND_REF_DELETE = 6;
+}
+
+// Result of one ref update (`ok` or `ng`).
+message GitRefUpdateResult {
+  string ref_name = 1;
+  bool ok = 2;
+  ErrorDetail error = 3; // set when not ok; its reason maps to the `ng` message
+  GitPushApplyKind applied = 4;
+  string result_oid = 5; // final git oid of the ref (a land may rebase onto the tip)
+  ObjectId changeset = 6;
+  uint64 ref_version = 7;
+  uint64 change_request_number = 8;
+  string change_request_url = 9;
+}
+
+// The changeset and ChangeId a pushed commit became.
+message GitChangeIdMapping {
+  string git_oid = 1;
+  ObjectId changeset = 2;
+  ChangeId change_id = 3;
+  string change_id_trailer = 4; // trailer value found or assigned, e.g. "I1a2b..."
+  bool trailer_added = 5; // the commit had no trailer; one was assigned
+}
+
+// Request for GitIngestCommits.
+message GitIngestCommitsRequest {
+  RepoRef repo = 1;
+  repeated GitRefUpdateCommand commands = 2;
+  oneof pack {
+    string pack_upload_id = 3; // from CreateGitPackUpload
+    bytes pack_bytes = 4; // inline, at most 1 MiB
+  }
+  bool atomic = 5; // all refs update or none
+  repeated string push_options = 6; // `git push -o`, e.g. "cr.title=...", "land.method=squash"
+  string client_agent = 7;
+  bool quiet = 8; // suppress progress messages
+}
+
+// Response for GitIngestCommits.
+message GitIngestCommitsResponse {
+  bool unpack_ok = 1;
+  string unpack_error = 2; // `unpack <error>` when not ok
+  repeated GitRefUpdateResult results = 3; // one per command, in order
+  repeated GitChangeIdMapping change_ids = 4;
+  repeated string messages = 5; // sideband `remote:` lines (CR links, hints)
+  bool atomic_rejected = 6; // atomic push rejected as a whole
+}
+
+// ---------- Settings ----------
+
+// A repo's git settings.
+message GitRepoConfig {
+  RepoRef repo = 1;
+  bool git_enabled = 2; // false: every gateway call fails with GIT_DISABLED
+  GitObjectFormat object_format = 3;
+  bool lfs_enabled = 4;
+  bool ssh_enabled = 5;
+  bool push_auto_change = 6; // push.autoChange: new branches open change requests
+  bool require_change_id_trailer = 7; // refuse pushes of commits without a change-id trailer
+  string min_client_version = 8; // e.g. "2.30.0"
+  bool seed_packs_enabled = 9; // offer packfile-uris / bundle-uri
+}
+
+// Request for GetGitConfig.
+message GetGitConfigRequest {
+  RepoRef repo = 1;
+}
+
+// Request for UpdateGitConfig. Unset fields are unchanged.
+message UpdateGitConfigRequest {
+  RepoRef repo = 1;
+  optional bool git_enabled = 2;
+  optional GitObjectFormat object_format = 3;
+  optional bool lfs_enabled = 4;
+  optional bool ssh_enabled = 5;
+  optional bool push_auto_change = 6;
+  optional bool require_change_id_trailer = 7;
+  optional string min_client_version = 8;
+  optional bool seed_packs_enabled = 9;
+}
+
+// ---------- LFS ----------
+
+// LFS batch operation.
+enum GitLfsOperation {
+  GIT_LFS_OPERATION_UNSPECIFIED = 0;
+  GIT_LFS_OPERATION_DOWNLOAD = 1;
+  GIT_LFS_OPERATION_UPLOAD = 2;
+}
+
+// An LFS object named in a batch request.
+message GitLfsObjectSpec {
+  string oid = 1; // sha256 hex
+  uint64 size = 2;
+}
+
+// One action the client performs for an object.
+message GitLfsAction {
+  string kind = 1; // "download", "upload" or "verify"
+  string href = 2; // signed
+  repeated KeyValue headers = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Batch result for one object.
+message GitLfsObjectResult {
+  string oid = 1;
+  uint64 size = 2;
+  bool authenticated = 3;
+  repeated GitLfsAction actions = 4; // empty on upload when the server already has it
+  uint32 error_code = 5; // LFS error code (404, 410, 422, ...); 0 = none
+  string error_message = 6;
+}
+
+// Request for GitLfsBatch.
+message GitLfsBatchRequest {
+  RepoRef repo = 1;
+  GitLfsOperation operation = 2;
+  repeated string transfers = 3; // e.g. "basic"
+  string ref = 4; // ref the objects belong to, for policy
+  repeated GitLfsObjectSpec objects = 5; // maximum 1000
+  string hash_algo = 6; // "sha256"
+}
+
+// Response for GitLfsBatch.
+message GitLfsBatchResponse {
+  string transfer = 1;
+  repeated GitLfsObjectResult objects = 2;
+  string hash_algo = 3;
+}
+
+// ---------- Preflight and credentials ----------
+
+// How serious a preflight problem is.
+enum GitPreflightSeverity {
+  GIT_PREFLIGHT_SEVERITY_UNSPECIFIED = 0;
+  GIT_PREFLIGHT_SEVERITY_ERROR = 1; // clone, fetch or push will fail
+  GIT_PREFLIGHT_SEVERITY_WARNING = 2;
+  GIT_PREFLIGHT_SEVERITY_INFO = 3;
+}
+
+// One problem found by preflight.
+message GitPreflightProblem {
+  GitPreflightSeverity severity = 1;
+  string code = 2; // e.g. "git_too_old", "no_credential_helper", "protocol_v0", "lfs_missing"
+  string message = 3;
+  string fix = 4; // a command or setting that fixes it
+}
+
+// Request for GitPreflight.
+message GitPreflightRequest {
+  RepoRef repo = 1;
+  string client_git_version = 2; // e.g. "2.45.1"
+  string transport = 3; // "https" or "ssh"
+  uint32 protocol_version = 4; // the client's protocol.version
+  string credential_helper = 5; // the configured helper, if any
+  bool lfs_installed = 6;
+  bool push = 7; // check push access too
+}
+
+// Response for GitPreflight.
+message GitPreflightResponse {
+  bool ok = 1; // no ERROR problems
+  repeated GitPreflightProblem problems = 2;
+  string min_git_version = 3;
+  string remote_url = 4; // the URL to use for this transport
+  repeated KeyValue recommended_config = 5; // e.g. protocol.version=2
+  GitObjectFormat object_format = 6;
+}
+
+// Request for CreateGitCredential.
+message CreateGitCredentialRequest {
+  repeated RepoRef repos = 1; // empty = every repo the caller's token covers
+  string host = 2; // e.g. "beehive.example.com"
+  bool write = 3; // allow push; default read-only
+  uint32 ttl_seconds = 4; // default 3600; capped by the caller's token expiry
+}
+
+// Response for CreateGitCredential.
+message CreateGitCredentialResponse {
+  string username = 1; // e.g. "x-bee-token"
+  string password = 2; // attenuated Biscuit token
+  string credential_id = 3; // token id, for revocation
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for ResolveGitSshKey.
+message ResolveGitSshKeyRequest {
+  string key_type = 1; // e.g. "ssh-ed25519"
+  bytes public_key = 2; // the key blob as presented
+  string fingerprint = 3; // "SHA256:...", alternative to the blob
+  RepoRef repo = 4; // the repo the SSH command names
+  string command = 5; // "git-upload-pack" or "git-receive-pack"
+  string remote_ip = 6;
+}
+
+// Response for ResolveGitSshKey.
+message ResolveGitSshKeyResponse {
+  Principal principal = 1;
+  string key_id = 2;
+  bool deploy_key = 3; // a repo deploy key, limited to `repo`
+  bool read_only = 4;
+  string session_token = 5; // short-lived Biscuit for the rest of the SSH session
+  google.protobuf.Timestamp expires_at = 6;
+}

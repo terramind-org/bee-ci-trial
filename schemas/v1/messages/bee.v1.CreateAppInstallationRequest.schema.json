@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "bee.v1.AppRepositorySelection": {
+      "description": "Which repos of the account an installation covers.",
+      "enum": [
+        "APP_REPOSITORY_SELECTION_UNSPECIFIED",
+        "APP_REPOSITORY_SELECTION_ALL",
+        "APP_REPOSITORY_SELECTION_SELECTED"
+      ],
+      "title": "bee.v1.AppRepositorySelection",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateAppInstallationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateAppInstallation.",
+  "properties": {
+    "app": {
+      "description": "slug or id",
+      "type": "string"
+    },
+    "org": {
+      "description": "target org; empty = the caller's user account",
+      "type": "string"
+    },
+    "repos": {
+      "description": "with SELECTED",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "repositorySelection": {
+      "$ref": "#/$defs/bee.v1.AppRepositorySelection"
+    }
+  },
+  "title": "bee.v1.CreateAppInstallationRequest",
+  "type": "object"
+}

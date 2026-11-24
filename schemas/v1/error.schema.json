@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bee.dev/schemas/v1/error.schema.json",
+  "title": "bee CLI error",
+  "description": "Written to stdout by any `bee --json` command that fails (SPEC §12.2, §12.4).",
+  "type": "object",
+  "required": ["schema", "error"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "bee.v1.error" },
+    "error": {
+      "type": "object",
+      "required": ["reason", "message", "retryable"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "payload": { "type": "object" }
+      }
+    }
+  }
+}

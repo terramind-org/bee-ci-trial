@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/org.assign-org-role.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.OrgService/AssignOrgRole: `data` is a bee.v1.Member in proto3-JSON. `bee org assign-org-role --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Member.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.org.assign-org-role"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee org assign-org-role",
+  "type": "object"
+}

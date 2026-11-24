@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "bee.v1.Mode": {
+      "description": "File mode as stored in trees (SPEC §4.2).",
+      "enum": [
+        "MODE_UNSPECIFIED",
+        "MODE_FILE",
+        "MODE_EXECUTABLE",
+        "MODE_SYMLINK",
+        "MODE_TREE"
+      ],
+      "title": "bee.v1.Mode",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.TreeEntry": {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "mode": {
+          "$ref": "#/$defs/bee.v1.Mode"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "restricted": {
+          "description": "listed but not fetchable by this principal",
+          "type": "boolean"
+        },
+        "size": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.TreeEntry",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTreeResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.TreeEntry"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListTreeResponse",
+  "type": "object"
+}

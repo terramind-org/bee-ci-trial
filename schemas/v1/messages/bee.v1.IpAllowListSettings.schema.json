@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IpAllowListSettings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "IP allow list enforcement settings.",
+  "properties": {
+    "appliesToInstalledApps": {
+      "description": "Whether the list also applies to installation and user-to-server tokens of installed apps.",
+      "type": "boolean"
+    },
+    "enabled": {
+      "description": "enforced at admission for every request touching the scope",
+      "type": "boolean"
+    },
+    "includeInstalledAppRanges": {
+      "description": "Installed apps may declare their own ranges; when true those ranges are added to the list.",
+      "type": "boolean"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.EnterpriseScope"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.IpAllowListSettings",
+  "type": "object"
+}

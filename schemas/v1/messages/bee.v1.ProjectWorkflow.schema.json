@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "bee.v1.ProjectWorkflowKind": {
+      "description": "Built-in automation kinds.",
+      "enum": [
+        "PROJECT_WORKFLOW_KIND_UNSPECIFIED",
+        "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+        "PROJECT_WORKFLOW_KIND_ITEM_REOPENED",
+        "PROJECT_WORKFLOW_KIND_ITEM_CLOSED",
+        "PROJECT_WORKFLOW_KIND_CHANGE_LANDED",
+        "PROJECT_WORKFLOW_KIND_CHANGES_REQUESTED",
+        "PROJECT_WORKFLOW_KIND_CHANGE_APPROVED",
+        "PROJECT_WORKFLOW_KIND_AUTO_ARCHIVE",
+        "PROJECT_WORKFLOW_KIND_AUTO_ADD",
+        "PROJECT_WORKFLOW_KIND_AUTO_CLOSE_ISSUE",
+        "PROJECT_WORKFLOW_KIND_AUTO_ADD_SUB_ISSUES"
+      ],
+      "title": "bee.v1.ProjectWorkflowKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ProjectWorkflow.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A built-in workflow on a project.",
+  "properties": {
+    "archiveAfterDays": {
+      "description": "AUTO_ARCHIVE: inactivity before archiving",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "fieldId": {
+      "description": "field to set, or to watch for AUTO_CLOSE_ISSUE",
+      "type": "string"
+    },
+    "filter": {
+      "description": "AUTO_ADD, AUTO_ARCHIVE: which items match",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "isDefault": {
+      "description": "created with the project; can be disabled, not deleted",
+      "type": "boolean"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.ProjectWorkflowKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "optionId": {
+      "description": "value to set, or to watch for AUTO_CLOSE_ISSUE",
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "sourceRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "AUTO_ADD: repo to watch"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.ProjectWorkflow",
+  "type": "object"
+}

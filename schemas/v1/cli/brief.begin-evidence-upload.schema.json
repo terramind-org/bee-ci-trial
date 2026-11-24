@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/brief.begin-evidence-upload.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.BriefService/BeginEvidenceUpload: `data` is a bee.v1.BeginEvidenceUploadResponse in proto3-JSON. `bee brief begin-evidence-upload --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BeginEvidenceUploadResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.brief.begin-evidence-upload"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee brief begin-evidence-upload",
+  "type": "object"
+}

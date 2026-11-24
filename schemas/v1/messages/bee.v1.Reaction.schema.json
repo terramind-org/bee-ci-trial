@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReactionContent": {
+      "description": "Reaction emoji, matching GitHub's fixed set.",
+      "enum": [
+        "REACTION_CONTENT_UNSPECIFIED",
+        "REACTION_CONTENT_THUMBS_UP",
+        "REACTION_CONTENT_THUMBS_DOWN",
+        "REACTION_CONTENT_LAUGH",
+        "REACTION_CONTENT_HOORAY",
+        "REACTION_CONTENT_CONFUSED",
+        "REACTION_CONTENT_HEART",
+        "REACTION_CONTENT_ROCKET",
+        "REACTION_CONTENT_EYES"
+      ],
+      "title": "bee.v1.ReactionContent",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Reaction.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One principal's reaction.",
+  "properties": {
+    "content": {
+      "$ref": "#/$defs/bee.v1.ReactionContent"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "user": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    }
+  },
+  "title": "bee.v1.Reaction",
+  "type": "object"
+}

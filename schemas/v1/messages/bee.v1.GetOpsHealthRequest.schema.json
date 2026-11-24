@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetOpsHealthRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetOpsHealth.",
+  "properties": {
+    "cell": {
+      "description": "empty = the serving node's cell",
+      "type": "string"
+    },
+    "includeComponents": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.GetOpsHealthRequest",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+# event push action=-
+run .github/workflows/dynamic.yml "Dynamic matrix"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job plan decided=true
+    instance "plan"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      outputs:
+        crates: "${{ steps.changed.outputs.crates }}"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run echo \"crates=$(./scripts/changed-crates.sh)\" >> \"$GITHUB_OUTPUT\"" id=changed
+        run: "echo \"crates=$(./scripts/changed-crates.sh)\" >> \"$GITHUB_OUTPUT\""
+        shell: default -> "bash -e {0}"
+  job test needs=[plan] if="needs.plan.outputs.crates != '[]'"
+    deferred: waits for the outcomes of: plan
+  job static needs=[plan]
+    instance "static"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo ${{ needs.plan.outputs.crates }}"
+        run: "echo ${{ needs.plan.outputs.crates }}"
+        shell: default -> "bash -e {0}"

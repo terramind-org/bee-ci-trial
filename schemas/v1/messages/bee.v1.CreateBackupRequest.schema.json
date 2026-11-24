@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateBackupRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cell": {
+      "description": "empty = this server's cell",
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateBackupRequest",
+  "type": "object"
+}

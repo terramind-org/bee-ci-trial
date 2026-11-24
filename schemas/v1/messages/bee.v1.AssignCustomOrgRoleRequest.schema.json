@@ -1,0 +1,22 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AssignCustomOrgRoleRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AssignCustomOrgRole.\n\nOneof `assignee`: at most one of `principalId`, `teamId` is set.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    },
+    "role": {
+      "description": "custom org role id",
+      "type": "string"
+    },
+    "teamId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AssignCustomOrgRoleRequest",
+  "type": "object"
+}

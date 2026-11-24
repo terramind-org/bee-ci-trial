@@ -1,0 +1,29 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TestAuditSinkResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for TestAuditSink.",
+  "properties": {
+    "delivered": {
+      "type": "boolean"
+    },
+    "error": {
+      "type": "string"
+    },
+    "latencyMs": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "statusCode": {
+      "description": "HTTP status from the destination, when applicable",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.TestAuditSinkResponse",
+  "type": "object"
+}

@@ -1,0 +1,26 @@
+name: Bug report
+description: Report reproducible incorrect behavior in Bee.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not report security vulnerabilities here. Follow SECURITY.md instead."
+  - type: input
+    id: version
+    attributes:
+      label: Bee version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include the smallest safe example and expected and actual results.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include deployment mode and relevant configuration, with secrets removed.

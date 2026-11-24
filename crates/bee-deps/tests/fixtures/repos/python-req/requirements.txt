@@ -1,0 +1,8 @@
+# runtime pins
+--index-url https://pypi.org/simple
+requests==2.25.0 \
+    --hash=sha256:aaaaaaaa \
+    --hash=sha256:bbbbbbbb
+urllib3==1.26.4
+Django>=3.2,<4.0 ; python_version >= "3.8"
+-e git+https://example.com/org/proj.git#egg=proj

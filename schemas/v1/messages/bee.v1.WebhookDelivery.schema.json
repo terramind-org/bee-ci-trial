@@ -1,0 +1,71 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WebhookDelivery.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One delivery attempt of an event to a webhook.",
+  "properties": {
+    "attempt": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "deliveredAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "durationMs": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "error": {
+      "type": "string"
+    },
+    "eventKind": {
+      "type": "string"
+    },
+    "eventSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "redelivery": {
+      "type": "boolean"
+    },
+    "requestBody": {
+      "description": "only in GetWebhookDelivery",
+      "type": "string"
+    },
+    "requestHeadersJson": {
+      "description": "only in GetWebhookDelivery",
+      "type": "string"
+    },
+    "responseBody": {
+      "description": "only in GetWebhookDelivery, truncated",
+      "type": "string"
+    },
+    "responseHeadersJson": {
+      "description": "only in GetWebhookDelivery",
+      "type": "string"
+    },
+    "statusCode": {
+      "description": "HTTP status from the receiver; 0 when unreachable",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "webhookId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WebhookDelivery",
+  "type": "object"
+}

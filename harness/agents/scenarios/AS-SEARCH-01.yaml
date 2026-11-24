@@ -1,0 +1,117 @@
+id: AS-SEARCH-01
+area: "4.4"
+title: Find every call site of a function across an org and open one change fixing them
+surfaces: both
+timeout: 1200
+budget: { max_turns: 80 }
+fixtures: [base]
+setup:
+  - name: the library and three call sites in app
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add user lookup and callers"
+      files:
+        lib/users.py: |
+          def fetch_user(user_id, *, include_deleted=False):
+              ...
+
+
+          def fetch_user_v1(user_id):
+              """Deprecated: use fetch_user."""
+              return fetch_user(user_id)
+        api/handlers/profile.py: |
+          from lib.users import fetch_user_v1
+
+
+          def profile(req):
+              return fetch_user_v1(req.user_id)
+        jobs/nightly/cleanup.py: |
+          from lib.users import fetch_user_v1
+
+
+          def run(ids):
+              return [fetch_user_v1(i) for i in ids]
+        web/views/admin.py: |
+          import lib.users as users
+
+
+          def show(uid):
+              u = users.fetch_user_v1(uid)
+              return u
+        docs/users.md: "Use fetch_user for lookups.\n"
+  - name: a second repo in the org with one more call site
+    call: RepoService/CreateRepo
+    request: { org: "${run.ns}", name: tools, visibility: VISIBILITY_PRIVATE, autoInit: true }
+    save: { tools: "$" }
+  - commit:
+      repo: "${tools.fullName}"
+      ref: main
+      message: "Add export script"
+      files:
+        scripts/export_users.py: |
+          from app.lib.users import fetch_user_v1
+
+
+          def export(ids):
+              return [fetch_user_v1(i) for i in ids]
+  - name: read access to the whole org for the worker
+    call: AuthService/MintToken
+    request:
+      principalId: "${worker.id}"
+      scope: { repos: ["${run.ns}/*"], actions: [read, commit, review], session: "${run.session}" }
+    save: { orgToken: token }
+agent:
+  token: "${orgToken}"
+prompt: |
+  `fetch_user_v1` is deprecated in favour of `fetch_user` (same first argument). Find every call
+  site of `fetch_user_v1` across all repositories in the bee org ${run.ns}. Then open one
+  change request in ${repo.fullName}, targeting main, that switches every call site in that
+  repository to `fetch_user`. Leave the deprecated definition itself in place. Do not land it.
+
+  Also write `answer.json` in the current directory listing every call site you found in the
+  org, one entry per file, as: {"call_sites": [{"repo": "<org/name>", "path": "<file path>"}, ...]}
+assertions:
+  - name: exactly one open change request by the worker
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, state: CHANGE_STATE_OPEN, authorId: "${worker.id}" }
+    expect:
+      - { path: changes, len: 1 }
+      - { path: "changes[0].targetRef", eq: main }
+    save: { crHead: "changes[0].revisions[-1].head" }
+  - name: the change request touches all three call-site files
+    call: QueryService/CompareRevisions
+    request: { repo: { fullName: "${repo.fullName}" }, base: { expr: main }, head: { expr: "${id:crHead}" }, includeFiles: true }
+    expect:
+      - { path: "files[*].path", decode: base64, contains: api/handlers/profile.py }
+      - { path: "files[*].path", decode: base64, contains: jobs/nightly/cleanup.py }
+      - { path: "files[*].path", decode: base64, contains: web/views/admin.py }
+      - { path: "files[*].path", decode: base64, not_contains: docs/users.md }
+  - name: no call site is left at the CR head
+    call: QueryService/ReadPath
+    each: ["api/handlers/profile.py", "jobs/nightly/cleanup.py", "web/views/admin.py"]
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: "${id:crHead}" }, path: "${b64v:item}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, not_contains: "fetch_user_v1(" }
+      - { path: "messages[0].data", decode: base64, contains: "fetch_user(" }
+  - name: the deprecated definition is still there
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: "${id:crHead}" }, path: "${b64:lib/users.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, contains: "def fetch_user_v1(user_id):" }
+  - name: main is untouched
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:api/handlers/profile.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, contains: "fetch_user_v1(req.user_id)" }
+  - name: the org-wide list includes the other repo's call site and no non-call files
+    answer:
+      file: answer.json
+      expect:
+        - { path: call_sites, len: 4 }
+        - path: call_sites
+          some:
+            - { path: repo, eq: "${tools.fullName}" }
+            - { path: path, eq: scripts/export_users.py }
+        - { path: "call_sites[*].path", contains: web/views/admin.py }
+        - { path: "call_sites[*].path", not_contains: lib/users.py }

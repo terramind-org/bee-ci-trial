@@ -1,0 +1,394 @@
+{
+ "service": "bee.v1.OrgService",
+ "note": "Destructive and settings-changing methods act on orgs their setup creates; membership changes act on agent principals their setup creates. Invitations the caller accepts or declines are addressed to the dev login, the only principal the harness can call as.",
+ "fixtures": [
+  {
+   "method": "CreateOrg",
+   "request": {
+    "name": "create-org-fixture",
+    "display": "Create Org Fixture"
+   }
+  },
+  {
+   "method": "GetOrg",
+   "request": {
+    "nameOrId": "{{org}}"
+   }
+  },
+  {
+   "method": "ListMembers",
+   "request": {
+    "org": "{{org}}",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "SetMember",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "set-member-fixture",
+      "runtime": "claude-code",
+      "purpose": "org membership fixture"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "principalId": "{{a.id}}",
+    "role": "ROLE_MEMBER"
+   }
+  },
+  {
+   "method": "ListOrgs",
+   "request": {
+    "principalId": "{{user}}",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "UpdateOrg",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "update-org-fixture",
+      "display": "Update Org Fixture"
+     }
+    }
+   ],
+   "request": {
+    "org": "update-org-fixture",
+    "display": "Update Org Fixture (edited)",
+    "description": "an org edited by a fixture",
+    "website": "https://update-org-fixture.example.com",
+    "email": "team@update-org-fixture.example.com",
+    "location": "Berlin"
+   }
+  },
+  {
+   "method": "RenameOrg",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "rename-org-fixture",
+      "display": "Rename Org Fixture"
+     }
+    }
+   ],
+   "request": {
+    "org": "rename-org-fixture",
+    "newName": "rename-org-fixture-renamed"
+   }
+  },
+  {
+   "method": "DeleteOrg",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "delete-org-fixture",
+      "display": "Delete Org Fixture"
+     }
+    }
+   ],
+   "request": {
+    "org": "delete-org-fixture",
+    "confirmName": "delete-org-fixture"
+   }
+  },
+  {
+   "method": "RestoreOrg",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "save": "o",
+     "request": {
+      "name": "restore-org-fixture",
+      "display": "Restore Org Fixture"
+     }
+    },
+    {
+     "call": "OrgService/DeleteOrg",
+     "request": {
+      "org": "restore-org-fixture",
+      "confirmName": "restore-org-fixture"
+     }
+    }
+   ],
+   "request": {
+    "orgId": "{{o.id}}"
+   }
+  },
+  {
+   "method": "GetOrgSettings",
+   "request": {
+    "org": "{{org}}"
+   }
+  },
+  {
+   "method": "UpdateOrgSettings",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "update-org-settings-fixture",
+      "display": "Update Org Settings Fixture"
+     }
+    }
+   ],
+   "request": {
+    "org": "update-org-settings-fixture",
+    "baseRepoRole": "REPO_ROLE_WRITE",
+    "membersCanCreateRepos": true,
+    "membersCanCreatePublicRepos": false,
+    "membersCanForkPrivateRepos": false,
+    "membersCanDeleteRepos": false,
+    "membersCanInviteOutsideCollaborators": true,
+    "membersCanCreateTeams": true,
+    "webCommitSignoffRequired": true,
+    "maxOpenChangesPerAgent": 20
+   }
+  },
+  {
+   "method": "CreateOrgInvitation",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "create-invitation-fixture",
+      "runtime": "claude-code",
+      "purpose": "invitee"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "inviteePrincipalId": "{{a.id}}",
+    "role": "ROLE_MEMBER"
+   }
+  },
+  {
+   "method": "ListOrgInvitations",
+   "request": {
+    "org": "{{org}}",
+    "state": "INVITATION_STATE_PENDING",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "CancelOrgInvitation",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrgInvitation",
+     "save": "i",
+     "request": {
+      "org": "{{org}}",
+      "inviteeEmail": "cancel-invitation-fixture@example.com",
+      "role": "ROLE_MEMBER"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "invitationId": "{{i.id}}"
+   }
+  },
+  {
+   "method": "AcceptOrgInvitation",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "accept-invitation-fixture",
+      "display": "Accept Invitation Fixture"
+     }
+    },
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "accept-invitation-fixture",
+      "runtime": "claude-code",
+      "purpose": "second principal for a fixture",
+      "org": "{{org}}"
+     }
+    },
+    {
+     "call": "AuthService/MintToken",
+     "save": "at",
+     "request": {
+      "principalId": "{{a.id}}",
+      "scope": {}
+     }
+    },
+    {
+     "call": "OrgService/CreateOrgInvitation",
+     "save": "i",
+     "request": {
+      "org": "accept-invitation-fixture",
+      "inviteePrincipalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    }
+   ],
+   "request": {
+    "invitationId": "{{i.id}}"
+   },
+   "note": "The invitee is an agent created in setup; the call runs as that agent (its minted token).",
+   "token": "{{at.token}}"
+  },
+  {
+   "method": "DeclineOrgInvitation",
+   "setup": [
+    {
+     "call": "OrgService/CreateOrg",
+     "request": {
+      "name": "decline-invitation-fixture",
+      "display": "Decline Invitation Fixture"
+     }
+    },
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "decline-invitation-fixture",
+      "runtime": "claude-code",
+      "purpose": "second principal for a fixture",
+      "org": "{{org}}"
+     }
+    },
+    {
+     "call": "AuthService/MintToken",
+     "save": "at",
+     "request": {
+      "principalId": "{{a.id}}",
+      "scope": {}
+     }
+    },
+    {
+     "call": "OrgService/CreateOrgInvitation",
+     "save": "i",
+     "request": {
+      "org": "decline-invitation-fixture",
+      "inviteePrincipalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    }
+   ],
+   "request": {
+    "invitationId": "{{i.id}}"
+   },
+   "note": "The invitee is an agent created in setup; the call runs as that agent (its minted token).",
+   "token": "{{at.token}}"
+  },
+  {
+   "method": "AssignOrgRole",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "assign-role-fixture",
+      "runtime": "claude-code",
+      "purpose": "role fixture"
+     }
+    },
+    {
+     "call": "OrgService/SetMember",
+     "request": {
+      "org": "{{org}}",
+      "principalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "principalId": "{{a.id}}",
+    "role": "ROLE_MODERATOR"
+   }
+  },
+  {
+   "method": "RevokeOrgRole",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "revoke-role-fixture",
+      "runtime": "claude-code",
+      "purpose": "role fixture"
+     }
+    },
+    {
+     "call": "OrgService/SetMember",
+     "request": {
+      "org": "{{org}}",
+      "principalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    },
+    {
+     "call": "OrgService/AssignOrgRole",
+     "request": {
+      "org": "{{org}}",
+      "principalId": "{{a.id}}",
+      "customRoleId": "revoke-org-role-fixture-role"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "principalId": "{{a.id}}",
+    "customRoleId": "revoke-org-role-fixture-role"
+   },
+   "note": "PolicyService (CreateCustomRole) is not served by the dev server, so the custom role id is a fixture-chosen name; AssignOrgRole accepts any custom_role_id without checking it exists (reported)."
+  },
+  {
+   "method": "ListOutsideCollaborators",
+   "request": {
+    "org": "{{org}}",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "ConvertToOutsideCollaborator",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "convert-outside-fixture",
+      "runtime": "claude-code",
+      "purpose": "outside collaborator fixture"
+     }
+    },
+    {
+     "call": "OrgService/SetMember",
+     "request": {
+      "org": "{{org}}",
+      "principalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    }
+   ],
+   "request": {
+    "org": "{{org}}",
+    "principalId": "{{a.id}}"
+   }
+  }
+ ]
+}

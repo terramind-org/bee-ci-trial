@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/search.list-leaderboard.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SearchService/ListLeaderboard: `data` is a bee.v1.ListLeaderboardResponse in proto3-JSON. `bee search list-leaderboard --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListLeaderboardResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.search.list-leaderboard"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee search list-leaderboard",
+  "type": "object"
+}

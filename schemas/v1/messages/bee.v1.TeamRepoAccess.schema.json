@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TeamRepoAccess.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A team's role on one repo.",
+  "properties": {
+    "grantedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "inherited": {
+      "description": "granted to a parent team",
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "role": {
+      "description": "Built-in role name (read, triage, write, maintain, admin) or a custom role id\n(see PolicyService custom roles).",
+      "type": "string"
+    },
+    "teamId": {
+      "type": "string"
+    },
+    "viaTeamId": {
+      "description": "set when inherited",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.TeamRepoAccess",
+  "type": "object"
+}

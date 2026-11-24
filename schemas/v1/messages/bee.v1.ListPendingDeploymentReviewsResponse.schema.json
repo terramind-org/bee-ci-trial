@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "bee.v1.DeploymentEnvironmentReviewer": {
+      "description": "One required reviewer of an environment.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.DeploymentReviewerKind"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "kind PRINCIPAL"
+        },
+        "teamId": {
+          "description": "kind TEAM",
+          "type": "string"
+        },
+        "teamSlug": {
+          "description": "kind TEAM, output only",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.DeploymentEnvironmentReviewer",
+      "type": "object"
+    },
+    "bee.v1.DeploymentPendingReview": {
+      "description": "A deployment waiting on an environment's protection rules.",
+      "properties": {
+        "callerCanApprove": {
+          "type": "boolean"
+        },
+        "deploymentId": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "pendingRuleAppSlugs": {
+          "description": "custom rules that have not answered yet",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reviewers": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.DeploymentEnvironmentReviewer"
+          },
+          "type": "array"
+        },
+        "waitTimerSeconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "waitTimerStartedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "workflowRunId": {
+          "description": "set when the deployment belongs to a workflow job",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.DeploymentPendingReview",
+      "type": "object"
+    },
+    "bee.v1.DeploymentReviewerKind": {
+      "description": "What kind of principal a required reviewer entry names.",
+      "enum": [
+        "DEPLOYMENT_REVIEWER_KIND_UNSPECIFIED",
+        "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+        "DEPLOYMENT_REVIEWER_KIND_TEAM"
+      ],
+      "title": "bee.v1.DeploymentReviewerKind",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPendingDeploymentReviewsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListPendingDeploymentReviews.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "reviews": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DeploymentPendingReview"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListPendingDeploymentReviewsResponse",
+  "type": "object"
+}

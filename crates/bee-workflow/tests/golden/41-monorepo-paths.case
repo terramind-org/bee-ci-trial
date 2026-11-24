@@ -1,0 +1,37 @@
+event: push refs/heads/main files=services/api/handler.go,services/api/README.md,infra/main.tf
+--- .github/workflows/api.yml
+name: api
+on:
+  push:
+    paths: ['services/api/**', '!services/api/**/*.md', 'go.work']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - run: go test ./...
+--- .github/workflows/web.yml
+name: web
+on:
+  push:
+    paths: ['services/web/**']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm test
+--- .github/workflows/infra.yml
+name: infra
+on:
+  push:
+    branches: [main]
+    paths: ['infra/*.tf']
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform plan
+        working-directory: infra

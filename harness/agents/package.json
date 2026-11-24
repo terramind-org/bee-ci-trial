@@ -1,0 +1,14 @@
+{
+  "name": "bee-agent-harness",
+  "private": true,
+  "type": "module",
+  "description": "PRODUCT §3.1 agent scenario harness: runs every AS-* scenario with fresh Claude Code and Codex agents against a bee server and checks goal states through API assertions only. Usage: `bun run harness --help`. Validate scenarios: `bun run harness --dry-run --scenarios all`. Self-tests: `bun test`. Full run: `BEE_HARNESS_ADMIN_TOKEN=<token> bun run harness --server http://127.0.0.1:7420 --runtimes claude-code,codex --runs 3 --scenarios all`.",
+  "scripts": {
+    "harness": "bun src/cli.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "typescript": "7.0.2"
+  }
+}

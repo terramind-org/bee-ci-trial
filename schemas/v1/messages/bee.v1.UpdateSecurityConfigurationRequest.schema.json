@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateSecurityConfigurationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateSecurityConfiguration.",
+  "properties": {
+    "bypassReviewerIds": {
+      "description": "replaces when non-empty or replace_bypass_reviewers",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "bypassTtlHours": {
+      "description": "0 = the default (24)",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "codeQuality": {
+      "type": "boolean"
+    },
+    "codeScanningDefaultSetup": {
+      "type": "boolean"
+    },
+    "dependencyAlerts": {
+      "type": "boolean"
+    },
+    "dependencyGraph": {
+      "type": "boolean"
+    },
+    "dependencyReviewRequired": {
+      "type": "boolean"
+    },
+    "privateVulnerabilityReporting": {
+      "type": "boolean"
+    },
+    "pushProtectionBypassMode": {
+      "description": "\"review\", \"allow\" or \"deny\"",
+      "type": "string"
+    },
+    "replaceBypassReviewers": {
+      "description": "set bypass_reviewer_ids even when empty",
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "secretScanning": {
+      "type": "boolean"
+    },
+    "secretScanningPushProtection": {
+      "type": "boolean"
+    },
+    "secretScanningValidityChecks": {
+      "type": "boolean"
+    },
+    "securityUpdates": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateSecurityConfigurationRequest",
+  "type": "object"
+}

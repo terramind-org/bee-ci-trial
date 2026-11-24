@@ -1,0 +1,24 @@
+# TLS front for deploy/compose.yml. Start it with: docker compose --profile caddy up -d
+# Caddy gets and renews a certificate for $BEE_DOMAIN on its own.
+{$BEE_DOMAIN} {
+	encode zstd gzip
+
+	# API, git smart HTTP, MCP, signed blob URLs, health, webhooks, and the sign-in endpoints the
+	# server answers itself (OAuth and OIDC provider, SAML) go to the server. /metrics is not
+	# forwarded: scrape bee-server:7420/metrics on the compose network.
+	@api path /bee.v1.* /mcp /mcp/* /blob/* /healthz /readyz /webhooks/* /login/oauth/* /login/device/* /.well-known/* /saml/*
+	handle @api {
+		reverse_proxy bee-server:7420
+	}
+
+	# Git smart HTTP lives at /<owner>/<repo>.git/...
+	@git path_regexp ^/[^/]+/[^/]+\.git/
+	handle @git {
+		reverse_proxy bee-server:7420
+	}
+
+	# Everything else is the web app.
+	handle {
+		reverse_proxy web:3100
+	}
+}

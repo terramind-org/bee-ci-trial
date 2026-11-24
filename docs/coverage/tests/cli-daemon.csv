@@ -1,0 +1,5 @@
+feature_id,test
+F46-001,crates/bee-cli/tests/daemon.rs::a_virtual_checkout_edits_commits_and_lands_one_path
+F46-019,crates/bee-cli/tests/daemon.rs::a_virtual_checkout_edits_commits_and_lands_one_path
+F46-002,crates/bee-cli/tests/daemon.rs::status_via_the_watcher_equals_a_full_walk_under_random_edits
+F45-023,crates/bee-cli/tests/daemon.rs::daemon_commands_manage_the_cache

@@ -1,0 +1,25 @@
+{
+  "$defs": {
+    "bee.v1.PolicyRoleKind": {
+      "description": "Whether a role applies to repos or to an org.",
+      "enum": [
+        "POLICY_ROLE_KIND_UNSPECIFIED",
+        "POLICY_ROLE_KIND_REPO",
+        "POLICY_ROLE_KIND_ORG"
+      ],
+      "title": "bee.v1.PolicyRoleKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPolicyPermissionsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListPolicyPermissions.",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.PolicyRoleKind",
+      "description": "filter"
+    }
+  },
+  "title": "bee.v1.ListPolicyPermissionsRequest",
+  "type": "object"
+}

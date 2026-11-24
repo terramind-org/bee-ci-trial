@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    },
+    "bee.v1.SbomFormat": {
+      "description": "SBOM document format.",
+      "enum": [
+        "SBOM_FORMAT_UNSPECIFIED",
+        "SBOM_FORMAT_SPDX_JSON",
+        "SBOM_FORMAT_CYCLONEDX_JSON"
+      ],
+      "title": "bee.v1.SbomFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ExportSbomRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ExportSbom.",
+  "properties": {
+    "format": {
+      "$ref": "#/$defs/bee.v1.SbomFormat"
+    },
+    "preferSignedUrl": {
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "revision": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    }
+  },
+  "title": "bee.v1.ExportSbomRequest",
+  "type": "object"
+}

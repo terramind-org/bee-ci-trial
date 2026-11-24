@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.create-workflow-oidc-token.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/CreateWorkflowOidcToken: `data` is a bee.v1.CreateWorkflowOidcTokenResponse in proto3-JSON. `bee workflow create-workflow-oidc-token --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CreateWorkflowOidcTokenResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.create-workflow-oidc-token"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow create-workflow-oidc-token",
+  "type": "object"
+}

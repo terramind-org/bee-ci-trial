@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IpAllowListEntry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One allowed address range.",
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "appId": {
+      "description": "set when the range was declared by an installed app (read only)",
+      "type": "string"
+    },
+    "cidr": {
+      "description": "IPv4 or IPv6, e.g. \"203.0.113.0/24\"",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "description": "ULID",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.EnterpriseScope"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.IpAllowListEntry",
+  "type": "object"
+}

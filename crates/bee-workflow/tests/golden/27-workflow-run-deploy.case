@@ -1,0 +1,23 @@
+event: workflow_run CI completed conclusion=success branch=main
+--- .github/workflows/deploy-after-ci.yml
+name: Deploy after CI
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: ./deploy.sh ${{ github.event.workflow_run.head_sha }}
+  on-failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo failed

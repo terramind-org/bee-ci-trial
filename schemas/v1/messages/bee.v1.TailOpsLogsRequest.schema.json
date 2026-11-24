@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "bee.v1.OpsLogFilter": {
+      "description": "Filter shared by log queries and tails.",
+      "properties": {
+        "cell": {
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "minLevel": {
+          "$ref": "#/$defs/bee.v1.OpsLogLevel"
+        },
+        "principalId": {
+          "type": "string"
+        },
+        "repoId": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "text": {
+          "description": "substring match on message",
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsLogFilter",
+      "type": "object"
+    },
+    "bee.v1.OpsLogLevel": {
+      "description": "Log severity.",
+      "enum": [
+        "OPS_LOG_LEVEL_UNSPECIFIED",
+        "OPS_LOG_LEVEL_DEBUG",
+        "OPS_LOG_LEVEL_INFO",
+        "OPS_LOG_LEVEL_WARN",
+        "OPS_LOG_LEVEL_ERROR"
+      ],
+      "title": "bee.v1.OpsLogLevel",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TailOpsLogsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for TailOpsLogs.",
+  "properties": {
+    "backfill": {
+      "description": "recent entries to send first",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "filter": {
+      "$ref": "#/$defs/bee.v1.OpsLogFilter"
+    }
+  },
+  "title": "bee.v1.TailOpsLogsRequest",
+  "type": "object"
+}

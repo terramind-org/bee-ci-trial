@@ -1,0 +1,48 @@
+# event push action=-
+run .github/workflows/deploy-all.yml "Deploy all regions"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job deploy decided=true
+    call "deploy (us-east-1)"
+      matrix: {"region":"us-east-1"}
+      inputs: {"region":"us-east-1","environment":"production"}
+      secrets:
+        AWS_ROLE: "${{ secrets.AWS_ROLE }}"
+      workflow: ".github/workflows/deploy.yml"
+      concurrency: "deploy-us-east-1" cancel-in-progress=false
+      job apply decided=true
+        instance "apply"
+          runs-on: ["ubuntu-latest"]
+          environment: "production-us-east-1" url="https://us-east-1.widget.example"
+          permissions: default
+          timeout-minutes: 360
+          step 1 "Run aws-actions/configure-aws-credentials@v4"
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+              role-to-assume: "${{ secrets.AWS_ROLE }}"
+              aws-region: "us-east-1"
+          step 2 "Run terraform apply -auto-approve -var region=us-east-1"
+            run: "terraform apply -auto-approve -var region=us-east-1"
+            shell: default -> "bash -e {0}"
+    call "deploy (eu-west-1)"
+      matrix: {"region":"eu-west-1"}
+      inputs: {"region":"eu-west-1","environment":"production"}
+      secrets:
+        AWS_ROLE: "${{ secrets.AWS_ROLE }}"
+      workflow: ".github/workflows/deploy.yml"
+      concurrency: "deploy-eu-west-1" cancel-in-progress=false
+      job apply decided=true
+        instance "apply"
+          runs-on: ["ubuntu-latest"]
+          environment: "production-eu-west-1" url="https://eu-west-1.widget.example"
+          permissions: default
+          timeout-minutes: 360
+          step 1 "Run aws-actions/configure-aws-credentials@v4"
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+              role-to-assume: "${{ secrets.AWS_ROLE }}"
+              aws-region: "eu-west-1"
+          step 2 "Run terraform apply -auto-approve -var region=eu-west-1"
+            run: "terraform apply -auto-approve -var region=eu-west-1"
+            shell: default -> "bash -e {0}"

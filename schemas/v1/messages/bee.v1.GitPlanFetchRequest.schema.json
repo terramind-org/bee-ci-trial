@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "bee.v1.GitFetchFilter": {
+      "description": "Parsed partial-clone filter.\n\nOneof `filter`: at most one of `blobNone`, `blobLimit`, `treeDepth` is set.",
+      "properties": {
+        "blobLimit": {
+          "description": "blob:limit=<n> bytes",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "blobNone": {
+          "description": "blob:none",
+          "type": "boolean"
+        },
+        "spec": {
+          "description": "the filter spec as sent by the client, kept for the cache key",
+          "type": "string"
+        },
+        "treeDepth": {
+          "description": "tree:<n>",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.GitFetchFilter",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitPlanFetchRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GitPlanFetch (one negotiation round).",
+  "properties": {
+    "bundleUri": {
+      "description": "client supports bundle-uri",
+      "type": "boolean"
+    },
+    "clientAgent": {
+      "description": "e.g. \"git/2.45.1\"",
+      "type": "string"
+    },
+    "deepen": {
+      "description": "depth; 0 = not shallow",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "deepenNot": {
+      "description": "ref names",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "deepenRelative": {
+      "type": "boolean"
+    },
+    "deepenSince": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "done": {
+      "description": "the client sent `done`",
+      "type": "boolean"
+    },
+    "filter": {
+      "$ref": "#/$defs/bee.v1.GitFetchFilter"
+    },
+    "haveOids": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "includeTag": {
+      "type": "boolean"
+    },
+    "ofsDelta": {
+      "type": "boolean"
+    },
+    "packfileUriProtocols": {
+      "description": "e.g. \"https\"; empty = no packfile-uris",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "shallowOids": {
+      "description": "client's current shallow boundary",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "thinPack": {
+      "type": "boolean"
+    },
+    "wantOids": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "wantRefs": {
+      "description": "protocol v2 `want-ref`",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GitPlanFetchRequest",
+  "type": "object"
+}

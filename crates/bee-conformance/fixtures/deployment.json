@@ -1,0 +1,775 @@
+{
+ "service": "bee.v1.DeploymentService",
+ "note": "Each fixture creates the environment, deployment, status or rule it acts on in its own setup, under a name prefixed with the method.",
+ "fixtures": [
+  {
+   "method": "CreateDeploymentEnvironment",
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "name": "create-env-fixture",
+    "reviewers": [
+     {
+      "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+      "principal": {
+       "id": "{{user}}"
+      }
+     }
+    ],
+    "waitTimerSeconds": 30,
+    "refPolicyMode": "DEPLOYMENT_REF_POLICY_MODE_CUSTOM",
+    "refPolicies": [
+     {
+      "pattern": "main",
+      "type": "DEPLOYMENT_REF_POLICY_TYPE_BRANCH"
+     },
+     {
+      "pattern": "v*",
+      "type": "DEPLOYMENT_REF_POLICY_TYPE_TAG"
+     }
+    ],
+    "canAdminsBypass": true
+   }
+  },
+  {
+   "method": "GetDeploymentEnvironment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "get-env-fixture",
+      "refPolicyMode": "DEPLOYMENT_REF_POLICY_MODE_ALL"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "name": "get-env-fixture"
+   }
+  },
+  {
+   "method": "ListDeploymentEnvironments",
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "UpdateDeploymentEnvironment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "update-env-fixture",
+      "refPolicyMode": "DEPLOYMENT_REF_POLICY_MODE_ALL"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "name": "update-env-fixture",
+    "reviewers": {
+     "reviewers": [
+      {
+       "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+       "principal": {
+        "id": "{{user}}"
+       }
+      }
+     ]
+    },
+    "preventSelfReview": true,
+    "waitTimerSeconds": 60,
+    "refPolicyMode": "DEPLOYMENT_REF_POLICY_MODE_CUSTOM",
+    "refPolicies": {
+     "policies": [
+      {
+       "pattern": "release/*",
+       "type": "DEPLOYMENT_REF_POLICY_TYPE_BRANCH"
+      }
+     ]
+    },
+    "canAdminsBypass": false
+   }
+  },
+  {
+   "method": "DeleteDeploymentEnvironment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "delete-env-fixture"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "name": "delete-env-fixture"
+   }
+  },
+  {
+   "method": "ListDeploymentProtectionRuleApps",
+   "expect": "UNIMPLEMENTED",
+   "note": "served_elsewhere: listing installable protection-rule apps belongs to the enterprise apps (installations) module, which the forge core does not serve.",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "list-rule-apps-env-fixture"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "environment": "list-rule-apps-env-fixture",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "CreateDeploymentProtectionRule",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "create-rule-env-fixture"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "environment": "create-rule-env-fixture",
+    "appId": "create-rule-gate-app"
+   }
+  },
+  {
+   "method": "DeleteDeploymentProtectionRule",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "delete-rule-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentProtectionRule",
+     "save": "r",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "delete-rule-env-fixture",
+      "appId": "delete-rule-gate-app"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "environment": "delete-rule-env-fixture",
+    "ruleId": "{{r.id}}"
+   }
+  },
+  {
+   "method": "ReportDeploymentProtectionRuleResult",
+   "note": "The rule's app is an agent created in setup and made an org member (so it can see the repo); the result is reported as that agent (its minted token). CreateDeployment into an environment with protection rules creates the deployment and answers APPROVAL_REQUIRED (pending_review), so setup expects that and finds the deployment with ListDeployments.",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "report-rule-gate-agent",
+      "runtime": "claude-code",
+      "purpose": "deployment protection rule gate",
+      "org": "{{org}}"
+     }
+    },
+    {
+     "call": "OrgService/SetMember",
+     "request": {
+      "org": "{{org}}",
+      "principalId": "{{a.id}}",
+      "role": "ROLE_MEMBER"
+     }
+    },
+    {
+     "call": "AuthService/MintToken",
+     "save": "at",
+     "request": {
+      "principalId": "{{a.id}}",
+      "scope": {}
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "report-rule-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentProtectionRule",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "report-rule-env-fixture",
+      "appId": "{{a.id}}"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "report-rule-env-fixture",
+      "description": "report rule fixture"
+     },
+     "expect": "APPROVAL_REQUIRED"
+    },
+    {
+     "call": "DeploymentService/ListDeployments",
+     "save": "l",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "report-rule-env-fixture",
+      "page": {
+       "pageSize": 1
+      }
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{l.deployments.0.id}}",
+    "environment": "report-rule-env-fixture",
+    "decision": "DEPLOYMENT_REVIEW_DECISION_APPROVED",
+    "comment": "gate checks passed"
+   },
+   "token": "{{at.token}}"
+  },
+  {
+   "method": "CreateDeployment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "create-deployment-env-fixture"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "ref": "main",
+    "changeset": "{{base.objectId}}",
+    "task": "deploy",
+    "environment": "create-deployment-env-fixture",
+    "description": "create deployment fixture",
+    "payloadJson": "{\"region\":\"eu-west-1\"}",
+    "productionEnvironment": true,
+    "requiredContexts": {
+     "contexts": []
+    }
+   }
+  },
+  {
+   "method": "GetDeployment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "get-deployment-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "save": "d",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "get-deployment-env-fixture",
+      "description": "get deployment fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{d.id}}"
+   }
+  },
+  {
+   "method": "ListDeployments",
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "ref": "main",
+    "task": "deploy",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "DeleteDeployment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "delete-deployment-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "save": "d",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "delete-deployment-env-fixture",
+      "description": "delete deployment fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentStatus",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "deploymentId": "{{d.id}}",
+      "state": "DEPLOYMENT_STATE_INACTIVE",
+      "description": "retired"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{d.id}}"
+   }
+  },
+  {
+   "method": "CreateDeploymentStatus",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "create-status-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "save": "d",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "create-status-env-fixture",
+      "description": "create status fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{d.id}}",
+    "state": "DEPLOYMENT_STATE_SUCCESS",
+    "description": "deployed",
+    "logUrl": "https://ci.example.com/logs/create-status-fixture",
+    "environmentUrl": "https://create-status-fixture.example.com",
+    "autoInactive": true
+   }
+  },
+  {
+   "method": "GetDeploymentStatus",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "get-status-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "save": "d",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "get-status-env-fixture",
+      "description": "get status fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentStatus",
+     "save": "s",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "deploymentId": "{{d.id}}",
+      "state": "DEPLOYMENT_STATE_IN_PROGRESS",
+      "description": "rolling out"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{d.id}}",
+    "statusId": "{{s.id}}"
+   }
+  },
+  {
+   "method": "ListDeploymentStatuses",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "list-statuses-env-fixture"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "save": "d",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "list-statuses-env-fixture",
+      "description": "list statuses fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentStatus",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "deploymentId": "{{d.id}}",
+      "state": "DEPLOYMENT_STATE_IN_PROGRESS",
+      "description": "rolling out"
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeploymentStatus",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "deploymentId": "{{d.id}}",
+      "state": "DEPLOYMENT_STATE_SUCCESS",
+      "description": "done"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{d.id}}",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "ListPendingDeploymentReviews",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "pending-reviews-env-fixture",
+      "reviewers": [
+       {
+        "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+        "principal": {
+         "id": "{{user}}"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "pending-reviews-env-fixture",
+      "description": "pending review fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     },
+     "expect": "APPROVAL_REQUIRED"
+    },
+    {
+     "call": "DeploymentService/ListDeployments",
+     "save": "l",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "pending-reviews-env-fixture",
+      "page": {
+       "pageSize": 1
+      }
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "environment": "pending-reviews-env-fixture",
+    "page": {
+     "pageSize": 50
+    }
+   },
+   "note": "CreateDeployment into an environment with reviewers or protection rules creates the deployment and answers APPROVAL_REQUIRED (pending_review), so setup expects that and finds the deployment with ListDeployments."
+  },
+  {
+   "method": "ReviewPendingDeployment",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "review-pending-env-fixture",
+      "reviewers": [
+       {
+        "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+        "principal": {
+         "id": "{{user}}"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "review-pending-env-fixture",
+      "description": "review pending fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     },
+     "expect": "APPROVAL_REQUIRED"
+    },
+    {
+     "call": "DeploymentService/ListDeployments",
+     "save": "l",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "review-pending-env-fixture",
+      "page": {
+       "pageSize": 1
+      }
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{l.deployments.0.id}}",
+    "decision": "DEPLOYMENT_REVIEW_DECISION_APPROVED",
+    "comment": "ship it"
+   },
+   "note": "CreateDeployment into an environment with reviewers or protection rules creates the deployment and answers APPROVAL_REQUIRED (pending_review), so setup expects that and finds the deployment with ListDeployments."
+  },
+  {
+   "method": "ListDeploymentReviews",
+   "setup": [
+    {
+     "call": "DeploymentService/CreateDeploymentEnvironment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "name": "list-reviews-env-fixture",
+      "reviewers": [
+       {
+        "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+        "principal": {
+         "id": "{{user}}"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "call": "DeploymentService/CreateDeployment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "ref": "main",
+      "task": "deploy",
+      "environment": "list-reviews-env-fixture",
+      "description": "list reviews fixture",
+      "requiredContexts": {
+       "contexts": []
+      }
+     },
+     "expect": "APPROVAL_REQUIRED"
+    },
+    {
+     "call": "DeploymentService/ListDeployments",
+     "save": "l",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "environment": "list-reviews-env-fixture",
+      "page": {
+       "pageSize": 1
+      }
+     }
+    },
+    {
+     "call": "DeploymentService/ReviewPendingDeployment",
+     "request": {
+      "repo": {
+       "fullName": "{{repo}}"
+      },
+      "deploymentId": "{{l.deployments.0.id}}",
+      "decision": "DEPLOYMENT_REVIEW_DECISION_REJECTED",
+      "comment": "not today"
+     }
+    }
+   ],
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "deploymentId": "{{l.deployments.0.id}}",
+    "page": {
+     "pageSize": 50
+    }
+   },
+   "note": "CreateDeployment into an environment with reviewers or protection rules creates the deployment and answers APPROVAL_REQUIRED (pending_review), so setup expects that and finds the deployment with ListDeployments."
+  },
+  {
+   "method": "GetDeploymentGreenStatus",
+   "request": {
+    "repo": {
+     "fullName": "{{repo}}"
+    },
+    "ref": "main",
+    "changeset": "{{base.objectId}}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/cat.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee cat --json`: one such document with `schema` = bee.v1.cat. Print a file as of a revision, from the server. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "blob": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "encoding": {
+          "enum": [
+            "utf8",
+            "base64"
+          ]
+        },
+        "mode": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "rev": {
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "rev",
+        "mode",
+        "blob",
+        "size",
+        "encoding",
+        "content"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.cat"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee cat",
+  "type": "object"
+}

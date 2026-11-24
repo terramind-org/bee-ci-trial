@@ -1,0 +1,74 @@
+id: AS-WC-02
+area: "4.6"
+title: Interrupt a rebase midway, recover, finish it
+surfaces: cli
+timeout: 1500
+budget: { max_turns: 100 }
+requires: ["bin:bee"]
+notes: >
+  The agent interrupts its own rebase (killing the client process), because only it knows when
+  the rebase is midway. The goal state proves the recovery: every change of the stack arrives
+  on main exactly once, rebased onto the moved main, with its ChangeId and content intact, and
+  the working copy reports no leftover operation.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        notes/README.md: "notes\n"
+    save: seed
+  - { commit: { repo: "${repo.fullName}", parent: "${id:seed.result}", land: false, change: n1, message: "Note 1", files: { notes/one.md: "one\n" } }, save: n1 }
+  - { commit: { repo: "${repo.fullName}", parent: "${id:n1.id}", land: false, change: n2, message: "Note 2", files: { notes/two.md: "two\n" } }, save: n2 }
+  - { commit: { repo: "${repo.fullName}", parent: "${id:n2.id}", land: false, change: n3, message: "Note 3", files: { notes/three.md: "three\n" } }, save: n3 }
+  - { commit: { repo: "${repo.fullName}", parent: "${id:n3.id}", land: false, change: n4, message: "Note 4", files: { notes/four.md: "four\n" } }, save: n4 }
+  - commit: { repo: "${repo.fullName}", parent: "${id:n4.id}", land: false, change: n5, message: "Note 5", files: { notes/five.md: "five\n" }, ref_name: ws/notes }
+    save: n5
+  - name: main moves on
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Unrelated change on main"
+      files:
+        CHANGELOG.md: "## next\n"
+    save: moved
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, the workspace ref `ws/notes` holds a stack of five
+  changes based on an older main. In a local working copy under `./wc`, start rebasing that
+  stack onto the current main and interrupt the rebase midway by killing the process after the
+  first changes have been rebased, as if the machine had crashed. Then recover the working
+  copy, finish the rebase and land the whole stack on main. When you are done, the working copy
+  must have no operation in progress.
+assertions:
+  - name: main has the five changes on top of the moved main, once each
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 6 } }
+    expect:
+      - { path: changesets, len: 6 }
+      - { path: "changesets[5].id.raw", eq: "${moved.result.raw}" }
+      - { path: "changesets[0].changeId", eq: "${n5.changeId}" }
+      - { path: "changesets[4].changeId", eq: "${n1.changeId}" }
+      - path: "changesets[*].changeId"
+        some:
+          - { path: raw, eq: "${n3.changeId.raw}" }
+  - name: every note arrived with its content
+    call: QueryService/ReadPath
+    each:
+      - { path: notes/one.md, text: "one\n" }
+      - { path: notes/two.md, text: "two\n" }
+      - { path: notes/three.md, text: "three\n" }
+      - { path: notes/four.md, text: "four\n" }
+      - { path: notes/five.md, text: "five\n" }
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64v:item.path}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, eq: "${item.text}" }
+  - name: main's own change survived
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:CHANGELOG.md}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, eq: "## next\n" }
+  - name: the working copy exists and holds the notes
+    workdir: { glob: "wc/notes/*.md", min: 6 }

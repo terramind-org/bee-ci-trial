@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.ModelUsageLine": {
+      "description": "Usage for one model and principal.",
+      "properties": {
+        "byok": {
+          "type": "boolean"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost"
+        },
+        "model": {
+          "type": "string"
+        },
+        "principalId": {
+          "type": "string"
+        },
+        "requests": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ModelUsageLine",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ModelUsage.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Model usage over a window.",
+  "properties": {
+    "budgetUsdMicros": {
+      "description": "0 = no budget",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "lines": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ModelUsageLine"
+      },
+      "type": "array"
+    },
+    "org": {
+      "type": "string"
+    },
+    "total": {
+      "$ref": "#/$defs/bee.v1.Cost"
+    },
+    "windowEnd": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "windowStart": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ModelUsage",
+  "type": "object"
+}

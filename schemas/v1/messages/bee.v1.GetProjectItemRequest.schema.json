@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetProjectItemRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetProjectItem.",
+  "properties": {
+    "itemId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetProjectItemRequest",
+  "type": "object"
+}

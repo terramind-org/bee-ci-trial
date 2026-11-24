@@ -1,0 +1,249 @@
+// Gists for bee.v1. See docs/PRODUCT.md §4.16.
+// A gist is a lightweight user-owned repo: multi-file, versioned, forkable and cloneable over
+// git compatibility.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+
+// Gists. Every content change produces a changeset on the gist's repo. Secret gists are
+// unlisted, not private: anyone with the URL can read them. Comments are created and listed
+// here; editing, deleting and reacting use CommentService with a SubjectRef of kind GIST.
+service GistService {
+  // Creates a gist from a set of files. INVALID_ARGUMENT (subcode `no_files`) when empty.
+  rpc CreateGist(CreateGistRequest) returns (Gist);
+  // Fetches a gist at its head, with file contents up to a truncation limit.
+  rpc GetGist(GetGistRequest) returns (Gist);
+  // Lists gists: the caller's, a user's, all public or the caller's starred.
+  rpc ListGists(ListGistsRequest) returns (ListGistsResponse);
+  // Changes the description and adds, edits, renames or deletes files; produces one changeset.
+  // Owner only. VERSION_MISMATCH when `expected_head` is stale.
+  rpc UpdateGist(UpdateGistRequest) returns (Gist);
+  // Deletes a gist. Forks are kept.
+  rpc DeleteGist(DeleteGistRequest) returns (DeleteGistResponse);
+  // Lists a gist's revisions, newest first.
+  rpc ListGistRevisions(ListGistRevisionsRequest) returns (ListGistRevisionsResponse);
+  // Fetches a gist as it was at one revision.
+  rpc GetGistRevision(GetGistRevisionRequest) returns (Gist);
+  // Returns a signed URL for one file's raw bytes, for files past the inline truncation limit.
+  rpc GetGistFileRawUrl(GetGistFileRawUrlRequest) returns (GetGistFileRawUrlResponse);
+  // Forks a gist into the caller's account. ALREADY_EXISTS when the caller already forked it
+  // or owns it.
+  rpc ForkGist(ForkGistRequest) returns (Gist);
+  // Lists forks of a gist.
+  rpc ListGistForks(ListGistForksRequest) returns (ListGistForksResponse);
+  // Stars a gist for the caller. Starring twice is a no-op.
+  rpc StarGist(StarGistRequest) returns (StarGistResponse);
+  // Removes the caller's star.
+  rpc UnstarGist(UnstarGistRequest) returns (UnstarGistResponse);
+  // Reports whether the caller has starred a gist.
+  rpc IsGistStarred(IsGistStarredRequest) returns (IsGistStarredResponse);
+  // Adds a comment to a gist. LOCKED when comments are locked; BLOCKED when the owner blocked
+  // the caller.
+  rpc CreateGistComment(CreateGistCommentRequest) returns (Comment);
+  // Lists comments on a gist, oldest first.
+  rpc ListGistComments(ListGistCommentsRequest) returns (ListGistCommentsResponse);
+}
+
+// Which gists ListGists returns.
+enum GistListFilter {
+  GIST_LIST_FILTER_UNSPECIFIED = 0; // same as MINE
+  GIST_LIST_FILTER_MINE = 1;        // the caller's, public and secret
+  GIST_LIST_FILTER_USER = 2;        // a user's public gists
+  GIST_LIST_FILTER_PUBLIC = 3;      // all public gists, newest first
+  GIST_LIST_FILTER_STARRED = 4;     // gists the caller starred
+}
+
+// One file in a gist.
+message GistFile {
+  string filename = 1;
+  string language = 2;          // detected language name
+  string content_type = 3;
+  uint64 size = 4;
+  ObjectId blob = 5;
+  string content = 6;           // UTF-8 text; empty when binary or not requested
+  bool truncated = 7;           // content was cut; fetch the rest with GetGistFileRawUrl
+  bool binary = 8;
+}
+
+// A gist at one revision.
+message Gist {
+  string id = 1;
+  Principal owner = 2;
+  string description = 3;
+  bool public = 4;              // false = secret (unlisted)
+  repeated GistFile files = 5;  // sorted by filename
+  ObjectId head = 6;            // changeset this view was read at
+  RepoRef repo = 7;             // the gist's backing repo
+  string clone_url_https = 8;
+  string clone_url_ssh = 9;
+  string embed_url = 10;        // script URL for embedding
+  string url = 11;
+  string fork_of = 12;          // parent gist id, if a fork
+  uint32 fork_count = 13;
+  uint32 star_count = 14;
+  uint32 comment_count = 15;
+  bool comments_locked = 16;
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+}
+
+// One revision of a gist.
+message GistRevision {
+  ObjectId changeset = 1;
+  Principal author = 2;
+  google.protobuf.Timestamp created_at = 3;
+  uint32 additions = 4;
+  uint32 deletions = 5;
+  uint32 files_changed = 6;
+}
+
+// One file change in UpdateGist: edit content, rename, or delete.
+message GistFileChange {
+  string filename = 1;          // existing or new file name
+  optional string content = 2;  // new content; unset keeps it
+  optional string new_filename = 3; // rename
+  bool delete = 4;
+}
+
+// Request for CreateGist.
+message CreateGistRequest {
+  map<string, string> files = 1; // filename -> content
+  string description = 2;
+  bool public = 3;
+}
+
+// Request for GetGist.
+message GetGistRequest {
+  string gist_id = 1;
+  uint32 max_inline_bytes = 2;  // per-file truncation; 0 = server default
+}
+
+// Request for ListGists.
+message ListGistsRequest {
+  GistListFilter filter = 1;
+  string user = 2;              // login, for USER
+  google.protobuf.Timestamp since = 3; // only gists updated at or after
+  PageRequest page = 4;
+}
+
+// Response for ListGists.
+message ListGistsResponse {
+  repeated Gist gists = 1;      // file contents omitted
+  PageResponse page = 2;
+}
+
+// Request for UpdateGist.
+message UpdateGistRequest {
+  string gist_id = 1;
+  ObjectId expected_head = 2;   // unset = any
+  optional string description = 3;
+  repeated GistFileChange file_changes = 4;
+  optional bool comments_locked = 5;
+}
+
+// Request for DeleteGist.
+message DeleteGistRequest {
+  string gist_id = 1;
+}
+
+// Response for DeleteGist.
+message DeleteGistResponse {}
+
+// Request for ListGistRevisions.
+message ListGistRevisionsRequest {
+  string gist_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListGistRevisions.
+message ListGistRevisionsResponse {
+  repeated GistRevision revisions = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetGistRevision.
+message GetGistRevisionRequest {
+  string gist_id = 1;
+  ObjectId changeset = 2;
+  uint32 max_inline_bytes = 3;
+}
+
+// Request for GetGistFileRawUrl.
+message GetGistFileRawUrlRequest {
+  string gist_id = 1;
+  string filename = 2;
+  ObjectId changeset = 3;       // unset = head
+}
+
+// Response for GetGistFileRawUrl.
+message GetGistFileRawUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  uint64 size = 3;
+}
+
+// Request for ForkGist.
+message ForkGistRequest {
+  string gist_id = 1;
+}
+
+// Request for ListGistForks.
+message ListGistForksRequest {
+  string gist_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListGistForks.
+message ListGistForksResponse {
+  repeated Gist forks = 1;
+  PageResponse page = 2;
+}
+
+// Request for StarGist.
+message StarGistRequest {
+  string gist_id = 1;
+}
+
+// Response for StarGist.
+message StarGistResponse {}
+
+// Request for UnstarGist.
+message UnstarGistRequest {
+  string gist_id = 1;
+}
+
+// Response for UnstarGist.
+message UnstarGistResponse {}
+
+// Request for IsGistStarred.
+message IsGistStarredRequest {
+  string gist_id = 1;
+}
+
+// Response for IsGistStarred.
+message IsGistStarredResponse {
+  bool starred = 1;
+}
+
+// Request for CreateGistComment.
+message CreateGistCommentRequest {
+  string gist_id = 1;
+  string body = 2;              // Markdown
+}
+
+// Request for ListGistComments.
+message ListGistCommentsRequest {
+  string gist_id = 1;
+  bool include_html = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListGistComments.
+message ListGistCommentsResponse {
+  repeated Comment comments = 1;
+  PageResponse page = 2;
+}

@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "bee.v1.GitBundleUri": {
+      "description": "A bundle offered through bundle-uri.",
+      "properties": {
+        "creationToken": {
+          "description": "ordering token for incremental bundles",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "filter": {
+          "description": "filter the bundle was built with",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "uri": {
+          "description": "signed",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.GitBundleUri",
+      "type": "object"
+    },
+    "bee.v1.GitFetchAcks": {
+      "description": "Negotiation acknowledgements for one round.",
+      "properties": {
+        "commonOids": {
+          "description": "`ACK <oid>`",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "nak": {
+          "description": "no common objects found",
+          "type": "boolean"
+        },
+        "ready": {
+          "description": "the server can send a pack now",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.GitFetchAcks",
+      "type": "object"
+    },
+    "bee.v1.GitPackfileUri": {
+      "description": "A pre-built pack offered through packfile-uris.",
+      "properties": {
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "packHash": {
+          "description": "hash of the pack file",
+          "type": "string"
+        },
+        "uri": {
+          "description": "signed",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.GitPackfileUri",
+      "type": "object"
+    },
+    "bee.v1.GitWantedRef": {
+      "description": "A want-ref resolved to an oid.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.GitWantedRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitPlanFetchResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GitPlanFetch.",
+  "properties": {
+    "acks": {
+      "$ref": "#/$defs/bee.v1.GitFetchAcks"
+    },
+    "bundleUris": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitBundleUri"
+      },
+      "type": "array"
+    },
+    "estimatedBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "objectCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "omittedCount": {
+      "description": "Objects left out because the caller cannot read them or they are redacted; the client\nsees them as missing (promisor objects under a filter, otherwise an error).",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "packCacheKey": {
+      "description": "Set once ready: the key of the planned pack. Stream its objects with GetGitObjects or\nfetch the cached pack at pack_url.",
+      "type": "string"
+    },
+    "packCached": {
+      "type": "boolean"
+    },
+    "packUrl": {
+      "description": "signed URL of the cached pack, when built",
+      "type": "string"
+    },
+    "packUrlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "packfileUris": {
+      "description": "seed packs the client downloads directly",
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitPackfileUri"
+      },
+      "type": "array"
+    },
+    "policyEpoch": {
+      "type": "string"
+    },
+    "shallowOids": {
+      "description": "new shallow boundary commits",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "unshallowOids": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "wantedRefs": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitWantedRef"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GitPlanFetchResponse",
+  "type": "object"
+}

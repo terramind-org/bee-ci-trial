@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.TakedownKind": {
+      "description": "Basis of a takedown.",
+      "enum": [
+        "TAKEDOWN_KIND_UNSPECIFIED",
+        "TAKEDOWN_KIND_DMCA",
+        "TAKEDOWN_KIND_LEGAL",
+        "TAKEDOWN_KIND_ABUSE",
+        "TAKEDOWN_KIND_MALWARE",
+        "TAKEDOWN_KIND_PRIVACY"
+      ],
+      "title": "bee.v1.TakedownKind",
+      "type": "string"
+    },
+    "bee.v1.TakedownState": {
+      "description": "Takedown lifecycle.",
+      "enum": [
+        "TAKEDOWN_STATE_UNSPECIFIED",
+        "TAKEDOWN_STATE_ACTIVE",
+        "TAKEDOWN_STATE_REINSTATED"
+      ],
+      "title": "bee.v1.TakedownState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTakedownsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListTakedowns.",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.TakedownKind"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "unset = all"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.TakedownState"
+    }
+  },
+  "title": "bee.v1.ListTakedownsRequest",
+  "type": "object"
+}

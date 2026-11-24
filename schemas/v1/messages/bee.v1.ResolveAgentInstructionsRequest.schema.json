@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ResolveAgentInstructionsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ResolveAgentInstructions.",
+  "properties": {
+    "customAgent": {
+      "description": "name of a .github/agents/*.md agent to include",
+      "type": "string"
+    },
+    "paths": {
+      "description": "empty = repo root",
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "revision": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    },
+    "runtime": {
+      "description": "e.g. \"claude-code\" picks CLAUDE.md where present",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ResolveAgentInstructionsRequest",
+  "type": "object"
+}

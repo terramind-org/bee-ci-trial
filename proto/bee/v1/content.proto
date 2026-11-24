@@ -1,0 +1,198 @@
+// Shared forge content for bee.v1: comments, reactions, labels and milestones.
+// Issues, change requests, discussions, commits, releases and gists all reuse these.
+// See docs/PRODUCT.md §4.13, §4.15, §4.16 and §4.21.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Operations that apply to any comment or subject regardless of where it lives: editing,
+// deleting, edit history and reactions. Areas create and list their own comments.
+service CommentService {
+  // Fetches one comment by id.
+  rpc GetComment(GetCommentRequest) returns (Comment);
+  // Edits a comment body. The previous body is kept in the edit history.
+  rpc UpdateComment(UpdateCommentRequest) returns (Comment);
+  // Deletes a comment. The tombstone keeps its place in the timeline.
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+  // Lists every edit of a comment, oldest first (PRODUCT §4.21 edit history).
+  rpc ListCommentEdits(ListCommentEditsRequest) returns (ListCommentEditsResponse);
+  // Adds the caller's reaction to a subject or comment. Adding the same reaction twice is a no-op.
+  rpc AddReaction(AddReactionRequest) returns (Reaction);
+  // Removes the caller's reaction.
+  rpc RemoveReaction(RemoveReactionRequest) returns (RemoveReactionResponse);
+  // Lists reactions on a subject or comment.
+  rpc ListReactions(ListReactionsRequest) returns (ListReactionsResponse);
+  // Marks a subject's conversation as read up to now for the caller (unread markers).
+  rpc MarkSubjectRead(MarkSubjectReadRequest) returns (MarkSubjectReadResponse);
+}
+
+// Why a comment is minimized (PRODUCT §4.21).
+enum MinimizedReason {
+  MINIMIZED_REASON_UNSPECIFIED = 0;
+  MINIMIZED_REASON_SPAM = 1;
+  MINIMIZED_REASON_ABUSE = 2;
+  MINIMIZED_REASON_OFF_TOPIC = 3;
+  MINIMIZED_REASON_OUTDATED = 4;
+  MINIMIZED_REASON_DUPLICATE = 5;
+  MINIMIZED_REASON_RESOLVED = 6;
+}
+
+// Reaction emoji, matching GitHub's fixed set.
+enum ReactionContent {
+  REACTION_CONTENT_UNSPECIFIED = 0;
+  REACTION_CONTENT_THUMBS_UP = 1;
+  REACTION_CONTENT_THUMBS_DOWN = 2;
+  REACTION_CONTENT_LAUGH = 3;
+  REACTION_CONTENT_HOORAY = 4;
+  REACTION_CONTENT_CONFUSED = 5;
+  REACTION_CONTENT_HEART = 6;
+  REACTION_CONTENT_ROCKET = 7;
+  REACTION_CONTENT_EYES = 8;
+}
+
+// Count of one reaction on a subject, and whether the caller is among them.
+message ReactionGroup {
+  ReactionContent content = 1;
+  uint32 count = 2;
+  bool viewer_reacted = 3;
+}
+
+// A conversation comment on any subject.
+message Comment {
+  string id = 1;
+  SubjectRef subject = 2;      // what the comment is on
+  Principal author = 3;
+  string body = 4;             // Markdown
+  string body_html = 5;        // sanitized rendering, when requested
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool edited = 8;
+  bool deleted = 9;
+  MinimizedReason minimized_reason = 10; // UNSPECIFIED = shown
+  repeated ReactionGroup reactions = 11;
+  string in_reply_to = 12;     // parent comment id for threaded replies
+  string author_association = 13; // "OWNER", "MEMBER", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "NONE"
+  string url = 14;             // permalink in the web app
+  CommentAnchor anchor = 15;   // set for line and file comments
+}
+
+// Where a line or file comment is anchored: change request review comments and changeset
+// (commit) comments.
+message CommentAnchor {
+  bytes path = 1;
+  string side = 2;             // "old" | "new"
+  uint32 start_line = 3;
+  uint32 end_line = 4;
+  bool file_level = 5;         // anchored to the file, not to lines
+  uint32 revision = 6;         // CR revision the anchor was last valid on; 0 off a CR
+  string thread_id = 7;        // the CR review thread
+  bool outdated = 8;           // the anchored lines changed in a later revision
+}
+
+// One edit of a comment.
+message CommentEdit {
+  string comment_id = 1;
+  Principal editor = 2;
+  string previous_body = 3;
+  google.protobuf.Timestamp edited_at = 4;
+}
+
+// One principal's reaction.
+message Reaction {
+  string id = 1;
+  ReactionContent content = 2;
+  Principal user = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// A repo label shared by issues, change requests and discussions.
+message Label {
+  string id = 1;
+  string name = 2;
+  string color = 3;       // six hex digits, no '#'
+  string description = 4;
+  bool is_default = 5;    // part of the repo's default label set
+}
+
+// Open or closed state of a milestone.
+enum MilestoneState {
+  MILESTONE_STATE_UNSPECIFIED = 0;
+  MILESTONE_STATE_OPEN = 1;
+  MILESTONE_STATE_CLOSED = 2;
+}
+
+// A repo milestone with progress.
+message Milestone {
+  string id = 1;
+  uint64 number = 2;
+  string title = 3;
+  string description = 4;
+  MilestoneState state = 5;
+  google.protobuf.Timestamp due_on = 6;
+  uint32 open_items = 7;
+  uint32 closed_items = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp closed_at = 10;
+}
+
+message GetCommentRequest {
+  string comment_id = 1;
+  bool include_html = 2;
+}
+
+message UpdateCommentRequest {
+  string comment_id = 1;
+  string body = 2;
+  uint64 expected_version = 3; // 0 = any; otherwise VERSION_MISMATCH when stale
+}
+
+message DeleteCommentRequest {
+  string comment_id = 1;
+}
+
+message DeleteCommentResponse {}
+
+message ListCommentEditsRequest {
+  string comment_id = 1;
+  PageRequest page = 2;
+}
+
+message ListCommentEditsResponse {
+  repeated CommentEdit edits = 1;
+  PageResponse page = 2;
+}
+
+message AddReactionRequest {
+  SubjectRef subject = 1; // kind COMMENT with the comment id to react to a comment
+  ReactionContent content = 2;
+}
+
+message RemoveReactionRequest {
+  SubjectRef subject = 1;
+  ReactionContent content = 2;
+}
+
+message RemoveReactionResponse {}
+
+message ListReactionsRequest {
+  SubjectRef subject = 1;
+  ReactionContent content = 2; // UNSPECIFIED = all
+  PageRequest page = 3;
+}
+
+message ListReactionsResponse {
+  repeated Reaction reactions = 1;
+  repeated ReactionGroup groups = 2;
+  PageResponse page = 3;
+}
+
+message MarkSubjectReadRequest {
+  SubjectRef subject = 1;
+}
+
+message MarkSubjectReadResponse {
+  google.protobuf.Timestamp read_at = 1;
+}

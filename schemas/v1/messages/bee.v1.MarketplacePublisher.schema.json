@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "bee.v1.MarketplacePublisherVerification": {
+      "description": "Verification state of a marketplace publisher.",
+      "enum": [
+        "MARKETPLACE_PUBLISHER_VERIFICATION_UNSPECIFIED",
+        "MARKETPLACE_PUBLISHER_VERIFICATION_UNVERIFIED",
+        "MARKETPLACE_PUBLISHER_VERIFICATION_PENDING",
+        "MARKETPLACE_PUBLISHER_VERIFICATION_VERIFIED",
+        "MARKETPLACE_PUBLISHER_VERIFICATION_REJECTED"
+      ],
+      "title": "bee.v1.MarketplacePublisherVerification",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MarketplacePublisher.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An org that publishes marketplace listings.",
+  "properties": {
+    "listingCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "org": {
+      "type": "string"
+    },
+    "supportEmail": {
+      "type": "string"
+    },
+    "verification": {
+      "$ref": "#/$defs/bee.v1.MarketplacePublisherVerification"
+    },
+    "verifiedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "verifiedDomain": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.MarketplacePublisher",
+  "type": "object"
+}

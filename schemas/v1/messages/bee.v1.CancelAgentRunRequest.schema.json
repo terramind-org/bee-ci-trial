@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CancelAgentRunRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CancelAgentRun.",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CancelAgentRunRequest",
+  "type": "object"
+}

@@ -1,0 +1,29 @@
+event: pr opened base=main head=feature/parser
+--- .github/workflows/lint.yml
+name: Lint
+on:
+  pull_request:
+    branches: [main, 'release/**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo fmt --all -- --check
+  clippy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Clippy (${{ github.head_ref }} into ${{ github.base_ref }})
+        run: cargo clippy --all-targets -- -D warnings

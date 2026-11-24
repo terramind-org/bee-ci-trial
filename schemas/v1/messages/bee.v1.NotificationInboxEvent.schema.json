@@ -1,0 +1,229 @@
+{
+  "$defs": {
+    "bee.v1.NotificationInboxEventKind": {
+      "description": "What happened in a live inbox stream message.",
+      "enum": [
+        "NOTIFICATION_INBOX_EVENT_KIND_UNSPECIFIED",
+        "NOTIFICATION_INBOX_EVENT_KIND_SNAPSHOT",
+        "NOTIFICATION_INBOX_EVENT_KIND_SNAPSHOT_END",
+        "NOTIFICATION_INBOX_EVENT_KIND_NEW",
+        "NOTIFICATION_INBOX_EVENT_KIND_UPDATED",
+        "NOTIFICATION_INBOX_EVENT_KIND_REMOVED",
+        "NOTIFICATION_INBOX_EVENT_KIND_HEARTBEAT"
+      ],
+      "title": "bee.v1.NotificationInboxEventKind",
+      "type": "string"
+    },
+    "bee.v1.NotificationReason": {
+      "description": "Why a notification was delivered.",
+      "enum": [
+        "NOTIFICATION_REASON_UNSPECIFIED",
+        "NOTIFICATION_REASON_REVIEW_REQUESTED",
+        "NOTIFICATION_REASON_MENTION",
+        "NOTIFICATION_REASON_TEAM_MENTION",
+        "NOTIFICATION_REASON_ASSIGN",
+        "NOTIFICATION_REASON_AUTHOR",
+        "NOTIFICATION_REASON_COMMENT",
+        "NOTIFICATION_REASON_STATE_CHANGE",
+        "NOTIFICATION_REASON_CI_ACTIVITY",
+        "NOTIFICATION_REASON_SECURITY_ALERT",
+        "NOTIFICATION_REASON_SUBSCRIBED",
+        "NOTIFICATION_REASON_MANUAL",
+        "NOTIFICATION_REASON_AGENT_RUN"
+      ],
+      "title": "bee.v1.NotificationReason",
+      "type": "string"
+    },
+    "bee.v1.NotificationThread": {
+      "description": "A thread's inbox state.",
+      "properties": {
+        "done": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastActivity": {
+          "description": "short summary, e.g. \"commented\", \"requested your review\"",
+          "type": "string"
+        },
+        "lastActor": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "lastReadAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "latestCommentId": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/bee.v1.NotificationReason",
+          "description": "most recent reason"
+        },
+        "reasons": {
+          "description": "every reason that applies",
+          "items": {
+            "$ref": "#/$defs/bee.v1.NotificationReason"
+          },
+          "type": "array"
+        },
+        "replyToken": {
+          "description": "opaque token in the reply-by-email address",
+          "type": "string"
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "saved": {
+          "type": "boolean"
+        },
+        "subject": {
+          "$ref": "#/$defs/bee.v1.SubjectRef"
+        },
+        "subjectState": {
+          "description": "e.g. \"open\", \"landed\", \"closed\", \"draft\", \"failed\"",
+          "type": "string"
+        },
+        "title": {
+          "description": "subject title at last update",
+          "type": "string"
+        },
+        "unread": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.NotificationThread",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.NotificationInboxEvent.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One message on the live inbox stream.",
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "cursor": {
+      "description": "pass as resume_cursor to resume after a disconnect",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.NotificationInboxEventKind"
+    },
+    "thread": {
+      "$ref": "#/$defs/bee.v1.NotificationThread",
+      "description": "unset for SNAPSHOT_END and HEARTBEAT"
+    }
+  },
+  "title": "bee.v1.NotificationInboxEvent",
+  "type": "object"
+}

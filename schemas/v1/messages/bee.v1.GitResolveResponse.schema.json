@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.GitObjectFormat": {
+      "description": "Hash function of a repo's git representation. One format per repo.",
+      "enum": [
+        "GIT_OBJECT_FORMAT_UNSPECIFIED",
+        "GIT_OBJECT_FORMAT_SHA1",
+        "GIT_OBJECT_FORMAT_SHA256"
+      ],
+      "title": "bee.v1.GitObjectFormat",
+      "type": "string"
+    },
+    "bee.v1.GitObjectType": {
+      "description": "Git object type.",
+      "enum": [
+        "GIT_OBJECT_TYPE_UNSPECIFIED",
+        "GIT_OBJECT_TYPE_COMMIT",
+        "GIT_OBJECT_TYPE_TREE",
+        "GIT_OBJECT_TYPE_BLOB",
+        "GIT_OBJECT_TYPE_TAG"
+      ],
+      "title": "bee.v1.GitObjectType",
+      "type": "string"
+    },
+    "bee.v1.GitResolveResult": {
+      "description": "The mapping for one query, in request order.",
+      "properties": {
+        "changeId": {
+          "$ref": "#/$defs/bee.v1.ChangeId",
+          "description": "commits only"
+        },
+        "gitOid": {
+          "type": "string"
+        },
+        "gitType": {
+          "$ref": "#/$defs/bee.v1.GitObjectType"
+        },
+        "imported": {
+          "description": "the git object came from an import, byte-identical to the original",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.ItemStatus"
+        },
+        "beeId": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "changeset, tree or blob"
+        },
+        "beeKind": {
+          "$ref": "#/$defs/bee.v1.ObjectKind"
+        }
+      },
+      "title": "bee.v1.GitResolveResult",
+      "type": "object"
+    },
+    "bee.v1.ItemStatus": {
+      "description": "Per-item outcome in a batch read; one failed item never fails the batch.",
+      "enum": [
+        "ITEM_STATUS_UNSPECIFIED",
+        "ITEM_STATUS_OK",
+        "ITEM_STATUS_NOT_FOUND",
+        "ITEM_STATUS_PERMISSION_DENIED",
+        "ITEM_STATUS_REDACTED"
+      ],
+      "title": "bee.v1.ItemStatus",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.ObjectKind": {
+      "enum": [
+        "OBJECT_KIND_UNSPECIFIED",
+        "OBJECT_KIND_BLOB",
+        "OBJECT_KIND_TREE",
+        "OBJECT_KIND_CHANGESET",
+        "OBJECT_KIND_META"
+      ],
+      "title": "bee.v1.ObjectKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitResolveResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GitResolve.",
+  "properties": {
+    "objectFormat": {
+      "$ref": "#/$defs/bee.v1.GitObjectFormat"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitResolveResult"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GitResolveResponse",
+  "type": "object"
+}

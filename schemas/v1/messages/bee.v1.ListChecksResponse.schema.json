@@ -1,0 +1,265 @@
+{
+  "$defs": {
+    "bee.v1.AnnotationLevel": {
+      "description": "Severity of a check annotation.",
+      "enum": [
+        "ANNOTATION_LEVEL_UNSPECIFIED",
+        "ANNOTATION_LEVEL_NOTICE",
+        "ANNOTATION_LEVEL_WARNING",
+        "ANNOTATION_LEVEL_FAILURE"
+      ],
+      "title": "bee.v1.AnnotationLevel",
+      "type": "string"
+    },
+    "bee.v1.CheckAction": {
+      "description": "A button the reporter offers on a check run; pressing it sends a `check_run.requested_action` event.",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CheckAction",
+      "type": "object"
+    },
+    "bee.v1.CheckAnnotation": {
+      "description": "A finding attached to a line range of a file.",
+      "properties": {
+        "endColumn": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "endLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "level": {
+          "$ref": "#/$defs/bee.v1.AnnotationLevel"
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "rawDetails": {
+          "type": "string"
+        },
+        "startColumn": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "startLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CheckAnnotation",
+      "type": "object"
+    },
+    "bee.v1.CheckImage": {
+      "description": "An image shown in a check's output.",
+      "properties": {
+        "alt": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CheckImage",
+      "type": "object"
+    },
+    "bee.v1.CheckOutput": {
+      "description": "Rich output of a check run (Markdown).",
+      "properties": {
+        "annotations": {
+          "description": "appended on each report, up to the limit",
+          "items": {
+            "$ref": "#/$defs/bee.v1.CheckAnnotation"
+          },
+          "type": "array"
+        },
+        "images": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.CheckImage"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CheckOutput",
+      "type": "object"
+    },
+    "bee.v1.CheckRun": {
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.CheckAction"
+          },
+          "type": "array"
+        },
+        "annotationsCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "externalId": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/bee.v1.CheckOutput"
+        },
+        "postLand": {
+          "type": "boolean"
+        },
+        "repoId": {
+          "type": "string"
+        },
+        "reporter": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "app, workflow or agent that reported it"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.CheckStatus"
+        },
+        "suiteId": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "workflowJobId": {
+          "description": "set when a Beehive workflow job produced it",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CheckRun",
+      "type": "object"
+    },
+    "bee.v1.CheckStatus": {
+      "enum": [
+        "CHECK_STATUS_UNSPECIFIED",
+        "CHECK_STATUS_QUEUED",
+        "CHECK_STATUS_RUNNING",
+        "CHECK_STATUS_PASSED",
+        "CHECK_STATUS_FAILED",
+        "CHECK_STATUS_SKIPPED",
+        "CHECK_STATUS_CANCELLED",
+        "CHECK_STATUS_TIMED_OUT",
+        "CHECK_STATUS_NEUTRAL",
+        "CHECK_STATUS_ACTION_REQUIRED",
+        "CHECK_STATUS_STALE"
+      ],
+      "title": "bee.v1.CheckStatus",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListChecksResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.CheckRun"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListChecksResponse",
+  "type": "object"
+}

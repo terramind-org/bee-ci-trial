@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "bee.v1.MirrorDirection": {
+      "description": "Direction of a repo mirror.",
+      "enum": [
+        "MIRROR_DIRECTION_UNSPECIFIED",
+        "MIRROR_DIRECTION_PUSH",
+        "MIRROR_DIRECTION_PULL"
+      ],
+      "title": "bee.v1.MirrorDirection",
+      "type": "string"
+    },
+    "bee.v1.RepoMirror": {
+      "description": "A git mirror to or from another remote.",
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/bee.v1.MirrorDirection"
+        },
+        "id": {
+          "type": "string"
+        },
+        "intervalSeconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "lastSyncAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "refPatterns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "remoteUrl": {
+          "type": "string"
+        },
+        "repoId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoMirror",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRepoMirrorsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "mirrors": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoMirror"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListRepoMirrorsResponse",
+  "type": "object"
+}

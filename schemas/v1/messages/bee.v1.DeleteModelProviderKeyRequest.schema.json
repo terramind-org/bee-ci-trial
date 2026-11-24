@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteModelProviderKeyRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteModelProviderKey.",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteModelProviderKeyRequest",
+  "type": "object"
+}

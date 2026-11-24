@@ -1,0 +1,76 @@
+id: AS-CORE-03
+area: "4.1"
+title: Land a three-change stack, then amend the middle change and re-land it
+surfaces: both
+timeout: 1500
+budget: { max_turns: 100 }
+notes: >
+  A ChangeId lands at most once per ref (SPEC §7.4), so the first landing goes to `next` and the
+  amended stack re-lands on `main`. The goal state proves the property the scenario is about:
+  the amended middle change keeps its ChangeId, and the stack lands as three separate changes.
+fixtures: [base]
+setup:
+  - name: seed main
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add package skeleton"
+      files:
+        lib/__init__.py: ""
+    save: seed
+  - name: create the integration branch at main
+    call: RefService/CreateRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: next, target: "${seed.result}", reason: "harness setup" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, build a stack of three separate changes on top of main:
+
+  1. add `lib/parse.py` with a function `parse(line: str) -> list[str]` that splits on commas;
+  2. add `lib/validate.py` with a function `validate(fields: list[str]) -> bool` that returns
+     True when there are exactly three fields;
+  3. add `lib/report.py` with a function `report(rows: list[list[str]]) -> str` that joins rows
+     with newlines.
+
+  Land the whole stack on the `next` branch, as three changes. Then amend the middle change so
+  that `lib/validate.py` also has a function `reject_empty(fields: list[str]) -> bool` that
+  returns False when any field is empty, and land the amended stack on `main`.
+assertions:
+  - name: next has the original three changes
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: next }, page: { pageSize: 3 }, includeMeta: true }
+    save: { nextChangeIds: "changesets[*].changeId" }
+    expect:
+      - { path: changesets, len: 3 }
+      - { path: "changesets[*].delta[*].path", decode: base64, contains: lib/parse.py }
+      - { path: "changesets[*].delta[*].path", decode: base64, contains: lib/validate.py }
+      - { path: "changesets[*].delta[*].path", decode: base64, contains: lib/report.py }
+      - path: changesets
+        every:
+          - { path: delta, len: 1 }
+          - { path: meta.provenance.session, eq: "${run.session}" }
+  - name: main has three changes with the same ChangeIds as next
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 3 }, includeMeta: true }
+    expect:
+      - { path: changesets, len: 3 }
+      - path: changesets
+        every:
+          - { path: changeId, in: "${nextChangeIds}" }
+          - { path: delta, len: 1 }
+  - name: the amendment is on main
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:lib/validate.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "def reject_empty\\(" }
+      - { path: "messages[*].data", decode: base64, matches: "def validate\\(" }
+  - name: next still has the original middle change
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: next }, path: "${b64:lib/validate.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, not_contains: reject_empty }
+  - name: the top of the stack sits on the amended middle change on main
+    call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: main }
+    expect:
+      - { path: ref.version, gt: "${seed.ref.version}" }

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/gist.is-gist-starred.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.GistService/IsGistStarred: `data` is a bee.v1.IsGistStarredResponse in proto3-JSON. `bee gist is-gist-starred --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.IsGistStarredResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.gist.is-gist-starred"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee gist is-gist-starred",
+  "type": "object"
+}

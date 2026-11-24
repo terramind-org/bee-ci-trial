@@ -1,0 +1,14 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ConvertToOutsideCollaboratorRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ConvertToOutsideCollaboratorRequest",
+  "type": "object"
+}

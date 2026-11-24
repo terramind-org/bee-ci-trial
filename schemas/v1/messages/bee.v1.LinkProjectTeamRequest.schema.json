@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "bee.v1.ProjectTeamRole": {
+      "description": "Role a linked team has on a project.",
+      "enum": [
+        "PROJECT_TEAM_ROLE_UNSPECIFIED",
+        "PROJECT_TEAM_ROLE_READ",
+        "PROJECT_TEAM_ROLE_WRITE",
+        "PROJECT_TEAM_ROLE_ADMIN"
+      ],
+      "title": "bee.v1.ProjectTeamRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LinkProjectTeamRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for LinkProjectTeam.",
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.ProjectTeamRole",
+      "description": "UNSPECIFIED = READ"
+    },
+    "team": {
+      "description": "team slug or id in the project's org",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.LinkProjectTeamRequest",
+  "type": "object"
+}

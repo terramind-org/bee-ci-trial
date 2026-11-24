@@ -1,0 +1,5 @@
+manifest gradle.lockfile maven lock=true count=3
+manifest gradle/libs.versions.toml maven lock=false count=2
+gradle.lockfile maven com.squareup.okhttp3:okhttp@4.9.0 runtime direct req=4.9.0 pkg:maven/com.squareup.okhttp3/okhttp@4.9.0
+gradle.lockfile maven com.squareup.okio:okio@2.8.0 runtime indirect req=- pkg:maven/com.squareup.okio/okio@2.8.0
+gradle.lockfile maven org.junit.jupiter:junit-jupiter@5.10.0 dev direct req=5.10.0 pkg:maven/org.junit.jupiter/junit-jupiter@5.10.0

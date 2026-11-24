@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/ops.query-metrics-range.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.OpsService/QueryMetricsRange: `data` is a bee.v1.QueryMetricsRangeResponse in proto3-JSON. `bee ops query-metrics-range --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.QueryMetricsRangeResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.ops.query-metrics-range"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee ops query-metrics-range",
+  "type": "object"
+}

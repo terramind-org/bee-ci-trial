@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/cr.open.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee cr open --json`: one such document with `schema` = bee.v1.cr.open. Open a change request for the checked-out change (ChangeService/OpenChange). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "allOf": [
+        {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ChangeRequest.schema.json"
+        },
+        {
+          "properties": {
+            "checklist": {
+              "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BriefChecklist.schema.json",
+              "description": "What the brief and evidence of the new change request still owe (BriefService/GetBriefChecklist)."
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "schema": {
+      "const": "bee.v1.cr.open"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee cr open",
+  "type": "object"
+}

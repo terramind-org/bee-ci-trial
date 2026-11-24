@@ -1,0 +1,86 @@
+# event push action=-
+run .github/workflows/tests.yml "tests"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job tox decided=true
+    instance "tox (3.9)"
+      matrix: {"python-version":"3.9"}
+      strategy: index=0 total=4 fail-fast=true max-parallel=4
+      runs-on: ["ubuntu-22.04"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-python@v5"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      step 3 "Run python -m pip install --upgrade pip tox tox-gh-actions"
+        run: "python -m pip install --upgrade pip tox tox-gh-actions"
+        shell: default -> "bash -e {0}"
+      step 4 "Run tox"
+        run: "tox"
+        shell: default -> "bash -e {0}"
+        env:
+          PLATFORM: "${{ runner.os }}"
+    instance "tox (3.10)"
+      matrix: {"python-version":"3.10"}
+      strategy: index=1 total=4 fail-fast=true max-parallel=4
+      runs-on: ["ubuntu-22.04"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-python@v5"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      step 3 "Run python -m pip install --upgrade pip tox tox-gh-actions"
+        run: "python -m pip install --upgrade pip tox tox-gh-actions"
+        shell: default -> "bash -e {0}"
+      step 4 "Run tox"
+        run: "tox"
+        shell: default -> "bash -e {0}"
+        env:
+          PLATFORM: "${{ runner.os }}"
+    instance "tox (3.1)"
+      matrix: {"python-version":3.1}
+      strategy: index=2 total=4 fail-fast=true max-parallel=4
+      runs-on: ["ubuntu-22.04"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-python@v5"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.1"
+      step 3 "Run python -m pip install --upgrade pip tox tox-gh-actions"
+        run: "python -m pip install --upgrade pip tox tox-gh-actions"
+        shell: default -> "bash -e {0}"
+      step 4 "Run tox"
+        run: "tox"
+        shell: default -> "bash -e {0}"
+        env:
+          PLATFORM: "${{ runner.os }}"
+    instance "tox (3.12)"
+      matrix: {"python-version":"3.12"}
+      strategy: index=3 total=4 fail-fast=true max-parallel=4
+      runs-on: ["ubuntu-22.04"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-python@v5"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      step 3 "Run python -m pip install --upgrade pip tox tox-gh-actions"
+        run: "python -m pip install --upgrade pip tox tox-gh-actions"
+        shell: default -> "bash -e {0}"
+      step 4 "Run tox"
+        run: "tox"
+        shell: default -> "bash -e {0}"
+        env:
+          PLATFORM: "${{ runner.os }}"

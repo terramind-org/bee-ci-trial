@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "bee.v1.IssueFormField": {
+      "description": "One element of a YAML issue form.",
+      "properties": {
+        "defaultValue": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.IssueFormFieldKind"
+        },
+        "label": {
+          "type": "string"
+        },
+        "multiple": {
+          "description": "dropdown allows several choices",
+          "type": "boolean"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.IssueFormFieldOption"
+          },
+          "type": "array"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "render": {
+          "description": "textarea: render answer as code in this language",
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.IssueFormField",
+      "type": "object"
+    },
+    "bee.v1.IssueFormFieldKind": {
+      "description": "Input element of an issue form.",
+      "enum": [
+        "ISSUE_FORM_FIELD_KIND_UNSPECIFIED",
+        "ISSUE_FORM_FIELD_KIND_MARKDOWN",
+        "ISSUE_FORM_FIELD_KIND_INPUT",
+        "ISSUE_FORM_FIELD_KIND_TEXTAREA",
+        "ISSUE_FORM_FIELD_KIND_DROPDOWN",
+        "ISSUE_FORM_FIELD_KIND_CHECKBOXES",
+        "ISSUE_FORM_FIELD_KIND_UPLOAD"
+      ],
+      "title": "bee.v1.IssueFormFieldKind",
+      "type": "string"
+    },
+    "bee.v1.IssueFormFieldOption": {
+      "description": "One choice in a dropdown or checkboxes form element.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "required": {
+          "description": "checkboxes: must be ticked",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.IssueFormFieldOption",
+      "type": "object"
+    },
+    "bee.v1.IssueTemplate": {
+      "description": "An issue template (Markdown) or issue form (YAML) from the default ref.",
+      "properties": {
+        "about": {
+          "description": "chooser description",
+          "type": "string"
+        },
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "description": "Markdown templates only",
+          "type": "string"
+        },
+        "fileName": {
+          "description": "e.g. \"bug_report.yml\"",
+          "type": "string"
+        },
+        "formFields": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.IssueFormField"
+          },
+          "type": "array"
+        },
+        "isForm": {
+          "type": "boolean"
+        },
+        "issueType": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parseError": {
+          "description": "set when the file is invalid; the template is unusable",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "default issue title",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueTemplate",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListIssueTemplatesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListIssueTemplates.",
+  "properties": {
+    "revision": {
+      "description": "changeset the templates were read from",
+      "type": "string"
+    },
+    "templates": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueTemplate"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListIssueTemplatesResponse",
+  "type": "object"
+}

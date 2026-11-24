@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.trigger-dependency-update-run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/TriggerDependencyUpdateRun: `data` is a bee.v1.DependencyUpdateRun in proto3-JSON. `bee security trigger-dependency-update-run --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DependencyUpdateRun.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.trigger-dependency-update-run"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security trigger-dependency-update-run",
+  "type": "object"
+}

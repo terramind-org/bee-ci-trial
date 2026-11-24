@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "bee.v1.SponsorFrequency": {
+      "description": "How often a tier or sponsorship is paid.",
+      "enum": [
+        "SPONSOR_FREQUENCY_UNSPECIFIED",
+        "SPONSOR_FREQUENCY_MONTHLY",
+        "SPONSOR_FREQUENCY_ONE_TIME"
+      ],
+      "title": "bee.v1.SponsorFrequency",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateSponsorshipRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateSponsorship.",
+  "properties": {
+    "amountCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "frequency": {
+      "$ref": "#/$defs/bee.v1.SponsorFrequency"
+    },
+    "maintaineeLogin": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "private": {
+      "type": "boolean"
+    },
+    "sponsorOrg": {
+      "description": "sponsor as this org; empty = the caller",
+      "type": "string"
+    },
+    "tierId": {
+      "description": "empty with amount_cents for a custom amount",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateSponsorshipRequest",
+  "type": "object"
+}

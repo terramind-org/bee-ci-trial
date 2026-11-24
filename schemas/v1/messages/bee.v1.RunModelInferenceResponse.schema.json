@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.ModelFinishReason": {
+      "description": "Why generation stopped.",
+      "enum": [
+        "MODEL_FINISH_REASON_UNSPECIFIED",
+        "MODEL_FINISH_REASON_STOP",
+        "MODEL_FINISH_REASON_LENGTH",
+        "MODEL_FINISH_REASON_TOOL_CALLS",
+        "MODEL_FINISH_REASON_CONTENT_FILTER"
+      ],
+      "title": "bee.v1.ModelFinishReason",
+      "type": "string"
+    },
+    "bee.v1.ModelMessage": {
+      "description": "One chat message.",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.ModelMessageRole"
+        },
+        "toolCallId": {
+          "description": "TOOL messages",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ModelMessage",
+      "type": "object"
+    },
+    "bee.v1.ModelMessageRole": {
+      "description": "Role of a chat message.",
+      "enum": [
+        "MODEL_MESSAGE_ROLE_UNSPECIFIED",
+        "MODEL_MESSAGE_ROLE_SYSTEM",
+        "MODEL_MESSAGE_ROLE_USER",
+        "MODEL_MESSAGE_ROLE_ASSISTANT",
+        "MODEL_MESSAGE_ROLE_TOOL"
+      ],
+      "title": "bee.v1.ModelMessageRole",
+      "type": "string"
+    },
+    "bee.v1.ModelToolCall": {
+      "description": "A tool call the model made.",
+      "properties": {
+        "arguments": {
+          "description": "JSON",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ModelToolCall",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RunModelInferenceResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for RunModelInference.",
+  "properties": {
+    "cost": {
+      "$ref": "#/$defs/bee.v1.Cost"
+    },
+    "finishReason": {
+      "$ref": "#/$defs/bee.v1.ModelFinishReason"
+    },
+    "id": {
+      "type": "string"
+    },
+    "latencyMs": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "message": {
+      "$ref": "#/$defs/bee.v1.ModelMessage"
+    },
+    "model": {
+      "type": "string"
+    },
+    "toolCalls": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ModelToolCall"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.RunModelInferenceResponse",
+  "type": "object"
+}

@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SearchChangesetHit": {
+      "description": "A changeset search result.",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "authoredAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "changeId": {
+          "$ref": "#/$defs/bee.v1.ChangeId"
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "committedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "committer": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "message": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "textMatches": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchTextMatch"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchChangesetHit",
+      "type": "object"
+    },
+    "bee.v1.SearchRange": {
+      "description": "A byte range within a line or text, half-open, in UTF-8 bytes.",
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.SearchRange",
+      "type": "object"
+    },
+    "bee.v1.SearchTextMatch": {
+      "description": "Highlighted text for a matched field.",
+      "properties": {
+        "field": {
+          "description": "e.g. \"title\", \"body\"",
+          "type": "string"
+        },
+        "fragment": {
+          "type": "string"
+        },
+        "ranges": {
+          "description": "within fragment",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchRange"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchTextMatch",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SearchChangesetsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for SearchChangesets.",
+  "properties": {
+    "hits": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SearchChangesetHit"
+      },
+      "type": "array"
+    },
+    "incomplete": {
+      "type": "boolean"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "totalCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.SearchChangesetsResponse",
+  "type": "object"
+}

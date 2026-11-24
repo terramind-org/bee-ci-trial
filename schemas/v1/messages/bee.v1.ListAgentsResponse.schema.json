@@ -1,0 +1,226 @@
+{
+  "$defs": {
+    "bee.v1.AgentDefinition": {
+      "description": "An agent definition: what an agent principal is, runs with, may do and may spend in an org.",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "the agent principal"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "defaultBudget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget",
+          "description": "a run's budget is never larger"
+        },
+        "enabled": {
+          "description": "takes work (assignment, mentions, watchers, schedules)",
+          "type": "boolean"
+        },
+        "instructionsPath": {
+          "description": "repo file read in addition to AGENTS.md and friends",
+          "type": "string"
+        },
+        "model": {
+          "description": "default model",
+          "type": "string"
+        },
+        "name": {
+          "description": "unique per org",
+          "type": "string"
+        },
+        "org": {
+          "description": "org id",
+          "type": "string"
+        },
+        "owners": {
+          "description": "principal ids, primary first; the primary owner's budget pays",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "runtime": {
+          "description": "runtime name: \"claude-code\", \"codex\" or a custom name",
+          "type": "string"
+        },
+        "runtimeId": {
+          "description": "registered runtime id, if any",
+          "type": "string"
+        },
+        "schedules": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.AgentSchedule"
+          },
+          "type": "array"
+        },
+        "toolsets": {
+          "description": "Policy action names the run token may carry (\"read\", \"commit\", \"lease\", \"review\", ...).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentDefinition",
+      "type": "object"
+    },
+    "bee.v1.AgentRunBudget": {
+      "description": "Spending and time limits for a run.",
+      "properties": {
+        "maxChangesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxDurationSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxInputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxOutputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxUsdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentRunBudget",
+      "type": "object"
+    },
+    "bee.v1.AgentSchedule": {
+      "description": "A scheduled run of an agent.",
+      "properties": {
+        "cron": {
+          "description": "five-field cron expression, UTC",
+          "type": "string"
+        },
+        "id": {
+          "description": "assigned when empty",
+          "type": "string"
+        },
+        "lastFiredAt": {
+          "description": "read-only",
+          "format": "date-time",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "the task prompt",
+          "type": "string"
+        },
+        "repoId": {
+          "description": "repo the run works in",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentSchedule",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAgentsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAgents.",
+  "properties": {
+    "agents": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentDefinition"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListAgentsResponse",
+  "type": "object"
+}

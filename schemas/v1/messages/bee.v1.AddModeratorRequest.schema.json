@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddModeratorRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AddModerator.\n\nOneof `moderator`: at most one of `principalId`, `teamId` is set.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    },
+    "teamId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AddModeratorRequest",
+  "type": "object"
+}

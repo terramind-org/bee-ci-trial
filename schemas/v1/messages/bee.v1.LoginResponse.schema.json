@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "bee.v1.SecondFactorKind": {
+      "description": "Kind of second factor (PRODUCT §4.9).",
+      "enum": [
+        "SECOND_FACTOR_KIND_UNSPECIFIED",
+        "SECOND_FACTOR_KIND_TOTP",
+        "SECOND_FACTOR_KIND_PASSKEY",
+        "SECOND_FACTOR_KIND_SECURITY_KEY",
+        "SECOND_FACTOR_KIND_RECOVERY_CODES"
+      ],
+      "title": "bee.v1.SecondFactorKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LoginResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "deviceCode": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "description": "expiry of `token`",
+      "format": "date-time",
+      "type": "string"
+    },
+    "intervalSeconds": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "secondFactorChallengeId": {
+      "description": "Set when login needs a second factor; answer with AuthService.VerifySecondFactor.",
+      "type": "string"
+    },
+    "secondFactorKinds": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecondFactorKind"
+      },
+      "type": "array"
+    },
+    "token": {
+      "description": "set when login completed",
+      "type": "string"
+    },
+    "userCode": {
+      "type": "string"
+    },
+    "verificationUri": {
+      "description": "device flow: where the human goes",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.LoginResponse",
+  "type": "object"
+}

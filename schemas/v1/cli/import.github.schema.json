@@ -1,0 +1,22 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/import.github.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee import github --json`: one such document with `schema` = bee.v1.import.github. Import a GitHub repository (delegates to the bee-github package). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": true,
+      "description": "The JSON result emitted by bee-github import.",
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.import.github"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee import github",
+  "type": "object"
+}

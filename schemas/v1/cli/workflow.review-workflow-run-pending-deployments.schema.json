@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.review-workflow-run-pending-deployments.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/ReviewWorkflowRunPendingDeployments: `data` is a bee.v1.ReviewWorkflowRunPendingDeploymentsResponse in proto3-JSON. `bee workflow review-workflow-run-pending-deployments --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ReviewWorkflowRunPendingDeploymentsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.review-workflow-run-pending-deployments"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow review-workflow-run-pending-deployments",
+  "type": "object"
+}

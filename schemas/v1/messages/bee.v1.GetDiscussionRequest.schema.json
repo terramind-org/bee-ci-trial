@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetDiscussionRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetDiscussion.",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "includeHtml": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.GetDiscussionRequest",
+  "type": "object"
+}

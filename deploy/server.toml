@@ -1,0 +1,75 @@
+# Production configuration for deploy/compose.yml.
+# Every key is documented in docs/spec/server.md section 2. Unknown keys are errors.
+# A value of exactly $NAME is replaced by the environment variable NAME (unset is an error).
+
+[server]
+edition = "enterprise"
+listen = "0.0.0.0:7420"
+# The URL people and agents reach this instance at (signed URLs, login redirects).
+public_url = "$BEE_PUBLIC_URL"
+data_dir = "/data"
+cell = "main"
+region = "local"
+# The compose stack puts Caddy (or your own proxy) in front, so take the client address
+# from X-Forwarded-For.
+trust_forwarded_for = true
+
+[metadata]
+backend = "postgres"
+postgres_url = "$BEE_POSTGRES_URL"
+postgres_schema = "bee"
+
+[blobs]
+backend = "s3"
+s3_bucket = "$BEE_S3_BUCKET"
+s3_region = "us-east-1"
+s3_endpoint = "$BEE_S3_ENDPOINT"
+s3_access_key_id = "$BEE_S3_ACCESS_KEY"
+s3_secret_access_key = "$BEE_S3_SECRET_KEY"
+s3_prefix = "blobs/"
+# Signs blob, CI transfer and media URLs. Set from the environment so the key survives a lost
+# data directory and is the same in every process. 64+ hex digits.
+url_key_hex = "$BEE_URL_KEY_HEX"
+
+[auth]
+# 64 hex digits. Generate with: openssl rand -hex 32
+signing_key_hex = "$BEE_SIGNING_KEY_HEX"
+
+[forge]
+# The forge keeps its tables in their own schema of the same Postgres database.
+database = "$BEE_FORGE_DATABASE"
+# After the first sign-in, put your principal id here and restart (docs/self-hosting.md,
+# "First admin"). Site admins are also operators.
+site_admins = []
+
+[import]
+# Local-path imports may read only under these directories.
+allowed_roots = ["/data/imports"]
+
+[backup]
+target = "s3"
+s3_prefix = "bee-backups/"
+retention_days = 30
+
+[limits]
+# Per-forge lookup deadline in milliseconds (100 to 60000; default 3000).
+forge_lookup_deadline_ms = 3000
+
+[admission]
+per_principal_rps = 200
+per_root_rps = 400
+
+[logging]
+level = "info"
+requests = true
+
+# Sign-in. A self-hosted instance needs one method before anyone can use it: GitHub (device flow)
+# or any OIDC provider. Uncomment one block and fill it in (docs/spec/server.md section 2,
+# login.*), then recreate the server (docs/self-hosting.md, "First admin and SSO").
+#
+# [login]
+# oidc_issuer = "https://id.example.com"
+# oidc_client_id = "bee"
+#
+# [login]
+# github_client_id = "<client id of your GitHub OAuth app>"

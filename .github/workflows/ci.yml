@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          df -h /
+      - name: Set up development tools
+        run: scripts/dev-setup.sh
+      - uses: Swatinem/rust-cache@v2
+      - name: Run repository checks
+        run: scripts/check.sh
+
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          # The suites start many servers at once, each with its own pools; the default of 100
+          # connections ran out ("sorry, too many clients already").
+          POSTGRES_INITDB_ARGS: "-c max_connections=400"
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      BEE_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          df -h /
+      - name: Set up development tools
+        run: scripts/dev-setup.sh
+      - uses: Swatinem/rust-cache@v2
+      # One step per group, each printing free disk and memory first: when a runner is lost its
+      # log is lost too, and the step list is then the only record of how far the job got.
+      - name: Store tests on Postgres
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          cargo test -p bee-store-sql
+      - name: Forge Postgres tests, one at a time
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          cargo test -p bee-forge postgres -- --test-threads=1
+      - name: Conformance tests on Postgres
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          cargo test -p bee-conformance
+      - name: Server tests on Postgres
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          cargo test -p bee-server --lib kv
+          cargo test -p bee-server --test shared_signing_keys
+          cargo test -p bee-server --test e2e
+          cargo test -p bee-server --test forge_e2e
+          cargo test -p bee-server --test remaining_services
+      # Last, because three runs lost their runner about 50 minutes in while the whole forge suite
+      # ran with Postgres configured. Each attempt stops itself first so a log survives.
+      - name: Forge Postgres tests, in parallel
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          ( while sleep 30; do free -m | sed -n 2p; done ) &
+          timeout -k 30 10m cargo test -p bee-forge postgres
+      - name: Whole forge suite with Postgres configured
+        run: |
+          df -h / | tail -1; free -m | sed -n 2p
+          ( while sleep 30; do free -m | sed -n 2p; done ) &
+          timeout -k 30 15m cargo test -p bee-forge
+
+  web-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          df -h /
+      - name: Set up development tools
+        run: scripts/dev-setup.sh
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - name: Run web end-to-end checks
+        run: scripts/check-web-e2e.sh
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/test-results
+            apps/web/playwright-report
+            apps/web/e2e/screenshots
+          if-no-files-found: ignore
+          retention-days: 7
+
+  harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: harness/agents
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up development tools
+        # The job's default directory is harness/agents; the setup script lives at the root.
+        working-directory: ${{ github.workspace }}
+        run: scripts/dev-setup.sh
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run typecheck
+      - run: bun run harness --dry-run --scenarios all

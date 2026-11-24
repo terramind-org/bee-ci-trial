@@ -1,0 +1,29 @@
+event: pr revised base=main files=web/src/App.tsx,README.md
+--- .github/workflows/web.yml
+name: Web
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '!web/**/*.md'
+      - package.json
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npx playwright test --shard=${{ strategy.job-index }}/${{ strategy.job-total }}
+--- .github/workflows/docs.yml
+name: Docs
+on:
+  pull_request:
+    paths: ['docs/**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: mkdocs build --strict

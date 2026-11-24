@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.StartOAuthDeviceFlowResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for StartOAuthDeviceFlow.",
+  "properties": {
+    "deviceCode": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "intervalSeconds": {
+      "description": "minimum polling interval",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "userCode": {
+      "type": "string"
+    },
+    "verificationUri": {
+      "type": "string"
+    },
+    "verificationUriComplete": {
+      "description": "includes the user code",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.StartOAuthDeviceFlowResponse",
+  "type": "object"
+}

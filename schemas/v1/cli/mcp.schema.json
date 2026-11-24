@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/mcp.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee mcp --json`: one such document with `schema` = bee.v1.mcp. Serve every bee RPC as an MCP tool over stdio (for agent runtimes). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "description": "bee mcp prints no --json document: stdout carries MCP JSON-RPC messages, one per line, until stdin closes.",
+      "not": {}
+    },
+    "schema": {
+      "const": "bee.v1.mcp"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee mcp",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowBadge.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A status badge.",
+  "properties": {
+    "color": {
+      "description": "\"#rrggbb\"",
+      "type": "string"
+    },
+    "label": {
+      "description": "the workflow name",
+      "type": "string"
+    },
+    "message": {
+      "description": "\"passing\", \"failing\", \"cancelled\" or \"no status\"",
+      "type": "string"
+    },
+    "svg": {
+      "description": "the badge image",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WorkflowBadge",
+  "type": "object"
+}

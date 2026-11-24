@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetGistRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetGist.",
+  "properties": {
+    "gistId": {
+      "type": "string"
+    },
+    "maxInlineBytes": {
+      "description": "per-file truncation; 0 = server default",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.GetGistRequest",
+  "type": "object"
+}

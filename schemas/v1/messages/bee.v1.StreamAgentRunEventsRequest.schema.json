@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "bee.v1.AgentRunEventKind": {
+      "description": "Kind of session event.",
+      "enum": [
+        "AGENT_RUN_EVENT_KIND_UNSPECIFIED",
+        "AGENT_RUN_EVENT_KIND_STATE_CHANGED",
+        "AGENT_RUN_EVENT_KIND_LOG",
+        "AGENT_RUN_EVENT_KIND_THOUGHT",
+        "AGENT_RUN_EVENT_KIND_TOOL_CALL",
+        "AGENT_RUN_EVENT_KIND_TOOL_RESULT",
+        "AGENT_RUN_EVENT_KIND_CHANGESET_CREATED",
+        "AGENT_RUN_EVENT_KIND_CHANGE_REQUEST_OPENED",
+        "AGENT_RUN_EVENT_KIND_LEASE_ACQUIRED",
+        "AGENT_RUN_EVENT_KIND_CHECK_RESULT",
+        "AGENT_RUN_EVENT_KIND_STEERING_MESSAGE",
+        "AGENT_RUN_EVENT_KIND_COST_UPDATE",
+        "AGENT_RUN_EVENT_KIND_ERROR"
+      ],
+      "title": "bee.v1.AgentRunEventKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.StreamAgentRunEventsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for StreamAgentRunEvents.",
+  "properties": {
+    "afterSeq": {
+      "description": "0 = from the start",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "kinds": {
+      "description": "empty = all",
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentRunEventKind"
+      },
+      "type": "array"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.StreamAgentRunEventsRequest",
+  "type": "object"
+}

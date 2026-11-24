@@ -1,0 +1,9 @@
+event: push refs/heads/main actor=github-actions[bot] bot_token
+--- .github/workflows/ci.yml
+name: CI
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test

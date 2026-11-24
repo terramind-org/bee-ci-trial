@@ -1,0 +1,53 @@
+{
+  "$defs": {
+    "bee.v1.WorkspacePort": {
+      "description": "A forwarded port.",
+      "properties": {
+        "forwardUrl": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "port": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "protocol": {
+          "description": "\"http\" or \"https\"",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/bee.v1.WorkspacePortVisibility"
+        }
+      },
+      "title": "bee.v1.WorkspacePort",
+      "type": "object"
+    },
+    "bee.v1.WorkspacePortVisibility": {
+      "description": "Who can reach a forwarded port.",
+      "enum": [
+        "WORKSPACE_PORT_VISIBILITY_UNSPECIFIED",
+        "WORKSPACE_PORT_VISIBILITY_PRIVATE",
+        "WORKSPACE_PORT_VISIBILITY_ORG",
+        "WORKSPACE_PORT_VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.WorkspacePortVisibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkspacePortsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListWorkspacePorts.",
+  "properties": {
+    "ports": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkspacePort"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListWorkspacePortsResponse",
+  "type": "object"
+}

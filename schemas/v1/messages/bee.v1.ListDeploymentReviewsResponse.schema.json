@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "bee.v1.DeploymentReview": {
+      "description": "One recorded decision on a deployment.",
+      "properties": {
+        "bypassed": {
+          "description": "an admin bypassed the rules",
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/bee.v1.DeploymentReviewDecision"
+        },
+        "deploymentId": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "the human, agent or app that decided"
+        }
+      },
+      "title": "bee.v1.DeploymentReview",
+      "type": "object"
+    },
+    "bee.v1.DeploymentReviewDecision": {
+      "description": "A reviewer's or rule's decision on a gated deployment.",
+      "enum": [
+        "DEPLOYMENT_REVIEW_DECISION_UNSPECIFIED",
+        "DEPLOYMENT_REVIEW_DECISION_APPROVED",
+        "DEPLOYMENT_REVIEW_DECISION_REJECTED"
+      ],
+      "title": "bee.v1.DeploymentReviewDecision",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDeploymentReviewsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListDeploymentReviews.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "reviews": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DeploymentReview"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListDeploymentReviewsResponse",
+  "type": "object"
+}

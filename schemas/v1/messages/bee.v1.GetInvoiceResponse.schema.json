@@ -1,0 +1,184 @@
+{
+  "$defs": {
+    "bee.v1.BillingProduct": {
+      "description": "A metered product.",
+      "enum": [
+        "BILLING_PRODUCT_UNSPECIFIED",
+        "BILLING_PRODUCT_ACTIONS_MINUTES",
+        "BILLING_PRODUCT_STORAGE_GB",
+        "BILLING_PRODUCT_WORKSPACES_HOURS",
+        "BILLING_PRODUCT_AGENT_TOKENS",
+        "BILLING_PRODUCT_PACKAGES_TRANSFER",
+        "BILLING_PRODUCT_LFS",
+        "BILLING_PRODUCT_SEATS",
+        "BILLING_PRODUCT_MARKETPLACE"
+      ],
+      "title": "bee.v1.BillingProduct",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    },
+    "bee.v1.Invoice": {
+      "description": "An invoice for one billing period.",
+      "properties": {
+        "amountPaidMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "dueAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "issuedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lineItems": {
+          "description": "filled by GetInvoice only",
+          "items": {
+            "$ref": "#/$defs/bee.v1.InvoiceLineItem"
+          },
+          "type": "array"
+        },
+        "number": {
+          "description": "human-facing invoice number",
+          "type": "string"
+        },
+        "paidAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "periodEndAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "periodStartAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.EnterpriseScope"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.InvoiceStatus"
+        },
+        "subtotalMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "taxMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "totalMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Invoice",
+      "type": "object"
+    },
+    "bee.v1.InvoiceLineItem": {
+      "description": "One line on an invoice.",
+      "properties": {
+        "amountMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "product": {
+          "$ref": "#/$defs/bee.v1.BillingProduct"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "unitPriceMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.InvoiceLineItem",
+      "type": "object"
+    },
+    "bee.v1.InvoiceStatus": {
+      "description": "Payment state of an invoice.",
+      "enum": [
+        "INVOICE_STATUS_UNSPECIFIED",
+        "INVOICE_STATUS_DRAFT",
+        "INVOICE_STATUS_OPEN",
+        "INVOICE_STATUS_PAID",
+        "INVOICE_STATUS_VOID",
+        "INVOICE_STATUS_UNCOLLECTIBLE"
+      ],
+      "title": "bee.v1.InvoiceStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetInvoiceResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetInvoice.",
+  "properties": {
+    "invoice": {
+      "$ref": "#/$defs/bee.v1.Invoice"
+    },
+    "pdfUrl": {
+      "description": "signed, short-lived",
+      "type": "string"
+    },
+    "pdfUrlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetInvoiceResponse",
+  "type": "object"
+}

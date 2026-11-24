@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkspaceEgressDefault": {
+      "description": "Default action for traffic matching no rule.",
+      "enum": [
+        "WORKSPACE_EGRESS_DEFAULT_UNSPECIFIED",
+        "WORKSPACE_EGRESS_DEFAULT_DENY",
+        "WORKSPACE_EGRESS_DEFAULT_ALLOW"
+      ],
+      "title": "bee.v1.WorkspaceEgressDefault",
+      "type": "string"
+    },
+    "bee.v1.WorkspaceEgressScope": {
+      "description": "Where an egress policy is set.\n\nOneof `scope`: at most one of `org`, `repo`, `workspaceId` is set.",
+      "properties": {
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkspaceEgressScope",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetWorkspaceEgressPolicyRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetWorkspaceEgressPolicy.",
+  "properties": {
+    "allowPackageRegistries": {
+      "type": "boolean"
+    },
+    "allowedCidrs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "allowedDomains": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "defaultAction": {
+      "$ref": "#/$defs/bee.v1.WorkspaceEgressDefault"
+    },
+    "deniedDomains": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "logDenied": {
+      "type": "boolean"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.WorkspaceEgressScope"
+    }
+  },
+  "title": "bee.v1.SetWorkspaceEgressPolicyRequest",
+  "type": "object"
+}

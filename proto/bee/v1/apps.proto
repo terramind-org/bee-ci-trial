@@ -1,0 +1,846 @@
+// Apps platform for bee.v1: apps and manifests, installations and installation tokens, the
+// OAuth provider, user-to-server tokens and the marketplace. See PRODUCT.md §4.9 and §4.20.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Apps, installations, OAuth and marketplace. An app is a service principal; an installation
+// gives it a scoped grant on one account, and every token it receives is a Biscuit attenuated
+// to that grant (SPEC §9.2). An app installed on two repos can never touch a third.
+//
+// The OAuth 2.0 authorization-code and device flows are served over HTTP (`/login/oauth/*`) by
+// the web frontend; the RPCs below are the operations those endpoints call, and are usable
+// directly by native clients.
+service AppService {
+  // Creates an app from a manifest (JSON). The response carries the client secret, webhook
+  // secret and a private key exactly once. Fails with INVALID_ARGUMENT (subcode
+  // `bad_manifest`) when the manifest does not validate.
+  rpc CreateAppFromManifest(CreateAppFromManifestRequest) returns (CreateAppFromManifestResponse);
+  // Returns one app by slug or id. Secrets are never returned.
+  rpc GetApp(GetAppRequest) returns (App);
+  // Changes an app's settings, requested permissions or subscribed events. Raising permissions
+  // leaves existing installations on their old grant until an installer accepts.
+  rpc UpdateApp(UpdateAppRequest) returns (App);
+  // Deletes an app and every installation and token it has.
+  rpc DeleteApp(DeleteAppRequest) returns (DeleteAppResponse);
+  // Lists apps owned by an org or user.
+  rpc ListApps(ListAppsRequest) returns (ListAppsResponse);
+  // Generates a new private key for an app; the PEM is returned once.
+  rpc CreateAppPrivateKey(CreateAppPrivateKeyRequest) returns (CreateAppPrivateKeyResponse);
+  // Deletes one of an app's private keys. The last key cannot be deleted (INVALID_STATE).
+  rpc DeleteAppPrivateKey(DeleteAppPrivateKeyRequest) returns (DeleteAppPrivateKeyResponse);
+
+  // Installs an app on an org or user account, on all repos or a selected set.
+  rpc CreateAppInstallation(CreateAppInstallationRequest) returns (AppInstallation);
+  // Returns one installation.
+  rpc GetAppInstallation(GetAppInstallationRequest) returns (AppInstallation);
+  // Lists installations of an app, or the apps installed on an account.
+  rpc ListAppInstallations(ListAppInstallationsRequest) returns (ListAppInstallationsResponse);
+  // Suspends an installation: its tokens stop working and no webhooks are delivered.
+  rpc SuspendAppInstallation(SuspendAppInstallationRequest) returns (AppInstallation);
+  // Lifts a suspension.
+  rpc UnsuspendAppInstallation(UnsuspendAppInstallationRequest) returns (AppInstallation);
+  // Uninstalls an app; every token derived from the installation is revoked.
+  rpc DeleteAppInstallation(DeleteAppInstallationRequest) returns (DeleteAppInstallationResponse);
+  // Adds repos to an installation with selected repos.
+  rpc AddAppInstallationRepos(AddAppInstallationReposRequest) returns (AddAppInstallationReposResponse);
+  // Removes repos from an installation with selected repos.
+  rpc RemoveAppInstallationRepos(RemoveAppInstallationReposRequest) returns (RemoveAppInstallationReposResponse);
+  // Lists the repos an installation can access.
+  rpc ListAppInstallationRepos(ListAppInstallationReposRequest) returns (ListAppInstallationReposResponse);
+  // Mints an installation access token, optionally narrowed to a subset of the installation's
+  // repos and permissions. The caller authenticates as the app (a JWT signed with one of its
+  // private keys). Asking for more than the installation grants fails with PERMISSION_DENIED;
+  // a suspended installation fails with INVALID_STATE; an org IP allow list that applies to
+  // apps may fail it with IP_NOT_ALLOWED.
+  rpc CreateInstallationToken(CreateInstallationTokenRequest) returns (CreateInstallationTokenResponse);
+
+  // Registers an OAuth app. The client secret is returned once.
+  rpc CreateOAuthApp(CreateOAuthAppRequest) returns (CreateOAuthAppResponse);
+  // Returns one OAuth app by client id or id.
+  rpc GetOAuthApp(GetOAuthAppRequest) returns (OAuthApp);
+  // Changes an OAuth app, optionally resetting its client secret.
+  rpc UpdateOAuthApp(UpdateOAuthAppRequest) returns (UpdateOAuthAppResponse);
+  // Deletes an OAuth app and revokes every token it holds.
+  rpc DeleteOAuthApp(DeleteOAuthAppRequest) returns (DeleteOAuthAppResponse);
+  // Lists OAuth apps owned by an org or user.
+  rpc ListOAuthApps(ListOAuthAppsRequest) returns (ListOAuthAppsResponse);
+  // Records the signed-in user's consent for an OAuth app or app (authorization-code flow) or
+  // approves a device-flow user code. Returns the code and redirect for the code flow. May fail
+  // with SSO_REQUIRED when an org in scope enforces SAML and the user has no SSO session.
+  rpc CreateOAuthAuthorization(CreateOAuthAuthorizationRequest) returns (CreateOAuthAuthorizationResponse);
+  // Exchanges an authorization code (with PKCE verifier or client secret) for tokens. With an
+  // app's client id the result is a user-to-server token limited to the intersection of the
+  // user's access and the app's installations.
+  rpc ExchangeOAuthCode(ExchangeOAuthCodeRequest) returns (ExchangeOAuthCodeResponse);
+  // Exchanges a refresh token for a new access token (refresh tokens rotate on use).
+  rpc RefreshOAuthToken(RefreshOAuthTokenRequest) returns (RefreshOAuthTokenResponse);
+  // Starts an OAuth device flow for a third-party client.
+  rpc StartOAuthDeviceFlow(StartOAuthDeviceFlowRequest) returns (StartOAuthDeviceFlowResponse);
+  // Polls a device flow; returns the tokens once the user approved.
+  rpc PollOAuthDeviceFlow(PollOAuthDeviceFlowRequest) returns (PollOAuthDeviceFlowResponse);
+  // Revokes a user's grant to an OAuth app or app, or a single OAuth token.
+  rpc RevokeOAuthGrant(RevokeOAuthGrantRequest) returns (RevokeOAuthGrantResponse);
+  // Lists the OAuth apps and apps a user has authorized.
+  rpc ListOAuthAuthorizedApps(ListOAuthAuthorizedAppsRequest) returns (ListOAuthAuthorizedAppsResponse);
+
+  // Creates a draft marketplace listing for an app, action or agent.
+  rpc CreateMarketplaceListing(CreateMarketplaceListingRequest) returns (MarketplaceListing);
+  // Changes a listing's metadata.
+  rpc UpdateMarketplaceListing(UpdateMarketplaceListingRequest) returns (MarketplaceListing);
+  // Submits a listing for review and publishes it once approved, or unpublishes it.
+  rpc PublishMarketplaceListing(PublishMarketplaceListingRequest) returns (MarketplaceListing);
+  // Returns one listing by slug or id.
+  rpc GetMarketplaceListing(GetMarketplaceListingRequest) returns (MarketplaceListing);
+  // Lists or searches published listings by type, category and text.
+  rpc ListMarketplaceListings(ListMarketplaceListingsRequest) returns (ListMarketplaceListingsResponse);
+  // Adds a pricing plan to a listing.
+  rpc CreateMarketplacePlan(CreateMarketplacePlanRequest) returns (MarketplacePlan);
+  // Changes a plan; a plan with purchases can only be retired, not repriced.
+  rpc UpdateMarketplacePlan(UpdateMarketplacePlanRequest) returns (MarketplacePlan);
+  // Buys or changes a plan for an org. Paid plans may fail with QUOTA_EXCEEDED when a billing
+  // budget with a hard stop would be passed.
+  rpc PurchaseMarketplacePlan(PurchaseMarketplacePlanRequest) returns (MarketplacePurchase);
+  // Cancels a purchase at the end of the current billing cycle.
+  rpc CancelMarketplacePurchase(CancelMarketplacePurchaseRequest) returns (MarketplacePurchase);
+  // Lists an org's marketplace purchases, or a listing's purchasers (publisher view).
+  rpc ListMarketplacePurchases(ListMarketplacePurchasesRequest) returns (ListMarketplacePurchasesResponse);
+  // Returns a publisher's profile and verification status.
+  rpc GetMarketplacePublisher(GetMarketplacePublisherRequest) returns (MarketplacePublisher);
+  // Requests verified-publisher status for an org (needs a verified domain and 2FA enforced).
+  rpc RequestMarketplacePublisherVerification(RequestMarketplacePublisherVerificationRequest) returns (MarketplacePublisher);
+}
+
+// ---------- Apps ----------
+
+// Access level an app requests or holds on one resource.
+enum AppPermissionLevel {
+  APP_PERMISSION_LEVEL_UNSPECIFIED = 0;
+  APP_PERMISSION_LEVEL_READ = 1;
+  APP_PERMISSION_LEVEL_WRITE = 2;
+  APP_PERMISSION_LEVEL_ADMIN = 3;
+}
+
+// One resource permission, e.g. contents:write or issues:read.
+message AppPermission {
+  // Resource name from the permission catalog, e.g. "contents", "metadata", "issues",
+  // "change_requests", "checks", "workflows", "members", "administration".
+  string resource = 1;
+  AppPermissionLevel level = 2;
+}
+
+// Summary of an app private key (never the key itself).
+message AppPrivateKey {
+  string id = 1;
+  string fingerprint = 2; // SHA-256 of the public key, base64
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp last_used_at = 4;
+}
+
+// An app registered on Beehive.
+message App {
+  string id = 1; // ULID
+  string slug = 2;
+  string name = 3;
+  string description = 4;
+  string owner = 5; // org name or user login
+  string principal_id = 6; // the app's service principal
+  string client_id = 7;
+  string homepage_url = 8;
+  repeated string callback_urls = 9;
+  string setup_url = 10; // shown after install
+  bool request_oauth_on_install = 11;
+  string webhook_url = 12;
+  bool webhook_active = 13;
+  repeated AppPermission permissions = 14; // requested permissions
+  repeated string events = 15; // subscribed webhook event names
+  bool public = 16; // installable by any account, not only the owner
+  repeated AppPrivateKey private_keys = 17;
+  uint64 installation_count = 18;
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+}
+
+// Request for CreateAppFromManifest.
+message CreateAppFromManifestRequest {
+  string org = 1; // owning org; empty = the caller's user account
+  // App manifest as JSON: name, url, hook_attributes, redirect_url, callback_urls, setup_url,
+  // public, default_permissions (resource -> "read"|"write"|"admin"), default_events.
+  string manifest_json = 2;
+}
+
+// Response for CreateAppFromManifest. Secrets appear only in this response.
+message CreateAppFromManifestResponse {
+  App app = 1;
+  string client_secret = 2;
+  string webhook_secret = 3;
+  string private_key_pem = 4; // PKCS#8 PEM
+  string private_key_id = 5;
+}
+
+// Request for GetApp.
+message GetAppRequest {
+  string app = 1; // slug or id
+}
+
+// Request for UpdateApp. Unset fields are unchanged.
+message UpdateAppRequest {
+  string app = 1; // slug or id
+  optional string name = 2;
+  optional string description = 3;
+  optional string homepage_url = 4;
+  repeated string callback_urls = 5; // replaces the list when replace_callback_urls is set
+  bool replace_callback_urls = 6;
+  optional string setup_url = 7;
+  optional bool request_oauth_on_install = 8;
+  optional string webhook_url = 9;
+  optional bool webhook_active = 10;
+  optional string webhook_secret = 11; // sets a new webhook secret (write-only)
+  repeated AppPermission permissions = 12; // replaces the list when replace_permissions is set
+  bool replace_permissions = 13;
+  repeated string events = 14; // replaces the list when replace_events is set
+  bool replace_events = 15;
+  optional bool public = 16;
+}
+
+// Request for DeleteApp.
+message DeleteAppRequest {
+  string app = 1;
+}
+
+// Response for DeleteApp.
+message DeleteAppResponse {}
+
+// Request for ListApps.
+message ListAppsRequest {
+  string owner = 1; // org name or user login; empty = caller
+  PageRequest page = 2;
+}
+
+// Response for ListApps.
+message ListAppsResponse {
+  repeated App apps = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateAppPrivateKey.
+message CreateAppPrivateKeyRequest {
+  string app = 1;
+}
+
+// Response for CreateAppPrivateKey. The PEM appears only here.
+message CreateAppPrivateKeyResponse {
+  AppPrivateKey key = 1;
+  string private_key_pem = 2;
+}
+
+// Request for DeleteAppPrivateKey.
+message DeleteAppPrivateKeyRequest {
+  string app = 1;
+  string key_id = 2;
+}
+
+// Response for DeleteAppPrivateKey.
+message DeleteAppPrivateKeyResponse {}
+
+// ---------- Installations ----------
+
+// Kind of account an app is installed on.
+enum AppInstallationTargetKind {
+  APP_INSTALLATION_TARGET_KIND_UNSPECIFIED = 0;
+  APP_INSTALLATION_TARGET_KIND_ORG = 1;
+  APP_INSTALLATION_TARGET_KIND_USER = 2;
+}
+
+// Which repos of the account an installation covers.
+enum AppRepositorySelection {
+  APP_REPOSITORY_SELECTION_UNSPECIFIED = 0;
+  APP_REPOSITORY_SELECTION_ALL = 1; // every current and future repo
+  APP_REPOSITORY_SELECTION_SELECTED = 2;
+}
+
+// An app installed on an account.
+message AppInstallation {
+  string id = 1; // ULID
+  string app_id = 2;
+  string app_slug = 3;
+  string target = 4; // org name or user login
+  AppInstallationTargetKind target_kind = 5;
+  AppRepositorySelection repository_selection = 6;
+  repeated AppPermission permissions = 7; // granted (may lag the app's requested set)
+  repeated string events = 8;
+  bool permissions_update_pending = 9; // the app requests more than was accepted
+  string principal_id = 10; // principal tokens of this installation act as
+  Principal installed_by = 11;
+  bool suspended = 12;
+  Principal suspended_by = 13;
+  google.protobuf.Timestamp suspended_at = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// Request for CreateAppInstallation.
+message CreateAppInstallationRequest {
+  string app = 1; // slug or id
+  string org = 2; // target org; empty = the caller's user account
+  AppRepositorySelection repository_selection = 3;
+  repeated RepoRef repos = 4; // with SELECTED
+}
+
+// Request for GetAppInstallation.
+message GetAppInstallationRequest {
+  string installation_id = 1;
+}
+
+// Request for ListAppInstallations.
+message ListAppInstallationsRequest {
+  oneof filter {
+    string app = 1; // installations of this app (app owner or app JWT)
+    string account = 2; // apps installed on this org or user
+  }
+  PageRequest page = 3;
+}
+
+// Response for ListAppInstallations.
+message ListAppInstallationsResponse {
+  repeated AppInstallation installations = 1;
+  PageResponse page = 2;
+}
+
+// Request for SuspendAppInstallation.
+message SuspendAppInstallationRequest {
+  string installation_id = 1;
+  string reason = 2;
+}
+
+// Request for UnsuspendAppInstallation.
+message UnsuspendAppInstallationRequest {
+  string installation_id = 1;
+}
+
+// Request for DeleteAppInstallation.
+message DeleteAppInstallationRequest {
+  string installation_id = 1;
+}
+
+// Response for DeleteAppInstallation.
+message DeleteAppInstallationResponse {}
+
+// Request for AddAppInstallationRepos.
+message AddAppInstallationReposRequest {
+  string installation_id = 1;
+  repeated RepoRef repos = 2;
+}
+
+// Response for AddAppInstallationRepos.
+message AddAppInstallationReposResponse {
+  uint32 repo_count = 1; // repos covered after the change
+}
+
+// Request for RemoveAppInstallationRepos.
+message RemoveAppInstallationReposRequest {
+  string installation_id = 1;
+  repeated RepoRef repos = 2;
+}
+
+// Response for RemoveAppInstallationRepos.
+message RemoveAppInstallationReposResponse {
+  uint32 repo_count = 1;
+}
+
+// Request for ListAppInstallationRepos.
+message ListAppInstallationReposRequest {
+  string installation_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListAppInstallationRepos.
+message ListAppInstallationReposResponse {
+  repeated RepoRef repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateInstallationToken.
+message CreateInstallationTokenRequest {
+  string installation_id = 1;
+  repeated RepoRef repos = 2; // subset; empty = every repo of the installation
+  repeated AppPermission permissions = 3; // subset; empty = the installation's grant
+  uint32 ttl_seconds = 4; // default and maximum 3600
+}
+
+// Response for CreateInstallationToken.
+message CreateInstallationTokenResponse {
+  string token = 1; // Biscuit token attenuated to the installation grant
+  string token_id = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  repeated RepoRef repos = 4; // effective repos; empty = all
+  repeated AppPermission permissions = 5; // effective permissions
+}
+
+// ---------- OAuth provider ----------
+
+// An OAuth app (a third-party client acting on behalf of users).
+message OAuthApp {
+  string id = 1; // ULID
+  string owner = 2; // org name or user login
+  string name = 3;
+  string description = 4;
+  string client_id = 5;
+  string homepage_url = 6;
+  repeated string callback_urls = 7;
+  bool device_flow_enabled = 8;
+  string logo_url = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Which kind of client an OAuth token or grant belongs to.
+enum OAuthClientKind {
+  OAUTH_CLIENT_KIND_UNSPECIFIED = 0;
+  OAUTH_CLIENT_KIND_OAUTH_APP = 1;
+  // An app acting for a user (user-to-server token).
+  OAUTH_CLIENT_KIND_APP = 2;
+}
+
+// Tokens issued by the OAuth provider.
+message OAuthTokenSet {
+  string access_token = 1; // a Biscuit token
+  string token_type = 2; // "bearer"
+  string token_id = 3;
+  repeated string scopes = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  string refresh_token = 6; // empty when the client does not use expiring tokens
+  google.protobuf.Timestamp refresh_token_expires_at = 7;
+  OAuthClientKind client_kind = 8;
+}
+
+// A user's standing grant to an OAuth client.
+message OAuthGrant {
+  string client_id = 1;
+  OAuthClientKind client_kind = 2;
+  string client_name = 3;
+  string owner = 4; // client owner
+  repeated string scopes = 5;
+  google.protobuf.Timestamp granted_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+}
+
+// Request for CreateOAuthApp.
+message CreateOAuthAppRequest {
+  string org = 1; // owning org; empty = the caller's user account
+  string name = 2;
+  string description = 3;
+  string homepage_url = 4;
+  repeated string callback_urls = 5;
+  bool device_flow_enabled = 6;
+}
+
+// Response for CreateOAuthApp. The client secret appears only here.
+message CreateOAuthAppResponse {
+  OAuthApp app = 1;
+  string client_secret = 2;
+}
+
+// Request for GetOAuthApp.
+message GetOAuthAppRequest {
+  string oauth_app = 1; // client id or id
+}
+
+// Request for UpdateOAuthApp. Unset fields are unchanged.
+message UpdateOAuthAppRequest {
+  string oauth_app = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string homepage_url = 4;
+  repeated string callback_urls = 5; // replaces the list when replace_callback_urls is set
+  bool replace_callback_urls = 6;
+  optional bool device_flow_enabled = 7;
+  bool reset_client_secret = 8;
+}
+
+// Response for UpdateOAuthApp.
+message UpdateOAuthAppResponse {
+  OAuthApp app = 1;
+  string client_secret = 2; // set only when reset_client_secret was requested
+}
+
+// Request for DeleteOAuthApp.
+message DeleteOAuthAppRequest {
+  string oauth_app = 1;
+}
+
+// Response for DeleteOAuthApp.
+message DeleteOAuthAppResponse {}
+
+// Request for ListOAuthApps.
+message ListOAuthAppsRequest {
+  string owner = 1; // org name or user login; empty = caller
+  PageRequest page = 2;
+}
+
+// Response for ListOAuthApps.
+message ListOAuthAppsResponse {
+  repeated OAuthApp apps = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateOAuthAuthorization. Called for the signed-in user.
+message CreateOAuthAuthorizationRequest {
+  oneof flow {
+    string client_id = 1; // authorization-code flow
+    string user_code = 2; // device flow: the code the user typed
+  }
+  string redirect_uri = 3; // code flow; must match a registered callback URL
+  repeated string scopes = 4;
+  string state = 5; // echoed back in the redirect
+  string code_challenge = 6; // PKCE
+  string code_challenge_method = 7; // "S256"
+  bool deny = 8; // the user declined
+}
+
+// Response for CreateOAuthAuthorization.
+message CreateOAuthAuthorizationResponse {
+  string code = 1; // code flow; single use
+  string redirect_url = 2; // redirect_uri with code and state (or error=access_denied)
+  google.protobuf.Timestamp code_expires_at = 3;
+}
+
+// Request for ExchangeOAuthCode.
+message ExchangeOAuthCodeRequest {
+  string client_id = 1;
+  string client_secret = 2; // confidential clients
+  string code = 3;
+  string redirect_uri = 4;
+  string code_verifier = 5; // PKCE
+}
+
+// Response for ExchangeOAuthCode.
+message ExchangeOAuthCodeResponse {
+  OAuthTokenSet tokens = 1;
+}
+
+// Request for RefreshOAuthToken.
+message RefreshOAuthTokenRequest {
+  string client_id = 1;
+  string client_secret = 2;
+  string refresh_token = 3;
+}
+
+// Response for RefreshOAuthToken.
+message RefreshOAuthTokenResponse {
+  OAuthTokenSet tokens = 1;
+}
+
+// Request for StartOAuthDeviceFlow.
+message StartOAuthDeviceFlowRequest {
+  string client_id = 1;
+  repeated string scopes = 2;
+}
+
+// Response for StartOAuthDeviceFlow.
+message StartOAuthDeviceFlowResponse {
+  string device_code = 1;
+  string user_code = 2;
+  string verification_uri = 3;
+  string verification_uri_complete = 4; // includes the user code
+  google.protobuf.Timestamp expires_at = 5;
+  uint32 interval_seconds = 6; // minimum polling interval
+}
+
+// State of a device flow being polled.
+enum OAuthDeviceFlowStatus {
+  OAUTH_DEVICE_FLOW_STATUS_UNSPECIFIED = 0;
+  OAUTH_DEVICE_FLOW_STATUS_PENDING = 1;
+  OAUTH_DEVICE_FLOW_STATUS_SLOW_DOWN = 2; // poll less often; see interval_seconds
+  OAUTH_DEVICE_FLOW_STATUS_APPROVED = 3;
+  OAUTH_DEVICE_FLOW_STATUS_DENIED = 4;
+  OAUTH_DEVICE_FLOW_STATUS_EXPIRED = 5;
+}
+
+// Request for PollOAuthDeviceFlow.
+message PollOAuthDeviceFlowRequest {
+  string client_id = 1;
+  string device_code = 2;
+}
+
+// Response for PollOAuthDeviceFlow.
+message PollOAuthDeviceFlowResponse {
+  OAuthDeviceFlowStatus status = 1;
+  OAuthTokenSet tokens = 2; // set when APPROVED
+  uint32 interval_seconds = 3;
+}
+
+// Request for RevokeOAuthGrant.
+message RevokeOAuthGrantRequest {
+  oneof target {
+    string client_id = 1; // revoke the whole grant and every token under it
+    string token_id = 2; // revoke one token
+  }
+  string principal_id = 3; // empty = caller; others need org admin over a managed user
+}
+
+// Response for RevokeOAuthGrant.
+message RevokeOAuthGrantResponse {}
+
+// Request for ListOAuthAuthorizedApps.
+message ListOAuthAuthorizedAppsRequest {
+  string principal_id = 1; // empty = caller
+  PageRequest page = 2;
+}
+
+// Response for ListOAuthAuthorizedApps.
+message ListOAuthAuthorizedAppsResponse {
+  repeated OAuthGrant grants = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Marketplace ----------
+
+// What a marketplace listing offers.
+enum MarketplaceListingType {
+  MARKETPLACE_LISTING_TYPE_UNSPECIFIED = 0;
+  MARKETPLACE_LISTING_TYPE_APP = 1;
+  MARKETPLACE_LISTING_TYPE_ACTION = 2;
+  MARKETPLACE_LISTING_TYPE_AGENT = 3;
+}
+
+// Publication state of a listing.
+enum MarketplaceListingState {
+  MARKETPLACE_LISTING_STATE_UNSPECIFIED = 0;
+  MARKETPLACE_LISTING_STATE_DRAFT = 1;
+  MARKETPLACE_LISTING_STATE_PENDING_REVIEW = 2;
+  MARKETPLACE_LISTING_STATE_PUBLISHED = 3;
+  MARKETPLACE_LISTING_STATE_UNPUBLISHED = 4;
+  MARKETPLACE_LISTING_STATE_REJECTED = 5;
+}
+
+// How a plan is priced.
+enum MarketplacePricingModel {
+  MARKETPLACE_PRICING_MODEL_UNSPECIFIED = 0;
+  MARKETPLACE_PRICING_MODEL_FREE = 1;
+  MARKETPLACE_PRICING_MODEL_FLAT = 2; // fixed price per cycle
+  MARKETPLACE_PRICING_MODEL_PER_UNIT = 3; // price times unit count (seats, agents, ...)
+}
+
+// Billing cycle of a purchase.
+enum MarketplaceBillingCycle {
+  MARKETPLACE_BILLING_CYCLE_UNSPECIFIED = 0;
+  MARKETPLACE_BILLING_CYCLE_MONTHLY = 1;
+  MARKETPLACE_BILLING_CYCLE_YEARLY = 2;
+}
+
+// A pricing plan on a listing. Prices are in micro-USD.
+message MarketplacePlan {
+  string id = 1; // ULID
+  string listing_id = 2;
+  string name = 3;
+  string description = 4;
+  MarketplacePricingModel pricing_model = 5;
+  uint64 monthly_price_micro_usd = 6;
+  uint64 yearly_price_micro_usd = 7;
+  string unit_name = 8; // PER_UNIT only, e.g. "seat"
+  uint32 free_trial_days = 9;
+  repeated string bullets = 10; // feature list shown on the listing
+  bool retired = 11; // no new purchases
+}
+
+// A marketplace listing for an app, action or agent.
+message MarketplaceListing {
+  string id = 1; // ULID
+  string slug = 2;
+  MarketplaceListingType type = 3;
+  string name = 4;
+  string short_description = 5;
+  string full_description = 6; // markdown
+  repeated string categories = 7;
+  string publisher = 8; // org name
+  bool verified_publisher = 9;
+  string app_id = 10; // APP listings
+  RepoRef action_repo = 11; // ACTION listings
+  string action_path = 12; // ACTION listings, e.g. "action.yml" or a subdirectory
+  string agent_id = 13; // AGENT listings: agent definition id
+  string logo_url = 14;
+  repeated string screenshot_urls = 15;
+  string support_url = 16;
+  string privacy_policy_url = 17;
+  string terms_url = 18;
+  MarketplaceListingState state = 19;
+  repeated MarketplacePlan plans = 20;
+  uint64 install_count = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
+  google.protobuf.Timestamp published_at = 24;
+}
+
+// An org's purchase of a plan.
+message MarketplacePurchase {
+  string id = 1; // ULID
+  string listing_id = 2;
+  string plan_id = 3;
+  string org = 4;
+  uint32 unit_count = 5;
+  MarketplaceBillingCycle billing_cycle = 6;
+  bool on_free_trial = 7;
+  google.protobuf.Timestamp free_trial_ends_at = 8;
+  google.protobuf.Timestamp next_billing_at = 9;
+  bool pending_cancellation = 10; // ends at next_billing_at
+  Principal purchased_by = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp cancelled_at = 13;
+}
+
+// Verification state of a marketplace publisher.
+enum MarketplacePublisherVerification {
+  MARKETPLACE_PUBLISHER_VERIFICATION_UNSPECIFIED = 0;
+  MARKETPLACE_PUBLISHER_VERIFICATION_UNVERIFIED = 1;
+  MARKETPLACE_PUBLISHER_VERIFICATION_PENDING = 2;
+  MARKETPLACE_PUBLISHER_VERIFICATION_VERIFIED = 3;
+  MARKETPLACE_PUBLISHER_VERIFICATION_REJECTED = 4;
+}
+
+// An org that publishes marketplace listings.
+message MarketplacePublisher {
+  string org = 1;
+  MarketplacePublisherVerification verification = 2;
+  string verified_domain = 3;
+  string support_email = 4;
+  google.protobuf.Timestamp verified_at = 5;
+  uint32 listing_count = 6;
+}
+
+// Request for CreateMarketplaceListing.
+message CreateMarketplaceListingRequest {
+  string org = 1; // publisher
+  MarketplaceListingType type = 2;
+  string slug = 3;
+  string name = 4;
+  string short_description = 5;
+  string full_description = 6;
+  repeated string categories = 7;
+  string app_id = 8;
+  RepoRef action_repo = 9;
+  string action_path = 10;
+  string agent_id = 11;
+  string logo_url = 12;
+  string support_url = 13;
+  string privacy_policy_url = 14;
+  string terms_url = 15;
+}
+
+// Request for UpdateMarketplaceListing. Unset fields are unchanged.
+message UpdateMarketplaceListingRequest {
+  string listing = 1; // slug or id
+  optional string name = 2;
+  optional string short_description = 3;
+  optional string full_description = 4;
+  repeated string categories = 5; // replaces the list when replace_categories is set
+  bool replace_categories = 6;
+  optional string logo_url = 7;
+  repeated string screenshot_urls = 8; // replaces the list when replace_screenshot_urls is set
+  bool replace_screenshot_urls = 9;
+  optional string support_url = 10;
+  optional string privacy_policy_url = 11;
+  optional string terms_url = 12;
+}
+
+// Request for PublishMarketplaceListing.
+message PublishMarketplaceListingRequest {
+  string listing = 1;
+  bool unpublish = 2; // take a published listing down; existing purchases continue
+}
+
+// Request for GetMarketplaceListing.
+message GetMarketplaceListingRequest {
+  string listing = 1; // slug or id
+}
+
+// Request for ListMarketplaceListings.
+message ListMarketplaceListingsRequest {
+  string query = 1; // free text over name and descriptions
+  MarketplaceListingType type = 2; // UNSPECIFIED = all
+  string category = 3;
+  string publisher = 4; // org name; the publisher also sees its drafts
+  bool verified_only = 5;
+  bool free_only = 6;
+  string sort = 7; // "popularity" (default), "recent", "name"
+  PageRequest page = 8;
+}
+
+// Response for ListMarketplaceListings.
+message ListMarketplaceListingsResponse {
+  repeated MarketplaceListing listings = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateMarketplacePlan.
+message CreateMarketplacePlanRequest {
+  string listing = 1;
+  string name = 2;
+  string description = 3;
+  MarketplacePricingModel pricing_model = 4;
+  uint64 monthly_price_micro_usd = 5;
+  uint64 yearly_price_micro_usd = 6;
+  string unit_name = 7;
+  uint32 free_trial_days = 8;
+  repeated string bullets = 9;
+}
+
+// Request for UpdateMarketplacePlan. Unset fields are unchanged.
+message UpdateMarketplacePlanRequest {
+  string listing = 1;
+  string plan_id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional uint64 monthly_price_micro_usd = 5; // INVALID_STATE once the plan has purchases
+  optional uint64 yearly_price_micro_usd = 6;
+  optional uint32 free_trial_days = 7;
+  repeated string bullets = 8; // replaces the list when replace_bullets is set
+  bool replace_bullets = 9;
+  optional bool retired = 10;
+}
+
+// Request for PurchaseMarketplacePlan.
+message PurchaseMarketplacePlanRequest {
+  string org = 1; // buyer
+  string listing = 2;
+  string plan_id = 3;
+  uint32 unit_count = 4; // PER_UNIT plans
+  MarketplaceBillingCycle billing_cycle = 5;
+}
+
+// Request for CancelMarketplacePurchase.
+message CancelMarketplacePurchaseRequest {
+  string org = 1;
+  string purchase_id = 2;
+}
+
+// Request for ListMarketplacePurchases.
+message ListMarketplacePurchasesRequest {
+  oneof filter {
+    string org = 1; // purchases made by this org
+    string listing = 2; // purchasers of this listing (publisher only)
+  }
+  bool include_cancelled = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListMarketplacePurchases.
+message ListMarketplacePurchasesResponse {
+  repeated MarketplacePurchase purchases = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetMarketplacePublisher.
+message GetMarketplacePublisherRequest {
+  string org = 1;
+}
+
+// Request for RequestMarketplacePublisherVerification.
+message RequestMarketplacePublisherVerificationRequest {
+  string org = 1;
+  string domain = 2; // must be a verified domain of the org
+  string support_email = 3;
+}

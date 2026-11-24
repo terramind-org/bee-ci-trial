@@ -1,0 +1,22 @@
+[package]
+name = "bee-testkit"
+description = "Test fixtures, in-memory stores, deterministic clock and fault injection."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+bee-store = { path = "../bee-store" }
+tokio = { version = "=1.53.3", features = ["time", "rt", "rt-multi-thread", "macros", "sync"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+
+[dev-dependencies]
+proptest = "=1.12.0"
+
+[lints]
+workspace = true

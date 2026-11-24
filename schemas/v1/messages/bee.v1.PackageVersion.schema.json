@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PackageFile": {
+      "description": "One file of a package version (a layer or manifest, a tarball, a jar, a nupkg, a gem).",
+      "properties": {
+        "digest": {
+          "description": "\"sha256:<hex>\"",
+          "type": "string"
+        },
+        "downloadUrl": {
+          "description": "short-lived signed URL, when requested",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.PackageFile",
+      "type": "object"
+    },
+    "bee.v1.PackagePlatform": {
+      "description": "One platform of a multi-platform container image.",
+      "properties": {
+        "arch": {
+          "type": "string"
+        },
+        "digest": {
+          "description": "manifest digest for this platform",
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PackagePlatform",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PackageVersion.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One published version of a package.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "deletedAt": {
+      "description": "set while restorable",
+      "format": "date-time",
+      "type": "string"
+    },
+    "digest": {
+      "description": "containers: manifest or index digest",
+      "type": "string"
+    },
+    "downloadCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PackageFile"
+      },
+      "type": "array"
+    },
+    "hasProvenance": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "metadataJson": {
+      "description": "ecosystem metadata (package.json, pom, nuspec, gemspec, OCI config), JSON",
+      "type": "string"
+    },
+    "packageId": {
+      "type": "string"
+    },
+    "platforms": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PackagePlatform"
+      },
+      "type": "array"
+    },
+    "publisher": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "sizeBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "sourceChangeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "description": "version string; for containers the manifest digest when untagged",
+      "type": "string"
+    },
+    "workflowRunId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.PackageVersion",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+# event merge_group action=checks_requested
+run .github/workflows/required.yml "Required checks"
+  run-name: "Required checks"
+  event: merge_group ref=refs/heads/gh-readonly-queue/main/pr-42-cccccccc sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job test decided=true
+    instance "test"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          ref: "ffffffffffffffffffffffffffffffffffffffff"
+      step 2 "Run make test"
+        run: "make test"
+        shell: default -> "bash -e {0}"
+      step 3 "Run echo \"queue head refs/heads/gh-readonly-queue/main/pr-42-cccccccc\"" if="github.event_name == 'merge_group'"
+        run: "echo \"queue head refs/heads/gh-readonly-queue/main/pr-42-cccccccc\""
+        shell: default -> "bash -e {0}"

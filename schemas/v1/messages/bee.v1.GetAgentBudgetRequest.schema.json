@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetAgentBudgetRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetAgentBudget. The owner itself, or org owner/admin.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "ownerId": {
+      "description": "empty = the caller",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetAgentBudgetRequest",
+  "type": "object"
+}

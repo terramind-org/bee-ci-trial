@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/check.get-bisect-next-candidate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.CheckService/GetBisectNextCandidate: `data` is a bee.v1.GetBisectNextCandidateResponse in proto3-JSON. `bee check get-bisect-next-candidate --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GetBisectNextCandidateResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.check.get-bisect-next-candidate"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee check get-bisect-next-candidate",
+  "type": "object"
+}

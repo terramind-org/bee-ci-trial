@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginUserAvatarUploadRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for BeginUserAvatarUpload.",
+  "properties": {
+    "contentType": {
+      "description": "\"image/png\", \"image/jpeg\" or \"image/gif\"",
+      "type": "string"
+    },
+    "size": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.BeginUserAvatarUploadRequest",
+  "type": "object"
+}

@@ -1,0 +1,284 @@
+{
+  "$defs": {
+    "bee.v1.Comment": {
+      "description": "A conversation comment on any subject.",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/bee.v1.CommentAnchor",
+          "description": "set for line and file comments"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "authorAssociation": {
+          "description": "\"OWNER\", \"MEMBER\", \"CONTRIBUTOR\", \"FIRST_TIME_CONTRIBUTOR\", \"NONE\"",
+          "type": "string"
+        },
+        "body": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "bodyHtml": {
+          "description": "sanitized rendering, when requested",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "edited": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inReplyTo": {
+          "description": "parent comment id for threaded replies",
+          "type": "string"
+        },
+        "minimizedReason": {
+          "$ref": "#/$defs/bee.v1.MinimizedReason",
+          "description": "UNSPECIFIED = shown"
+        },
+        "reactions": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ReactionGroup"
+          },
+          "type": "array"
+        },
+        "subject": {
+          "$ref": "#/$defs/bee.v1.SubjectRef",
+          "description": "what the comment is on"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "description": "permalink in the web app",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Comment",
+      "type": "object"
+    },
+    "bee.v1.CommentAnchor": {
+      "description": "Where a line or file comment is anchored: change request review comments and changeset\n(commit) comments.",
+      "properties": {
+        "endLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fileLevel": {
+          "description": "anchored to the file, not to lines",
+          "type": "boolean"
+        },
+        "outdated": {
+          "description": "the anchored lines changed in a later revision",
+          "type": "boolean"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "revision": {
+          "description": "CR revision the anchor was last valid on; 0 off a CR",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "side": {
+          "description": "\"old\" | \"new\"",
+          "type": "string"
+        },
+        "startLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "threadId": {
+          "description": "the CR review thread",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CommentAnchor",
+      "type": "object"
+    },
+    "bee.v1.MinimizedReason": {
+      "description": "Why a comment is minimized (PRODUCT §4.21).",
+      "enum": [
+        "MINIMIZED_REASON_UNSPECIFIED",
+        "MINIMIZED_REASON_SPAM",
+        "MINIMIZED_REASON_ABUSE",
+        "MINIMIZED_REASON_OFF_TOPIC",
+        "MINIMIZED_REASON_OUTDATED",
+        "MINIMIZED_REASON_DUPLICATE",
+        "MINIMIZED_REASON_RESOLVED"
+      ],
+      "title": "bee.v1.MinimizedReason",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReactionContent": {
+      "description": "Reaction emoji, matching GitHub's fixed set.",
+      "enum": [
+        "REACTION_CONTENT_UNSPECIFIED",
+        "REACTION_CONTENT_THUMBS_UP",
+        "REACTION_CONTENT_THUMBS_DOWN",
+        "REACTION_CONTENT_LAUGH",
+        "REACTION_CONTENT_HOORAY",
+        "REACTION_CONTENT_CONFUSED",
+        "REACTION_CONTENT_HEART",
+        "REACTION_CONTENT_ROCKET",
+        "REACTION_CONTENT_EYES"
+      ],
+      "title": "bee.v1.ReactionContent",
+      "type": "string"
+    },
+    "bee.v1.ReactionGroup": {
+      "description": "Count of one reaction on a subject, and whether the caller is among them.",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/bee.v1.ReactionContent"
+        },
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "viewerReacted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.ReactionGroup",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListChangeCommentsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "comments": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Comment"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListChangeCommentsResponse",
+  "type": "object"
+}

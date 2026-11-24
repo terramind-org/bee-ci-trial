@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "bee.v1.MarketplaceListingType": {
+      "description": "What a marketplace listing offers.",
+      "enum": [
+        "MARKETPLACE_LISTING_TYPE_UNSPECIFIED",
+        "MARKETPLACE_LISTING_TYPE_APP",
+        "MARKETPLACE_LISTING_TYPE_ACTION",
+        "MARKETPLACE_LISTING_TYPE_AGENT"
+      ],
+      "title": "bee.v1.MarketplaceListingType",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateMarketplaceListingRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateMarketplaceListing.",
+  "properties": {
+    "actionPath": {
+      "type": "string"
+    },
+    "actionRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "appId": {
+      "type": "string"
+    },
+    "categories": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "fullDescription": {
+      "type": "string"
+    },
+    "logoUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "description": "publisher",
+      "type": "string"
+    },
+    "privacyPolicyUrl": {
+      "type": "string"
+    },
+    "shortDescription": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "supportUrl": {
+      "type": "string"
+    },
+    "termsUrl": {
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/bee.v1.MarketplaceListingType"
+    }
+  },
+  "title": "bee.v1.CreateMarketplaceListingRequest",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/app.list-marketplace-purchases.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AppService/ListMarketplacePurchases: `data` is a bee.v1.ListMarketplacePurchasesResponse in proto3-JSON. `bee app list-marketplace-purchases --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListMarketplacePurchasesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.app.list-marketplace-purchases"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee app list-marketplace-purchases",
+  "type": "object"
+}

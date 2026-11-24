@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "bee.v1.AppPermission": {
+      "description": "One resource permission, e.g. contents:write or issues:read.",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/bee.v1.AppPermissionLevel"
+        },
+        "resource": {
+          "description": "Resource name from the permission catalog, e.g. \"contents\", \"metadata\", \"issues\",\n\"change_requests\", \"checks\", \"workflows\", \"members\", \"administration\".",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPermission",
+      "type": "object"
+    },
+    "bee.v1.AppPermissionLevel": {
+      "description": "Access level an app requests or holds on one resource.",
+      "enum": [
+        "APP_PERMISSION_LEVEL_UNSPECIFIED",
+        "APP_PERMISSION_LEVEL_READ",
+        "APP_PERMISSION_LEVEL_WRITE",
+        "APP_PERMISSION_LEVEL_ADMIN"
+      ],
+      "title": "bee.v1.AppPermissionLevel",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateInstallationTokenResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateInstallationToken.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "permissions": {
+      "description": "effective permissions",
+      "items": {
+        "$ref": "#/$defs/bee.v1.AppPermission"
+      },
+      "type": "array"
+    },
+    "repos": {
+      "description": "effective repos; empty = all",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "token": {
+      "description": "Biscuit token attenuated to the installation grant",
+      "type": "string"
+    },
+    "tokenId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateInstallationTokenResponse",
+  "type": "object"
+}

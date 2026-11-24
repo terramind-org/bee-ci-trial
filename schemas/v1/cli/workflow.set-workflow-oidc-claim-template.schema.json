@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.set-workflow-oidc-claim-template.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/SetWorkflowOidcClaimTemplate: `data` is a bee.v1.WorkflowOidcClaimTemplate in proto3-JSON. `bee workflow set-workflow-oidc-claim-template --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowOidcClaimTemplate.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.set-workflow-oidc-claim-template"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow set-workflow-oidc-claim-template",
+  "type": "object"
+}

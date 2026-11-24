@@ -1,0 +1,33 @@
+# Load balancer of deploy/compose.scale.yml: one plain-HTTP port in front of every server
+# replica, carrying gRPC, HTTP/JSON, git smart HTTP and MCP alike (docs/scaling.md).
+{
+	# No admin API inside the stack.
+	admin off
+	servers {
+		# gRPC clients speak HTTP/2 without TLS (h2c); curl, browsers and git speak HTTP/1.1.
+		protocols h1 h2c
+	}
+}
+
+:7420 {
+	reverse_proxy server-1:7420 server-2:7420 server-3:7420 {
+		lb_policy round_robin
+		# A replica that refuses the connection (stopped, restarting) is skipped and the request
+		# goes to the next one. Only connection failures are retried: a request a replica has
+		# started is never sent twice.
+		lb_try_duration 10s
+		lb_try_interval 100ms
+		fail_duration 5s
+		# Active checks take a replica out while it is not ready and back in when it is.
+		health_uri /readyz
+		health_interval 2s
+		health_timeout 2s
+		# Server streams (event subscriptions, log tails) and git packs flow as they are written.
+		flush_interval -1
+		transport http {
+			# HTTP/2 without TLS to the replicas, which gRPC needs.
+			versions h2c 2
+			dial_timeout 2s
+		}
+	}
+}

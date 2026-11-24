@@ -1,0 +1,221 @@
+// GitHub migration for bee.v1. See SPEC.md §17.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+service ImportService {
+  rpc StartImport(StartImportRequest) returns (Import);
+  rpc GetImport(GetImportRequest) returns (Import);
+  rpc ListImports(ListImportsRequest) returns (ListImportsResponse);
+  rpc SetImportPhase(SetImportPhaseRequest) returns (Import);
+  rpc CancelImport(CancelImportRequest) returns (Import);
+  rpc GetFidelityReport(GetFidelityReportRequest) returns (FidelityReport);
+  // Links a placeholder principal created by an import to the caller's GitHub-verified identity.
+  rpc ClaimIdentity(ClaimIdentityRequest) returns (ClaimIdentityResponse);
+  // Lists placeholder principals an import created that nobody has claimed yet.
+  rpc ListPlaceholderPrincipals(ListPlaceholderPrincipalsRequest) returns (ListPlaceholderPrincipalsResponse);
+  // Starts an export of repos or an org: a GitHub migration archive, or a push to a git remote
+  // (PRODUCT §4.12). Exports never block writes.
+  rpc StartExport(StartExportRequest) returns (Export);
+  rpc GetExport(GetExportRequest) returns (Export);
+  rpc ListExports(ListExportsRequest) returns (ListExportsResponse);
+  rpc CancelExport(CancelExportRequest) returns (Export);
+}
+
+// Where an import comes from.
+enum ImportSourceKind {
+  IMPORT_SOURCE_KIND_UNSPECIFIED = 0; // same as GITHUB
+  IMPORT_SOURCE_KIND_GITHUB = 1;
+  IMPORT_SOURCE_KIND_GITLAB = 2;
+  IMPORT_SOURCE_KIND_BITBUCKET = 3;
+  IMPORT_SOURCE_KIND_AZURE_DEVOPS = 4;
+  IMPORT_SOURCE_KIND_GITEA = 5;
+  IMPORT_SOURCE_KIND_GIT = 6;         // any git remote; history only
+  IMPORT_SOURCE_KIND_GITHUB_ARCHIVE = 7; // a GitHub migration archive uploaded by signed URL
+}
+
+enum ImportPhase {
+  IMPORT_PHASE_UNSPECIFIED = 0;
+  IMPORT_PHASE_DRY_RUN = 1;
+  IMPORT_PHASE_MIRROR = 2;  // GitHub is the source of truth
+  IMPORT_PHASE_BRIDGE = 3;  // two-way bridge
+  IMPORT_PHASE_CUTOVER = 4; // Beehive is the source of truth, GitHub a read-only mirror
+}
+
+enum ImportState {
+  IMPORT_STATE_UNSPECIFIED = 0;
+  IMPORT_STATE_QUEUED = 1;
+  IMPORT_STATE_GIT = 2;      // fetching refs, objects, LFS, wiki
+  IMPORT_STATE_METADATA = 3; // archive + API backfill
+  IMPORT_STATE_LIVE = 4;     // webhook sync + reconciliation
+  IMPORT_STATE_FAILED = 5;
+  IMPORT_STATE_CANCELLED = 6;
+}
+
+message ImportProgress {
+  string category = 1; // e.g. "pull_requests", "review_comments", "lfs"
+  uint64 done = 2;
+  uint64 total = 3;    // 0 when unknown
+}
+
+message Import {
+  string id = 1;
+  string source = 2;   // "github:acme/api" or "github:acme/*"
+  repeated string repo_ids = 3;
+  ImportPhase phase = 4;
+  ImportState state = 5;
+  repeated ImportProgress progress = 6;
+  google.protobuf.Timestamp eta = 7;
+  string rate_limit_note = 8; // e.g. "GitHub App: 12,500 req/h, 41% used"
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp live_since = 10;
+}
+
+message StartImportRequest {
+  string source = 1;        // "acme/api" or "acme" with org = true
+  bool org = 2;
+  string target_org = 3;    // Beehive org; defaults to the source org name
+  ImportPhase phase = 4;    // DRY_RUN or MIRROR
+  string github_installation_id = 5; // preferred; else github_token
+  string github_token = 6;  // write-only
+  ImportSourceKind source_kind = 7;
+  string source_url = 8;    // base URL for self-hosted sources, git remote URL, or archive URL
+  string source_token = 9;  // write-only credential for non-GitHub sources
+}
+
+message GetImportRequest {
+  string id = 1;
+}
+
+message ListImportsRequest {
+  string target_org = 1;
+  PageRequest page = 2;
+}
+
+message ListImportsResponse {
+  repeated Import imports = 1;
+  PageResponse page = 2;
+}
+
+message SetImportPhaseRequest {
+  string id = 1;
+  ImportPhase phase = 2;
+}
+
+message CancelImportRequest {
+  string id = 1;
+}
+
+message GetFidelityReportRequest {
+  string id = 1;
+}
+
+message FidelityItem {
+  string category = 1;
+  uint64 imported = 2;
+  uint64 archived = 3;
+  uint64 dropped = 4;
+  repeated FidelityDrop drops = 5;
+}
+
+message FidelityDrop {
+  string ref = 1;    // e.g. "pull/412#review-comment-99" or a commit sha
+  string reason = 2; // e.g. "force-push commit no longer served by GitHub"
+}
+
+message FidelityReport {
+  string import_id = 1;
+  repeated FidelityItem items = 2;
+  repeated string manual_steps = 3; // secrets to re-enter, webhooks to enable, app installs
+  google.protobuf.Timestamp generated_at = 4;
+}
+
+message ClaimIdentityRequest {
+  string github_oauth_code = 1;
+}
+
+message ClaimIdentityResponse {
+  Principal principal = 1;
+  uint32 placeholders_merged = 2;
+}
+
+message ListPlaceholderPrincipalsRequest {
+  string import_id = 1;
+  string target_org = 2;
+  PageRequest page = 3;
+}
+
+// A principal created by an import for an author who has not claimed it yet.
+message PlaceholderPrincipal {
+  Principal principal = 1;
+  string source_login = 2;   // e.g. the GitHub login
+  string source_id = 3;
+  uint64 contributions = 4;  // changesets, comments and reviews attributed to it
+}
+
+message ListPlaceholderPrincipalsResponse {
+  repeated PlaceholderPrincipal placeholders = 1;
+  PageResponse page = 2;
+}
+
+// What an export produces.
+enum ExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0;     // same as GITHUB_ARCHIVE
+  EXPORT_FORMAT_GITHUB_ARCHIVE = 1;  // GitHub migration-archive tarball
+  EXPORT_FORMAT_GIT_PUSH = 2;        // push history and tags to a git remote
+}
+
+// State of an export job.
+enum ExportState {
+  EXPORT_STATE_UNSPECIFIED = 0;
+  EXPORT_STATE_QUEUED = 1;
+  EXPORT_STATE_RUNNING = 2;
+  EXPORT_STATE_SUCCEEDED = 3;
+  EXPORT_STATE_FAILED = 4;
+  EXPORT_STATE_CANCELLED = 5;
+}
+
+// An export job.
+message Export {
+  string id = 1;
+  string org = 2;
+  repeated string repo_ids = 3;
+  ExportFormat format = 4;
+  ExportState state = 5;
+  repeated ImportProgress progress = 6;
+  string download_url = 7;       // signed URL of the archive when SUCCEEDED
+  int64 download_url_expires_unix = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp finished_at = 10;
+  string error = 11;
+}
+
+message StartExportRequest {
+  string org = 1;
+  repeated RepoRef repos = 2; // empty = every repo in the org
+  ExportFormat format = 3;
+  string remote_url = 4;      // GIT_PUSH target
+  string remote_token = 5;    // write-only
+  bool include_metadata = 6;  // issues, CRs, reviews, releases (archive only)
+}
+
+message GetExportRequest {
+  string id = 1;
+}
+
+message ListExportsRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+message ListExportsResponse {
+  repeated Export exports = 1;
+  PageResponse page = 2;
+}
+
+message CancelExportRequest {
+  string id = 1;
+}

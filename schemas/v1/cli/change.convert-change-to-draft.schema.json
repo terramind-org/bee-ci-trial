@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/change.convert-change-to-draft.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ChangeService/ConvertChangeToDraft: `data` is a bee.v1.ChangeRequest in proto3-JSON. `bee change convert-change-to-draft --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ChangeRequest.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.change.convert-change-to-draft"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee change convert-change-to-draft",
+  "type": "object"
+}

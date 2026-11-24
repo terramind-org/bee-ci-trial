@@ -1,0 +1,704 @@
+// Operations for bee.v1: health, cluster status, metrics, logs, traces, config validation,
+// rate limits, rollouts, status page, backups and cache tier stats.
+// See docs/PRODUCT.md §4.22 and SPEC.md §15.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Operator and agent-facing observability. Logs never carry raw paths or secrets: paths
+// appear as path hashes. Most RPCs need the operator role; GetRateLimitStatus and
+// GetOpsHealth's summary are open to any authenticated caller.
+service OpsService {
+  // ---- Health and status ----
+
+  // Returns liveness and readiness for each component of the serving node or cell.
+  rpc GetOpsHealth(GetOpsHealthRequest) returns (GetOpsHealthResponse);
+  // Returns cluster status: cells, versions, primaries and stale-read state.
+  rpc GetOpsClusterStatus(GetOpsClusterStatusRequest) returns (OpsClusterStatus);
+
+  // ---- Metrics ----
+
+  // Lists the fixed metric names with type, unit, help and label names.
+  rpc ListMetricDescriptors(ListMetricDescriptorsRequest) returns (ListMetricDescriptorsResponse);
+  // Evaluates a metric at one instant. INVALID_ARGUMENT with subcode `unknown_metric` for a
+  // name outside the fixed set.
+  rpc QueryMetrics(QueryMetricsRequest) returns (QueryMetricsResponse);
+  // Evaluates a metric over a time range at a fixed step. TOO_LARGE past the point limit.
+  rpc QueryMetricsRange(QueryMetricsRangeRequest) returns (QueryMetricsRangeResponse);
+
+  // ---- Logs and traces ----
+
+  // Queries structured logs by component, request id, principal, level and time range.
+  rpc QueryOpsLogs(QueryOpsLogsRequest) returns (QueryOpsLogsResponse);
+  // Streams matching log entries live until the caller cancels.
+  rpc TailOpsLogs(TailOpsLogsRequest) returns (stream OpsLogEntry);
+  // Fetches one trace with all its spans. NOT_FOUND when sampled out or expired.
+  rpc GetOpsTrace(GetOpsTraceRequest) returns (OpsTrace);
+  // Searches traces by service, operation, duration, error and time range.
+  rpc SearchOpsTraces(SearchOpsTracesRequest) returns (SearchOpsTracesResponse);
+
+  // ---- Configuration ----
+
+  // Validates a TOML config document strictly and returns every error with its key path.
+  rpc ValidateOpsConfig(ValidateOpsConfigRequest) returns (ValidateOpsConfigResponse);
+  // Returns the effective config in force on a node or cell, with secrets redacted.
+  rpc GetEffectiveOpsConfig(GetEffectiveOpsConfigRequest) returns (GetEffectiveOpsConfigResponse);
+
+  // ---- Admission control ----
+
+  // Returns the caller's rate-limit buckets: limit, remaining and reset, per principal and
+  // per delegation root.
+  rpc GetRateLimitStatus(GetRateLimitStatusRequest) returns (GetRateLimitStatusResponse);
+
+  // ---- Rollouts ----
+
+  // Lists rollouts, filtered by cell and state.
+  rpc ListOpsRollouts(ListOpsRolloutsRequest) returns (ListOpsRolloutsResponse);
+  // Fetches one rollout with per-cell progress.
+  rpc GetOpsRollout(GetOpsRolloutRequest) returns (OpsRollout);
+  // Pauses a rollout before its next cell. INVALID_STATE when finished.
+  rpc PauseOpsRollout(PauseOpsRolloutRequest) returns (OpsRollout);
+  // Resumes a paused rollout. INVALID_STATE unless paused.
+  rpc ResumeOpsRollout(ResumeOpsRolloutRequest) returns (OpsRollout);
+  // Rolls a rollout back in every cell it reached.
+  rpc RollbackOpsRollout(RollbackOpsRolloutRequest) returns (OpsRollout);
+
+  // ---- Status page ----
+
+  // Lists status page incidents.
+  rpc ListOpsIncidents(ListOpsIncidentsRequest) returns (ListOpsIncidentsResponse);
+  // Opens a status page incident.
+  rpc CreateOpsIncident(CreateOpsIncidentRequest) returns (OpsIncident);
+  // Posts an update to an incident, changing its state or affected components.
+  rpc UpdateOpsIncident(UpdateOpsIncidentRequest) returns (OpsIncident);
+  // Lists status page components with their current status.
+  rpc ListOpsStatusComponents(ListOpsStatusComponentsRequest) returns (ListOpsStatusComponentsResponse);
+  // Sets one status page component's status.
+  rpc SetOpsStatusComponent(SetOpsStatusComponentRequest) returns (OpsStatusComponent);
+
+  // ---- Backups ----
+
+  // Lists backups for a cell, newest first.
+  rpc ListOpsBackups(ListOpsBackupsRequest) returns (ListOpsBackupsResponse);
+  // Lists restore drills and their results, newest first.
+  rpc ListOpsRestoreDrills(ListOpsRestoreDrillsRequest) returns (ListOpsRestoreDrillsResponse);
+
+  // ---- Cache tiers ----
+
+  // Returns hit, miss, fail-closed and epoch stats for daemon, node and regional cache tiers.
+  rpc GetOpsCacheStats(GetOpsCacheStatsRequest) returns (GetOpsCacheStatsResponse);
+}
+
+// ---------- Health ----------
+
+// Health of one component.
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_OK = 1;
+  HEALTH_STATUS_DEGRADED = 2;  // serving, with reduced function (e.g. stale reads)
+  HEALTH_STATUS_DOWN = 3;
+}
+
+// Liveness and readiness of one component.
+message HealthComponent {
+  string name = 1;            // "metadata", "blob_store", "search", "events", "git_gateway", ...
+  HealthStatus liveness = 2;
+  HealthStatus readiness = 3;
+  string reason = 4;          // short machine-readable reason, e.g. "primary_unreachable"
+  string detail = 5;
+  bool critical_path = 6;     // the git data path depends on it (SPEC §15.1)
+  google.protobuf.Timestamp checked_at = 7;
+}
+
+// Request for GetOpsHealth.
+message GetOpsHealthRequest {
+  string cell = 1;            // empty = the serving node's cell
+  bool include_components = 2;
+}
+
+// Response for GetOpsHealth.
+message GetOpsHealthResponse {
+  HealthStatus liveness = 1;
+  HealthStatus readiness = 2;
+  repeated HealthComponent components = 3;
+  string node = 4;
+  string cell = 5;
+  string version = 6;
+}
+
+// ---------- Cluster ----------
+
+// One cell's status.
+message OpsCell {
+  string name = 1;
+  string region = 2;
+  string version = 3;         // binary version
+  string config_version = 4;
+  string schema_version = 5;
+  HealthStatus status = 6;
+  bool metadata_primary_up = 7;
+  bool serving_stale_reads = 8; // refs served stale and marked stale (SPEC §15.1)
+  uint64 stale_lag_ms = 9;
+  uint32 nodes = 10;
+  uint32 orgs = 11;
+  uint64 redaction_epoch = 12;
+  uint64 policy_epoch = 13;
+}
+
+// Status of the deployment.
+message OpsClusterStatus {
+  repeated OpsCell cells = 1;
+  bool directory_up = 2;
+  string directory_version = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+// Request for GetOpsClusterStatus.
+message GetOpsClusterStatusRequest {
+  repeated string cells = 1;  // empty = all visible cells
+}
+
+// ---------- Metrics ----------
+
+// Metric type.
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_COUNTER = 1;
+  METRIC_TYPE_GAUGE = 2;
+  METRIC_TYPE_HISTOGRAM = 3;
+}
+
+// One fixed metric name.
+message MetricDescriptor {
+  string name = 1;            // e.g. "bee_rpc_duration_seconds"
+  MetricType type = 2;
+  string unit = 3;
+  string help = 4;
+  repeated string label_names = 5;
+}
+
+// Request for ListMetricDescriptors.
+message ListMetricDescriptorsRequest {
+  string prefix = 1;
+}
+
+// Response for ListMetricDescriptors.
+message ListMetricDescriptorsResponse {
+  repeated MetricDescriptor descriptors = 1;
+}
+
+// How a label matcher compares.
+enum MetricMatchOp {
+  METRIC_MATCH_OP_UNSPECIFIED = 0; // same as EQUAL
+  METRIC_MATCH_OP_EQUAL = 1;
+  METRIC_MATCH_OP_NOT_EQUAL = 2;
+  METRIC_MATCH_OP_REGEX = 3;
+  METRIC_MATCH_OP_NOT_REGEX = 4;
+}
+
+// Selects series by label.
+message MetricLabelMatcher {
+  string name = 1;
+  MetricMatchOp op = 2;
+  string value = 3;
+}
+
+// Aggregation across series.
+enum MetricAggregation {
+  METRIC_AGGREGATION_UNSPECIFIED = 0; // none: return every series
+  METRIC_AGGREGATION_SUM = 1;
+  METRIC_AGGREGATION_AVG = 2;
+  METRIC_AGGREGATION_MAX = 3;
+  METRIC_AGGREGATION_MIN = 4;
+  METRIC_AGGREGATION_RATE = 5;  // per-second rate of a counter
+  METRIC_AGGREGATION_P50 = 6;   // histogram quantiles
+  METRIC_AGGREGATION_P90 = 7;
+  METRIC_AGGREGATION_P99 = 8;
+}
+
+// One sample.
+message MetricSample {
+  google.protobuf.Timestamp time = 1;
+  double value = 2;
+}
+
+// One labelled series.
+message MetricSeries {
+  string name = 1;
+  repeated KeyValue labels = 2;
+  repeated MetricSample samples = 3;
+}
+
+// Request for QueryMetrics.
+message QueryMetricsRequest {
+  string name = 1;
+  repeated MetricLabelMatcher matchers = 2;
+  MetricAggregation aggregation = 3;
+  repeated string group_by = 4;
+  uint64 window_seconds = 5;  // lookback for RATE and quantiles
+  google.protobuf.Timestamp time = 6; // unset = now
+  string cell = 7;
+}
+
+// Response for QueryMetrics.
+message QueryMetricsResponse {
+  repeated MetricSeries series = 1; // one sample each
+}
+
+// Request for QueryMetricsRange.
+message QueryMetricsRangeRequest {
+  string name = 1;
+  repeated MetricLabelMatcher matchers = 2;
+  MetricAggregation aggregation = 3;
+  repeated string group_by = 4;
+  uint64 window_seconds = 5;
+  google.protobuf.Timestamp start = 6;
+  google.protobuf.Timestamp end = 7;
+  uint64 step_seconds = 8;
+  string cell = 9;
+}
+
+// Response for QueryMetricsRange.
+message QueryMetricsRangeResponse {
+  repeated MetricSeries series = 1;
+}
+
+// ---------- Logs ----------
+
+// Log severity.
+enum OpsLogLevel {
+  OPS_LOG_LEVEL_UNSPECIFIED = 0;
+  OPS_LOG_LEVEL_DEBUG = 1;
+  OPS_LOG_LEVEL_INFO = 2;
+  OPS_LOG_LEVEL_WARN = 3;
+  OPS_LOG_LEVEL_ERROR = 4;
+}
+
+// One structured log entry. Never contains raw paths or secrets.
+message OpsLogEntry {
+  google.protobuf.Timestamp time = 1;
+  OpsLogLevel level = 2;
+  string component = 3;
+  string message = 4;
+  string request_id = 5;
+  string trace_id = 6;
+  string principal_id = 7;
+  string repo_id = 8;
+  string rpc = 9;             // e.g. "bee.v1.WriteService/Land"
+  string error_reason = 10;   // an ErrorReason name, when the entry records a failure
+  repeated string path_hashes = 11; // hashed paths, never raw paths
+  repeated KeyValue fields = 12;
+  string node = 13;
+  string cell = 14;
+}
+
+// Filter shared by log queries and tails.
+message OpsLogFilter {
+  repeated string components = 1;
+  string request_id = 2;
+  string trace_id = 3;
+  string principal_id = 4;
+  string repo_id = 5;
+  OpsLogLevel min_level = 6;
+  string text = 7;            // substring match on message
+  string cell = 8;
+}
+
+// Request for QueryOpsLogs.
+message QueryOpsLogsRequest {
+  OpsLogFilter filter = 1;
+  google.protobuf.Timestamp start = 2;
+  google.protobuf.Timestamp end = 3;
+  bool newest_first = 4;
+  PageRequest page = 5;
+}
+
+// Response for QueryOpsLogs.
+message QueryOpsLogsResponse {
+  repeated OpsLogEntry entries = 1;
+  PageResponse page = 2;
+}
+
+// Request for TailOpsLogs.
+message TailOpsLogsRequest {
+  OpsLogFilter filter = 1;
+  uint32 backfill = 2;        // recent entries to send first
+}
+
+// ---------- Traces ----------
+
+// One span.
+message OpsTraceSpan {
+  string span_id = 1;
+  string parent_span_id = 2;
+  string service = 3;
+  string operation = 4;
+  google.protobuf.Timestamp start = 5;
+  uint64 duration_us = 6;
+  bool error = 7;
+  string error_reason = 8;
+  repeated KeyValue attributes = 9; // never raw paths or secrets
+}
+
+// A complete trace.
+message OpsTrace {
+  string trace_id = 1;
+  repeated OpsTraceSpan spans = 2;
+  string root_service = 3;
+  string root_operation = 4;
+  uint64 duration_us = 5;
+  bool error = 6;
+}
+
+// Request for GetOpsTrace.
+message GetOpsTraceRequest {
+  string trace_id = 1;
+}
+
+// A trace search hit.
+message OpsTraceSummary {
+  string trace_id = 1;
+  string root_service = 2;
+  string root_operation = 3;
+  google.protobuf.Timestamp start = 4;
+  uint64 duration_us = 5;
+  uint32 span_count = 6;
+  bool error = 7;
+}
+
+// Request for SearchOpsTraces.
+message SearchOpsTracesRequest {
+  string service = 1;
+  string operation = 2;
+  uint64 min_duration_us = 3;
+  bool errors_only = 4;
+  string request_id = 5;
+  string principal_id = 6;
+  google.protobuf.Timestamp start = 7;
+  google.protobuf.Timestamp end = 8;
+  PageRequest page = 9;
+}
+
+// Response for SearchOpsTraces.
+message SearchOpsTracesResponse {
+  repeated OpsTraceSummary traces = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Config ----------
+
+// One config validation problem.
+message OpsConfigError {
+  string key_path = 1;        // e.g. "limits.max_blob_bytes"
+  uint32 line = 2;
+  uint32 column = 3;
+  string message = 4;
+  string code = 5;            // "unknown_key", "type_mismatch", "out_of_range", ...
+}
+
+// Request for ValidateOpsConfig.
+message ValidateOpsConfigRequest {
+  string toml = 1;
+  string component = 2;       // "server", "daemon", "git_gateway"
+}
+
+// Response for ValidateOpsConfig.
+message ValidateOpsConfigResponse {
+  bool valid = 1;
+  repeated OpsConfigError errors = 2;
+  repeated OpsConfigError warnings = 3; // e.g. deprecated keys
+  string normalized_toml = 4; // with documented defaults filled in
+}
+
+// Request for GetEffectiveOpsConfig.
+message GetEffectiveOpsConfigRequest {
+  string cell = 1;
+  string node = 2;            // empty = any node in the cell
+  string component = 3;
+}
+
+// Response for GetEffectiveOpsConfig.
+message GetEffectiveOpsConfigResponse {
+  string toml = 1;            // secrets replaced by "<redacted>"
+  string config_version = 2;
+  google.protobuf.Timestamp applied_at = 3;
+}
+
+// ---------- Rate limits ----------
+
+// One rate-limit bucket.
+message OpsRateLimitBucket {
+  string name = 1;            // e.g. "interactive", "land", "bulk"
+  string scope = 2;           // "principal", "delegation_root", "org", "anonymous"
+  string scope_id = 3;
+  uint64 limit = 4;
+  uint64 remaining = 5;
+  uint64 window_seconds = 6;
+  google.protobuf.Timestamp reset_at = 7;
+  uint64 cost_per_request = 8; // cost units the last request of this kind consumed
+}
+
+// Request for GetRateLimitStatus.
+message GetRateLimitStatusRequest {}
+
+// Response for GetRateLimitStatus.
+message GetRateLimitStatusResponse {
+  repeated OpsRateLimitBucket buckets = 1;
+  string priority_tier = 2;   // tier the caller's requests are classified into
+  bool limiter_healthy = 3;   // false = failing open for authenticated traffic
+}
+
+// ---------- Rollouts ----------
+
+// Rollout lifecycle.
+enum OpsRolloutState {
+  OPS_ROLLOUT_STATE_UNSPECIFIED = 0;
+  OPS_ROLLOUT_STATE_PENDING = 1;
+  OPS_ROLLOUT_STATE_IN_PROGRESS = 2;
+  OPS_ROLLOUT_STATE_PAUSED = 3;
+  OPS_ROLLOUT_STATE_SUCCEEDED = 4;
+  OPS_ROLLOUT_STATE_ROLLING_BACK = 5;
+  OPS_ROLLOUT_STATE_ROLLED_BACK = 6;
+  OPS_ROLLOUT_STATE_FAILED = 7;
+}
+
+// Progress of a rollout in one cell.
+message OpsRolloutCell {
+  string cell = 1;
+  OpsRolloutState state = 2;
+  uint32 nodes_updated = 3;
+  uint32 nodes_total = 4;
+  string slo_regression = 5;  // the SLO that triggered automatic rollback, if any
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp finished_at = 7;
+}
+
+// A cell-by-cell rollout of a binary, config or schema change.
+message OpsRollout {
+  string id = 1;
+  string kind = 2;            // "binary", "config", "schema"
+  string from_version = 3;
+  string to_version = 4;
+  OpsRolloutState state = 5;
+  repeated OpsRolloutCell cells = 6;
+  Principal started_by = 7;
+  string reason = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Request for ListOpsRollouts.
+message ListOpsRolloutsRequest {
+  string cell = 1;
+  OpsRolloutState state = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListOpsRollouts.
+message ListOpsRolloutsResponse {
+  repeated OpsRollout rollouts = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetOpsRollout.
+message GetOpsRolloutRequest {
+  string id = 1;
+}
+
+// Request for PauseOpsRollout.
+message PauseOpsRolloutRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+// Request for ResumeOpsRollout.
+message ResumeOpsRolloutRequest {
+  string id = 1;
+}
+
+// Request for RollbackOpsRollout.
+message RollbackOpsRolloutRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+// ---------- Status page ----------
+
+// Status of a status page component.
+enum OpsComponentStatus {
+  OPS_COMPONENT_STATUS_UNSPECIFIED = 0;
+  OPS_COMPONENT_STATUS_OPERATIONAL = 1;
+  OPS_COMPONENT_STATUS_DEGRADED = 2;
+  OPS_COMPONENT_STATUS_PARTIAL_OUTAGE = 3;
+  OPS_COMPONENT_STATUS_MAJOR_OUTAGE = 4;
+  OPS_COMPONENT_STATUS_MAINTENANCE = 5;
+}
+
+// A component shown on the status page.
+message OpsStatusComponent {
+  string id = 1;
+  string name = 2;            // "Git operations", "Change requests", "Webhooks", ...
+  string description = 3;
+  OpsComponentStatus status = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// Incident lifecycle.
+enum OpsIncidentState {
+  OPS_INCIDENT_STATE_UNSPECIFIED = 0;
+  OPS_INCIDENT_STATE_INVESTIGATING = 1;
+  OPS_INCIDENT_STATE_IDENTIFIED = 2;
+  OPS_INCIDENT_STATE_MONITORING = 3;
+  OPS_INCIDENT_STATE_RESOLVED = 4;
+}
+
+// One posted incident update.
+message OpsIncidentUpdate {
+  OpsIncidentState state = 1;
+  string body = 2;
+  Principal author = 3;
+  google.protobuf.Timestamp posted_at = 4;
+}
+
+// A status page incident.
+message OpsIncident {
+  string id = 1;
+  string title = 2;
+  OpsIncidentState state = 3;
+  string impact = 4;          // "none", "minor", "major", "critical"
+  repeated string component_ids = 5;
+  repeated string cells = 6;
+  repeated OpsIncidentUpdate updates = 7;
+  google.protobuf.Timestamp started_at = 8;
+  google.protobuf.Timestamp resolved_at = 9;
+}
+
+// Request for ListOpsIncidents.
+message ListOpsIncidentsRequest {
+  OpsIncidentState state = 1;
+  google.protobuf.Timestamp since = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListOpsIncidents.
+message ListOpsIncidentsResponse {
+  repeated OpsIncident incidents = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateOpsIncident.
+message CreateOpsIncidentRequest {
+  string title = 1;
+  string impact = 2;
+  string body = 3;
+  repeated string component_ids = 4;
+  repeated string cells = 5;
+  OpsComponentStatus component_status = 6; // applied to the listed components
+}
+
+// Request for UpdateOpsIncident.
+message UpdateOpsIncidentRequest {
+  string id = 1;
+  optional OpsIncidentState state = 2;
+  string body = 3;            // required: the update text
+  optional string impact = 4;
+  repeated string component_ids = 5; // non-empty replaces
+  optional OpsComponentStatus component_status = 6;
+}
+
+// Request for ListOpsStatusComponents.
+message ListOpsStatusComponentsRequest {}
+
+// Response for ListOpsStatusComponents.
+message ListOpsStatusComponentsResponse {
+  repeated OpsStatusComponent components = 1;
+}
+
+// Request for SetOpsStatusComponent.
+message SetOpsStatusComponentRequest {
+  string id = 1;
+  OpsComponentStatus status = 2;
+}
+
+// ---------- Backups ----------
+
+// One backup.
+message OpsBackup {
+  string id = 1;
+  string cell = 2;
+  string kind = 3;            // "metadata_snapshot", "metadata_wal", "blob_inventory"
+  uint64 size_bytes = 4;
+  bool verified = 5;
+  string location = 6;        // storage location, no credentials
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+// Request for ListOpsBackups.
+message ListOpsBackupsRequest {
+  string cell = 1;
+  string kind = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListOpsBackups.
+message ListOpsBackupsResponse {
+  repeated OpsBackup backups = 1;
+  PageResponse page = 2;
+}
+
+// One restore drill.
+message OpsRestoreDrill {
+  string id = 1;
+  string cell = 2;
+  string backup_id = 3;
+  bool passed = 4;
+  uint64 restore_duration_seconds = 5;
+  uint64 data_loss_seconds = 6; // measured recovery point
+  string failure = 7;
+  google.protobuf.Timestamp ran_at = 8;
+}
+
+// Request for ListOpsRestoreDrills.
+message ListOpsRestoreDrillsRequest {
+  string cell = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListOpsRestoreDrills.
+message ListOpsRestoreDrillsResponse {
+  repeated OpsRestoreDrill drills = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Cache tiers ----------
+
+// Stats for one cache tier instance.
+message OpsCacheTierStats {
+  string tier = 1;            // "daemon", "node", "regional"
+  string instance = 2;
+  string cell = 3;
+  uint64 hits = 4;
+  uint64 misses = 5;
+  uint64 fail_closed = 6;     // requests refused because authorization could not be checked
+  uint64 bytes_cached = 7;
+  uint64 bytes_served = 8;
+  uint64 evictions = 9;
+  uint64 redaction_epoch = 10;
+  uint64 policy_epoch = 11;
+  google.protobuf.Timestamp since = 12;
+}
+
+// Request for GetOpsCacheStats.
+message GetOpsCacheStatsRequest {
+  string cell = 1;
+  string tier = 2;            // empty = all tiers
+}
+
+// Response for GetOpsCacheStats.
+message GetOpsCacheStatsResponse {
+  repeated OpsCacheTierStats tiers = 1;
+}

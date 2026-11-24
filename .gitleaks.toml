@@ -1,0 +1,25 @@
+# Only deliberately invalid test, seed, and configuration examples are exempt.
+# Production code and documentation prose remain subject to gitleaks rules.
+# Terraform reference expressions under deploy/gcp are exempt because they name a secret and hold none.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic secret-scanner fixtures"
+paths = [
+  '''^Cargo\.lock$''',
+  '''^apps/web/(e2e/seed/content\.ts|lib/api/fixture/posts-world\.ts)$''',
+  '''^crates/(bee|swarm)-secrets/(src/builtin\.rs|tests/(config|rules|push_protection)\.rs)$''',
+  '''^crates/(bee|swarm)-server/tests/(api_gaps|forge_flows)\.rs$''',
+  '''^crates/(bee|swarm)-forge/src/enterprise/apps/crypto\.rs$''',
+  '''^crates/(bee|swarm)-(server|github)/tests/fixtures/.*\.(key\.pem|pem)$''',
+  '''^deploy/helm/bee/values\.yaml$''',
+  '''^docs/spec/server\.md$''',
+]
+
+[[allowlists]]
+description = "Terraform secret references"
+condition = "AND"
+paths = [ '''^deploy/gcp/.*\.tf$''' ]
+regexTarget = "line"
+regexes = [ '''=\s*(var|module|random_id|random_password|tls_private_key)\.[A-Za-z0-9_.\[\]"-]+\s*$''' ]

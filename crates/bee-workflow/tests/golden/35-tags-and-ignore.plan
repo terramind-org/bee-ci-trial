@@ -1,0 +1,13 @@
+# event push action=-
+run .github/workflows/prerelease.yml "Prerelease"
+  run-name: "Update code"
+  event: push ref=refs/tags/v1.9.1-alpha sha=2222222222222222222222222222222222222222
+  permissions: default
+  job pre decided=true
+    instance "pre"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"prerelease v1.9.1-alpha (tag)\""
+        run: "echo \"prerelease v1.9.1-alpha (tag)\""
+        shell: default -> "bash -e {0}"

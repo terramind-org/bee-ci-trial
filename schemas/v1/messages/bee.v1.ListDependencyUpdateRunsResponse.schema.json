@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "bee.v1.DependencyUpdateRun": {
+      "description": "One execution of the update bot.",
+      "properties": {
+        "agentRunId": {
+          "type": "string"
+        },
+        "changeRequests": {
+          "description": "CR numbers opened or updated",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "ecosystem": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "securityOnly": {
+          "type": "boolean"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.DependencyUpdateRunState"
+        }
+      },
+      "title": "bee.v1.DependencyUpdateRun",
+      "type": "object"
+    },
+    "bee.v1.DependencyUpdateRunState": {
+      "description": "State of an update run.",
+      "enum": [
+        "DEPENDENCY_UPDATE_RUN_STATE_UNSPECIFIED",
+        "DEPENDENCY_UPDATE_RUN_STATE_QUEUED",
+        "DEPENDENCY_UPDATE_RUN_STATE_RUNNING",
+        "DEPENDENCY_UPDATE_RUN_STATE_SUCCEEDED",
+        "DEPENDENCY_UPDATE_RUN_STATE_FAILED"
+      ],
+      "title": "bee.v1.DependencyUpdateRunState",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDependencyUpdateRunsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListDependencyUpdateRuns.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DependencyUpdateRun"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListDependencyUpdateRunsResponse",
+  "type": "object"
+}

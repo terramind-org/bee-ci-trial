@@ -1,0 +1,29 @@
+event: push refs/heads/main files=cmd/server/main.go
+--- .github/workflows/go.yml
+name: Go
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+    - name: Build
+      run: go build -v ./...
+    - name: Test
+      run: go test -race -coverprofile=coverage.txt ./...
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.60
+        args: --timeout=5m

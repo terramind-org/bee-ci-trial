@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    },
+    "bee.v1.PackageVisibility": {
+      "description": "Who can read a package.",
+      "enum": [
+        "PACKAGE_VISIBILITY_UNSPECIFIED",
+        "PACKAGE_VISIBILITY_PRIVATE",
+        "PACKAGE_VISIBILITY_INTERNAL",
+        "PACKAGE_VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.PackageVisibility",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPackagesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListPackages.",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem",
+      "description": "UNSPECIFIED = all"
+    },
+    "includeDeleted": {
+      "description": "include packages within the restore window",
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "only packages linked to this repo"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.PackageVisibility"
+    }
+  },
+  "title": "bee.v1.ListPackagesRequest",
+  "type": "object"
+}

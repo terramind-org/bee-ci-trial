@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "bee.v1.NotificationEmailRoute": {
+      "description": "Where an org's email notifications go.",
+      "properties": {
+        "email": {
+          "description": "must be one of the caller's verified emails",
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.NotificationEmailRoute",
+      "type": "object"
+    },
+    "bee.v1.NotificationReason": {
+      "description": "Why a notification was delivered.",
+      "enum": [
+        "NOTIFICATION_REASON_UNSPECIFIED",
+        "NOTIFICATION_REASON_REVIEW_REQUESTED",
+        "NOTIFICATION_REASON_MENTION",
+        "NOTIFICATION_REASON_TEAM_MENTION",
+        "NOTIFICATION_REASON_ASSIGN",
+        "NOTIFICATION_REASON_AUTHOR",
+        "NOTIFICATION_REASON_COMMENT",
+        "NOTIFICATION_REASON_STATE_CHANGE",
+        "NOTIFICATION_REASON_CI_ACTIVITY",
+        "NOTIFICATION_REASON_SECURITY_ALERT",
+        "NOTIFICATION_REASON_SUBSCRIBED",
+        "NOTIFICATION_REASON_MANUAL",
+        "NOTIFICATION_REASON_AGENT_RUN"
+      ],
+      "title": "bee.v1.NotificationReason",
+      "type": "string"
+    },
+    "bee.v1.NotificationReasonDelivery": {
+      "description": "Delivery channels for one reason.",
+      "properties": {
+        "email": {
+          "type": "boolean"
+        },
+        "mobile": {
+          "type": "boolean"
+        },
+        "reason": {
+          "$ref": "#/$defs/bee.v1.NotificationReason"
+        },
+        "web": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.NotificationReasonDelivery",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateNotificationSettingsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateNotificationSettings.",
+  "properties": {
+    "autoWatchRepos": {
+      "type": "boolean"
+    },
+    "autoWatchTeamRepos": {
+      "type": "boolean"
+    },
+    "defaultEmail": {
+      "type": "string"
+    },
+    "deliveries": {
+      "description": "replaces listed reasons only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.NotificationReasonDelivery"
+      },
+      "type": "array"
+    },
+    "emailCiFailuresOnly": {
+      "type": "boolean"
+    },
+    "emailRoutes": {
+      "description": "replaces all routes when replace_email_routes",
+      "items": {
+        "$ref": "#/$defs/bee.v1.NotificationEmailRoute"
+      },
+      "type": "array"
+    },
+    "includeOwnActivity": {
+      "type": "boolean"
+    },
+    "replaceEmailRoutes": {
+      "type": "boolean"
+    },
+    "replyByEmail": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateNotificationSettingsRequest",
+  "type": "object"
+}

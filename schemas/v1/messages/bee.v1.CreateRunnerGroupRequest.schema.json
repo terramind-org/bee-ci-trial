@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RunnerGroupVisibility": {
+      "description": "Which repos may use a runner group.",
+      "enum": [
+        "RUNNER_GROUP_VISIBILITY_UNSPECIFIED",
+        "RUNNER_GROUP_VISIBILITY_ALL",
+        "RUNNER_GROUP_VISIBILITY_PRIVATE",
+        "RUNNER_GROUP_VISIBILITY_SELECTED"
+      ],
+      "title": "bee.v1.RunnerGroupVisibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateRunnerGroupRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateRunnerGroup.",
+  "properties": {
+    "allowsPublicRepos": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "restrictedToWorkflows": {
+      "type": "boolean"
+    },
+    "runnerIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "selectedRepos": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "selectedWorkflows": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.RunnerGroupVisibility"
+    }
+  },
+  "title": "bee.v1.CreateRunnerGroupRequest",
+  "type": "object"
+}

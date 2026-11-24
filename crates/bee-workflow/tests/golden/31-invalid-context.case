@@ -1,0 +1,13 @@
+event: push refs/heads/main
+--- .github/workflows/secrets-in-if.yml
+name: Publish
+on: push
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: matrix.os == 'linux'
+    steps:
+      - if: secrets.NPM_TOKEN != ''
+        run: npm publish
+      - run: echo ${{ success() }}
+      - run: echo ${{ github.event.head_commit.message }}

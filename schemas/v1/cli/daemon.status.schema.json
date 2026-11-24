@@ -1,0 +1,55 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon status --json`: one such document with `schema` = bee.v1.daemon.status. Show whether a node daemon answers on the socket. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "pid": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "socket": {
+          "type": "string"
+        },
+        "tier": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "upstream": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "running",
+        "socket",
+        "pid",
+        "upstream",
+        "tier"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.status"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon status",
+  "type": "object"
+}

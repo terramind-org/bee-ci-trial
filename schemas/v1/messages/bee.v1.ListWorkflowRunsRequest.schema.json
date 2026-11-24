@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkflowConclusion": {
+      "description": "Outcome of a completed run, job or step.",
+      "enum": [
+        "WORKFLOW_CONCLUSION_UNSPECIFIED",
+        "WORKFLOW_CONCLUSION_SUCCESS",
+        "WORKFLOW_CONCLUSION_FAILURE",
+        "WORKFLOW_CONCLUSION_NEUTRAL",
+        "WORKFLOW_CONCLUSION_CANCELLED",
+        "WORKFLOW_CONCLUSION_SKIPPED",
+        "WORKFLOW_CONCLUSION_TIMED_OUT",
+        "WORKFLOW_CONCLUSION_ACTION_REQUIRED",
+        "WORKFLOW_CONCLUSION_STALE",
+        "WORKFLOW_CONCLUSION_STARTUP_FAILURE"
+      ],
+      "title": "bee.v1.WorkflowConclusion",
+      "type": "string"
+    },
+    "bee.v1.WorkflowStatus": {
+      "description": "Lifecycle status of a run, job or step.",
+      "enum": [
+        "WORKFLOW_STATUS_UNSPECIFIED",
+        "WORKFLOW_STATUS_REQUESTED",
+        "WORKFLOW_STATUS_PENDING",
+        "WORKFLOW_STATUS_WAITING",
+        "WORKFLOW_STATUS_ACTION_REQUIRED",
+        "WORKFLOW_STATUS_QUEUED",
+        "WORKFLOW_STATUS_IN_PROGRESS",
+        "WORKFLOW_STATUS_COMPLETED"
+      ],
+      "title": "bee.v1.WorkflowStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkflowRunsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListWorkflowRuns.",
+  "properties": {
+    "actorId": {
+      "type": "string"
+    },
+    "changeRequestNumber": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "conclusion": {
+      "$ref": "#/$defs/bee.v1.WorkflowConclusion"
+    },
+    "createdAfter": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "createdBefore": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "event": {
+      "type": "string"
+    },
+    "excludeChangeRequests": {
+      "type": "boolean"
+    },
+    "headChangeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "includeJobs": {
+      "description": "Include each run's jobs inline (gap G7).",
+      "type": "boolean"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "ref": {
+      "description": "head ref",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.WorkflowStatus"
+    },
+    "workflow": {
+      "description": "id, path or file name; empty = all",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListWorkflowRunsRequest",
+  "type": "object"
+}

@@ -1,0 +1,566 @@
+// Beehive discussions for bee.v1: categories, threaded discussions, Q&A answers, polls,
+// announcements, spotlight pins, labels, upvotes and issue conversion, in repos and orgs.
+// See docs/PRODUCT.md §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+
+// Discussions. A discussion belongs to a repo or to an org: requests that name a home set
+// exactly one of `repo` or `org`. Numbers are per home. Comment edits, deletes, minimizing and
+// reactions go through CommentService.
+service DiscussionService {
+  // ---------- Categories ----------
+
+  // Creates a category. Fails with ALREADY_EXISTS on a duplicate name and RESOURCE_EXHAUSTED
+  // at the per-home category limit.
+  rpc CreateDiscussionCategory(CreateDiscussionCategoryRequest) returns (DiscussionCategory);
+  // Edits a category. Changing the format of a category that holds discussions fails with
+  // INVALID_STATE when it would orphan answers or polls.
+  rpc UpdateDiscussionCategory(UpdateDiscussionCategoryRequest) returns (DiscussionCategory);
+  // Deletes a category, moving its discussions to `move_to_category_id`.
+  rpc DeleteDiscussionCategory(DeleteDiscussionCategoryRequest) returns (DeleteDiscussionCategoryResponse);
+  // Lists a home's categories in display order.
+  rpc ListDiscussionCategories(ListDiscussionCategoriesRequest) returns (ListDiscussionCategoriesResponse);
+
+  // ---------- Discussions ----------
+
+  // Starts a discussion. Poll categories require `poll`; announcement categories accept new
+  // discussions only from maintainers (PERMISSION_DENIED otherwise). Fails with
+  // INTERACTION_LIMITED when the caller is outside the interaction limit.
+  rpc CreateDiscussion(CreateDiscussionRequest) returns (Discussion);
+  // Fetches a discussion by id.
+  rpc GetDiscussion(GetDiscussionRequest) returns (Discussion);
+  // Fetches a discussion by home and number.
+  rpc GetDiscussionByNumber(GetDiscussionByNumberRequest) returns (Discussion);
+  // Lists discussions with filters and GitHub-compatible search qualifiers.
+  rpc ListDiscussions(ListDiscussionsRequest) returns (ListDiscussionsResponse);
+  // Edits a discussion's title, body or category. Fails with VERSION_MISMATCH when stale and
+  // LOCKED when the discussion is locked for the caller.
+  rpc UpdateDiscussion(UpdateDiscussionRequest) returns (Discussion);
+  // Deletes a discussion (maintainers only).
+  rpc DeleteDiscussion(DeleteDiscussionRequest) returns (DeleteDiscussionResponse);
+  // Closes a discussion with a reason. Fails with INVALID_STATE when already closed.
+  rpc CloseDiscussion(CloseDiscussionRequest) returns (Discussion);
+  // Reopens a closed discussion. Fails with INVALID_STATE when already open.
+  rpc ReopenDiscussion(ReopenDiscussionRequest) returns (Discussion);
+
+  // ---------- Comments and replies ----------
+
+  // Adds a top-level comment, or a reply when `reply_to_comment_id` is set. Replies nest one
+  // level deep. Fails with LOCKED when the discussion is locked.
+  rpc CreateDiscussionComment(CreateDiscussionCommentRequest) returns (DiscussionComment);
+  // Lists top-level comments, oldest first, with answer and upvote state.
+  rpc ListDiscussionComments(ListDiscussionCommentsRequest) returns (ListDiscussionCommentsResponse);
+  // Lists the replies to one top-level comment, oldest first.
+  rpc ListDiscussionCommentReplies(ListDiscussionCommentRepliesRequest) returns (ListDiscussionCommentRepliesResponse);
+
+  // ---------- Answers (Q&A) ----------
+
+  // Marks a comment as the answer. Only in Q&A categories (INVALID_ARGUMENT otherwise); the
+  // author or a maintainer may mark. Replaces any previous answer.
+  rpc MarkDiscussionAnswer(MarkDiscussionAnswerRequest) returns (Discussion);
+  // Clears the marked answer.
+  rpc UnmarkDiscussionAnswer(UnmarkDiscussionAnswerRequest) returns (Discussion);
+
+  // ---------- Polls ----------
+
+  // Casts the caller's vote. A second vote fails with ALREADY_EXISTS; voting on a closed or
+  // locked discussion fails with LOCKED.
+  rpc VoteDiscussionPoll(VoteDiscussionPollRequest) returns (DiscussionPoll);
+  // Returns a poll with its current results.
+  rpc GetDiscussionPoll(GetDiscussionPollRequest) returns (DiscussionPoll);
+
+  // ---------- Locking ----------
+
+  // Locks a discussion so only maintainers can comment, vote or react.
+  rpc LockDiscussion(LockDiscussionRequest) returns (Discussion);
+  // Unlocks a discussion.
+  rpc UnlockDiscussion(UnlockDiscussionRequest) returns (Discussion);
+
+  // ---------- Spotlight ----------
+
+  // Pins a discussion to the top of the discussions page. Fails with RESOURCE_EXHAUSTED when
+  // four are already pinned.
+  rpc PinDiscussion(PinDiscussionRequest) returns (Discussion);
+  // Unpins a discussion.
+  rpc UnpinDiscussion(UnpinDiscussionRequest) returns (Discussion);
+  // Lists pinned discussions in pin order.
+  rpc ListPinnedDiscussions(ListPinnedDiscussionsRequest) returns (ListPinnedDiscussionsResponse);
+
+  // ---------- Conversion ----------
+
+  // Converts an issue into a discussion. The issue is closed and locked with a pointer to the
+  // new discussion; comments move with it.
+  rpc ConvertIssueToDiscussion(ConvertIssueToDiscussionRequest) returns (Discussion);
+  // Opens an issue from a discussion. The discussion stays and links to the new issue.
+  rpc ConvertDiscussionToIssue(ConvertDiscussionToIssueRequest) returns (ConvertDiscussionToIssueResponse);
+
+  // ---------- Labels ----------
+
+  // Adds repo labels to a discussion. Org discussions use the labels of the org's discussion
+  // repo.
+  rpc AddDiscussionLabels(AddDiscussionLabelsRequest) returns (Discussion);
+  // Removes labels from a discussion.
+  rpc RemoveDiscussionLabels(RemoveDiscussionLabelsRequest) returns (Discussion);
+  // Replaces a discussion's whole label set.
+  rpc SetDiscussionLabels(SetDiscussionLabelsRequest) returns (Discussion);
+
+  // ---------- Upvotes ----------
+
+  // Upvotes a discussion, or one of its comments when `comment_id` is set. Repeating is a
+  // no-op.
+  rpc AddDiscussionUpvote(AddDiscussionUpvoteRequest) returns (AddDiscussionUpvoteResponse);
+  // Removes the caller's upvote.
+  rpc RemoveDiscussionUpvote(RemoveDiscussionUpvoteRequest) returns (RemoveDiscussionUpvoteResponse);
+}
+
+// ---------- Categories ----------
+
+// The kind of conversation a category hosts.
+enum DiscussionCategoryFormat {
+  DISCUSSION_CATEGORY_FORMAT_UNSPECIFIED = 0;
+  DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED = 1;
+  DISCUSSION_CATEGORY_FORMAT_QUESTION_ANSWER = 2; // comments can be marked as the answer
+  DISCUSSION_CATEGORY_FORMAT_ANNOUNCEMENT = 3;    // only maintainers start discussions
+  DISCUSSION_CATEGORY_FORMAT_POLL = 4;            // every discussion carries a poll
+}
+
+// A discussion category.
+message DiscussionCategory {
+  string id = 1;
+  string repo_id = 2;                       // set for repo categories
+  string org_id = 3;                        // set for org categories
+  string name = 4;
+  string slug = 5;
+  string emoji = 6;                         // e.g. ":speech_balloon:"
+  string description = 7;
+  DiscussionCategoryFormat format = 8;
+  string section = 9;                       // optional grouping heading
+  uint32 position = 10;
+  string form_path = 11;                    // discussion form file on the default ref, if any
+  uint32 discussion_count = 12;
+  google.protobuf.Timestamp created_at = 13;
+  uint64 version = 14;
+}
+
+// Request for CreateDiscussionCategory.
+message CreateDiscussionCategoryRequest {
+  RepoRef repo = 1;                         // set repo or org
+  string org = 2;
+  string name = 3;
+  string emoji = 4;
+  string description = 5;
+  DiscussionCategoryFormat format = 6;
+  string section = 7;
+}
+
+// Request for UpdateDiscussionCategory.
+message UpdateDiscussionCategoryRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string category_id = 3;                   // id or slug
+  optional string name = 4;
+  optional string emoji = 5;
+  optional string description = 6;
+  DiscussionCategoryFormat format = 7;      // UNSPECIFIED = unchanged
+  optional string section = 8;
+  optional uint32 position = 9;
+  uint64 expected_version = 10;             // 0 = any; otherwise VERSION_MISMATCH when stale
+}
+
+// Request for DeleteDiscussionCategory.
+message DeleteDiscussionCategoryRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string category_id = 3;
+  string move_to_category_id = 4;           // required when the category holds discussions
+}
+
+// Response for DeleteDiscussionCategory.
+message DeleteDiscussionCategoryResponse {}
+
+// Request for ListDiscussionCategories.
+message ListDiscussionCategoriesRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDiscussionCategories.
+message ListDiscussionCategoriesResponse {
+  repeated DiscussionCategory categories = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Discussions ----------
+
+// Why a discussion was closed, or that it was reopened.
+enum DiscussionStateReason {
+  DISCUSSION_STATE_REASON_UNSPECIFIED = 0;
+  DISCUSSION_STATE_REASON_RESOLVED = 1;
+  DISCUSSION_STATE_REASON_OUTDATED = 2;
+  DISCUSSION_STATE_REASON_DUPLICATE = 3;
+  DISCUSSION_STATE_REASON_REOPENED = 4;
+}
+
+// Why a discussion was locked.
+enum DiscussionLockReason {
+  DISCUSSION_LOCK_REASON_UNSPECIFIED = 0;   // locked without a stated reason
+  DISCUSSION_LOCK_REASON_OFF_TOPIC = 1;
+  DISCUSSION_LOCK_REASON_TOO_HEATED = 2;
+  DISCUSSION_LOCK_REASON_RESOLVED = 3;
+  DISCUSSION_LOCK_REASON_SPAM = 4;
+}
+
+// One option of a poll with its tally.
+message DiscussionPollOption {
+  string id = 1;
+  string text = 2;
+  uint32 vote_count = 3;
+  bool viewer_voted = 4;
+}
+
+// A poll attached to a discussion in a poll category.
+message DiscussionPoll {
+  string question = 1;
+  repeated DiscussionPollOption options = 2;
+  uint32 total_votes = 3;
+  bool viewer_has_voted = 4;
+  bool closed = 5;                          // closed or locked discussions accept no votes
+}
+
+// A discussion.
+message Discussion {
+  string id = 1;
+  string repo_id = 2;                       // set for repo discussions
+  string repo_full_name = 3;
+  string org_id = 4;                        // set for org discussions
+  uint64 number = 5;                        // per home
+  string title = 6;
+  string body = 7;                          // Markdown
+  string body_html = 8;                     // sanitized rendering, when requested
+  DiscussionCategory category = 9;
+  Principal author = 10;
+  string author_association = 11;
+  repeated Label labels = 12;
+  string answer_comment_id = 13;            // Q&A: the marked answer
+  Principal answer_chosen_by = 14;
+  google.protobuf.Timestamp answer_chosen_at = 15;
+  DiscussionPoll poll = 16;                 // poll categories only
+  bool closed = 17;
+  DiscussionStateReason state_reason = 18;
+  bool locked = 19;
+  DiscussionLockReason lock_reason = 20;
+  bool pinned = 21;
+  uint32 upvote_count = 22;
+  bool viewer_upvoted = 23;
+  uint32 comment_count = 24;
+  repeated ReactionGroup reactions = 25;
+  SubjectRef converted_from = 26;           // the issue this was converted from, if any
+  repeated SubjectRef linked_issues = 27;   // issues opened from this discussion
+  google.protobuf.Timestamp created_at = 28;
+  google.protobuf.Timestamp updated_at = 29;
+  google.protobuf.Timestamp closed_at = 30;
+  uint64 version = 31;
+  string url = 32;
+}
+
+// Request for CreateDiscussion.
+message CreateDiscussionRequest {
+  RepoRef repo = 1;                         // set repo or org
+  string org = 2;
+  string category_id = 3;                   // id or slug
+  string title = 4;
+  string body = 5;
+  repeated string labels = 6;
+  string poll_question = 7;                 // poll categories only
+  repeated string poll_options = 8;         // 2 to 8 options
+  repeated KeyValue form_responses = 9;     // discussion form field id -> answer
+}
+
+// Request for GetDiscussion.
+message GetDiscussionRequest {
+  string id = 1;
+  bool include_html = 2;
+}
+
+// Request for GetDiscussionByNumber.
+message GetDiscussionByNumberRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  bool include_html = 4;
+}
+
+// Sort order for discussion lists.
+enum DiscussionSort {
+  DISCUSSION_SORT_UNSPECIFIED = 0;          // same as LATEST_ACTIVITY
+  DISCUSSION_SORT_LATEST_ACTIVITY = 1;
+  DISCUSSION_SORT_CREATED = 2;
+  DISCUSSION_SORT_TOP = 3;                  // most upvotes
+}
+
+// Request for ListDiscussions.
+message ListDiscussionsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string category_id = 3;                   // empty = all
+  repeated string labels = 4;
+  string author = 5;
+  bool include_closed = 6;
+  bool closed_only = 7;
+  optional bool answered = 8;               // Q&A filter; unset = either
+  string query = 9;                         // GitHub-compatible qualifiers, e.g. "is:unanswered"
+  DiscussionSort sort = 10;
+  bool ascending = 11;
+  PageRequest page = 12;
+}
+
+// Response for ListDiscussions.
+message ListDiscussionsResponse {
+  repeated Discussion discussions = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for UpdateDiscussion.
+message UpdateDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  optional string title = 4;
+  optional string body = 5;
+  optional string category_id = 6;          // move to another category of the same home
+  uint64 expected_version = 7;
+}
+
+// Request for DeleteDiscussion.
+message DeleteDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+}
+
+// Response for DeleteDiscussion.
+message DeleteDiscussionResponse {}
+
+// Request for CloseDiscussion.
+message CloseDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  DiscussionStateReason reason = 4;         // UNSPECIFIED = RESOLVED
+}
+
+// Request for ReopenDiscussion.
+message ReopenDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+}
+
+// ---------- Comments and replies ----------
+
+// A discussion comment or reply with its discussion-specific state.
+message DiscussionComment {
+  Comment comment = 1;                      // `comment.in_reply_to` is set on replies
+  bool is_answer = 2;
+  uint32 upvote_count = 3;
+  bool viewer_upvoted = 4;
+  uint32 reply_count = 5;                   // top-level comments only
+}
+
+// Request for CreateDiscussionComment.
+message CreateDiscussionCommentRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  string body = 4;
+  string reply_to_comment_id = 5;           // empty = top-level comment
+}
+
+// Request for ListDiscussionComments.
+message ListDiscussionCommentsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  bool include_html = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListDiscussionComments.
+message ListDiscussionCommentsResponse {
+  repeated DiscussionComment comments = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListDiscussionCommentReplies.
+message ListDiscussionCommentRepliesRequest {
+  string comment_id = 1;                    // the top-level comment
+  bool include_html = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDiscussionCommentReplies.
+message ListDiscussionCommentRepliesResponse {
+  repeated DiscussionComment replies = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Answers ----------
+
+// Request for MarkDiscussionAnswer.
+message MarkDiscussionAnswerRequest {
+  string comment_id = 1;                    // a top-level comment or reply in a Q&A discussion
+}
+
+// Request for UnmarkDiscussionAnswer.
+message UnmarkDiscussionAnswerRequest {
+  string comment_id = 1;
+}
+
+// ---------- Polls ----------
+
+// Request for VoteDiscussionPoll.
+message VoteDiscussionPollRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  string option_id = 4;
+}
+
+// Request for GetDiscussionPoll.
+message GetDiscussionPollRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+}
+
+// ---------- Locking ----------
+
+// Request for LockDiscussion.
+message LockDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  DiscussionLockReason reason = 4;
+}
+
+// Request for UnlockDiscussion.
+message UnlockDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+}
+
+// ---------- Spotlight ----------
+
+// Request for PinDiscussion.
+message PinDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  string pattern = 4;                       // spotlight background pattern name
+  string gradient = 5;                      // spotlight gradient name
+}
+
+// Request for UnpinDiscussion.
+message UnpinDiscussionRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+}
+
+// Request for ListPinnedDiscussions.
+message ListPinnedDiscussionsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+}
+
+// Response for ListPinnedDiscussions.
+message ListPinnedDiscussionsResponse {
+  repeated Discussion discussions = 1;
+}
+
+// ---------- Conversion ----------
+
+// Request for ConvertIssueToDiscussion.
+message ConvertIssueToDiscussionRequest {
+  RepoRef repo = 1;
+  uint64 issue_number = 2;
+  string category_id = 3;                   // a category in the same repo
+}
+
+// Request for ConvertDiscussionToIssue.
+message ConvertDiscussionToIssueRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  RepoRef target_repo = 4;                  // required for org discussions; default = same repo
+  string title = 5;                         // empty = discussion title
+  string body = 6;                          // empty = discussion body with a backlink
+}
+
+// Response for ConvertDiscussionToIssue.
+message ConvertDiscussionToIssueResponse {
+  SubjectRef issue = 1;                     // kind ISSUE, id = the new issue number
+  Discussion discussion = 2;
+}
+
+// ---------- Labels ----------
+
+// Request for AddDiscussionLabels.
+message AddDiscussionLabelsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  repeated string labels = 4;
+}
+
+// Request for RemoveDiscussionLabels.
+message RemoveDiscussionLabelsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  repeated string labels = 4;
+}
+
+// Request for SetDiscussionLabels.
+message SetDiscussionLabelsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  repeated string labels = 4;               // empty clears all labels
+}
+
+// ---------- Upvotes ----------
+
+// Request for AddDiscussionUpvote.
+message AddDiscussionUpvoteRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  string comment_id = 4;                    // upvote this comment instead of the discussion
+}
+
+// Response for AddDiscussionUpvote.
+message AddDiscussionUpvoteResponse {
+  uint32 upvote_count = 1;
+}
+
+// Request for RemoveDiscussionUpvote.
+message RemoveDiscussionUpvoteRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 number = 3;
+  string comment_id = 4;
+}
+
+// Response for RemoveDiscussionUpvote.
+message RemoveDiscussionUpvoteResponse {
+  uint32 upvote_count = 1;
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/ops.validate-ops-config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.OpsService/ValidateOpsConfig: `data` is a bee.v1.ValidateOpsConfigResponse in proto3-JSON. `bee ops validate-ops-config --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ValidateOpsConfigResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.ops.validate-ops-config"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee ops validate-ops-config",
+  "type": "object"
+}

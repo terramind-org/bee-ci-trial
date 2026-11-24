@@ -1,0 +1,5 @@
+manifest package.json npm lock=false count=2
+manifest yarn.lock npm lock=true count=3
+yarn.lock npm is-number@6.0.0 dev indirect req=- pkg:npm/is-number@6.0.0
+yarn.lock npm is-odd@3.0.1 dev direct req=^3.0.1 pkg:npm/is-odd@3.0.1 -> npm/is-number@6.0.0
+yarn.lock npm left-pad@1.3.0 runtime direct req=^1.3.0 pkg:npm/left-pad@1.3.0
