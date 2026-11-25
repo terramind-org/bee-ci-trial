@@ -2779,7 +2779,8 @@ async fn workflows_list_enable_disable_and_badges() {
     let paths: Vec<String> = list.workflows.iter().map(|x| x.path.clone()).collect();
     assert_eq!(
         paths,
-        vec![".github/workflows/ci.yml", ".beehive/workflows/extra.yaml"]
+        // Listed in path order: `.beehive/` sorts before `.github/`.
+        vec![".beehive/workflows/extra.yaml", ".github/workflows/ci.yml"]
     );
     let got = w
         .svc
