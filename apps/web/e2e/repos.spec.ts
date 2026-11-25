@@ -123,6 +123,9 @@ test.describe("Repo home", () => {
     await hydrated(/^(Star|Starred) lattice\/benchkit/);
     await star.click();
     await expect(star).toHaveAttribute("aria-pressed", "true");
+    // The button shows the new state at once and stays disabled until the server has saved it.
+    // Reloading before then cancels the save.
+    await expect(star).toBeEnabled();
     await page.reload();
     const starred = page.getByRole("button", { name: /^Starred lattice\/benchkit/ });
     await expect(starred).toHaveAttribute("aria-pressed", "true");
