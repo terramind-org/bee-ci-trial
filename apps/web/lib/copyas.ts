@@ -199,6 +199,7 @@ export const CATALOG_CLI: ReadonlySet<string> = new Set([
   "UserService/GetContributionGraph",
   "UserService/ListAchievements",
   "UserService/ListHomeFeed",
+  "PostService/CreatePost",
   "PostService/SetChangePost",
   "PostService/ClearChangePost",
   "PostService/GetChangePost",

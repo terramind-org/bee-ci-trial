@@ -1150,9 +1150,36 @@ export interface PostViewer {
   canApprove: boolean;
   canWithdraw: boolean;
 }
+export type PostAttachmentKind =
+  | "POST_ATTACHMENT_KIND_UNSPECIFIED"
+  | "POST_ATTACHMENT_KIND_CHANGE_REQUEST"
+  | "POST_ATTACHMENT_KIND_RELEASE"
+  | "POST_ATTACHMENT_KIND_ISSUE"
+  | "POST_ATTACHMENT_KIND_AGENT_RUN"
+  | "POST_ATTACHMENT_KIND_SWARM";
+/**
+ * Something in the post's repo that the post is about. A writer sends `kind` and `id` (or, for a
+ * change request or an issue, `number`); reads carry the card: number, title, state and, for a
+ * release, its tag. When the attachment is gone only `kind` and `id` are left.
+ */
+export interface PostAttachment {
+  kind: PostAttachmentKind;
+  id?: string;
+  number?: U64;
+  title?: string;
+  /** Lower case: open, landed, closed; published, prerelease; an agent run's state. */
+  state?: string;
+  tagName?: string;
+}
+/** The long-form part of a post. */
+export interface PostArticle {
+  title: string;
+  bodyMarkdown: string;
+}
 export interface Post {
   id: string;
   repo?: PostRepo;
+  /** Empty for a post of its own: no change request carries it. */
   changeId: string;
   changeNumber: U64;
   changeTitle: string;
@@ -1169,6 +1196,11 @@ export interface Post {
   viewer?: PostViewer;
   version: U64;
   withdrawnReason: string;
+  /** Markdown; absent when the post has no body. */
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  /** In order; a post on a change request lists that change request first. */
+  attachments?: PostAttachment[];
 }
 /** Set when the post is in the feed because someone the caller follows reposted it. */
 export interface FeedItem {
@@ -1196,12 +1228,27 @@ export interface PostAdoption {
   author?: Principal;
   createdAt?: Timestamp;
 }
+/** Writes a post of its own in a repo: no change request carries it. */
+export interface CreatePostRequest {
+  repo: RepoRef;
+  /** The summary; may be empty beside a body, an article or media. */
+  text?: string;
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  /** Media uploaded with `BeginPostMediaUpload` without a change request. */
+  mediaIds?: string[];
+  attachments?: PostAttachment[];
+}
 export interface SetChangePostRequest {
   repo: RepoRef;
   changeId: string;
   text: string;
   mediaIds?: string[];
   expectedVersion?: U64;
+  /** Replaced with the text: leaving these out removes them. */
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  attachments?: PostAttachment[];
 }
 export interface ClearChangePostRequest {
   repo: RepoRef;
@@ -1214,6 +1261,7 @@ export interface GetChangePostRequest {
 }
 export interface BeginPostMediaUploadRequest {
   repo: RepoRef;
+  /** Empty for a post of its own (`CreatePost`). */
   changeId: string;
   kind: PostMediaKind;
   contentType: string;
