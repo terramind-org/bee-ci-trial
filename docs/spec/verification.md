@@ -191,14 +191,14 @@ Disagreements and bugs the suite found, and what became of them:
 
 <!-- BEGIN GENERATED: three-form conformance matrix -->
 
-RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. Fixtures: 1140 (1090 expect success, 50 expect a documented error).
+RPCs in the descriptor: 1141. Served: 1141; on the UNIMPLEMENTED allow-list: 0. Fixtures: 1141 (1091 expect success, 50 expect a documented error).
 
 | Form | Passing | Of |
 |---|---:|---:|
-| API (HTTP/JSON; gRPC sampled) | 1140 | 1140 |
-| CLI (`bee <noun> <verb> --json`) | 1140 | 1140 |
-| MCP (`/mcp` tools/call; stdio sampled) | 1140 | 1140 |
-| All three | 1140 | 1140 |
+| API (HTTP/JSON; gRPC sampled) | 1141 | 1141 |
+| CLI (`bee <noun> <verb> --json`) | 1141 | 1141 |
+| MCP (`/mcp` tools/call; stdio sampled) | 1141 | 1141 |
+| All three | 1141 | 1141 |
 
 ### By service
 
@@ -233,7 +233,7 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | PackageService | 24 | 23 | 24 | 24 | 24 |
 | PagesService | 19 | 17 | 19 | 19 | 19 |
 | PolicyService | 25 | 25 | 25 | 25 | 25 |
-| PostService | 15 | 15 | 15 | 15 | 15 |
+| PostService | 16 | 16 | 16 | 16 | 16 |
 | ProjectService | 50 | 50 | 50 | 50 | 50 |
 | QueryService | 13 | 13 | 13 | 13 | 13 |
 | RefService | 6 | 6 | 6 | 6 | 6 |
@@ -915,6 +915,7 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | PostService | ApprovePost | ok | pass | pass | pass |
 | PostService | BeginPostMediaUpload | ok | pass | pass | pass |
 | PostService | ClearChangePost | ok | pass | pass | pass |
+| PostService | CreatePost | ok | pass | pass | pass |
 | PostService | FinalizePostMedia | ok | pass | pass | pass |
 | PostService | GetChangePost | ok | pass | pass | pass |
 | PostService | GetPost | ok | pass | pass | pass |
