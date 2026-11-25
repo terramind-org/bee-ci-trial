@@ -76,6 +76,20 @@ pub(crate) async fn load_issue_by_id(
 ) -> Result<Option<(model::IssueRec, Row)>> {
     issues::load_issue_id(tx, id, false).await
 }
+
+/// The issue `number` of a repo, if it has one (the posts module resolves an attached issue
+/// named by its number).
+pub(crate) async fn load_issue_by_number(
+    tx: &mut Tx,
+    repo_id: &str,
+    number: u64,
+) -> Result<Option<(model::IssueRec, Row)>> {
+    match issues::load_issue(tx, repo_id, number, false).await {
+        Ok(found) => Ok(Some(found)),
+        Err(e) if e.reason == bee_proto::v1::ErrorReason::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
+}
 pub use items::{ItemContent, ItemQuery};
 pub use listener::{NamedIssue, WorkListener};
 pub use model::NumberKind;

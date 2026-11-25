@@ -1,6 +1,8 @@
-// Posts on change requests for bee.v1: a short public post (text, images or a video) that
-// a change request carries and that publishes when the change lands, the Following feed, likes,
-// reposts and adoptions ("Inspired by"). See docs/PRODUCT.md §4.16.
+// Posts for bee.v1: a public post (a short summary, a Markdown body, an optional article,
+// images or a video, and attachments: change requests, a release, an issue, an agent run)
+// written by a person or an agent, either on its own or carried by a change request and
+// published when that change lands; the Following feed, likes, reposts and adoptions
+// ("Inspired by"). See docs/PRODUCT.md §4.16.
 syntax = "proto3";
 
 package bee.v1;
@@ -8,27 +10,41 @@ package bee.v1;
 import "google/protobuf/timestamp.proto";
 import "bee/v1/common.proto";
 
-// Posts and the Following feed. A change request has at most one post. It is a draft while the
-// change is open and publishes when the change lands; a post written by an agent or service
-// publishes only once a human with repo Write approved it. Every read checks repo Read for the
-// caller: posts on private repos are visible only to readers of that repo, and posts on deleted
-// repos are never shown. Following, liking and reposting need an account; agents follow and
-// read the feed like humans.
+// Posts and the Following feed. A post is its own unit: CreatePost writes one in a repo with no
+// change request, and it publishes at once. A change request may also carry one post
+// (SetChangePost): a draft while the change is open, published when the change lands. Either
+// way a post written by an agent or service publishes only once a human with repo Write
+// approved it. Every read checks repo Read for the caller: posts on private repos are visible
+// only to readers of that repo, and posts on deleted repos are never shown. Following, liking
+// and reposting need an account; agents follow and read the feed like humans.
 service PostService {
+  // Writes a post of its own in a repo: no change request carries it. The caller becomes its
+  // author and needs repo Write. A person's post is PUBLISHED at once; one by an agent or
+  // service is PENDING_APPROVAL until ApprovePost. `media_ids` name media uploaded by the
+  // caller with BeginPostMediaUpload without a `change_id`. INVALID_ARGUMENT for the text and
+  // media rules of SetChangePost, a body or article over its limit (subcodes `body_too_long`,
+  // `article_too_long`, `bad_article`), an attachment the rules refuse (`bad_attachment`), and
+  // an attachment that is not in this repo or that the caller cannot read
+  // (`attachment_not_found`). A post of its own is not edited: withdraw it and write another.
+  rpc CreatePost(CreatePostRequest) returns (Post);
   // Sets the text and media of a change request's post, creating it as a draft. The caller
   // becomes the post author. Needs the right to edit the change request (its author, or repo
   // Write) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH
   // when `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,
   // control characters other than newline, empty text without media, or a media set the rules
-  // refuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`).
+  // refuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`), and for the body,
+  // article and attachment rules of CreatePost. The body, article and attachments are replaced
+  // with the text; the change request itself is always the post's first attachment.
   rpc SetChangePost(SetChangePostRequest) returns (Post);
   // Removes a change request's draft post and its media. Same rights as SetChangePost.
   rpc ClearChangePost(ClearChangePostRequest) returns (ClearChangePostResponse);
   // Fetches a change request's post. NOT_FOUND when it has none.
   rpc GetChangePost(GetChangePostRequest) returns (Post);
   // Starts an image or video upload for a change request's post and returns a signed PUT URL.
-  // The pending upload expires after 15 minutes. TOO_LARGE above 8 MiB for an image or 64 MiB
-  // for a video; INVALID_ARGUMENT (subcode `bad_media`) for an unsupported content type.
+  // Without a `change_id` the upload is for a post of its own (CreatePost): it needs repo Write
+  // and only its uploader may finalize and attach it. The pending upload expires after 15
+  // minutes. TOO_LARGE above 8 MiB for an image or 64 MiB for a video; INVALID_ARGUMENT
+  // (subcode `bad_media`) for an unsupported content type.
   rpc BeginPostMediaUpload(BeginPostMediaUploadRequest) returns (BeginPostMediaUploadResponse);
   // Completes an upload: checks the bytes against `sha256` (INTEGRITY), their magic bytes
   // against the kind (INVALID_ARGUMENT, subcode `bad_media`) and that images carry alt text
@@ -36,7 +52,8 @@ service PostService {
   // 24 hours is deleted.
   rpc FinalizePostMedia(FinalizePostMediaRequest) returns (PostMedia);
   // Approves an agent-written post. Needs a human with repo Write who is not the post author.
-  // Before the change lands it records `approved_by`; after it landed the post publishes now.
+  // Before the change lands it records `approved_by`; after it landed, and for a post of its
+  // own, the post publishes now.
   rpc ApprovePost(ApprovePostRequest) returns (Post);
   // Withdraws a post: it leaves every feed and its permalink says it was withdrawn. Allowed for
   // the post author or a repo admin.
@@ -68,7 +85,7 @@ service PostService {
 enum PostState {
   POST_STATE_UNSPECIFIED = 0;
   POST_STATE_DRAFT = 1;             // change request is open
-  POST_STATE_PENDING_APPROVAL = 2;  // change landed, an agent wrote the post, no human approval yet
+  POST_STATE_PENDING_APPROVAL = 2;  // an agent wrote it (its change landed, or it has none), no human approval yet
   POST_STATE_PUBLISHED = 3;
   POST_STATE_WITHDRAWN = 4;
   POST_STATE_DISCARDED = 5;         // change closed without landing
@@ -112,15 +129,49 @@ message PostViewer {
   bool can_withdraw = 5;
 }
 
-// A post on a change request.
+// What a post's attachment points at.
+enum PostAttachmentKind {
+  POST_ATTACHMENT_KIND_UNSPECIFIED = 0;
+  POST_ATTACHMENT_KIND_CHANGE_REQUEST = 1;  // any number per post
+  POST_ATTACHMENT_KIND_RELEASE = 2;         // a published release; at most one per post
+  POST_ATTACHMENT_KIND_ISSUE = 3;           // at most one per post
+  POST_ATTACHMENT_KIND_AGENT_RUN = 4;       // at most one per post
+  POST_ATTACHMENT_KIND_SWARM = 5;           // reserved: not accepted yet (`bad_attachment`)
+}
+
+// Something in the post's repo that the post is about, with what a client needs to show it as
+// a card. A writer sets `kind` and `id` (or, for a change request or an issue, `number`); the
+// server checks it and fills the rest on every read from the attachment as it is now. When the
+// attachment is gone (or a release went back to draft) only `kind` and `id` are set.
+message PostAttachment {
+  PostAttachmentKind kind = 1;
+  string id = 2;
+  uint64 number = 3;        // change request and issue only
+  // A release's name (else its tag); the first line of an agent run's prompt (else its agent's
+  // name).
+  string title = 4;
+  // The attachment's state in lower case: `open`, `landed` or `closed` for a change request,
+  // `open` or `closed` for an issue, `published` or `prerelease` for a release, and the
+  // AgentRunState name without its prefix (`running`, `succeeded`, ...) for an agent run.
+  string state = 5;
+  string tag_name = 6;      // release only
+}
+
+// The long-form part of a post.
+message PostArticle {
+  string title = 1;         // NFC plain text on one line, 1-200 characters
+  string body_markdown = 2; // Markdown, at most 100000 characters, not empty
+}
+
+// A post: on its own, or on a change request.
 message Post {
   string id = 1;
   RepoRef repo = 2;
-  string change_id = 3;
+  string change_id = 3;                     // the change request carrying it; empty for a post of its own
   uint64 change_number = 4;
   string change_title = 5;
   Principal author = 6;                     // the caller who last set the text; may be an agent
-  string text = 7;                          // NFC plain text, at most 500 characters
+  string text = 7;                          // the summary: NFC plain text, at most 500 characters
   repeated PostMedia media = 8;
   PostState state = 9;
   google.protobuf.Timestamp created_at = 10;
@@ -131,6 +182,11 @@ message Post {
   PostViewer viewer = 15;
   uint64 version = 16;
   string withdrawn_reason = 17;
+  string body_markdown = 18;                // Markdown, at most 20000 characters; may be empty
+  PostArticle article = 19;                 // unset when the post has no article
+  // What the post is about, in order. A post on a change request lists that change request
+  // first, whether or not it was written before attachments existed.
+  repeated PostAttachment attachments = 20;
 }
 
 // One entry of the Following feed.
@@ -145,8 +201,8 @@ message FeedItem {
 message PostRef {
   string post_id = 1;
   RepoRef repo = 2;
-  uint64 change_number = 3;
-  string change_title = 4;
+  uint64 change_number = 3;                 // 0 for a post of its own
+  string change_title = 4;                  // empty for a post of its own
 }
 
 // An issue or change request that names a post as its inspiration.
@@ -158,6 +214,16 @@ message PostAdoption {
   google.protobuf.Timestamp created_at = 5;
 }
 
+// Request for CreatePost.
+message CreatePostRequest {
+  RepoRef repo = 1;
+  string text = 2;                          // the summary; may be empty beside a body, an article or media
+  string body_markdown = 3;
+  PostArticle article = 4;
+  repeated string media_ids = 5;            // finalized media uploaded without a `change_id`, in display order
+  repeated PostAttachment attachments = 6;  // `kind` and `id` (or `number`); at most 32
+}
+
 // Request for SetChangePost.
 message SetChangePostRequest {
   RepoRef repo = 1;
@@ -165,6 +231,9 @@ message SetChangePostRequest {
   string text = 3;
   repeated string media_ids = 4;            // finalized media, in display order; replaces the set
   uint64 expected_version = 5;              // 0 = no check
+  string body_markdown = 6;                 // replaces the body
+  PostArticle article = 7;                  // replaces the article; unset removes it
+  repeated PostAttachment attachments = 8;  // beside the change request itself; replaces the list
 }
 
 // Request for ClearChangePost.
@@ -185,7 +254,7 @@ message GetChangePostRequest {
 // Request for BeginPostMediaUpload.
 message BeginPostMediaUploadRequest {
   RepoRef repo = 1;
-  string change_id = 2;
+  string change_id = 2;                     // empty: for a post of its own (CreatePost)
   PostMediaKind kind = 3;
   string content_type = 4;
   uint64 size_bytes = 5;

@@ -1,6 +1,6 @@
-//! [`Posts`]: the post of each change request, its media, approval, withdrawal, likes and
-//! reposts, the publishing hooks the change-request lifecycle calls inside its own
-//! transactions, and the upkeep that deletes unattached media.
+//! [`Posts`]: posts of their own and the post of each change request, their media, approval,
+//! withdrawal, likes and reposts, the publishing hooks the change-request lifecycle calls
+//! inside its own transactions, and the upkeep that deletes unattached media.
 //!
 //! Callers authorize first (`service.rs`): these methods check the post's own rules (state,
 //! text, media, who may approve) but not repo roles.
@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use bee_proto::v1::{
-    ChangeState, Event, Post, PostMedia, PostMediaKind, PostState, Principal, Repo, RepoRef,
-    SubjectKind, SubjectRef, event, repo_ref,
+    ChangeState, Event, Post, PostArticle, PostAttachment, PostMedia, PostMediaKind, PostState,
+    Principal, Repo, RepoRef, SubjectKind, SubjectRef, event, repo_ref,
 };
 use bytes::Bytes;
 
@@ -68,6 +68,28 @@ pub struct Engagement {
     pub change_author: String,
 }
 
+/// What a post says beside its summary text and media, as a writer sent it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Content {
+    /// The Markdown body; empty for none.
+    pub body_markdown: String,
+    /// The article, if any.
+    pub article: Option<PostArticle>,
+    /// The attachments: `kind` and `id` (or `number`), see [`super::attach`].
+    pub attachments: Vec<PostAttachment>,
+}
+
+/// The media owner (`MediaRec::owner`) of uploads for a post of its own: `@<uploader>`. Media
+/// for a change request's post is owned by the change request id, which never starts with `@`.
+pub fn own_media_owner(uploader: &str) -> String {
+    format!("@{uploader}")
+}
+
+/// Whether a media owner names an uploader ([`own_media_owner`]) rather than a change request.
+pub fn is_own_media_owner(owner: &str) -> bool {
+    owner.starts_with('@')
+}
+
 /// A position in a time-ordered list of posts: `(ms, post id)`.
 pub type At = (i64, String);
 
@@ -93,14 +115,17 @@ fn state_name(s: PostState) -> &'static str {
 }
 
 /// The row of a post: `n1` is set only while it is published, so repo and author scans by
-/// `n1` see published posts alone.
+/// `n1` see published posts alone. `k2` (unique in the repo) is the change request that
+/// carries the post, unset for a post of its own.
 fn post_row(rec: &PostRec, version: u64) -> Row {
     let p = rec.post();
     let mut row = Row::new(repo_id_of(p), p.id.clone())
         .k1(rec.author_id().to_string())
-        .k2(p.change_id.clone())
         .version(version)
         .msg(rec);
+    if !p.change_id.is_empty() {
+        row.k2 = Some(p.change_id.clone());
+    }
     if rec.state() == PostState::Published {
         row.n1 = Some(p.published_at.as_ref().map(ts_ms).unwrap_or(0) as i64);
     }
@@ -149,6 +174,8 @@ pub(crate) fn event_view(rec: &PostRec) -> Post {
     if rec.state() == PostState::Withdrawn {
         p.text.clear();
         p.media.clear();
+        p.body_markdown.clear();
+        p.article = None;
     }
     p
 }
@@ -163,6 +190,9 @@ fn post_json(rec: &PostRec) -> String {
         "author": rec.author_id(),
         "approved_by": p.approved_by.as_ref().map(|a| a.id.clone()).unwrap_or_default(),
         "media": p.media.len(),
+        "body_chars": p.body_markdown.chars().count(),
+        "article": p.article.as_ref().map(|a| a.title.clone()).unwrap_or_default(),
+        "attachments": super::attach::refs_of(p).len(),
     })
     .to_string()
 }
@@ -234,6 +264,61 @@ async fn media(tx: &mut Tx, repo_id: &str, id: &str) -> Result<(MediaRec, Row)> 
     tx.get_msg::<MediaRec>(&MEDIA, repo_id, id)
         .await?
         .ok_or_else(|| ForgeError::not_found(format!("post media {id}")))
+}
+
+/// `bad_media` unless `media_ids` may be one post's media set: no id twice, at most
+/// [`MAX_IMAGES`].
+fn media_ids_ok(media_ids: &[String]) -> Result<()> {
+    let unique: BTreeSet<&String> = media_ids.iter().collect();
+    if unique.len() != media_ids.len() {
+        return Err(ForgeError::invalid(
+            "bad_media",
+            "media_ids lists a media item twice",
+        ));
+    }
+    if media_ids.len() > MAX_IMAGES {
+        return Err(ForgeError::invalid(
+            "bad_media",
+            format!("a post carries at most {MAX_IMAGES} images or one video"),
+        ));
+    }
+    Ok(())
+}
+
+/// The media set `media_ids` of a post, in display order: every item finalized and uploaded
+/// for `owner` (`for_what` names it in the error), and a video alone.
+async fn media_set(
+    tx: &mut Tx,
+    repo_id: &str,
+    media_ids: &[String],
+    owner: &str,
+    for_what: &str,
+) -> Result<Vec<(MediaRec, Row)>> {
+    let mut attach: Vec<(MediaRec, Row)> = Vec::new();
+    for id in media_ids {
+        let (m, row) = media(tx, repo_id, id).await?;
+        if m.owner != owner {
+            return Err(ForgeError::invalid(
+                "bad_media",
+                format!("media {id} was uploaded for another {for_what}"),
+            ));
+        }
+        if m.upload_state() != UploadState::Final {
+            return Err(ForgeError::invalid_state(format!(
+                "media {id} is not finalized (FinalizePostMedia)"
+            ))
+            .with_subcode("media_not_final"));
+        }
+        attach.push((m, row));
+    }
+    let videos = attach.iter().filter(|(m, _)| m.class == VIDEO.name).count();
+    if videos > 1 || (videos == 1 && attach.len() > 1) {
+        return Err(ForgeError::invalid(
+            "bad_media",
+            "a video is the only media of its post",
+        ));
+    }
+    Ok(attach)
 }
 
 /// Publishes `rec` at `now`.
@@ -462,7 +547,7 @@ impl Posts {
     }
 
     /// Likes, reposts and comments of a post, what `viewer` did, and the change request's
-    /// author.
+    /// author (empty for a post of its own).
     pub async fn engagement(&self, cx: &Cx, rec: &PostRec, viewer: &str) -> Result<Engagement> {
         let p = rec.post();
         let mut tx = self.db.begin(SURFACE, cx).await?;
@@ -470,15 +555,19 @@ impl Posts {
         let reposts = counter(&mut tx, &p.id, "reposts").await?;
         let liked = tx.get(&LIKES, &p.id, viewer).await?.is_some();
         let reposted = tx.get(&REPOSTS, viewer, &p.id).await?.is_some();
-        let cr = tx
-            .scan_msgs::<CrRecord>(
+        // A post of its own has no change request: no comments, no change author.
+        let cr = if p.change_id.is_empty() {
+            None
+        } else {
+            tx.scan_msgs::<CrRecord>(
                 &CRS,
                 &Scan::scope(repo_id_of(p), 1).key(Key::K1(p.change_id.clone())),
             )
             .await?
             .into_iter()
             .next()
-            .map(|(c, _)| c);
+            .map(|(c, _)| c)
+        };
         Ok(Engagement {
             likes,
             reposts,
@@ -504,7 +593,8 @@ impl Posts {
             .unwrap_or_default())
     }
 
-    /// The change request a media upload belongs to.
+    /// The change request a media upload belongs to, or its uploader ([`own_media_owner`])
+    /// when it is for a post of its own.
     pub async fn media_owner(&self, cx: &Cx, repo: &Repo, media_id: &str) -> Result<String> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
         Ok(media(&mut tx, &repo.id, media_id).await?.0.owner)
@@ -515,7 +605,8 @@ impl Posts {
     /// Writes the text and media of a change request's post, creating it as a draft; the
     /// caller becomes its author and any earlier approval is cleared (it approved other
     /// words). A post waiting for approval that a person rewrites is theirs and publishes
-    /// now. `expected_version` 0 skips the version check.
+    /// now. `expected_version` 0 skips the version check. The body, article and attachments
+    /// are removed: see [`Posts::set_with`].
     pub async fn set(
         &self,
         cx: &Cx,
@@ -525,20 +616,54 @@ impl Posts {
         media_ids: &[String],
         expected_version: u64,
     ) -> Result<(PostRec, u64)> {
-        let text = text::normalize(text, !media_ids.is_empty())?;
-        let unique: BTreeSet<&String> = media_ids.iter().collect();
-        if unique.len() != media_ids.len() {
-            return Err(ForgeError::invalid(
-                "bad_media",
-                "media_ids lists a media item twice",
-            ));
-        }
-        if media_ids.len() > MAX_IMAGES {
-            return Err(ForgeError::invalid(
-                "bad_media",
-                format!("a post carries at most {MAX_IMAGES} images or one video"),
-            ));
-        }
+        self.set_with(
+            cx,
+            repo,
+            change_id,
+            text,
+            media_ids,
+            &Content::default(),
+            expected_version,
+        )
+        .await
+    }
+
+    /// The body, article and attachments of `content` as stored, for a post in `repo` that
+    /// `own_change` carries (empty for a post of its own).
+    async fn stored(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        content: &Content,
+        own_change: &str,
+    ) -> Result<Content> {
+        Ok(Content {
+            body_markdown: text::body(&content.body_markdown)?,
+            article: text::article(content.article.as_ref())?,
+            attachments: self
+                .resolve_attachments(cx, &repo.id, &content.attachments, own_change)
+                .await?,
+        })
+    }
+
+    /// [`Posts::set`] with a Markdown body, an article and attachments, which replace the
+    /// post's own as the text and media do.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_with(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        change_id: &str,
+        text: &str,
+        media_ids: &[String],
+        content: &Content,
+        expected_version: u64,
+    ) -> Result<(PostRec, u64)> {
+        // Before the transaction below: attachments are read on their own surfaces.
+        let content = self.stored(cx, repo, content, change_id).await?;
+        let wordless = content.body_markdown.is_empty() && content.article.is_none();
+        let text = text::normalize(text, !media_ids.is_empty() || !wordless)?;
+        media_ids_ok(media_ids)?;
         let author = self.actor(cx).await;
         let mut tx = self.db.begin(SURFACE, cx).await?;
         let cr = Self::change(&mut tx, repo, change_id).await?;
@@ -554,30 +679,7 @@ impl Posts {
             None => tx.new_id()?,
         };
         // The media set, in display order.
-        let mut attach: Vec<(MediaRec, Row)> = Vec::new();
-        for id in media_ids {
-            let (m, row) = media(&mut tx, &repo.id, id).await?;
-            if m.owner != change_id {
-                return Err(ForgeError::invalid(
-                    "bad_media",
-                    format!("media {id} was uploaded for another change request"),
-                ));
-            }
-            if m.upload_state() != UploadState::Final {
-                return Err(ForgeError::invalid_state(format!(
-                    "media {id} is not finalized (FinalizePostMedia)"
-                ))
-                .with_subcode("media_not_final"));
-            }
-            attach.push((m, row));
-        }
-        let videos = attach.iter().filter(|(m, _)| m.class == VIDEO.name).count();
-        if videos > 1 || (videos == 1 && attach.len() > 1) {
-            return Err(ForgeError::invalid(
-                "bad_media",
-                "a video is the only media of its post",
-            ));
-        }
+        let attach = media_set(&mut tx, &repo.id, media_ids, change_id, "change request").await?;
         let landed = ChangeState::try_from(cr.cr().state) == Ok(ChangeState::Landed);
         let mut rec = existing
             .as_ref()
@@ -600,6 +702,9 @@ impl Posts {
             p.author = Some(author);
             p.text = text;
             p.media = attach.iter().map(|(m, _)| post_media(m)).collect();
+            p.body_markdown = content.body_markdown;
+            p.article = content.article;
+            p.attachments = content.attachments;
             p.approved_by = None;
             p.updated_at = Some(ts(now));
             if p.state == PostState::Discarded as i32 {
@@ -648,6 +753,78 @@ impl Posts {
         Ok((rec, version))
     }
 
+    /// Writes a post of its own in `repo`: no change request carries it (the service checked
+    /// the caller holds `commit` there). The caller is its author. A person's post is
+    /// published now; one by an agent or service waits for a person's approval
+    /// (`PENDING_APPROVAL`, `post.approval_requested`). `media_ids` are finalized uploads of
+    /// the caller for a post of its own ([`own_media_owner`]) that no post carries yet.
+    pub async fn create(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        text: &str,
+        media_ids: &[String],
+        content: &Content,
+    ) -> Result<(PostRec, u64)> {
+        // Before the transaction below: attachments are read on their own surfaces.
+        let content = self.stored(cx, repo, content, "").await?;
+        let wordless = content.body_markdown.is_empty() && content.article.is_none();
+        let text = text::normalize(text, !media_ids.is_empty() || !wordless)?;
+        media_ids_ok(media_ids)?;
+        let author = self.actor(cx).await;
+        let owner = own_media_owner(&cx.actor_id);
+        let mut tx = self.db.begin(SURFACE, cx).await?;
+        let now = tx.now_ms();
+        let post_id = tx.new_id()?;
+        let attach = media_set(&mut tx, &repo.id, media_ids, &owner, "author or post").await?;
+        if let Some((m, _)) = attach.iter().find(|(m, _)| !m.attached.is_empty()) {
+            return Err(ForgeError::invalid(
+                "bad_media",
+                format!("media {} is already on another post", m.id),
+            ));
+        }
+        let mut rec = PostRec {
+            post: Some(Post {
+                id: post_id.clone(),
+                repo: repo_ref(&repo.id),
+                author: Some(author),
+                text,
+                media: attach.iter().map(|(m, _)| post_media(m)).collect(),
+                body_markdown: content.body_markdown,
+                article: content.article,
+                attachments: content.attachments,
+                state: PostState::PendingApproval as i32,
+                created_at: Some(ts(now)),
+                updated_at: Some(ts(now)),
+                ..Default::default()
+            }),
+            org_id: repo.org_id.clone(),
+        };
+        let published = rec.by_human();
+        if published {
+            publish(&mut rec, now);
+        }
+        tx.insert(&POSTS, &post_row(&rec, 0)).await?;
+        tx.insert(
+            &POST_IDS,
+            &Row::new("", post_id.clone()).k1(repo.id.clone()),
+        )
+        .await?;
+        for (mut m, row) in attach {
+            m.attached.clone_from(&post_id);
+            tx.update(&MEDIA, &media_row(&m, None, row.version)).await?;
+        }
+        let kind = if published {
+            "post.published"
+        } else {
+            "post.approval_requested"
+        };
+        emit(&mut tx, kind, &rec, serde_json::Value::Null).await?;
+        tx.audit(audit("post.create", &rec)).await?;
+        tx.commit().await?;
+        Ok((rec, 1))
+    }
+
     /// Removes a change request's post (a draft or one waiting for approval) and its media.
     pub async fn clear(&self, cx: &Cx, repo: &Repo, change_id: &str) -> Result<()> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
@@ -685,8 +862,9 @@ impl Posts {
 
     // ----- media ------------------------------------------------------------------------
 
-    /// Starts a media upload for a change request's post. `kind` unspecified is taken from
-    /// the content type.
+    /// Starts a media upload for a change request's post, or with an empty `change_id` for a
+    /// post of its own (the upload then belongs to its uploader, [`own_media_owner`]). `kind`
+    /// unspecified is taken from the content type.
     pub async fn begin_media(
         &self,
         cx: &Cx,
@@ -707,16 +885,21 @@ impl Posts {
         };
         let uploader = self.actor(cx).await;
         let mut tx = self.db.begin(SURFACE, cx).await?;
-        let cr = Self::change(&mut tx, repo, change_id).await?;
-        let existing = by_change(&mut tx, &repo.id, change_id).await?;
-        writable(&cr, existing.as_ref().map(|(r, _)| r))?;
+        let owner = if change_id.is_empty() {
+            own_media_owner(&cx.actor_id)
+        } else {
+            let cr = Self::change(&mut tx, repo, change_id).await?;
+            let existing = by_change(&mut tx, &repo.id, change_id).await?;
+            writable(&cr, existing.as_ref().map(|(r, _)| r))?;
+            change_id.to_string()
+        };
         let id = tx.new_id()?;
         let now = tx.now_ms();
         let (rec, url) = self.uploads.begin(
             MEDIA_PREFIX,
             &id,
             &repo.id,
-            change_id,
+            &owner,
             limit,
             content_type,
             size,
@@ -841,7 +1024,7 @@ impl Posts {
 
     /// Approves an agent- or service-written post as the calling person (the service checked
     /// they hold repo Write): before the change lands it records `approved_by`; once it
-    /// landed the post publishes now.
+    /// landed, and for a post of its own, the post publishes now.
     pub async fn approve(&self, cx: &Cx, repo: &Repo, post_id: &str) -> Result<(PostRec, u64)> {
         let approver = self.actor(cx).await;
         let mut tx = self.db.begin(SURFACE, cx).await?;
