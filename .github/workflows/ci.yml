@@ -43,7 +43,13 @@ jobs:
           POSTGRES_PASSWORD: postgres
           # The suites start many servers at once, each with its own pools; the default of 100
           # connections ran out ("sorry, too many clients already").
-          POSTGRES_INITDB_ARGS: "-c max_connections=400"
+          #
+          # This database lives for one job, so it does not wait for the disk: with durability on,
+          # every commit's speed is the runner's disk-sync speed, and a runner image change in
+          # November 2026 made every Postgres test about 1.8 times slower and pushed two of them
+          # past their own deadlines. The tests check isolation and ordering, which these settings
+          # do not touch.
+          POSTGRES_INITDB_ARGS: "-c max_connections=400 -c fsync=off -c synchronous_commit=off -c full_page_writes=off"
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s
