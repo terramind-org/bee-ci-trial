@@ -519,7 +519,12 @@ async fn postgres_landing_fence_races_when_configured() {
                         &id_disable,
                     )
                     .await;
-                disable_returned.store(true, Ordering::SeqCst);
+                // Only a disable that took effect counts: one refused because the merge had
+                // already begun ("is landing") turned nothing off, so the merge it lost to is
+                // not a merge after disable.
+                if result.is_ok() {
+                    disable_returned.store(true, Ordering::SeqCst);
+                }
                 result
             }
         );
