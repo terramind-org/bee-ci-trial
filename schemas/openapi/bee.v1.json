@@ -1,69 +1,6 @@
 {
   "components": {
     "schemas": {
-      "connect.Error": {
-        "description": "Connect error body (SPEC §12.2). The HTTP status follows the code.",
-        "properties": {
-          "code": {
-            "enum": [
-              "canceled",
-              "unknown",
-              "invalid_argument",
-              "deadline_exceeded",
-              "not_found",
-              "already_exists",
-              "permission_denied",
-              "resource_exhausted",
-              "failed_precondition",
-              "aborted",
-              "out_of_range",
-              "unimplemented",
-              "internal",
-              "unavailable",
-              "data_loss",
-              "unauthenticated"
-            ],
-            "type": "string"
-          },
-          "details": {
-            "items": {
-              "$ref": "#/components/schemas/connect.ErrorDetail"
-            },
-            "type": "array"
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "code"
-        ],
-        "title": "connect.Error",
-        "type": "object"
-      },
-      "connect.ErrorDetail": {
-        "description": "A typed error detail. `bee.v1.ErrorDetail` is always present on bee errors.",
-        "properties": {
-          "debug": {
-            "description": "proto3-JSON form of the detail, for JSON-only clients."
-          },
-          "type": {
-            "description": "Fully qualified message type, e.g. bee.v1.ErrorDetail.",
-            "type": "string"
-          },
-          "value": {
-            "contentEncoding": "base64",
-            "description": "Protobuf encoding of the detail, base64 without padding.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "value"
-        ],
-        "title": "connect.ErrorDetail",
-        "type": "object"
-      },
       "bee.v1.AcceptOrgInvitationRequest": {
         "properties": {
           "invitationId": {
@@ -20379,11 +20316,11 @@
       "bee.v1.GitResolveQuery": {
         "description": "One id to map, in either direction.\n\nOneof `id`: at most one of `gitOid`, `beeId` is set.",
         "properties": {
-          "gitOid": {
-            "type": "string"
-          },
           "beeId": {
             "$ref": "#/components/schemas/bee.v1.ObjectId"
+          },
+          "gitOid": {
+            "type": "string"
           }
         },
         "title": "bee.v1.GitResolveQuery",
@@ -20425,6 +20362,13 @@
       "bee.v1.GitResolveResult": {
         "description": "The mapping for one query, in request order.",
         "properties": {
+          "beeId": {
+            "$ref": "#/components/schemas/bee.v1.ObjectId",
+            "description": "changeset, tree or blob"
+          },
+          "beeKind": {
+            "$ref": "#/components/schemas/bee.v1.ObjectKind"
+          },
           "changeId": {
             "$ref": "#/components/schemas/bee.v1.ChangeId",
             "description": "commits only"
@@ -20441,13 +20385,6 @@
           },
           "status": {
             "$ref": "#/components/schemas/bee.v1.ItemStatus"
-          },
-          "beeId": {
-            "$ref": "#/components/schemas/bee.v1.ObjectId",
-            "description": "changeset, tree or blob"
-          },
-          "beeKind": {
-            "$ref": "#/components/schemas/bee.v1.ObjectKind"
           }
         },
         "title": "bee.v1.GitResolveResult",
@@ -56528,6 +56465,69 @@
           }
         },
         "title": "bee.v1.WorkspaceUsageLine",
+        "type": "object"
+      },
+      "connect.Error": {
+        "description": "Connect error body (SPEC §12.2). The HTTP status follows the code.",
+        "properties": {
+          "code": {
+            "enum": [
+              "canceled",
+              "unknown",
+              "invalid_argument",
+              "deadline_exceeded",
+              "not_found",
+              "already_exists",
+              "permission_denied",
+              "resource_exhausted",
+              "failed_precondition",
+              "aborted",
+              "out_of_range",
+              "unimplemented",
+              "internal",
+              "unavailable",
+              "data_loss",
+              "unauthenticated"
+            ],
+            "type": "string"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/components/schemas/connect.ErrorDetail"
+            },
+            "type": "array"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "connect.Error",
+        "type": "object"
+      },
+      "connect.ErrorDetail": {
+        "description": "A typed error detail. `bee.v1.ErrorDetail` is always present on bee errors.",
+        "properties": {
+          "debug": {
+            "description": "proto3-JSON form of the detail, for JSON-only clients."
+          },
+          "type": {
+            "description": "Fully qualified message type, e.g. bee.v1.ErrorDetail.",
+            "type": "string"
+          },
+          "value": {
+            "contentEncoding": "base64",
+            "description": "Protobuf encoding of the detail, base64 without padding.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "title": "connect.ErrorDetail",
         "type": "object"
       }
     },

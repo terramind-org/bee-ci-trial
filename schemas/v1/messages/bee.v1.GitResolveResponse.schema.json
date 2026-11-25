@@ -36,6 +36,13 @@
     "bee.v1.GitResolveResult": {
       "description": "The mapping for one query, in request order.",
       "properties": {
+        "beeId": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "changeset, tree or blob"
+        },
+        "beeKind": {
+          "$ref": "#/$defs/bee.v1.ObjectKind"
+        },
         "changeId": {
           "$ref": "#/$defs/bee.v1.ChangeId",
           "description": "commits only"
@@ -52,13 +59,6 @@
         },
         "status": {
           "$ref": "#/$defs/bee.v1.ItemStatus"
-        },
-        "beeId": {
-          "$ref": "#/$defs/bee.v1.ObjectId",
-          "description": "changeset, tree or blob"
-        },
-        "beeKind": {
-          "$ref": "#/$defs/bee.v1.ObjectKind"
         }
       },
       "title": "bee.v1.GitResolveResult",

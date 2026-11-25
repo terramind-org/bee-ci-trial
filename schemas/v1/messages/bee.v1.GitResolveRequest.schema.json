@@ -3,11 +3,11 @@
     "bee.v1.GitResolveQuery": {
       "description": "One id to map, in either direction.\n\nOneof `id`: at most one of `gitOid`, `beeId` is set.",
       "properties": {
-        "gitOid": {
-          "type": "string"
-        },
         "beeId": {
           "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "gitOid": {
+          "type": "string"
         }
       },
       "title": "bee.v1.GitResolveQuery",

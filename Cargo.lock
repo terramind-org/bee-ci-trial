@@ -234,6 +234,605 @@ dependencies = [
 ]
 
 [[package]]
+name = "bee-auth"
+version = "0.1.0"
+dependencies = [
+ "bee-policy",
+ "biscuit-auth",
+ "proptest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "subtle",
+]
+
+[[package]]
+name = "bee-classify"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "proptest",
+]
+
+[[package]]
+name = "bee-cli"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "bee-core",
+ "bee-daemon",
+ "bee-mcp",
+ "bee-object",
+ "bee-proto",
+ "bee-server",
+ "bee-wc",
+ "bytes",
+ "clap",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "jsonschema",
+ "prost 0.14.4",
+ "prost-types 0.14.4",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "bee-compat"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "bee-auth",
+ "bee-core",
+ "bee-forge",
+ "bee-git",
+ "bee-history",
+ "bee-object",
+ "bee-policy",
+ "bee-proto",
+ "bee-server",
+ "bee-store",
+ "blake3",
+ "bytes",
+ "curve25519-dalek 4.1.3",
+ "http",
+ "http-body-util",
+ "pbjson-types",
+ "poly1305 0.9.1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "tonic",
+ "tower",
+]
+
+[[package]]
+name = "bee-conformance"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "bee-auth",
+ "bee-cli",
+ "bee-core",
+ "bee-daemon",
+ "bee-forge",
+ "bee-git",
+ "bee-github",
+ "bee-history",
+ "bee-import",
+ "bee-merge",
+ "bee-object",
+ "bee-policy",
+ "bee-proto",
+ "bee-server",
+ "bee-store",
+ "bee-testkit",
+ "bee-wc",
+ "bytes",
+ "flate2",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "hyper-util",
+ "jsonschema",
+ "pbjson-types",
+ "prost 0.14.4",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
+name = "bee-core"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
+name = "bee-daemon"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "bee-core",
+ "bee-object",
+ "bee-proto",
+ "bee-server",
+ "bee-wc",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "notify",
+ "pbjson-types",
+ "prost 0.14.4",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "tonic",
+]
+
+[[package]]
+name = "bee-deps"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "jsonschema",
+ "proptest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "toml",
+]
+
+[[package]]
+name = "bee-derived"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-classify",
+ "bee-core",
+ "bee-history",
+ "bee-merge",
+ "bee-object",
+ "bee-store",
+ "bee-testkit",
+ "tokio",
+]
+
+[[package]]
+name = "bee-forge"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "bee-auth",
+ "bee-classify",
+ "bee-core",
+ "bee-deps",
+ "bee-derived",
+ "bee-git",
+ "bee-history",
+ "bee-merge",
+ "bee-object",
+ "bee-policy",
+ "bee-proto",
+ "bee-search",
+ "bee-secrets",
+ "bee-store",
+ "bee-workflow",
+ "blake3",
+ "bytes",
+ "chacha20poly1305",
+ "crypto_box",
+ "flate2",
+ "getrandom 0.4.3",
+ "hmac 0.12.1",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "pbjson-types",
+ "prost 0.14.4",
+ "pulldown-cmark",
+ "regex",
+ "ring",
+ "roxmltree",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "tokio-postgres",
+ "tokio-stream",
+ "tonic",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "bee-git"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "bee-object",
+ "crc32fast",
+ "flate2",
+ "proptest",
+ "sha1collisiondetection",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "bee-git-http"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "bee-auth",
+ "bee-core",
+ "bee-git",
+ "bee-history",
+ "bee-import",
+ "bee-mcp",
+ "bee-object",
+ "bee-proto",
+ "bee-secrets",
+ "bee-server",
+ "bee-store",
+ "blake3",
+ "bytes",
+ "flate2",
+ "getrandom 0.4.3",
+ "hmac 0.12.1",
+ "http",
+ "http-body-util",
+ "proptest",
+ "russh",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "bee-github"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "bee-auth",
+ "bee-core",
+ "bee-forge",
+ "bee-git",
+ "bee-import",
+ "bee-mcp",
+ "bee-object",
+ "bee-policy",
+ "bee-proto",
+ "bee-store",
+ "blake3",
+ "bytes",
+ "clap",
+ "flate2",
+ "getrandom 0.4.3",
+ "hmac 0.12.1",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "jsonschema",
+ "ring",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "bee-history"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-core",
+ "bee-merge",
+ "bee-object",
+ "bee-store",
+ "bee-testkit",
+ "proptest",
+ "tokio",
+]
+
+[[package]]
+name = "bee-import"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-core",
+ "bee-git",
+ "bee-object",
+ "bee-store",
+ "blake3",
+ "flate2",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "bee-mcp"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bee-core",
+ "bee-proto",
+ "bytes",
+ "futures-util",
+ "getrandom 0.4.3",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "prost 0.14.4",
+ "prost-types 0.14.4",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "bee-merge"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
+name = "bee-object"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "blake3",
+ "proptest",
+ "serde_json",
+]
+
+[[package]]
+name = "bee-policy"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "proptest",
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "bee-proto"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "bee-core",
+ "bee-object",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "pbjson",
+ "pbjson-build",
+ "pbjson-types",
+ "prost 0.14.4",
+ "prost-build",
+ "prost-types 0.14.4",
+ "protoc-bin-vendored",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
+ "tower",
+]
+
+[[package]]
+name = "bee-search"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "bee-object",
+ "bee-store",
+ "bee-testkit",
+ "proptest",
+ "regex",
+ "regex-syntax",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "bee-secrets"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "bee-core",
+ "proptest",
+ "regex",
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "bee-server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "bee-auth",
+ "bee-compat",
+ "bee-core",
+ "bee-derived",
+ "bee-forge",
+ "bee-git",
+ "bee-git-http",
+ "bee-github",
+ "bee-history",
+ "bee-import",
+ "bee-mcp",
+ "bee-merge",
+ "bee-object",
+ "bee-policy",
+ "bee-proto",
+ "bee-search",
+ "bee-secrets",
+ "bee-store",
+ "bee-store-blob",
+ "bee-store-sql",
+ "blake3",
+ "bytes",
+ "flate2",
+ "futures-util",
+ "getrandom 0.4.3",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper-util",
+ "jsonschema",
+ "pbjson-types",
+ "ring",
+ "rusqlite",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha1collisiondetection",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "tokio-postgres",
+ "tokio-rustls",
+ "toml",
+ "tonic",
+ "tower",
+]
+
+[[package]]
+name = "bee-store"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-core",
+ "bee-object",
+ "tokio",
+]
+
+[[package]]
+name = "bee-store-blob"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-core",
+ "bee-object",
+ "bee-store",
+ "bee-testkit",
+ "bytes",
+ "getrandom 0.4.3",
+ "hmac 0.12.1",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "zstd",
+]
+
+[[package]]
+name = "bee-store-sql"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bee-core",
+ "bee-object",
+ "bee-store",
+ "bee-testkit",
+ "bytes",
+ "rusqlite",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "bee-testkit"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "bee-object",
+ "bee-store",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "bee-wc"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "bee-merge",
+ "bee-object",
+ "bee-proto",
+ "getrandom 0.4.3",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
+]
+
+[[package]]
+name = "bee-workflow"
+version = "0.1.0"
+dependencies = [
+ "bee-core",
+ "proptest",
+]
+
+[[package]]
 name = "biscuit-auth"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4085,605 +4684,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "bee-auth"
-version = "0.1.0"
-dependencies = [
- "biscuit-auth",
- "proptest",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "subtle",
- "bee-policy",
-]
-
-[[package]]
-name = "bee-classify"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "bee-core",
-]
-
-[[package]]
-name = "bee-cli"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "bytes",
- "clap",
- "futures-util",
- "http",
- "http-body-util",
- "hyper",
- "hyper-util",
- "jsonschema",
- "prost 0.14.4",
- "prost-types 0.14.4",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "toml",
- "bee-core",
- "bee-daemon",
- "bee-mcp",
- "bee-object",
- "bee-proto",
- "bee-server",
- "bee-wc",
-]
-
-[[package]]
-name = "bee-compat"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "blake3",
- "bytes",
- "curve25519-dalek 4.1.3",
- "http",
- "http-body-util",
- "pbjson-types",
- "poly1305 0.9.1",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "tonic",
- "tower",
- "bee-auth",
- "bee-core",
- "bee-forge",
- "bee-git",
- "bee-history",
- "bee-object",
- "bee-policy",
- "bee-proto",
- "bee-server",
- "bee-store",
-]
-
-[[package]]
-name = "bee-conformance"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "bytes",
- "flate2",
- "futures-util",
- "http",
- "http-body-util",
- "hyper-util",
- "jsonschema",
- "pbjson-types",
- "prost 0.14.4",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "tonic",
- "bee-auth",
- "bee-cli",
- "bee-core",
- "bee-daemon",
- "bee-forge",
- "bee-git",
- "bee-github",
- "bee-history",
- "bee-import",
- "bee-merge",
- "bee-object",
- "bee-policy",
- "bee-proto",
- "bee-server",
- "bee-store",
- "bee-testkit",
- "bee-wc",
-]
-
-[[package]]
-name = "bee-core"
-version = "0.1.0"
-dependencies = [
- "proptest",
-]
-
-[[package]]
-name = "bee-daemon"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "bytes",
- "futures-util",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "notify",
- "pbjson-types",
- "prost 0.14.4",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "tonic",
- "bee-core",
- "bee-object",
- "bee-proto",
- "bee-server",
- "bee-wc",
-]
-
-[[package]]
-name = "bee-deps"
-version = "0.1.0"
-dependencies = [
- "jsonschema",
- "proptest",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "toml",
- "bee-core",
-]
-
-[[package]]
-name = "bee-derived"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "tokio",
- "bee-classify",
- "bee-core",
- "bee-history",
- "bee-merge",
- "bee-object",
- "bee-store",
- "bee-testkit",
-]
-
-[[package]]
-name = "bee-forge"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "blake3",
- "bytes",
- "chacha20poly1305",
- "crypto_box",
- "flate2",
- "getrandom 0.4.3",
- "hmac 0.12.1",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "pbjson-types",
- "prost 0.14.4",
- "pulldown-cmark",
- "regex",
- "ring",
- "roxmltree",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "tokio-postgres",
- "tokio-stream",
- "tonic",
- "bee-auth",
- "bee-classify",
- "bee-core",
- "bee-deps",
- "bee-derived",
- "bee-git",
- "bee-history",
- "bee-merge",
- "bee-object",
- "bee-policy",
- "bee-proto",
- "bee-search",
- "bee-secrets",
- "bee-store",
- "bee-workflow",
- "unicode-normalization",
-]
-
-[[package]]
-name = "bee-git"
-version = "0.1.0"
-dependencies = [
- "crc32fast",
- "flate2",
- "proptest",
- "sha1collisiondetection",
- "sha2 0.10.9",
- "bee-core",
- "bee-object",
-]
-
-[[package]]
-name = "bee-git-http"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "blake3",
- "bytes",
- "flate2",
- "getrandom 0.4.3",
- "hmac 0.12.1",
- "http",
- "http-body-util",
- "proptest",
- "russh",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "bee-auth",
- "bee-core",
- "bee-git",
- "bee-history",
- "bee-import",
- "bee-mcp",
- "bee-object",
- "bee-proto",
- "bee-secrets",
- "bee-server",
- "bee-store",
-]
-
-[[package]]
-name = "bee-github"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "blake3",
- "bytes",
- "clap",
- "flate2",
- "getrandom 0.4.3",
- "hmac 0.12.1",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "jsonschema",
- "ring",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "bee-auth",
- "bee-core",
- "bee-forge",
- "bee-git",
- "bee-import",
- "bee-mcp",
- "bee-object",
- "bee-policy",
- "bee-proto",
- "bee-store",
-]
-
-[[package]]
-name = "bee-history"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "proptest",
- "tokio",
- "bee-core",
- "bee-merge",
- "bee-object",
- "bee-store",
- "bee-testkit",
-]
-
-[[package]]
-name = "bee-import"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "blake3",
- "flate2",
- "serde",
- "serde_json",
- "tokio",
- "bee-core",
- "bee-git",
- "bee-object",
- "bee-store",
-]
-
-[[package]]
-name = "bee-mcp"
-version = "0.1.0"
-dependencies = [
- "axum",
- "bytes",
- "futures-util",
- "getrandom 0.4.3",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "prost 0.14.4",
- "prost-types 0.14.4",
- "serde",
- "serde_json",
- "tokio",
- "bee-core",
- "bee-proto",
-]
-
-[[package]]
-name = "bee-merge"
-version = "0.1.0"
-dependencies = [
- "proptest",
-]
-
-[[package]]
-name = "bee-object"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "proptest",
- "serde_json",
- "bee-core",
-]
-
-[[package]]
-name = "bee-policy"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "proptest",
- "serde",
- "toml",
-]
-
-[[package]]
-name = "bee-proto"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "pbjson",
- "pbjson-build",
- "pbjson-types",
- "prost 0.14.4",
- "prost-build",
- "prost-types 0.14.4",
- "protoc-bin-vendored",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "tower",
- "bee-core",
- "bee-object",
-]
-
-[[package]]
-name = "bee-search"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "regex",
- "regex-syntax",
- "tempfile",
- "tokio",
- "bee-core",
- "bee-object",
- "bee-store",
- "bee-testkit",
-]
-
-[[package]]
-name = "bee-secrets"
-version = "0.1.0"
-dependencies = [
- "aho-corasick",
- "proptest",
- "regex",
- "serde",
- "toml",
- "bee-core",
-]
-
-[[package]]
-name = "bee-server"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "blake3",
- "bytes",
- "flate2",
- "futures-util",
- "getrandom 0.4.3",
- "http",
- "http-body",
- "http-body-util",
- "hyper-util",
- "jsonschema",
- "pbjson-types",
- "ring",
- "rusqlite",
- "rustls",
- "serde",
- "serde_json",
- "sha1collisiondetection",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "tokio-postgres",
- "tokio-rustls",
- "toml",
- "tonic",
- "tower",
- "bee-auth",
- "bee-compat",
- "bee-core",
- "bee-derived",
- "bee-forge",
- "bee-git",
- "bee-git-http",
- "bee-github",
- "bee-history",
- "bee-import",
- "bee-mcp",
- "bee-merge",
- "bee-object",
- "bee-policy",
- "bee-proto",
- "bee-search",
- "bee-secrets",
- "bee-store",
- "bee-store-blob",
- "bee-store-sql",
-]
-
-[[package]]
-name = "bee-store"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "tokio",
- "bee-core",
- "bee-object",
-]
-
-[[package]]
-name = "bee-store-blob"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "getrandom 0.4.3",
- "hmac 0.12.1",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "sha2 0.10.9",
- "tempfile",
- "tokio",
- "bee-core",
- "bee-object",
- "bee-store",
- "bee-testkit",
- "zstd",
-]
-
-[[package]]
-name = "bee-store-sql"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "rusqlite",
- "tokio",
- "tokio-postgres",
- "bee-core",
- "bee-object",
- "bee-store",
- "bee-testkit",
-]
-
-[[package]]
-name = "bee-testkit"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "serde",
- "serde_json",
- "tokio",
- "bee-core",
- "bee-object",
- "bee-store",
-]
-
-[[package]]
-name = "bee-wc"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "rustix",
- "serde",
- "serde_json",
- "tempfile",
- "toml",
- "bee-core",
- "bee-merge",
- "bee-object",
- "bee-proto",
-]
-
-[[package]]
-name = "bee-workflow"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "bee-core",
 ]
 
 [[package]]
