@@ -1614,7 +1614,7 @@ Every PRODUCT §4 area has API surface; the protos are the reference for each RP
 | `InsightsService` | insights | Languages, license, community profile, citation, pulse, contributors, traffic, network |
 | `UserService` | users | Profiles, follows of users and repos, stars and lists, emails, SSH and signing keys, settings, sessions, security log, account lifecycle |
 | `BriefService` | briefs | Briefs of change requests, evidence (screenshots, before/after, video, benchmarks, test reports, preview links) with uploads, the advisory checklist (§11.9) |
-| `PostService` | posts | Posts on change requests (text, images, video), approval of agent posts, likes, reposts, the Following feed, adoptions |
+| `PostService` | posts | Posts of their own or on change requests (summary, Markdown body, article, images, video, attachments: change requests, a release, an issue, an agent run), approval of agent posts, likes, reposts, the Following feed, adoptions |
 | `SponsorService` | sponsors | Sponsor profiles, tiers, sponsorships, FUNDING.yml |
 | `WorkflowService` | workflows | Workflows, dispatch, runs, jobs, logs, artifacts, caches, Actions policies, required workflows, OIDC, attestations |
 | `RunnerService` | workflows | Self-hosted runners, groups, machine classes, native runner job protocol |

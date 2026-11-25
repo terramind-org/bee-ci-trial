@@ -31,6 +31,7 @@
   "description": "Request for BeginPostMediaUpload.",
   "properties": {
     "changeId": {
+      "description": "empty: for a post of its own (CreatePost)",
       "type": "string"
     },
     "contentType": {

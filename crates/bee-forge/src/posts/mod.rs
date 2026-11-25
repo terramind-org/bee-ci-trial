@@ -1,13 +1,24 @@
-//! Posts on change requests and the Following feed (PRODUCT §4.16; the rules are in
+//! Posts and the Following feed (PRODUCT §4.16; the rules are in
 //! `docs/spec/forge-community.md` "Posts and feeds"). Serves `PostService`.
 //!
-//! A change request carries at most one post: short NFC plain text (at most
-//! [`MAX_TEXT_CHARS`] characters) with up to [`MAX_IMAGES`] images or one video. It is a
-//! `DRAFT` while the change is open and publishes when the change lands, in the land's own
-//! transaction ([`store::on_landed`] from `Changes::record_landed`). A post written by an
-//! agent or service publishes only once a human with repo Write approved it; until then a
-//! landed one is `PENDING_APPROVAL`. Closing the change without landing discards its post
-//! (`DISCARDED`), reopening it makes it a draft again.
+//! A post is its own unit, written by a person or an agent: a summary (short NFC plain text,
+//! at most [`MAX_TEXT_CHARS`] characters), a Markdown body (at most [`MAX_BODY_CHARS`]), an
+//! optional article (a title and at most [`MAX_ARTICLE_CHARS`] of Markdown), up to
+//! [`MAX_IMAGES`] images or one video, and attachments ([`attach`]): change requests, a
+//! release, an issue and an agent run of its repo.
+//!
+//! - **On its own** ([`Posts::create`]): no change request carries it. A person's post is
+//!   `PUBLISHED` when it is written; it is not edited afterwards, only withdrawn.
+//! - **On a change request** ([`Posts::set`]): at most one per change request. It is a `DRAFT`
+//!   while the change is open and publishes when the change lands, in the land's own
+//!   transaction ([`store::on_landed`] from `Changes::record_landed`). Closing the change
+//!   without landing discards its post (`DISCARDED`), reopening it makes it a draft again. Its
+//!   change request is always its first attachment, also for rows written before attachments
+//!   existed.
+//!
+//! Either way a post written by an agent or service publishes only once a human with repo
+//! Write approved it; until then it is `PENDING_APPROVAL` (for a post on a change request,
+//! from the landing on).
 //!
 //! # Layout
 //!
@@ -15,7 +26,8 @@
 //! |---|---|
 //! | `mod.rs` | tables, the migration, event kinds, audit prefix, limits |
 //! | [`model`] | the stored record |
-//! | [`text`] | pure text validation (NFC, length, control characters) |
+//! | [`text`] | pure text validation (NFC, length, control characters) of the summary, body and article |
+//! | [`attach`] | attachments: what may be attached, and the card of each as a reader sees it |
 //! | [`store`] | [`Posts`]: drafts, media, approval, withdrawal, likes, reposts, publishing hooks, upkeep |
 //! | [`feed`] | the Following feed's sources and their merge |
 //! | [`adopt`] | adoptions: issues and change requests a post inspired ("Inspired by") |
@@ -30,20 +42,25 @@
 //!
 //! | table | scope | id | keys |
 //! |---|---|---|---|
-//! | posts | repo | post | `k1` author, `k2` change request (unique), `n1` published ms (published only) |
+//! | posts | repo | post | `k1` author, `k2` change request (unique; unset for a post of its own), `n1` published ms (published only) |
 //! | post ids | `""` | post | `k1` repo |
-//! | media | repo | media | `k1` change request, `k2` post (attached), `n1` created ms (unattached only) |
+//! | media | repo | media | `k1` change request (`@<uploader>` for a post of its own), `k2` post (attached), `n1` created ms (unattached only) |
 //! | likes | post | principal | `n1` time |
 //! | reposts | reposter | post | `k1` post, `k2` repo, `n1` time |
 //! | counters | post | `likes` / `reposts` | `n1` count |
 //! | change adoptions | `""` | change request | `k1` post, `n1` created ms |
 //! | issue adoptions (work surface) | `""` | issue | `k1` post, `n1` created ms |
 //!
+//! The body, article and attachments are fields of the stored `Post` message (18 to 20), so
+//! they needed no migration: a row written before them decodes with all three empty, and a
+//! post of its own differs from one on a change request only by its empty `change_id`.
+//!
 //! An adoption is written by the transaction that opens its issue or change request, so it
 //! lives on that subject's surface: change adoptions here ([`M2`], listed by the changes
 //! module), issue adoptions on the work surface ([`M_WORK`], listed by the work module).
 
 pub mod adopt;
+pub mod attach;
 pub mod feed;
 pub mod model;
 pub mod service;
@@ -58,6 +75,15 @@ use crate::store::{Index, Migration, MigrationOp, Phase, TableDef};
 
 /// Most characters (Unicode scalar values) of a post's text.
 pub const MAX_TEXT_CHARS: usize = 500;
+/// Most characters of a post's Markdown body. A body is an update, not a document: the long
+/// form goes in the article.
+pub const MAX_BODY_CHARS: usize = 20_000;
+/// Most characters of an article's Markdown.
+pub const MAX_ARTICLE_CHARS: usize = 100_000;
+/// Most characters of an article's title.
+pub const MAX_ARTICLE_TITLE_CHARS: usize = 200;
+/// Most attachments on one post.
+pub const MAX_ATTACHMENTS: usize = 32;
 /// Most images on one post.
 pub const MAX_IMAGES: usize = 4;
 /// Alt text bounds of an image, in characters.
@@ -196,7 +222,7 @@ pub static MODULE: ForgeModule = ForgeModule {
         ),
         EventKind::new(
             "post.approval_requested",
-            "A landed change's agent-written post waits for a person's approval",
+            "An agent-written post waits for a person's approval",
         ),
         EventKind::new("post.published", "A post was published"),
         EventKind::new("post.withdrawn", "A post was withdrawn"),

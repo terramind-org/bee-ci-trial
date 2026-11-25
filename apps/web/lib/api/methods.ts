@@ -179,6 +179,7 @@ export interface Methods {
     ListHomeFeed: [T.ListHomeFeedRequest, T.ListHomeFeedResponse];
   };
   PostService: {
+    CreatePost: [T.CreatePostRequest, T.Post];
     SetChangePost: [T.SetChangePostRequest, T.Post];
     ClearChangePost: [T.ClearChangePostRequest, T.ClearChangePostResponse];
     GetChangePost: [T.GetChangePostRequest, T.Post];

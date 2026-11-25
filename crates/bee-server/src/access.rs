@@ -1035,7 +1035,8 @@ mod tests {
             "/bee.v1.LeaseService/AcquireLease",
             "/bee.v1.IssueService/CreateIssue",
             "/bee.v1.WorkflowService/RerunWorkflowRun",
-            // Following, liking and reposting need an account.
+            // Following, liking, reposting and writing a post need an account.
+            "/bee.v1.PostService/CreatePost",
             "/bee.v1.PostService/ListFollowingFeed",
             "/bee.v1.PostService/LikePost",
             "/bee.v1.PostService/RepostPost",

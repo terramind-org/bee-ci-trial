@@ -340,6 +340,7 @@
       "description": "A reference to a post, as carried by the issues and change requests it inspired. Empty when\nthe reader cannot read the post's repo.",
       "properties": {
         "changeNumber": {
+          "description": "0 for a post of its own",
           "format": "uint64",
           "pattern": "^[0-9]+$",
           "type": [
@@ -348,6 +349,7 @@
           ]
         },
         "changeTitle": {
+          "description": "empty for a post of its own",
           "type": "string"
         },
         "postId": {

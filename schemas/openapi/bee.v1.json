@@ -3420,6 +3420,7 @@
         "description": "Request for BeginPostMediaUpload.",
         "properties": {
           "changeId": {
+            "description": "empty: for a post of its own (CreatePost)",
             "type": "string"
           },
           "contentType": {
@@ -8961,6 +8962,40 @@
           }
         },
         "title": "bee.v1.CreatePagesSiteRequest",
+        "type": "object"
+      },
+      "bee.v1.CreatePostRequest": {
+        "description": "Request for CreatePost.",
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle"
+          },
+          "attachments": {
+            "description": "`kind` and `id` (or `number`); at most 32",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
+          },
+          "bodyMarkdown": {
+            "type": "string"
+          },
+          "mediaIds": {
+            "description": "finalized media uploaded without a `change_id`, in display order",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          },
+          "text": {
+            "description": "the summary; may be empty beside a body, an article or media",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.CreatePostRequest",
         "type": "object"
       },
       "bee.v1.CreateProjectChartRequest": {
@@ -36104,16 +36139,32 @@
         "type": "object"
       },
       "bee.v1.Post": {
-        "description": "A post on a change request.",
+        "description": "A post: on its own, or on a change request.",
         "properties": {
           "approvedBy": {
             "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle",
+            "description": "unset when the post has no article"
+          },
+          "attachments": {
+            "description": "What the post is about, in order. A post on a change request lists that change request\nfirst, whether or not it was written before attachments existed.",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
           },
           "author": {
             "$ref": "#/components/schemas/bee.v1.Principal",
             "description": "the caller who last set the text; may be an agent"
           },
+          "bodyMarkdown": {
+            "description": "Markdown, at most 20000 characters; may be empty",
+            "type": "string"
+          },
           "changeId": {
+            "description": "the change request carrying it; empty for a post of its own",
             "type": "string"
           },
           "changeNumber": {
@@ -36154,7 +36205,7 @@
             "$ref": "#/components/schemas/bee.v1.PostState"
           },
           "text": {
-            "description": "NFC plain text, at most 500 characters",
+            "description": "the summary: NFC plain text, at most 500 characters",
             "type": "string"
           },
           "updatedAt": {
@@ -36202,6 +36253,68 @@
         },
         "title": "bee.v1.PostAdoption",
         "type": "object"
+      },
+      "bee.v1.PostArticle": {
+        "description": "The long-form part of a post.",
+        "properties": {
+          "bodyMarkdown": {
+            "description": "Markdown, at most 100000 characters, not empty",
+            "type": "string"
+          },
+          "title": {
+            "description": "NFC plain text on one line, 1-200 characters",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.PostArticle",
+        "type": "object"
+      },
+      "bee.v1.PostAttachment": {
+        "description": "Something in the post's repo that the post is about, with what a client needs to show it as\na card. A writer sets `kind` and `id` (or, for a change request or an issue, `number`); the\nserver checks it and fills the rest on every read from the attachment as it is now. When the\nattachment is gone (or a release went back to draft) only `kind` and `id` are set.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.PostAttachmentKind"
+          },
+          "number": {
+            "description": "change request and issue only",
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "state": {
+            "description": "The attachment's state in lower case: `open`, `landed` or `closed` for a change request,\n`open` or `closed` for an issue, `published` or `prerelease` for a release, and the\nAgentRunState name without its prefix (`running`, `succeeded`, ...) for an agent run.",
+            "type": "string"
+          },
+          "tagName": {
+            "description": "release only",
+            "type": "string"
+          },
+          "title": {
+            "description": "A release's name (else its tag); the first line of an agent run's prompt (else its agent's\nname).",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.PostAttachment",
+        "type": "object"
+      },
+      "bee.v1.PostAttachmentKind": {
+        "description": "What a post's attachment points at.",
+        "enum": [
+          "POST_ATTACHMENT_KIND_UNSPECIFIED",
+          "POST_ATTACHMENT_KIND_CHANGE_REQUEST",
+          "POST_ATTACHMENT_KIND_RELEASE",
+          "POST_ATTACHMENT_KIND_ISSUE",
+          "POST_ATTACHMENT_KIND_AGENT_RUN",
+          "POST_ATTACHMENT_KIND_SWARM"
+        ],
+        "title": "bee.v1.PostAttachmentKind",
+        "type": "string"
       },
       "bee.v1.PostCounts": {
         "description": "Engagement counts of a post.",
@@ -36309,6 +36422,7 @@
         "description": "A reference to a post, as carried by the issues and change requests it inspired. Empty when\nthe reader cannot read the post's repo.",
         "properties": {
           "changeNumber": {
+            "description": "0 for a post of its own",
             "format": "uint64",
             "pattern": "^[0-9]+$",
             "type": [
@@ -36317,6 +36431,7 @@
             ]
           },
           "changeTitle": {
+            "description": "empty for a post of its own",
             "type": "string"
           },
           "postId": {
@@ -45847,6 +45962,21 @@
       "bee.v1.SetChangePostRequest": {
         "description": "Request for SetChangePost.",
         "properties": {
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle",
+            "description": "replaces the article; unset removes it"
+          },
+          "attachments": {
+            "description": "beside the change request itself; replaces the list",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
+          },
+          "bodyMarkdown": {
+            "description": "replaces the body",
+            "type": "string"
+          },
           "changeId": {
             "type": "string"
           },
@@ -98596,7 +98726,7 @@
     },
     "/bee.v1.PostService/ApprovePost": {
       "post": {
-        "description": "Approves an agent-written post. Needs a human with repo Write who is not the post author.\nBefore the change lands it records `approved_by`; after it landed the post publishes now.\n\nShape: unary.",
+        "description": "Approves an agent-written post. Needs a human with repo Write who is not the post author.\nBefore the change lands it records `approved_by`; after it landed, and for a post of its\nown, the post publishes now.\n\nShape: unary.",
         "operationId": "PostService_ApprovePost",
         "parameters": [
           {
@@ -98660,7 +98790,7 @@
     },
     "/bee.v1.PostService/BeginPostMediaUpload": {
       "post": {
-        "description": "Starts an image or video upload for a change request's post and returns a signed PUT URL.\nThe pending upload expires after 15 minutes. TOO_LARGE above 8 MiB for an image or 64 MiB\nfor a video; INVALID_ARGUMENT (subcode `bad_media`) for an unsupported content type.\n\nShape: unary.",
+        "description": "Starts an image or video upload for a change request's post and returns a signed PUT URL.\nWithout a `change_id` the upload is for a post of its own (CreatePost): it needs repo Write\nand only its uploader may finalize and attach it. The pending upload expires after 15\nminutes. TOO_LARGE above 8 MiB for an image or 64 MiB for a video; INVALID_ARGUMENT\n(subcode `bad_media`) for an unsupported content type.\n\nShape: unary.",
         "operationId": "PostService_BeginPostMediaUpload",
         "parameters": [
           {
@@ -98781,6 +98911,70 @@
           }
         },
         "summary": "Removes a change request's draft post and its media. Same rights as SetChangePost.",
+        "tags": [
+          "bee.v1.PostService"
+        ]
+      }
+    },
+    "/bee.v1.PostService/CreatePost": {
+      "post": {
+        "description": "Writes a post of its own in a repo: no change request carries it. The caller becomes its\nauthor and needs repo Write. A person's post is PUBLISHED at once; one by an agent or\nservice is PENDING_APPROVAL until ApprovePost. `media_ids` name media uploaded by the\ncaller with BeginPostMediaUpload without a `change_id`. INVALID_ARGUMENT for the text and\nmedia rules of SetChangePost, a body or article over its limit (subcodes `body_too_long`,\n`article_too_long`, `bad_article`), an attachment the rules refuse (`bad_attachment`), and\nan attachment that is not in this repo or that the caller cannot read\n(`attachment_not_found`). A post of its own is not edited: withdraw it and write another.\n\nShape: unary.",
+        "operationId": "PostService_CreatePost",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.CreatePostRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Post"
+                }
+              }
+            },
+            "description": "bee.v1.Post message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Writes a post of its own in a repo: no change request carries it. The caller becomes its",
         "tags": [
           "bee.v1.PostService"
         ]
@@ -99300,7 +99494,7 @@
     },
     "/bee.v1.PostService/SetChangePost": {
       "post": {
-        "description": "Sets the text and media of a change request's post, creating it as a draft. The caller\nbecomes the post author. Needs the right to edit the change request (its author, or repo\nWrite) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH\nwhen `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,\ncontrol characters other than newline, empty text without media, or a media set the rules\nrefuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`).\n\nShape: unary.",
+        "description": "Sets the text and media of a change request's post, creating it as a draft. The caller\nbecomes the post author. Needs the right to edit the change request (its author, or repo\nWrite) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH\nwhen `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,\ncontrol characters other than newline, empty text without media, or a media set the rules\nrefuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`), and for the body,\narticle and attachment rules of CreatePost. The body, article and attachments are replaced\nwith the text; the change request itself is always the post's first attachment.\n\nShape: unary.",
         "operationId": "PostService_SetChangePost",
         "parameters": [
           {
@@ -129635,7 +129829,7 @@
       "name": "bee.v1.PolicyService"
     },
     {
-      "description": "Posts and the Following feed. A change request has at most one post. It is a draft while the\nchange is open and publishes when the change lands; a post written by an agent or service\npublishes only once a human with repo Write approved it. Every read checks repo Read for the\ncaller: posts on private repos are visible only to readers of that repo, and posts on deleted\nrepos are never shown. Following, liking and reposting need an account; agents follow and\nread the feed like humans.",
+      "description": "Posts and the Following feed. A post is its own unit: CreatePost writes one in a repo with no\nchange request, and it publishes at once. A change request may also carry one post\n(SetChangePost): a draft while the change is open, published when the change lands. Either\nway a post written by an agent or service publishes only once a human with repo Write\napproved it. Every read checks repo Read for the caller: posts on private repos are visible\nonly to readers of that repo, and posts on deleted repos are never shown. Following, liking\nand reposting need an account; agents follow and read the feed like humans.",
       "name": "bee.v1.PostService"
     },
     {

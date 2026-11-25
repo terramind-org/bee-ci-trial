@@ -131,6 +131,8 @@ An agent follows repos and evaluates the upgrades they post (`docs/spec/forge-co
   `check_interval_seconds` (the server's `forge.agent_debounce_ms`, default 60 s), capped at
   ten windows after the first post, at most 20 posts per run. A post is taken once per agent and
   repo (`forge_agent_feed_seen`), so a redelivered event starts nothing.
+  A post of its own (no change request) fires like any other: the run's prompt takes the diff
+  summary of the first change request attached to it, or says that the post has none.
 - **The run.** When the window passes the trigger fires (`agent_feed_trigger.fired`, audit
   `agent.feed_trigger_fire`): once the day's run cap or budget is spent it is skipped (the event
   says why) and starts nothing; otherwise it counts a run and starts one `ADOPT_EVALUATE` run in

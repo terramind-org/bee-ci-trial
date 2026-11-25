@@ -16,8 +16,10 @@
 //!   trigger, with idempotency key `adopt:<repo>:<agent>:<post>`. Once the day's (UTC) budget
 //!   or run cap is spent, triggers fire as skipped (`agent_feed_trigger.fired` says why) and
 //!   start nothing. The run's cost is charged to the trigger's day.
-//! - **The prompt** ([`adopt_prompt`], pure): the posts (text, media URLs signed for the run's
-//!   chain, change title), the source change's diff summary and changed paths, the target
+//! - **The prompt** ([`adopt_prompt`], pure): the posts (text, body, media URLs signed for the
+//!   run's chain, change title), the source change's diff summary and changed paths (the
+//!   change that carries the post, else the first change request attached to it; a post
+//!   with neither says so), the target
 //!   repo, and the instructions: decide, then finish with one of the three [`Outcome`]
 //!   summaries.
 
@@ -230,17 +232,29 @@ pub fn adopt_prompt(target: &Repo, posts: &[PostContext]) -> String {
     for c in posts {
         let p = &c.post;
         s.push_str(&format!(
-            "\n## Post {} in {}\n\nChange #{}: {}\n\n{}\n",
+            "\n## Post {} in {}\n\n{}\n\n{}\n",
             p.id,
             c.repo,
-            p.change_number,
-            p.change_title,
+            if p.change_number == 0 {
+                "No change request: the post stands on its own.".to_string()
+            } else {
+                format!("Change #{}: {}", p.change_number, p.change_title)
+            },
             if p.text.is_empty() {
                 "(no text)".to_string()
             } else {
                 p.text.clone()
             }
         ));
+        if !p.body_markdown.is_empty() {
+            s.push_str(&format!("\n{}\n", p.body_markdown));
+        }
+        if let Some(a) = &p.article {
+            s.push_str(&format!(
+                "\nThe post has an article, \"{}\"; read it with GetPost.\n",
+                a.title
+            ));
+        }
         if !c.media.is_empty() {
             s.push_str("\nMedia:\n");
             for (kind, alt, url) in &c.media {
@@ -806,7 +820,7 @@ impl Agents {
             if !chain_reads(&self.forge.orgs, &acx, &source).await {
                 continue;
             }
-            let p = prec.post().clone();
+            let mut p = prec.post().clone();
             let now = self.db.now_ms();
             let media = p
                 .media
@@ -822,8 +836,23 @@ impl Agents {
                     (kind.to_string(), m.alt_text.clone(), url)
                 })
                 .collect();
-            let (diff, paths) = match self.changes.record(&sys, &source, &p.change_id).await {
+            // The change the post is about: the one that carries it, else the first change
+            // request attached to a post of its own.
+            let change_id = if p.change_id.is_empty() {
+                p.attachments
+                    .iter()
+                    .find(|a| a.kind == bee_proto::v1::PostAttachmentKind::ChangeRequest as i32)
+                    .map(|a| a.id.clone())
+                    .unwrap_or_default()
+            } else {
+                p.change_id.clone()
+            };
+            let (diff, paths) = match self.changes.record(&sys, &source, &change_id).await {
                 Ok((cr, _)) => {
+                    if p.change_number == 0 {
+                        p.change_number = cr.cr().number;
+                        p.change_title.clone_from(&cr.cr().title);
+                    }
                     let classes: Vec<(String, String, bool)> = cr
                         .paths
                         .iter()
@@ -833,6 +862,9 @@ impl Agents {
                         diff_summary(&classes),
                         cr.paths.iter().map(|c| c.path.clone()).collect(),
                     )
+                }
+                Err(_) if change_id.is_empty() => {
+                    ("the post has no change request".to_string(), Vec::new())
                 }
                 Err(_) => ("the change is not available".to_string(), Vec::new()),
             };
@@ -996,6 +1028,45 @@ mod tests {
             assert!(s.contains(want), "missing {want:?} in\n{s}");
         }
         assert_eq!(diff_summary(&[]), "no paths changed");
+    }
+
+    #[test]
+    fn the_prompt_says_when_a_post_stands_on_its_own() {
+        let target = Repo {
+            full_name: "acme/api".into(),
+            default_ref: "main".into(),
+            ..Default::default()
+        };
+        let post = Post {
+            id: "01OWN".into(),
+            text: "How we cut build time".into(),
+            body_markdown: "We cache every layer.".into(),
+            article: Some(bee_proto::v1::PostArticle {
+                title: "Caching, step by step".into(),
+                body_markdown: "## One".into(),
+            }),
+            ..Default::default()
+        };
+        let s = adopt_prompt(
+            &target,
+            &[PostContext {
+                post,
+                repo: "lattice/engine".into(),
+                diff_summary: "the post has no change request".into(),
+                ..Default::default()
+            }],
+        );
+        for want in [
+            "Post 01OWN in lattice/engine",
+            "No change request: the post stands on its own.",
+            "How we cut build time",
+            "We cache every layer.",
+            "The post has an article, \"Caching, step by step\"; read it with GetPost.",
+            "Diff summary: the post has no change request",
+        ] {
+            assert!(s.contains(want), "missing {want:?} in\n{s}");
+        }
+        assert!(!s.contains("Change #0"), "{s}");
     }
 }
 

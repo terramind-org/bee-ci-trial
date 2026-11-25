@@ -1,6 +1,6 @@
 /**
- * Posts and following (posts.proto, users.proto, agents.proto): a change request's post and its
- * media, the Following feed, repo follows, adoptions, and the agent feed trigger with its runs.
+ * Posts and following (posts.proto, users.proto, agents.proto): posts of their own and a change
+ * request's post, their media, the Following feed, repo follows, adoptions, and the agent feed trigger with its runs.
  *
  * Every post RPC is one bee.v1 call, so the view types pass through. The one composed method
  * is `AgentService/ListAdoptRuns`: the run list plus the post each run evaluated.
@@ -102,6 +102,7 @@ function named<Req, Res>(op: UnaryOp<Req, Res>, posts: (res: Res) => T.Post[]): 
 
 export const postOps = {
   PostService: {
+    CreatePost: named(pass(PostService.method.createPost), (r) => [r]),
     SetChangePost: named(pass(PostService.method.setChangePost), (r) => [r]),
     ClearChangePost: pass(PostService.method.clearChangePost),
     GetChangePost: named(pass(PostService.method.getChangePost), (r) => [r]),

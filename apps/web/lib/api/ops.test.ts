@@ -183,6 +183,10 @@ describe("community, discovery, posts, cloud and admin methods", () => {
     expect(JSON.parse(toMcp(like)).params).toEqual({ name: "post_like_post", arguments: { postId: "01P" } });
     const set = { service: "PostService" as const, method: "SetChangePost", request: { repo: sample.repo, changeId: "cr", text: "It works", mediaIds: ["m1", "m2"] } };
     expect(toCli(set)).toBe("bee post set-change-post --repo acme/api --change-id cr --text 'It works' --media-ids m1 --media-ids m2 --json");
+    const create = { service: "PostService" as const, method: "CreatePost", request: { repo: sample.repo, text: "This week", bodyMarkdown: "## Done", attachments: [{ kind: "POST_ATTACHMENT_KIND_ISSUE", number: "7" }] } };
+    expect(toCurl(create)).toContain("/bee.v1.PostService/CreatePost");
+    expect(JSON.parse(toMcp(create)).params).toEqual({ name: "post_create_post", arguments: create.request });
+    expect(toCli(create)).toMatch(/^bee post create-post --repo acme\/api --text 'This week' --body-markdown '## Done' --attachments /);
     const follow = { service: "UserService" as const, method: "FollowRepo", request: { repo: { fullName: "lattice/engine" } } };
     expect(toCli(follow)).toBe("bee user follow-repo --repo lattice/engine --json");
     expect(toCurl(follow)).toContain("/bee.v1.UserService/FollowRepo");
