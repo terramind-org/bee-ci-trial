@@ -22,7 +22,7 @@ import {
 } from "@/lib/post-compose";
 import { IMAGE_TYPES, MAX_ALT_CHARS, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, VIDEO_TYPES, mediaKind, readMediaInfo, uploadPostMedia } from "@/lib/post-media";
 import { Icon } from "../icons";
-import { PostCard } from "../post-card";
+import { PostCard } from "@/components/posts/post-card";
 import { useToast } from "../toast";
 import { Button, Input, Textarea, cx } from "../ui";
 import { refusalOf, type Refusal } from "./refusal";
@@ -287,7 +287,7 @@ export function PostComposer({
             Clear
           </Button>
         ) : null}
-        <Button variant="primary" onClick={save} disabled={busy !== null || !dirty} aria-busy={busy === "save" || undefined}>
+        <Button onClick={save} disabled={busy !== null || !dirty} aria-busy={busy === "save" || undefined}>
           {busy === "save" ? "Saving…" : saved ? "Save post" : "Save draft"}
         </Button>
       </div>

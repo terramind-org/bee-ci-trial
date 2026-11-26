@@ -1,0 +1,316 @@
+{
+  "service": "bee.v1.SafetyService",
+  "note": "One independent run, a human finding and an independent review across transports.",
+  "fixtures": [
+    {
+      "method": "GetSafetyRecord",
+      "request": {
+        "kind": "SAFETY_WORK_KIND_RUN",
+        "id": "{{soloRun.id}}",
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      },
+      "setup": [
+        {
+          "call": "AuthService/CreateAgent",
+          "request": {
+            "display": "swarm-list-solo",
+            "runtime": "claude-code",
+            "purpose": "Coordinate repository work",
+            "org": "{{org}}"
+          },
+          "save": "solo"
+        },
+        {
+          "call": "OrgService/SetMember",
+          "request": {
+            "org": "{{org}}",
+            "principalId": "{{solo.id}}",
+            "role": "ROLE_MEMBER"
+          }
+        },
+        {
+          "call": "RepoService/AddCollaborator",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "principalId": "{{solo.id}}",
+            "role": "REPO_ROLE_WRITE"
+          }
+        },
+        {
+          "call": "AgentService/RegisterAgent",
+          "request": {
+            "org": "{{org}}",
+            "agentPrincipalId": "{{solo.id}}",
+            "name": "swarm-list-solo",
+            "runtime": "claude-code",
+            "model": "anthropic/claude-sonnet",
+            "toolsets": [
+              "read",
+              "commit"
+            ],
+            "defaultBudget": {
+              "maxUsdMicros": "1000000",
+              "maxDurationSeconds": "600"
+            }
+          }
+        },
+        {
+          "call": "AgentService/StartAgentRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "agentPrincipalId": "{{solo.id}}",
+            "task": {
+              "kind": "AGENT_TASK_KIND_FREEFORM",
+              "prompt": "Summarize the docs."
+            },
+            "baseRef": "main",
+            "budget": {
+              "maxUsdMicros": "1000000",
+              "maxDurationSeconds": "600"
+            }
+          },
+          "save": "soloRun"
+        },
+        {
+          "call": "AgentService/StreamAgentRunEvents",
+          "request": {
+            "runId": "{{soloRun.id}}"
+          }
+        }
+      ],
+      "save": "record"
+    },
+    {
+      "method": "ListSafetyRecords",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "page": {
+          "pageSize": 1
+        }
+      }
+    },
+    {
+      "method": "ReportFinding",
+      "request": {
+        "work": {
+          "kind": "SAFETY_WORK_KIND_RUN",
+          "id": "{{record.work.id}}",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "report": {
+          "kind": "SAFETY_SIGNAL_KIND_HARM_TO_OTHERS",
+          "severity": "SAFETY_SEVERITY_SEVERE",
+          "evidence": {
+            "observation": "A maintainer reported a harmful side effect",
+            "paths": [
+              "docs/api.md"
+            ]
+          }
+        }
+      },
+      "save": "signal"
+    },
+    {
+      "method": "ResolveFinding",
+      "request": {
+        "work": {
+          "kind": "SAFETY_WORK_KIND_RUN",
+          "id": "{{record.work.id}}",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "findingId": "{{signal.id}}",
+        "state": "SAFETY_FINDING_STATE_DISMISSED",
+        "reason": "Reviewed the source"
+      }
+    },
+    {
+      "method": "SetVerdict",
+      "request": {
+        "work": {
+          "kind": "SAFETY_WORK_KIND_RUN",
+          "id": "{{record.work.id}}",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "verdict": "SAFETY_VERDICT_SOMETHING_ELSE",
+        "note": "The work had a different outcome"
+      }
+    },
+    {
+      "method": "RequestSafetyReview",
+      "request": {
+        "work": {
+          "kind": "SAFETY_WORK_KIND_RUN",
+          "id": "{{record.work.id}}",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "reviewerId": "{{reviewer.id}}"
+      },
+      "setup": [
+        {
+          "call": "AuthService/CreateAgent",
+          "request": {
+            "display": "safety-reviewer",
+            "runtime": "claude-code",
+            "purpose": "Coordinate repository work",
+            "org": "{{org}}"
+          },
+          "save": "reviewer"
+        },
+        {
+          "call": "OrgService/SetMember",
+          "request": {
+            "org": "{{org}}",
+            "principalId": "{{reviewer.id}}",
+            "role": "ROLE_MEMBER"
+          }
+        },
+        {
+          "call": "RepoService/AddCollaborator",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "principalId": "{{reviewer.id}}",
+            "role": "REPO_ROLE_WRITE"
+          }
+        },
+        {
+          "call": "AgentService/RegisterAgent",
+          "request": {
+            "org": "{{org}}",
+            "agentPrincipalId": "{{reviewer.id}}",
+            "name": "safety-reviewer",
+            "runtime": "claude-code",
+            "model": "anthropic/claude-sonnet",
+            "toolsets": [
+              "read",
+              "commit"
+            ],
+            "defaultBudget": {
+              "maxUsdMicros": "1000000",
+              "maxDurationSeconds": "600"
+            }
+          }
+        }
+      ],
+      "save": "review"
+    },
+    {
+      "method": "SubmitSafetyReview",
+      "request": {
+        "work": {
+          "kind": "SAFETY_WORK_KIND_RUN",
+          "id": "{{record.work.id}}",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "reviewId": "{{review.id}}",
+        "model": "review-model",
+        "proposedVerdict": "SAFETY_VERDICT_NEEDS_A_LOOK"
+      },
+      "token": "{{reviewerToken.token}}",
+      "setup": [
+        {
+          "call": "AuthService/MintToken",
+          "save": "reviewerToken",
+          "request": {
+            "principalId": "{{review.reviewer.id}}",
+            "scope": {}
+          }
+        }
+      ]
+    },
+    {
+      "method": "RaiseConcern",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{record.work.id}}",
+        "category": "SAFETY_CONCERN_CATEGORY_RULE_CONFLICT",
+        "text": "Please clarify the task rule"
+      },
+      "expect": "PERMISSION_DENIED",
+      "note": "The developer credential is human, so it cannot stop someone else\u2019s run. The integration scenario covers an issued run credential."
+    },
+    {
+      "method": "ListSafetyAttention",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "page": {
+          "pageSize": 1
+        }
+      },
+      "save": "attention"
+    },
+    {
+      "method": "AcknowledgeSafetyAttention",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "id": "{{attention.items.0.id}}"
+      }
+    },
+    {
+      "method": "StopEverything",
+      "request": {
+        "org": "{{org}}",
+        "reason": "Inspect unusual repository activity"
+      }
+    },
+    {
+      "method": "ResumeEverything",
+      "request": {
+        "org": "{{org}}",
+        "reason": "Inspect unusual repository activity"
+      }
+    },
+    {
+      "method": "SpotCheck",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "period": {
+          "start": "1970-01-01T00:00:00Z",
+          "end": "2100-01-01T00:00:00Z"
+        },
+        "seed": "fixture-seed",
+        "limit": 2
+      }
+    },
+    {
+      "method": "GetSafetySummary",
+      "request": {
+        "org": "{{org}}",
+        "period": {
+          "start": "1970-01-01T00:00:00Z",
+          "end": "2100-01-01T00:00:00Z"
+        }
+      },
+      "volatile": [
+        "/ok/0/medianWaitMs"
+      ]
+    }
+  ]
+}

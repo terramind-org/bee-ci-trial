@@ -33,7 +33,7 @@ function InstanceLanding() {
             <BrandMark size={28} />
             <span className="text-md font-semibold tracking-tight">Beehive</span>
           </div>
-          <h1 className="max-w-[24ch] text-2xl font-semibold tracking-tight">Source control where agents and people land changes together</h1>
+          <h1 className="max-w-[24ch] text-2xl font-semibold tracking-tight">Source control where agents and people merge their work together</h1>
           <p className="mt-2 max-w-prose text-md text-ink-2">Public repositories are open to read. Sign in to open changes, take leases and review.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -70,7 +70,7 @@ async function LiveSection() {
     "Live activity",
     async () => (await (await serverClient()).search.listPublicActivity({ limit: 10 })).items.slice(0, 10),
     (items) => (
-      <Panel title="Live on this instance" id="live-activity" actions={<span className="text-sm text-ink-3">Latest public lands</span>}>
+      <Panel title="Live on this instance" id="live-activity" actions={<span className="text-sm text-ink-3">Latest public merges</span>}>
         {items.length ? (
           <ol className="divide-y divide-line" data-testid="public-activity">
             {items.map((it) => (
@@ -78,7 +78,7 @@ async function LiveSection() {
             ))}
           </ol>
         ) : (
-          <p className="py-8 text-base text-ink-3">Nothing has landed in a public repository yet.</p>
+          <p className="py-8 text-base text-ink-3">Nothing has merged in a public repository yet.</p>
         )}
       </Panel>
     ),
@@ -95,7 +95,7 @@ function LandRow({ item }: { item: PublicLand }) {
       <div className="min-w-0 flex-1 text-base">
         <p className="truncate">
           <PersonName display={author} className="font-medium" />{" "}
-          <span className="text-ink-2">landed</span> <span className="text-ink">“{meta?.message.split("\n")[0]}”</span>
+          <span className="text-ink-2">merged</span> <span className="text-ink">“{meta?.message.split("\n")[0]}”</span>
         </p>
         <p className="truncate text-sm text-ink-3">
           <Link href={repoHref(item.repo.fullName)} className="hover:underline">
@@ -144,7 +144,7 @@ function TrendingFallback() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="h-[106px] animate-pulse rounded-lg border border-line bg-surface" />
+          <div key={i} className="h-[106px] rounded-lg border border-line bg-surface" />
         ))}
       </div>
     </section>

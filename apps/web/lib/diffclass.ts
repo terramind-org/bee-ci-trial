@@ -45,7 +45,8 @@ export interface ClassRules {
 }
 
 export const DEFAULT_RULES: ClassRules = {
-  sensitive: ["src/auth/", ".bee/", ".github/workflows/", "migrations/"],
+  // The policy draft shown in Settings lives in the tracked .beehive directory.
+  sensitive: ["src/auth/", ".bee/", ".beehive/", ".github/workflows/", "migrations/"],
   generated: [/(^|\/)bun\.lock$/, /(^|\/)package-lock\.json$/, /(^|\/)Cargo\.lock$/, /\.snap$/, /(^|\/)gen\//],
   dependency: [/(^|\/)package\.json$/, /(^|\/)Cargo\.toml$/, /(^|\/)go\.mod$/, /(^|\/)requirements\.txt$/],
   docs: [/\.mdx?$/, /^docs\//],

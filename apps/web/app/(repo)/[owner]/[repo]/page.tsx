@@ -1,20 +1,31 @@
 /**
- * A repository's home, in the Document style (docs/spec/web-ui.md §2): the shell's repo header
- * above, then a calm reading column: the files with no box around them, the README set as a
- * document, and one quiet side note in place of the old About, Working now and Recent changes.
+ * A repository's home, the Code tab's first page (docs/spec/web-ui.md §3, "Code"): under the
+ * shell's repository header, one reading column. The README first, set as a document; then the
+ * files, the recent commits, who is editing now, and what the repository is. No side column.
+ *
+ * In the agent's view the same facts are plain text, followed by the tools this page calls.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { repositoryWork } from "@/components/agents/work";
+import { PageFacts, type FactGroup } from "@/components/bee/page-facts";
 import { PageOp } from "@/components/copy-as";
 import { Markdown } from "@/components/markdown";
+import { Quiet, Sect } from "@/components/parts";
 import { PromptCard } from "@/components/prompt-card";
+import { CommitRows, commitLine, commitView } from "@/components/repo/commits";
 import { FeedLink } from "@/components/repo/feed-link";
 import { FileTreeRoot, ROOT_ROWS, orderTree, type LastChange } from "@/components/repo/file-tree-root";
-import { RepoNote, type ActiveAgent } from "@/components/repo/note";
+import { activityHref } from "@/components/repo/presence";
+import { languagesText } from "@/components/repo/language-bar";
+import { RepoNote, editingMentions, type ActiveAgent } from "@/components/repo/note";
 import { pathBytes, pathText } from "@/lib/api/ids";
 import { type RepoParams, currentPrincipal, scopeFromParams, serverClient } from "@/lib/api/server";
 import { BeeError } from "@/lib/api/transport";
-import type { TreeEntry } from "@/lib/api/types";
+import type { Changeset, Principal, TreeEntry } from "@/lib/api/types";
+import { directoryOf } from "@/lib/pulls";
+import { pageTools } from "@/lib/tools";
+import { requestMode } from "../../../request-mode";
 import { guard } from "@/lib/page";
 import { feedAlternates } from "@/lib/atom";
 import { promptTargets } from "@/lib/prompt-endpoint";
@@ -45,13 +56,19 @@ function readmeBody(markdown: string, fullName: string): string {
   return markdown;
 }
 
+/** Commits shown on the home; the rest are in the code browser's history. */
+const RECENT_COMMITS = 5;
+
+const VISIBILITY: Record<string, string> = { VISIBILITY_PUBLIC: "Public", VISIBILITY_INTERNAL: "Internal" };
+
 export default async function RepoHomePage({ params }: { params: Promise<RepoParams> }) {
   return guard(async () => {
     const { fullName, ref, owner } = await scopeFromParams(params);
     const api = await serverClient();
-    const [home, me, targets] = await Promise.all([api.repo.getRepoHome({ fullName }), currentPrincipal(), promptTargets()]);
-    const at = { expr: home.repo.defaultRef || "main" };
-    const [tree, agents] = await Promise.all([
+    const [home, me, targets, { mode }] = await Promise.all([api.repo.getRepoHome({ fullName }), currentPrincipal(), promptTargets(), requestMode()]);
+    const branch = home.repo.defaultRef || "main";
+    const at = { expr: branch };
+    const [tree, agents, log, members, work] = await Promise.all([
       orEmptyRepo<TreeEntry[]>(api.query.listTree({ repo: ref, at, path: pathBytes("") }).then((t) => t.entries), []),
       // Agents are listed for signed-in viewers; anonymous visitors see leases only.
       me
@@ -60,6 +77,19 @@ export default async function RepoHomePage({ params }: { params: Promise<RepoPar
             .then((r): ActiveAgent[] => r.agents.filter((a) => a.status === "active").map((a) => ({ principal: a.principal, openChanges: a.openChanges, activeLeases: a.activeLeases })))
             .catch((): ActiveAgent[] => [])
         : Promise.resolve<ActiveAgent[]>([]),
+      // History that cannot be read (an empty repository, a server without Log) is simply not shown.
+      api.query
+        .log({ repo: ref, from: at, firstParent: true, page: { pageSize: RECENT_COMMITS } })
+        .then((l) => l.changesets)
+        .catch((): Changeset[] => []),
+      // The organisation's people, to name the person behind an agent's commit. Members only.
+      me
+        ? api.org
+            .listMembers({ org: owner })
+            .then((r) => r.members.map((m) => m.principal))
+            .catch((): (Principal | undefined)[] => [])
+        : Promise.resolve<(Principal | undefined)[]>([]),
+      me ? repositoryWork(api, ref).catch(() => []) : [],
     ]);
     // What last changed each row we show. A path whose history cannot be read just has no line.
     const shown = orderTree(tree).slice(0, ROOT_ROWS);
@@ -77,44 +107,91 @@ export default async function RepoHomePage({ params }: { params: Promise<RepoPar
     const lasts: Record<string, LastChange | undefined> = {};
     shown.forEach((e, i) => (lasts[pathText(e.path)] = lastOf[i]));
     const readme = home.readme;
+    const commits = log.map((c) => commitView(c, directoryOf(members)));
+    const historyHref = repoHref(fullName, "code?view=history");
+
+    if (mode === "bee") {
+      const repo = home.repo;
+      const groups: FactGroup[] = [
+        {
+          title: "facts",
+          facts: [
+            { label: "repository", value: fullName },
+            repo.description ? { label: "description", value: repo.description } : null,
+            { label: "visibility", value: (VISIBILITY[repo.visibility] ?? "Private").toLowerCase() },
+            { label: "default branch", value: branch },
+            { label: "open pull requests", value: String(home.openChanges) },
+            languagesText(home.languages) ? { label: "languages", value: languagesText(home.languages) } : null,
+            repo.topics.length ? { label: "topics", value: repo.topics.join(", ") } : null,
+            repo.licenseSpdx ? { label: "license", value: repo.licenseSpdx } : null,
+            home.cloneUrls?.https ? { label: "clone", value: home.cloneUrls.https } : null,
+            { label: "readme", value: readme ? readme.path + " · " + repoHref(fullName, "code?path=" + encodeURIComponent(readme.path)) : "none" },
+          ],
+        },
+        {
+          title: "files at " + branch,
+          lines: orderTree(tree).map((e) => {
+            const name = pathText(e.path);
+            const last = lasts[name];
+            return name + (e.mode === "MODE_TREE" ? "/" : "") + (e.restricted ? " · restricted" : "") + (last?.title ? " · " + last.title : "");
+          }),
+          empty: "The repository is empty.",
+        },
+        { title: "commits", lines: commits.map(commitLine), empty: "No commits yet." },
+        { title: "editing now", lines: editingMentions(home.leases, agents).map(({ id, line, principal, lease }) => <Link key={id} href={activityHref(fullName, work, me ? principal : undefined, lease)} className="link">{line}</Link>), empty: home.leasesVisible || me ? "Nobody is editing right now." : "Not shown to signed-out readers." },
+      ];
+      return <PageFacts page="code" title={fullName + " · code"} groups={groups} tools={pageTools("code")} level={2} />;
+    }
 
     return (
       <>
         <PageOp op={{ service: "RepoService", method: "GetRepoHome", request: { fullName }, label: "Read this repository" }} />
-        <div className="mt-10 grid grid-cols-1 gap-x-16 gap-y-14 xl:grid-cols-[minmax(0,1fr)_260px]">
-          <div className="flex min-w-0 max-w-[820px] flex-col gap-14">
-            <section aria-labelledby="files-heading">
-              <h2 id="files-heading" className="sr-only">
-                Files
+        <div className="flex max-w-[820px] min-w-0 flex-col gap-10">
+          {readme ? (
+            <section aria-labelledby="readme-heading">
+              <h2 id="readme-heading" className="sr-only">
+                README
               </h2>
-              <FileTreeRoot fullName={fullName} entries={tree} lasts={lasts} leases={home.leases} />
+              <Markdown source={readmeBody(readme.markdown, fullName)} repo={fullName} className="max-w-[70ch]" />
+              <p className="mt-5 flex flex-wrap items-baseline gap-x-2 text-xs text-ink-2">
+                <span className="mono">{readme.path}</span>
+                <span aria-hidden="true">·</span>
+                <Link href={repoHref(fullName, "code?path=" + encodeURIComponent(readme.path))} className="link inline-flex min-h-6 items-center">
+                  View source
+                </Link>
+                {readme.truncated ? <span>· This README is longer than 256 KiB; the rest is in the code view.</span> : null}
+              </p>
             </section>
-            {readme ? (
-              <section aria-labelledby="readme-heading">
-                <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-4 border-t border-line pt-6">
-                  <h2 id="readme-heading" className="mono text-base font-normal text-ink-2">
-                    {readme.path}
-                  </h2>
-                  <Link href={repoHref(fullName, "code?path=" + encodeURIComponent(readme.path))} className="inline-flex min-h-6 items-center text-base text-accent-ink hover:underline">
-                    View source
+          ) : (
+            <section aria-labelledby="readme-heading" className="flex max-w-xl flex-col gap-4">
+              <h2 id="readme-heading" className="text-xl font-light tracking-tight">
+                No README yet
+              </h2>
+              <p className="text-md text-ink-2">
+                {tree.length ? "This repository has no README. Add one so the next person, or agent, knows what it is for." : "This repository is empty. Connect a working copy and merge the first commit."}
+              </p>
+              <PromptCard id="setup-repo" vars={{ endpoint: targets.endpoint, repo: fullName }} />
+            </section>
+          )}
+          <Sect id="files-heading" title="Files">
+            <FileTreeRoot fullName={fullName} entries={tree} lasts={lasts} leases={home.leases} work={work} />
+          </Sect>
+          <Sect id="commits-heading" title="Commits">
+            {commits.length ? (
+              <>
+                <CommitRows commits={commits} />
+                <Quiet className="mt-4">
+                  Every commit names who wrote it, and for an agent the person it answers to.{" "}
+                  <Link href={historyHref} className="link">
+                    All commits
                   </Link>
-                </div>
-                <Markdown source={readmeBody(readme.markdown, fullName)} repo={fullName} className="max-w-[70ch]" />
-                {readme.truncated ? <p className="mt-4 text-sm text-ink-3">This README is longer than 256 KiB; the rest is in the code view.</p> : null}
-              </section>
+                </Quiet>
+              </>
             ) : (
-              <section aria-labelledby="readme-heading" className="flex max-w-xl flex-col gap-4 border-t border-line pt-6">
-                <h2 id="readme-heading" className="text-xl font-semibold tracking-tight">
-                  No README yet
-                </h2>
-                <p className="text-md text-ink-2">
-                  {tree.length ? "This repository has no README. Add one so the next person, or agent, knows what it is for." : "This repository is empty. Connect a working copy and land the first change."}
-                </p>
-                <PromptCard id="setup-repo" vars={{ endpoint: targets.endpoint, repo: fullName }} />
-              </section>
+              <Quiet>No commits yet.</Quiet>
             )}
-          </div>
-          <RepoNote repo={home.repo} languages={home.languages} leases={home.leases} leasesVisible={home.leasesVisible} agents={agents} signedIn={!!me} />
+          </Sect>
+          <RepoNote repo={home.repo} languages={home.languages} leases={home.leases} leasesVisible={home.leasesVisible} agents={agents} signedIn={!!me} work={work} />
           <FeedLink pagePath={repoHref(fullName)} />
         </div>
       </>

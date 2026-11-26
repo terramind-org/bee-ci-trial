@@ -136,20 +136,37 @@ test.describe("Cloud: onboarding", { tag: "@cloud" }, () => {
 test.describe("Cloud: billing", { tag: "@cloud" }, () => {
   test("renders the plan, seats and usage, or says billing is not available, and passes axe", async ({ page }) => {
     await page.goto(orgPath("billing"));
-    await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Billing" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Billing" })).toBeVisible();
     const plan = page.getByTestId("current-plan");
     const unavailable = page.getByTestId("billing-unavailable");
     await expect(plan.or(unavailable)).toBeVisible();
     if (await plan.isVisible()) {
       // An account with billing off has nothing to change.
-      await expect(page.getByRole("button", { name: "Review change" }).or(page.getByText("Billing is off for this account"))).toBeVisible();
+      const review = page.getByRole("button", { name: "Review change" });
+      await expect(review.or(page.getByText("Billing is off for this account"))).toBeVisible();
+      if (await review.isVisible() && await review.isEnabled()) {
+        await expect(review).toHaveAttribute("data-agent-confirm", /Changes the billing plan/);
+        const before = await plan.innerText();
+        await review.click();
+        const confirmation = page.getByRole("alertdialog", { name: /Change the plan/ });
+        await expect(confirmation.getByRole("button", { name: "Confirm change" })).toBeVisible();
+        await confirmation.getByRole("button", { name: "Cancel" }).click();
+        await expect(confirmation).toHaveCount(0);
+        await expect(plan).toHaveText(before);
+      }
       // Copy as lives in the page's "…" menu.
       await page.getByRole("button", { name: "More actions" }).click();
       await expect(page.getByRole("menuitem", { name: /Copy as/ })).toBeVisible();
       await page.keyboard.press("Escape");
     }
     await expectAccessible(page);
+    const wasAvailable = await plan.isVisible();
+    await page.goto(orgPath("billing") + "?mode=bee");
+    const facts = page.locator('[data-bee-page="org-billing"]');
+    await expect(facts.getByRole("heading", { name: /tools on this page/i })).toBeVisible();
+    await expect(facts.getByRole("row", { name: /billing_get_account_billing_plan/ })).toBeVisible();
+    await expect(facts).toContainText(wasAvailable ? "Current plan" : "Billing is not available on this server", { ignoreCase: true });
   });
 });
 

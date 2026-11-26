@@ -11,8 +11,23 @@ import { BeeError } from "./api/transport";
 /** The requirement id of a `require_linear` land rule, in `LandingEvaluation.missing` and `PolicyDenial.missing` (SPEC §7.4). */
 export const LINEAR_REQUIREMENT = "linear";
 
-export const LINEAR_MESSAGE = "This stack contains a merge changeset and the target requires linear history.";
-export const LINEAR_REMEDY = "Rebase the merge away so every member has one parent, or ask an admin to change the land rule.";
+export const LINEAR_MESSAGE = "This pull request contains a merge commit and the target branch requires linear history.";
+export const LINEAR_REMEDY = "Rebase the merge away so every commit has one parent, or ask an admin to change the rule.";
+
+/** Explains a rule's requirement in plain words; the raw token stays visible for agents. */
+export function explainRequirement(s: string): string {
+  if (s.startsWith("check:")) return "Check " + s.slice(6);
+  if (s.startsWith("approval:owner:")) return "An owner's approval for " + s.slice(15);
+  if (s.startsWith("approval:human:default")) return "A person's approval (an agent's change of a kind agents may not merge on their own)";
+  if (s.startsWith("approval:human:")) return "A person's approval for a " + s.slice(15);
+  if (s.startsWith("approval:any")) return "One approval " + s.slice(12);
+  if (s.startsWith("agent-may-land:")) return "Agents may merge " + s.slice(15) + " changes on their own";
+  if (s.startsWith("lease:exclusive:")) return "The author holds the exclusive lease on " + s.slice(16);
+  if (s.startsWith("stack:")) return s.slice(7).replace(/must land first$/, "must merge first");
+  if (s.startsWith("state:")) return "The pull request is " + s.slice(7);
+  if (s === LINEAR_REQUIREMENT) return LINEAR_MESSAGE;
+  return s;
+}
 
 /** True when a missing-requirement list carries the linear-history refusal. */
 export function refusesMerge(missing: readonly string[] | undefined): boolean {

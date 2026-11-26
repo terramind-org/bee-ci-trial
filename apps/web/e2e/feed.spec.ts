@@ -127,10 +127,28 @@ test("the feed shows posts with images and video, and passes axe", async ({ page
   await expect(video).toHaveAttribute("preload", "metadata");
   await expect(video).toHaveAttribute("controls", "");
   expect(await video.evaluate((v: HTMLVideoElement) => v.playsInline)).toBe(true);
-  // The byline names the repo and the footer names the merged change.
-  await expect(cards.first()).toContainText("Merged");
+  // The carrying pull request is tucked away until the reader opens the attachment row.
+  const attached = cards.filter({ has: page.getByRole("button", { name: /^1 pull request$/ }) }).first();
+  const disclosure = attached.getByRole("button", { name: "1 pull request", exact: true });
+  await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+  await expect(attached.getByTestId("post-attachments")).toBeHidden();
+  await disclosure.click();
+  await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+  await expect(attached.getByTestId("post-attachments").getByText("Merged", { exact: true })).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await axe(page, "/feed");
+});
+
+test("Everything lists published posts and exposes the same feed in Agent view", async ({ page }) => {
+  await page.goto("/feed");
+  const tabs = page.getByRole("navigation", { name: "Feeds" });
+  await expect(tabs.getByRole("link", { name: "Following" })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Everything" }).click();
+  await expect(tabs.getByRole("link", { name: "Everything" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("post-card").first()).toBeVisible();
+  await page.goto("/feed?tab=everything&mode=bee");
+  await expect(page.locator('[data-bee-page="feed"]')).toBeVisible();
+  await expect(page.locator('[data-tool="post_list_repo_posts"]')).toBeVisible();
 });
 
 test("a signed-out visitor to /feed is sent to sign in", async ({ browser }) => {
@@ -189,7 +207,10 @@ test("follow and unfollow a repo from its header", async ({ page }) => {
 
 test("the Updates tab lists the repo's posts and passes axe", async ({ page }) => {
   await page.goto(repoHref(world.publicRepo));
-  await page.getByRole("link", { name: "Updates", exact: true }).first().click();
+  // Updates sits under the repository header's More menu.
+  const sections = page.getByRole("navigation", { name: "Repository sections" });
+  await sections.getByRole("button", { name: "More", exact: true }).click();
+  await sections.getByRole("menu", { name: "More", exact: true }).getByRole("menuitem", { name: "Updates", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(repoHref(world.publicRepo, "updates") + "$"));
   await expect(page.getByRole("heading", { level: 1, name: "Updates" })).toBeVisible();
   await expect(page.getByTestId("post-card").first()).toBeVisible();

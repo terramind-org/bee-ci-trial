@@ -829,6 +829,16 @@ impl Writes {
                 json!({ "paths": paths.len() }),
             )
             .await?;
+            // The forge verifies the issued run token. Other credentials have no evidence
+            // to record, so keep their writes off this additional forge lookup path.
+            if caller.is_agent()
+                && caller
+                    .token
+                    .session()
+                    .is_some_and(|s| s.starts_with("run-"))
+            {
+                s.forge.note_safety_changeset(&caller, &repo, &id).await;
+            }
         }
         let cs = view(s, &caller, &policy, &history, &id, true).await?;
         Ok((
@@ -1056,9 +1066,49 @@ impl Writes {
         let s = &self.state;
         let caller = s.caller(md).await?;
         let repo = s.repo(req.repo.as_ref()).await?;
+        let mut verified_owner = false;
+        let effect = if caller.is_agent()
+            && caller
+                .token
+                .session()
+                .is_some_and(|s| s.starts_with("run-"))
+            && let Ok(name) = RefName::new(req.r#ref.clone())
+            && let Ok(head) = id_from(req.head.as_ref(), "head")
+        {
+            Some(format!("ref:{}:{}", name.as_str(), head.to_text()))
+        } else {
+            None
+        };
+        let result = self
+            .land_as(md, req, meta, &caller, &repo, &mut verified_owner)
+            .await;
+        // Only a verified owner forward continues an attempt recorded by the first server.
+        if !verified_owner && let Some(effect) = effect {
+            s.forge
+                .note_safety_land(
+                    &caller,
+                    &repo,
+                    &effect,
+                    result.as_ref().err().map(ApiError::reason),
+                )
+                .await;
+        }
+        result.map(|(policy, response)| (repo, policy, response))
+    }
+
+    async fn land_as(
+        &self,
+        md: &tonic::metadata::MetadataMap,
+        req: v1::LandRequest,
+        meta: &RequestMeta,
+        caller: &Caller,
+        repo: &RepoCtx,
+        verified_owner: &mut bool,
+    ) -> ApiResult<(Arc<Policy>, v1::LandResponse)> {
+        let s = &self.state;
         let name = RefName::new(req.r#ref.clone()).map_err(ApiError::from)?;
         let policy = s
-            .gate(&caller, &repo, Action::Land, Some(name.as_str()))
+            .gate(caller, repo, Action::Land, Some(name.as_str()))
             .await?;
         // A landed budget that is already spent is refused before any work.
         for c in caller.token.budget_charges() {
@@ -1071,7 +1121,7 @@ impl Writes {
                 ));
             }
         }
-        let history = s.history(&repo);
+        let history = s.history(repo);
         let mut head = id_from(req.head.as_ref(), "head")?;
         match v1::LandMethod::try_from(req.method).unwrap_or(v1::LandMethod::Unspecified) {
             v1::LandMethod::Unspecified | v1::LandMethod::Rebase => {}
@@ -1085,7 +1135,7 @@ impl Writes {
                         ApiError::not_found(format!("ref {} not found", name.as_str()))
                     })?;
                 head = self
-                    .squash(&caller, &repo, &history, &head, &tip, &req)
+                    .squash(caller, repo, &history, &head, &tip, &req)
                     .await?;
             }
             v1::LandMethod::MergeCommit => {
@@ -1113,14 +1163,14 @@ impl Writes {
             paths.sort();
             paths.dedup();
             s.require_paths(
-                &caller,
-                &repo,
+                caller,
+                repo,
                 &policy,
                 Action::Land,
                 &paths,
                 Some(name.as_str()),
             )?;
-            if s.forge.protects(&repo).await {
+            if s.forge.protects(repo).await {
                 // Forge push protection over what the stack adds, at Land too.
                 let mut files = Vec::new();
                 for id in &stack {
@@ -1143,13 +1193,12 @@ impl Writes {
                     .and_then(|v| v.to_str().ok())
                     .map(str::trim)
                     .filter(|v| !v.is_empty());
-                s.forge.protect(&caller, &repo, &files, bypass_id).await?;
+                s.forge.protect(caller, repo, &files, bypass_id).await?;
             }
         }
         let protected =
             policy.is_protected(name.as_str()) || name.namespace() == RefNamespace::Protected;
         let forwarded = md.get("x-bee-forwarded").is_some();
-        let mut verified_owner = false;
         // A forward naming its owner: only that owner, still at that fence, takes it and
         // queues it to its own coalescer. A marker without an owner is client-controlled and
         // therefore follows the ordinary protected-ref route.
@@ -1161,7 +1210,7 @@ impl Writes {
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(0);
             coalescer::verify_forwarded_owner(s, repo.repo.id, name.as_str(), owner, fence).await?;
-            verified_owner = true;
+            *verified_owner = true;
         }
         let job = LandJob {
             repo: repo.clone(),
@@ -1173,7 +1222,7 @@ impl Writes {
             caller: caller.clone(),
             meta: meta.clone(),
         };
-        let routed = match land_route(protected, forwarded, verified_owner) {
+        let routed = match land_route(protected, forwarded, *verified_owner) {
             LandRoute::Direct => coalescer::land(s, job, false, false).await,
             LandRoute::Ordinary | LandRoute::OwnerCoalescer => {
                 coalescer::land(s, job, true, false).await
@@ -1184,7 +1233,7 @@ impl Writes {
             Err(e) => {
                 if let Some(v1::error_detail::Payload::Conflicts(set)) = &e.detail.payload {
                     s.forge
-                        .land_conflict(&repo, name.as_str(), &head, &req.change_request_id, set)
+                        .land_conflict(repo, name.as_str(), &head, &req.change_request_id, set)
                         .await;
                 }
                 let label = match e.reason() {
@@ -1202,9 +1251,9 @@ impl Writes {
             .land(if newly == 0 { "skipped" } else { "landed" });
         if newly > 0 {
             s.audit(
-                &caller,
+                caller,
                 meta,
-                Some(&repo),
+                Some(repo),
                 name.as_str(),
                 "land",
                 json!({
@@ -1219,7 +1268,7 @@ impl Writes {
             .await?;
         }
         let policy = s
-            .policy_at(&repo, name.as_str(), Some(&out.target))
+            .policy_at(repo, name.as_str(), Some(&out.target))
             .await
             .unwrap_or(policy);
         let resp = v1::LandResponse {
@@ -1243,7 +1292,7 @@ impl Writes {
         };
         warm_after_land(
             &self.state,
-            &repo,
+            repo,
             out.target,
             out.members
                 .iter()
@@ -1254,10 +1303,10 @@ impl Writes {
         if newly > 0 {
             // Change requests whose changes this land published are recorded as landed.
             s.forge
-                .landed(&repo, name.as_str(), &resp, &req.change_request_id)
+                .landed(caller, repo, name.as_str(), &resp, &req.change_request_id)
                 .await;
         }
-        Ok((repo, policy, resp))
+        Ok((policy, resp))
     }
 
     async fn revert_impl(

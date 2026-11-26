@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { repositoryWork } from "@/components/agents/work";
+import { activityHref } from "@/components/repo/presence";
 import { CodeView } from "@/components/code-view";
 import { Avatar, toAvatar } from "@/components/avatar";
 import { DiffViewer } from "@/components/diff-viewer";
@@ -11,7 +13,7 @@ import { FileTreeRoot, type LastChange } from "@/components/repo/file-tree-root"
 import { Time } from "@/components/time";
 import { EmptyState, Panel, TabLinks, buttonClass, cx } from "@/components/ui";
 import { objectIdText, pathBytes, pathText } from "@/lib/api/ids";
-import { type RepoParams, scopeFromParams, serverClient } from "@/lib/api/server";
+import { type RepoParams, currentPrincipal, scopeFromParams, serverClient } from "@/lib/api/server";
 import type { Changeset, Principal, RepoContext } from "@/lib/api/types";
 import type { Op } from "@/lib/copyas";
 import { bytes } from "@/lib/format";
@@ -101,6 +103,9 @@ export default async function CodePage({ params, searchParams }: { params: Promi
     // The side note is optional: if its context cannot be read, the file view still renders.
     const ctx: RepoContext | null = view !== "compare" && kind !== "restricted" ? await api.repo.getContext({ repo: ref, at, paths: [pathBytes(path)] }).catch(() => null) : null;
 
+    const me = ctx?.activeLeases.length ? await currentPrincipal() : null;
+    const work = me ? await repositoryWork(api, ref).catch(() => []) : [];
+
     let content: ReactNode = null;
     let op: Op = { service: "QueryService", method: "ListTree", request: { repo: ref, at, path: pathBytes(path) }, label: "List this directory" };
     let side: ReactNode = null;
@@ -128,7 +133,7 @@ export default async function CodePage({ params, searchParams }: { params: Promi
             <button type="submit" className={buttonClass("primary", "md")}>
               Compare
             </button>
-            <p className="w-full text-sm text-ink-3">Revisions: ref names, ref~N, ref@version, or a changeset id prefix of at least 10 hex digits.</p>
+            <p className="w-full text-sm text-ink-3">Revisions: ref names, ref~N, ref@version, or a commit id prefix of at least 10 hex digits.</p>
           </form>
           <DiffViewer repo={fullName} crId={"compare:" + from + ".." + to} items={items} threads={[]} revision={1} latest={1} since={0} readOnly />
         </div>
@@ -248,6 +253,7 @@ export default async function CodePage({ params, searchParams }: { params: Promi
             entries={tree.entries}
             lasts={lasts}
             leases={ctx?.activeLeases ?? []}
+            work={work}
             hrefFor={(p) => href({ path: p, rev })}
             limit={Number.POSITIVE_INFINITY}
             empty="This directory is empty."
@@ -282,9 +288,9 @@ export default async function CodePage({ params, searchParams }: { params: Promi
                 {ctx.activeLeases.map((l) => (
                   <li key={l.id} className="flex items-start gap-2.5">
                     <Avatar principal={toAvatar(l.holder)} size={28} />
-                    <span className="min-w-0 pt-0.5 [overflow-wrap:anywhere]">
+                    <Link href={activityHref(fullName, work, me ? l.holder : undefined, l)} className="link min-h-6 min-w-0 pt-0.5 [overflow-wrap:anywhere]">
                       <span className="text-ink">{l.holder?.display ?? "Someone"}</span> holds an {l.mode === "LEASE_MODE_EXCLUSIVE" ? "exclusive" : "advisory"} lease on <span className="mono text-sm">{l.paths.map(pathText).join(", ")}</span>.
-                    </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -293,8 +299,8 @@ export default async function CodePage({ params, searchParams }: { params: Promi
             )}
           </section>
           {ctx.openChangesTouching.length ? (
-            <section aria-label="Open change requests touching this">
-              <h3 className="mb-1.5 text-sm font-medium text-ink-3">Open change requests touching this</h3>
+            <section aria-label="Open pull requests touching this">
+              <h3 className="mb-1.5 text-sm font-medium text-ink-3">Open pull requests touching this</h3>
               <ul className="flex flex-col gap-1">
                 {ctx.openChangesTouching.slice(0, 6).map((c) => (
                   <li key={c.id}>
@@ -307,8 +313,8 @@ export default async function CodePage({ params, searchParams }: { params: Promi
             </section>
           ) : null}
           {ctx.landRules.length ? (
-          <section aria-label="Land rules on main">
-            <h3 className="mb-1.5 text-sm font-medium text-ink-3">Land rules on main</h3>
+          <section aria-label="Rules for merging into main">
+            <h3 className="mb-1.5 text-sm font-medium text-ink-3">Rules for merging into main</h3>
             <ul className="flex list-disc flex-col gap-1 pl-5">
               {ctx.landRules.map((r) => (
                 <li key={r}>{r}</li>

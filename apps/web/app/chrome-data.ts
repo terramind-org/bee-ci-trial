@@ -1,16 +1,17 @@
 /**
  * What every layout's shell and keyboard chrome need, loaded once per request: who is signed
- * in, the edition, the org and repo the palette and `g` chords resolve against, and the repos
+ * in, the mode (person or agent), the edition, the org and repo the palette and `g` chords resolve against, and the repos
  * the caller can switch to. Signed out, nothing is listed and no fallback repo is guessed.
  */
 import type { AppShellProps, ChromeProps } from "@/components/app-shell";
 import { adapterKind, currentScope, edition, getRequestScope, serverClient, sessionState } from "@/lib/api/server";
 import { isRepoFullName } from "@/lib/routes";
+import { requestMode } from "./request-mode";
 
-export type ShellBase = Pick<AppShellProps, "me" | "edition" | "adapter" | "org">;
+export type ShellBase = Pick<AppShellProps, "me" | "edition" | "adapter" | "org" | "mode">;
 
 export async function chromeData(): Promise<{ shell: ShellBase; chrome: ChromeProps }> {
-  const [{ me }, ed] = await Promise.all([sessionState(), edition()]);
+  const [{ me }, ed, { mode }] = await Promise.all([sessionState(), edition(), requestMode()]);
   const inUrl = getRequestScope();
   const scope = inUrl || me ? await currentScope() : { org: "", repo: "" };
   let repos: string[] = [];
@@ -24,7 +25,7 @@ export async function chromeData(): Promise<{ shell: ShellBase; chrome: ChromePr
   }
   const repo = isRepoFullName(scope.repo) ? scope.repo : null;
   return {
-    shell: { me, edition: ed, org: scope.org, adapter: adapterKind() },
+    shell: { me, edition: ed, org: scope.org, adapter: adapterKind(), mode },
     chrome: { repo, repos, org: scope.org, signedIn: !!me },
   };
 }

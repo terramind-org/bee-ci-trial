@@ -91,7 +91,7 @@ export interface UploadDeps {
 
 export interface UploadRequest {
   repo: RepoRef;
-  changeId: string;
+  changeId?: string;
   file: Blob & { type: string };
   /** Required for an image, 1 to 1000 characters; optional for a video. */
   altText?: string;
@@ -120,7 +120,7 @@ export async function uploadPostMedia(client: Pick<BeeClient, "post">, req: Uplo
   const doFetch = deps.fetch ?? fetch;
   const kind = checkUpload(req.file, req.altText);
   const [info, sha256] = await Promise.all([readMediaInfo(req.file, kind, deps.decode), sha256Hex(req.file)]);
-  const begin = await client.post.beginPostMediaUpload({ repo: req.repo, changeId: req.changeId, kind, contentType: req.file.type, sizeBytes: String(req.file.size) });
+  const begin = await client.post.beginPostMediaUpload({ repo: req.repo, changeId: req.changeId ?? "", kind, contentType: req.file.type, sizeBytes: String(req.file.size) });
   let res: Response;
   try {
     res = await doFetch(begin.uploadUrl, { method: "PUT", headers: begin.uploadHeaders, body: req.file });

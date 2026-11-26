@@ -1,17 +1,17 @@
-import { Line, PanelSkeleton, Skel } from "@/components/skeletons";
+import { Line, SectSkeleton, Skel } from "@/components/skeletons";
 
-/** A tab loading inside the change layout: the header, tabs and rail are already there. */
+/** A tab loading inside the pull request's layout: the title, the decisions and the tabs are already there. */
 export default function Loading() {
   return (
     <Skel>
-      <div className="flex max-w-[760px] flex-col gap-10">
-        <div className="flex flex-col gap-3">
-          <Line w="90%" lh={32} bar={18} />
-          <Line w="60%" lh={32} bar={18} />
+      <div className="flex max-w-[860px] flex-col gap-10">
+        <div className="flex flex-col gap-2">
+          <Line w="88%" lh={28} bar={14} />
+          <Line w="52%" lh={22} bar={10} />
         </div>
-        <span aria-hidden="true" className="block h-[76px] rounded-xl bg-sunken" />
-        <PanelSkeleton title="Needs you" rows={2} rowHeight={44} lines={1} />
-        <PanelSkeleton title="Does it work?" rows={3} rowHeight={120} lines={1} />
+        <SectSkeleton title="Why you" lines={2} />
+        <SectSkeleton title="Checks" lines={1} />
+        <SectSkeleton title="Files changed" lines={4} />
       </div>
     </Skel>
   );

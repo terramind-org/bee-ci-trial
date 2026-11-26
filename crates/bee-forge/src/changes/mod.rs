@@ -204,7 +204,14 @@ pub static MODULE: ForgeModule = ForgeModule {
     surfaces: &[SURFACE],
     // The posts tables live on this surface so a land, close or reopen updates the change
     // request's post in the same transaction (`crate::posts`).
-    migrations: &[&M1, &M2, &M3, &crate::posts::M1, &crate::posts::M2],
+    migrations: &[
+        &M1,
+        &M2,
+        &M3,
+        &crate::posts::M1,
+        &crate::posts::M2,
+        &crate::swarms::outcomes::MIGRATION,
+    ],
     event_kinds: &[
         EventKind::gh(
             "cr.opened",

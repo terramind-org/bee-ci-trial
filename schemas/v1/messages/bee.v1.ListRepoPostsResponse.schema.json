@@ -10,16 +10,32 @@
       "type": "object"
     },
     "bee.v1.Post": {
-      "description": "A post on a change request.",
+      "description": "A post: on its own, or on a change request.",
       "properties": {
         "approvedBy": {
           "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "article": {
+          "$ref": "#/$defs/bee.v1.PostArticle",
+          "description": "unset when the post has no article"
+        },
+        "attachments": {
+          "description": "What the post is about, in order. A post on a change request lists that change request\nfirst, whether or not it was written before attachments existed.",
+          "items": {
+            "$ref": "#/$defs/bee.v1.PostAttachment"
+          },
+          "type": "array"
         },
         "author": {
           "$ref": "#/$defs/bee.v1.Principal",
           "description": "the caller who last set the text; may be an agent"
         },
+        "bodyMarkdown": {
+          "description": "Markdown, at most 20000 characters; may be empty",
+          "type": "string"
+        },
         "changeId": {
+          "description": "the change request carrying it; empty for a post of its own",
           "type": "string"
         },
         "changeNumber": {
@@ -60,7 +76,7 @@
           "$ref": "#/$defs/bee.v1.PostState"
         },
         "text": {
-          "description": "NFC plain text, at most 500 characters",
+          "description": "the summary: NFC plain text, at most 500 characters",
           "type": "string"
         },
         "updatedAt": {
@@ -84,6 +100,68 @@
       },
       "title": "bee.v1.Post",
       "type": "object"
+    },
+    "bee.v1.PostArticle": {
+      "description": "The long-form part of a post.",
+      "properties": {
+        "bodyMarkdown": {
+          "description": "Markdown, at most 100000 characters, not empty",
+          "type": "string"
+        },
+        "title": {
+          "description": "NFC plain text on one line, 1-200 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PostArticle",
+      "type": "object"
+    },
+    "bee.v1.PostAttachment": {
+      "description": "Something in the post's repo that the post is about, with what a client needs to show it as\na card. A writer sets `kind` and `id` (or, for a change request or an issue, `number`); the\nserver checks it and fills the rest on every read from the attachment as it is now. When the\nattachment is gone (or a release went back to draft) only `kind` and `id` are set.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PostAttachmentKind"
+        },
+        "number": {
+          "description": "change request and issue only",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "state": {
+          "description": "The attachment's state in lower case: `open`, `landed` or `closed` for a change request,\n`open` or `closed` for an issue, `published` or `prerelease` for a release, and the\nAgentRunState name without its prefix (`running`, `succeeded`, ...) for an agent run.",
+          "type": "string"
+        },
+        "tagName": {
+          "description": "release only",
+          "type": "string"
+        },
+        "title": {
+          "description": "A release's name (else its tag); the first line of an agent run's prompt (else its agent's\nname).",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PostAttachment",
+      "type": "object"
+    },
+    "bee.v1.PostAttachmentKind": {
+      "description": "What a post's attachment points at.",
+      "enum": [
+        "POST_ATTACHMENT_KIND_UNSPECIFIED",
+        "POST_ATTACHMENT_KIND_CHANGE_REQUEST",
+        "POST_ATTACHMENT_KIND_RELEASE",
+        "POST_ATTACHMENT_KIND_ISSUE",
+        "POST_ATTACHMENT_KIND_AGENT_RUN",
+        "POST_ATTACHMENT_KIND_SWARM"
+      ],
+      "title": "bee.v1.PostAttachmentKind",
+      "type": "string"
     },
     "bee.v1.PostCounts": {
       "description": "Engagement counts of a post.",

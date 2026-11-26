@@ -1,0 +1,391 @@
+{
+  "$defs": {
+    "bee.v1.AgentRunBudget": {
+      "description": "Spending and time limits for a run.",
+      "properties": {
+        "maxChangesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxDurationSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxInputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxOutputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxUsdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentRunBudget",
+      "type": "object"
+    },
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SwarmAttempt": {
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "handBack": {
+          "$ref": "#/$defs/bee.v1.SwarmHandBack"
+        },
+        "outcome": {
+          "$ref": "#/$defs/bee.v1.SwarmAttemptOutcome"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SwarmAttempt",
+      "type": "object"
+    },
+    "bee.v1.SwarmAttemptOutcome": {
+      "enum": [
+        "SWARM_ATTEMPT_OUTCOME_UNSPECIFIED",
+        "SWARM_ATTEMPT_OUTCOME_FINISHED",
+        "SWARM_ATTEMPT_OUTCOME_EMPTY",
+        "SWARM_ATTEMPT_OUTCOME_REFUSED"
+      ],
+      "title": "bee.v1.SwarmAttemptOutcome",
+      "type": "string"
+    },
+    "bee.v1.SwarmHandBack": {
+      "properties": {
+        "concerns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "deviations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "done": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "followUps": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SwarmHandBack",
+      "type": "object"
+    },
+    "bee.v1.SwarmJoin": {
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "budget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget"
+        },
+        "decidedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requestedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "requester": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SwarmJoinState"
+        }
+      },
+      "title": "bee.v1.SwarmJoin",
+      "type": "object"
+    },
+    "bee.v1.SwarmJoinState": {
+      "enum": [
+        "SWARM_JOIN_STATE_UNSPECIFIED",
+        "SWARM_JOIN_STATE_PENDING",
+        "SWARM_JOIN_STATE_ACCEPTED",
+        "SWARM_JOIN_STATE_DECLINED",
+        "SWARM_JOIN_STATE_REFUSED"
+      ],
+      "title": "bee.v1.SwarmJoinState",
+      "type": "string"
+    },
+    "bee.v1.SwarmState": {
+      "enum": [
+        "SWARM_STATE_UNSPECIFIED",
+        "SWARM_STATE_PLANNING",
+        "SWARM_STATE_WORKING",
+        "SWARM_STATE_PAUSED",
+        "SWARM_STATE_STOPPED",
+        "SWARM_STATE_FINISHED"
+      ],
+      "title": "bee.v1.SwarmState",
+      "type": "string"
+    },
+    "bee.v1.SwarmTask": {
+      "properties": {
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SwarmAttempt"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runId": {
+          "description": "only while working",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SwarmTaskState"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SwarmTask",
+      "type": "object"
+    },
+    "bee.v1.SwarmTaskState": {
+      "enum": [
+        "SWARM_TASK_STATE_UNSPECIFIED",
+        "SWARM_TASK_STATE_OPEN",
+        "SWARM_TASK_STATE_WORKING",
+        "SWARM_TASK_STATE_FINISHED",
+        "SWARM_TASK_STATE_EMPTY"
+      ],
+      "title": "bee.v1.SwarmTaskState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Swarm.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "branch": {
+      "type": "string"
+    },
+    "budget": {
+      "$ref": "#/$defs/bee.v1.AgentRunBudget"
+    },
+    "changeRequestIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "cost": {
+      "$ref": "#/$defs/bee.v1.Cost"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "issue": {
+      "type": "string"
+    },
+    "joins": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SwarmJoin"
+      },
+      "type": "array"
+    },
+    "lead": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "leadRunId": {
+      "type": "string"
+    },
+    "memberRunIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SwarmState"
+    },
+    "status": {
+      "type": "string"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SwarmTask"
+      },
+      "type": "array"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Swarm",
+  "type": "object"
+}

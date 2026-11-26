@@ -6,6 +6,7 @@ import * as C from "./content";
 import type { PrincipalKind } from "../types";
 import { POST_CRS } from "./posts-world";
 import { ACME_TOPICS, COMMUNITY_CRS, COMMUNITY_HISTORY, COMMUNITY_PRINCIPALS, COMMUNITY_REPOS } from "./community-world";
+import { POLICY_PATH } from "./policy";
 
 export interface PrincipalSeed {
   handle: string;
@@ -78,8 +79,9 @@ const ACME_PRINCIPALS: PrincipalSeed[] = [
     owner: "mara",
     runtime: "claude-code",
     model: "claude-sonnet-5",
-    purpose: "First-pass review on every change request. Its approvals never count toward rules.",
+    purpose: "First-pass review on every pull request. Its approvals never count toward rules.",
   },
+  { handle: "nightly-import", kind: "PRINCIPAL_KIND_AGENT", display: "nightly-import", owner: "ci" },
   { handle: "ci", kind: "PRINCIPAL_KIND_SERVICE", display: "bee-ci" },
   { handle: "importer", kind: "PRINCIPAL_KIND_SERVICE", display: "github-importer" },
 ];
@@ -129,7 +131,8 @@ const ACME_HISTORY: CommitSeed[] = [
       "README.md": C.README,
       "package.json": C.PACKAGE_V1,
       "bun.lock": C.LOCK_V1,
-      ".bee/policy.toml": C.POLICY_V1,
+      [POLICY_PATH]: C.POLICY_V1,
+      "AGENTS.md": C.AGENT_INSTRUCTIONS,
       ".github/workflows/ci.yml": C.CI_YML,
       "src/server.ts": C.SERVER,
       "src/routes/health.ts": C.HEALTH_V1,
@@ -480,7 +483,7 @@ const ACME_CRS: CrSeed[] = [
     ago: 60,
     state: "CHANGE_STATE_OPEN",
     ws: "ws/mara/policy-migrations",
-    revisions: [{ ago: 60, base: 9, files: { ".bee/policy.toml": C.POLICY_V2 }, contentChanged: true, checks: PASS }],
+    revisions: [{ ago: 60, base: 9, files: { [POLICY_PATH]: C.POLICY_V2 }, contentChanged: true, checks: PASS }],
     reviews: [],
     threads: [],
   },
@@ -544,7 +547,7 @@ export interface LeaseSeed {
 export const LEASES: LeaseSeed[] = [
   { key: "l1", repo: "api", holder: "triage", paths: ["src/auth"], mode: "LEASE_MODE_EXCLUSIVE", expiresIn: 85, note: "Rotating session ids (#13)", cr: "rotate" },
   { key: "l2", repo: "api", holder: "billing", paths: ["src/billing/tax.ts", "tests/billing.test.ts"], mode: "LEASE_MODE_ADVISORY", expiresIn: 40, note: "Tax rounding and PDF breakdown", cr: "tax" },
-  { key: "l3", repo: "api", holder: "watcher", paths: ["src/routes/health.ts"], mode: "LEASE_MODE_ADVISORY", expiresIn: 110, note: "Watching p99 after the histogram landed" },
+  { key: "l3", repo: "api", holder: "watcher", paths: ["src/routes/health.ts"], mode: "LEASE_MODE_ADVISORY", expiresIn: 110, note: "Watching p99 after the histogram merged" },
   { key: "l4", repo: "api", holder: "lin", paths: ["src/billing/invoice.ts"], mode: "LEASE_MODE_ADVISORY", expiresIn: 25, note: "Invoice totals cache", cr: "cache" },
   { key: "l5", repo: "web", holder: "lin", paths: ["lib/robots.ts"], mode: "LEASE_MODE_ADVISORY", expiresIn: 60, note: "Polling robots" },
 ];

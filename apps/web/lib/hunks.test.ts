@@ -15,7 +15,7 @@ describe("worth a human look", () => {
       diffItem("src/feed/rank.ts", "logic", [" ctx"]),
     ]);
     expect(picked.map((p) => p.path + "#" + p.index)).toEqual(["src/auth/session.ts#0", "src/billing/invoice.ts#0", "src/cache/lru.ts#0"]);
-    expect(picked[0]?.reason).toBe("Touches a path the policy marks sensitive.");
+    expect(picked[0]?.reason).toBe("Touches a path the rules mark sensitive.");
   });
 
   it("prefers paths the brief names, then fills with second hunks, and cuts long hunks", () => {

@@ -20,10 +20,13 @@ import * as imports from "../gen/bee/v1/import_pb";
 import * as issues from "../gen/bee/v1/issues_pb";
 import * as policy from "../gen/bee/v1/policy_pb";
 import * as posts from "../gen/bee/v1/posts_pb";
+import * as safety from "../gen/bee/v1/safety_pb";
+import * as swarms from "../gen/bee/v1/swarms_pb";
 import * as projects from "../gen/bee/v1/projects_pb";
 import * as releases from "../gen/bee/v1/releases_pb";
 import * as security from "../gen/bee/v1/security_pb";
 import * as vcs from "../gen/bee/v1/vcs_pb";
+import * as deployments from "../gen/bee/v1/deployments_pb";
 import * as workflows from "../gen/bee/v1/workflows_pb";
 import * as apps from "../gen/bee/v1/apps_pb";
 import * as packages from "../gen/bee/v1/packages_pb";
@@ -33,10 +36,11 @@ import * as teams from "../gen/bee/v1/teams_pb";
 import { SERVICE_KEYS } from "./client";
 import { OPS, wireOf } from "./ops";
 import { adoptOutcome } from "./ops/posts";
+import { runStatus } from "./ops/work";
 import { CATALOG_CLI, kebab, toCli, toCurl, toMcp } from "../copyas";
 
 const services = new Map<string, DescService>();
-for (const mod of [briefs, billing, enterprise, insights, ops, users, agents, audit, auth, forge, imports, issues, policy, posts, projects, releases, security, vcs, workflows, apps, packages, pages, search, teams])
+for (const mod of [briefs, billing, enterprise, insights, ops, users, agents, audit, auth, forge, imports, issues, policy, posts, swarms, safety, projects, releases, security, vcs, workflows, deployments, apps, packages, pages, search, teams])
   for (const v of Object.values(mod)) if (typeof v === "object" && v && (v as { kind?: string }).kind === "service") services.set((v as DescService).name, v as DescService);
 
 /** A request with every field any UI method reads, so each `wire` can run. */
@@ -48,6 +52,7 @@ const sample = {
   threadId: "t",
   principalId: "p",
   runId: "r",
+  workflow: "ci.yml",
   jobId: "j",
   number: 12,
   issueNumber: 12,
@@ -73,7 +78,12 @@ const sample = {
   fullName: "lattice/engine",
   limit: 5,
   planId: "team",
+  visibility: "VISIBILITY_PUBLIC",
+  expectedVersion: "1",
 };
+
+const cliDir = fileURLToPath(new URL("../../../../schemas/v1/cli", import.meta.url));
+const schemas = new Set(readdirSync(cliDir).map((n) => n.replace(/\.schema\.json$/, "")));
 
 describe("mapping layer", () => {
   it("implements every service of the method table", () => {
@@ -96,6 +106,32 @@ describe("mapping layer", () => {
     expect(seen.length).toBeGreaterThan(110);
   });
 
+  it("keeps approval holds, deployment protection and completed outcomes distinct", () => {
+    expect(runStatus("WORKFLOW_STATUS_ACTION_REQUIRED", undefined)).toBe("waiting");
+    expect(runStatus("WORKFLOW_STATUS_WAITING", undefined)).toBe("protection");
+    const completed = (conclusion: string) => runStatus("WORKFLOW_STATUS_COMPLETED", "WORKFLOW_CONCLUSION_" + conclusion);
+    expect(completed("SUCCESS")).toBe("passed");
+    expect(completed("NEUTRAL")).toBe("neutral");
+    expect(completed("SKIPPED")).toBe("skipped");
+    expect(completed("UNSPECIFIED")).toBe("completed");
+  });
+
+  it("uses dedicated workflow and deployment CLI commands for CI management", () => {
+    const cases = [
+      ["WorkflowService", "CancelRun", "workflow.cancel-workflow-run"],
+      ["WorkflowService", "ListWorkflows", "workflow.list-workflows"],
+      ["WorkflowService", "EnableWorkflow", "workflow.enable-workflow"],
+      ["WorkflowService", "DisableWorkflow", "workflow.disable-workflow"],
+      ["WorkflowService", "GetWorkflowBadge", "workflow.get-workflow-badge"],
+      ["DeploymentService", "ListDeployments", "deployment.list-deployments"],
+    ] as const;
+    for (const [service, method, expected] of cases) {
+      const [, noun, verb] = toCli({ service, method, request: sample }).split(" ");
+      expect(noun + "." + verb).toBe(expected);
+      expect(schemas.has(expected)).toBe(true);
+    }
+  });
+
   it("Copy as shows the real RPC, not the UI method name", () => {
     const op = { service: "ChangeService" as const, method: "ListThreads", request: { repo: sample.repo, changeRequestId: "cr" } };
     expect(toCurl(op)).toContain("/bee.v1.ChangeService/ListReviewThreads");
@@ -107,13 +143,22 @@ describe("mapping layer", () => {
 });
 
 describe("community, discovery, posts, cloud and admin methods", () => {
-  const cliDir = fileURLToPath(new URL("../../../../schemas/v1/cli", import.meta.url));
-  const schemas = new Set(readdirSync(cliDir).map((n) => n.replace(/\.schema\.json$/, "")));
   const NEW = [
     "OrgService/CreateOrg",
     "RepoService/ListMyRepos",
     "RepoService/GetRepoHome",
     "RepoService/CreateRepo",
+    "RepoService/ForkRepo",
+    "RepoService/ListForks",
+    "RepoService/SyncFork",
+    "QueryService/IsAncestor",
+    "RepoService/UpdateRepo",
+    "RepoService/ListCollaborators",
+    "RepoService/ListDeployKeys",
+    "TeamService/ListRepoTeams",
+    "AgentService/ResolveAgentInstructions",
+    "PolicyService/GetPolicy",
+    "PolicyService/EvaluatePolicy",
     "ObjectService/GetServerInfo",
     "InsightsService/GetLanguages",
     "SearchService/SearchRepos",
@@ -124,10 +169,24 @@ describe("community, discovery, posts, cloud and admin methods", () => {
     "SearchService/ListFeaturedTopics",
     "SearchService/ListPublicActivity",
     ...Object.keys(OPS.PostService).map((m) => "PostService/" + m),
+    ...Object.keys(OPS.SwarmService).map((m) => "SwarmService/" + m),
+    ...Object.keys(OPS.SafetyService).map((m) => "SafetyService/" + m),
     "AgentService/GetAgentFeedTrigger",
     "AgentService/SetAgentFeedTrigger",
     "AgentService/ListAgentFeedTriggers",
     "AgentService/ListAdoptRuns",
+    "AgentService/GetAgentRun",
+    "AgentService/ListAgentRuns",
+    "AgentService/ListAgentRunEvents",
+    "AgentService/SendAgentRunMessage",
+    "AgentService/CancelAgentRun",
+    "AgentService/RetryAgentRun",
+    "WorkflowService/CancelRun",
+    "WorkflowService/ListWorkflows",
+    "WorkflowService/EnableWorkflow",
+    "WorkflowService/DisableWorkflow",
+    "WorkflowService/GetWorkflowBadge",
+    "DeploymentService/ListDeployments",
     "IssueService/CreateIssue",
     ...Object.keys(OPS.BriefService).map((m) => "BriefService/" + m),
     "ChangeService/ListComments",
@@ -183,6 +242,10 @@ describe("community, discovery, posts, cloud and admin methods", () => {
     expect(JSON.parse(toMcp(like)).params).toEqual({ name: "post_like_post", arguments: { postId: "01P" } });
     const set = { service: "PostService" as const, method: "SetChangePost", request: { repo: sample.repo, changeId: "cr", text: "It works", mediaIds: ["m1", "m2"] } };
     expect(toCli(set)).toBe("bee post set-change-post --repo acme/api --change-id cr --text 'It works' --media-ids m1 --media-ids m2 --json");
+    const create = { service: "PostService" as const, method: "CreatePost", request: { repo: sample.repo, text: "This week", bodyMarkdown: "## Done", attachments: [{ kind: "POST_ATTACHMENT_KIND_ISSUE", number: "7" }] } };
+    expect(toCurl(create)).toContain("/bee.v1.PostService/CreatePost");
+    expect(JSON.parse(toMcp(create)).params).toEqual({ name: "post_create_post", arguments: create.request });
+    expect(toCli(create)).toMatch(/^bee post create-post --repo acme\/api --text 'This week' --body-markdown '## Done' --attachments /);
     const follow = { service: "UserService" as const, method: "FollowRepo", request: { repo: { fullName: "lattice/engine" } } };
     expect(toCli(follow)).toBe("bee user follow-repo --repo lattice/engine --json");
     expect(toCurl(follow)).toContain("/bee.v1.UserService/FollowRepo");

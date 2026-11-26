@@ -25,11 +25,11 @@ export function LeaderboardTable({ entries, unit, caption }: { entries: Leaderbo
           if (!subject) return null;
           return (
             <li key={e.user?.login ?? e.repo?.fullName ?? i} className="border-b border-line py-4" data-rank={rank}>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <span className={"num w-8 shrink-0 text-right text-lg " + (isTop(rank) ? "font-semibold text-ink" : "text-ink-3")}>{rank}</span>
                 <div className="min-w-0 flex-1">{subject}</div>
                 <span className={"num shrink-0 text-xl " + (isTop(rank) ? "font-semibold text-ink" : "text-ink")}>{score}</span>
-                <span className="num hidden w-12 shrink-0 text-right text-sm text-ink-3 sm:block">{Math.round(share * 100)}%</span>
+                <span className="num w-10 shrink-0 text-right text-sm text-ink-3">{Math.round(share * 100)}%</span>
               </div>
               <div className="mt-3 pl-12">
                 <ShareBar share={share} />

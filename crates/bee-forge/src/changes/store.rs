@@ -438,7 +438,19 @@ impl Changes {
             payload_json,
             ..Default::default()
         })
-        .await
+        .await?;
+        // An ordinary change does not need a subscriber to load the repository and look up
+        // run attribution. The transaction that owns that attribution emits the work event.
+        if !rec.safety_run_id.is_empty() && matches!(kind, "cr.opened" | "cr.revised" | "cr.landed")
+        {
+            tx.emit_event(crate::safety::evidence_event(
+                &cr.repo_id,
+                &rec.org_id,
+                &rec.safety_run_id,
+            ))
+            .await?;
+        }
+        Ok(())
     }
 
     pub(crate) fn audit_cr(action: &str, rec: &CrRecord) -> AuditDraft {
@@ -690,6 +702,17 @@ impl Changes {
 
     /// Opens a CR.
     pub async fn open(&self, cx: &Cx, repo: &Repo, new: NewChange) -> Result<ChangeRequest> {
+        self.open_attributed(cx, repo, new, None).await
+    }
+
+    // A verified run's outcome is written in the same transaction as its change.
+    pub(crate) async fn open_attributed(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        new: NewChange,
+        run_id: Option<&str>,
+    ) -> Result<ChangeRequest> {
         let head = new
             .head
             .clone()
@@ -808,6 +831,7 @@ impl Changes {
             has_merges: stack.has_merges,
             stack: stack.members.clone(),
             manual_issues: new.linked_issues.clone(),
+            safety_run_id: run_id.unwrap_or_default().to_owned(),
             ..CrRecord::default()
         };
         // Code owners and team expansion, unless the CR starts as a draft.
@@ -832,6 +856,9 @@ impl Changes {
             .n1(now_ms as i64)
             .msg(&rec);
         tx.insert(&CRS, &row).await?;
+        if let Some(run_id) = run_id {
+            crate::swarms::outcomes::record_change(&mut tx, &repo.id, run_id, &id).await?;
+        }
         if let Some(post) = &new.inspired_by {
             crate::posts::adopt::record(
                 &mut tx,

@@ -3,18 +3,23 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { Avatar, toAvatar } from "@/components/avatar";
+import { requestMode } from "@/app/request-mode";
+import { PageFacts } from "@/components/bee/page-facts";
+import { State } from "@/components/parts";
+import { ApprovePost } from "@/components/posts/approve";
+import { AdoptionLine, Adoptions, PostComments, loadAdoptions } from "@/components/posts/conversation";
+import { optionalRead, postOwner } from "@/components/posts/post-data";
+import { postFacts } from "@/components/posts/post-facts";
 import { PageMenu } from "@/components/menu";
-import { PostCard } from "@/components/post-card";
-import { countsOf, describePost, mediaHref, postHref, postTitle, viaLine } from "@/components/post-text";
-import { Time } from "@/components/time";
-import { Badge, PageHeader } from "@/components/ui";
+import { PostCard } from "@/components/posts/post-card";
+import { describePost, mediaHref, postHref, postTitle } from "@/components/posts/post-text";
+import { PageHeader } from "@/components/ui";
 import { scopeFromParams, serverClient, sessionState } from "@/lib/api/server";
 import { BeeError } from "@/lib/api/transport";
-import type { Post, PostAdoption } from "@/lib/api/types";
-import { plural } from "@/lib/format";
+import type { Post } from "@/lib/api/types";
 import { guard } from "@/lib/page";
 import { repoHref } from "@/lib/routes";
+import { pageTools } from "@/lib/tools";
 
 type Params = Promise<{ owner: string; repo: string; postId: string }>;
 
@@ -46,7 +51,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const post = await loadPost(fullName, decodeURIComponent(postId));
   if (!post) return { title: "Not found" };
   const title = postTitle(post);
-  if (post.state === "POST_STATE_WITHDRAWN") return { title, description: "This post was withdrawn.", robots: { index: false } };
+  if (post.state !== "POST_STATE_PUBLISHED") return { title: "Post", robots: { index: false } };
   const base = await origin();
   const url = base + postHref(post);
   const description = describePost(post.text) || "A post on " + post.repo?.fullName + ".";
@@ -73,116 +78,64 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 const STATE_NOTE: Partial<Record<Post["state"], string>> = {
-  POST_STATE_DRAFT: "This is a draft. It publishes when the change request merges.",
-  POST_STATE_PENDING_APPROVAL: "An agent wrote this post. It publishes once a person approves it.",
-  POST_STATE_DISCARDED: "The change request closed without merging, so this post was never published.",
+  POST_STATE_DRAFT: "This is a draft. It publishes when the pull request merges.",
+  POST_STATE_DISCARDED: "The pull request closed without merging, so this post was never published.",
 };
 
 /** `/{owner}/{repo}/posts/{postId}`: one post, and the repos that adopted what it describes. */
 export default async function PostPage({ params }: { params: Params }) {
   return guard(async () => {
-    const { fullName } = await scopeFromParams(params);
+    const { fullName, ref } = await scopeFromParams(params);
     const { postId } = await params;
-    const [post, { me }] = await Promise.all([loadPost(fullName, decodeURIComponent(postId)), sessionState()]);
+    const [post, { me }, { mode }, api] = await Promise.all([loadPost(fullName, postId), sessionState(), requestMode(), serverClient()]);
     if (!post) notFound();
-    const withdrawn = post.state === "POST_STATE_WITHDRAWN";
-    const note = STATE_NOTE[post.state];
+
+    const published = post.state === "POST_STATE_PUBLISHED";
+    const pending = post.state === "POST_STATE_PENDING_APPROVAL";
+    const [ownerName, adoptions, conversation] = await Promise.all([
+      postOwner(post, me),
+      published && me ? loadAdoptions(api, post.id) : undefined,
+      published && post.changeId ? optionalRead(api.change.listComments({ repo: ref, changeRequestId: post.changeId, page: { pageSize: 200 } })) : undefined,
+    ]);
+    const ownerId = post.author?.ownerId;
+    const canApprove = pending && post.viewer?.canApprove && me?.kind === "PRINCIPAL_KIND_HUMAN" && (!ownerId || ownerId === me.id);
+    const note = pending ? "Waiting for " + (ownerName || "a person with write access") + " to approve" : STATE_NOTE[post.state];
+    const title = post.article?.title || post.changeTitle || "Post";
+    const tools = pageTools("post").filter(({ op }) => {
+      if (op === "PostService/GetPost") return true;
+      if (op === "PostService/ApprovePost") return pending;
+      if (op === "ChangeService/ListComments") return published && !!post.changeId;
+      return published;
+    });
+    if (mode === "bee") {
+      const facts = postFacts({ post, ownerName });
+      if (note) facts.facts?.unshift({ label: "state", value: note });
+      return <PageFacts page="post" title={title} groups={[
+        facts,
+        ...(adoptions?.length ? [{ title: "adoptions", lines: adoptions.map((item, i) => <AdoptionLine key={i} item={item} />) }] : []),
+        ...(conversation ? [{
+          title: "comments on the pull request",
+          lines: conversation.comments.map((c) => <span key={c.id} className="whitespace-pre-wrap">{[c.author?.display, c.createdAt, c.body].filter(Boolean).join("\n")}</span>),
+          empty: "There are no comments yet.",
+        }] : []),
+      ]} tools={tools} />;
+    }
     const op = { service: "PostService" as const, method: "GetPost", request: { postId: post.id }, label: "Read this post" };
     return (
-      <div className="max-w-[640px]">
+      <div className="mx-auto w-full max-w-[640px]">
         <PageHeader
-          eyebrow={
-            <Link href={repoHref(fullName, "updates")} className="hover:text-ink hover:underline">
-              Updates
-            </Link>
-          }
-          title={post.changeTitle || "Post"}
+          eyebrow={<Link href={repoHref(fullName, "updates")} className="link">Updates</Link>}
+          title={title}
           actions={<PageMenu op={op} />}
         />
-        {note ? <p className="-mt-6 mb-8 text-base text-ink-2">{note}</p> : null}
-        <PostCard post={post} signedIn={!!me} standalone />
-        {withdrawn ? null : <Adoptions post={post} signedIn={!!me} />}
+        {note ? <div className="mb-6 flex flex-wrap items-center gap-3">
+          <State shape={pending ? "waiting" : post.state === "POST_STATE_DRAFT" ? "open" : "closed"}>{note}</State>
+          {canApprove ? <ApprovePost postId={post.id} fullName={fullName} /> : null}
+        </div> : null}
+        <PostCard post={post} signedIn={!!me} ownerName={ownerName} standalone primary={!!me && published} />
+        {published ? <Adoptions post={post} items={adoptions} /> : null}
+        {conversation ? <PostComments repo={fullName} comments={conversation.comments} /> : null}
       </div>
     );
   });
-}
-
-/**
- * Who adopted the upgrade: each repo with the issue or change request it opened, its author, and
- * an Agent badge when an agent opened it. Only repos the reader can read are listed (and counted),
- * so a private repo never shows through an adoption. Signed out the list cannot be read.
- */
-async function Adoptions({ post, signedIn }: { post: Post; signedIn: boolean }) {
-  const total = countsOf(post).adoptions;
-  let adoptions: PostAdoption[] = [];
-  if (signedIn) {
-    try {
-      adoptions = (await (await serverClient()).post.listPostAdoptions({ postId: post.id, page: { pageSize: 50 } })).adoptions;
-    } catch (err) {
-      if (!(err instanceof BeeError)) throw err;
-    }
-  }
-  if (!adoptions.length && !total) return null;
-  // An issue adoption names its issue by id (the fixture by number); the issue's page needs the number.
-  const numbers = new Map<string, string>();
-  const repos = [...new Set(adoptions.filter((a) => a.subject?.kind === "SUBJECT_KIND_ISSUE" && !/^\d+$/.test(a.subject.id)).map((a) => a.repo?.fullName ?? a.subject?.repo?.fullName ?? ""))].filter(Boolean);
-  await Promise.all(
-    repos.map(async (r) => {
-      try {
-        for (const i of (await (await serverClient()).issue.listIssues({ repo: { fullName: r } })).issues) numbers.set(r + ":" + i.id, String(i.number));
-      } catch (err) {
-        if (!(err instanceof BeeError)) throw err;
-      }
-    }),
-  );
-  return (
-    <section id="adoptions" aria-labelledby="adoptions-title" className="mt-14 scroll-mt-20" data-testid="post-adoptions-section">
-      <h2 id="adoptions-title" className="text-xl font-medium text-ink">
-        Adoptions
-      </h2>
-      <p className="mt-1 text-base text-ink-2">{plural(Math.max(total, adoptions.length), "repo")} took this upgrade into their own work.</p>
-      {adoptions.length ? (
-        <ul className="mt-6 flex flex-col gap-6">
-          {adoptions.map((a, i) => {
-            const repo = a.repo?.fullName ?? a.subject?.repo?.fullName ?? "";
-            const issue = a.subject?.kind === "SUBJECT_KIND_ISSUE";
-            const issueNumber = issue ? (numbers.get(repo + ":" + a.subject?.id) ?? a.subject?.id ?? "") : "";
-            const href = repoHref(repo, (issue ? "work/" + encodeURIComponent(issueNumber) : "changes/" + encodeURIComponent(a.subject?.id ?? "")));
-            const agent = a.author?.kind === "PRINCIPAL_KIND_AGENT";
-            return (
-              <li key={repo + ":" + (a.subject?.id ?? i)} className="flex gap-3">
-                {a.author ? <Avatar principal={toAvatar(a.author)} size={32} className="mt-0.5" /> : <span className="size-8 shrink-0" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-base text-ink-2">
-                    <Link href={repoHref(repo)} className="font-medium text-ink hover:underline">
-                      {repo}
-                    </Link>{" "}
-                    {issue ? "opened an issue" : "opened a change request"}
-                    {a.author ? <> · {a.author.display}</> : null}
-                    {agent ? (
-                      <Badge className="ml-2 align-middle" title={viaLine(a.author)}>
-                        Agent
-                      </Badge>
-                    ) : null}
-                  </p>
-                  <Link href={href} className="mt-0.5 block text-md text-ink hover:underline">
-                    {a.title || (issue ? "Issue " + issueNumber : "Change request")}
-                    {issue && /^\d+$/.test(issueNumber) ? <span className="num text-ink-3"> · #{issueNumber}</span> : null}
-                  </Link>
-                  {a.createdAt ? <Time iso={a.createdAt} className="text-sm text-ink-3" /> : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="mt-4 text-base text-ink-2">
-          <Link href={"/signin?next=" + encodeURIComponent(postHref(post) + "#adoptions")} className="link">
-            Sign in
-          </Link>{" "}
-          to see which repos adopted it.
-        </p>
-      )}
-    </section>
-  );
 }

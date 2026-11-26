@@ -204,6 +204,19 @@ export const canWriteRepo = cache(async (fullName: string): Promise<boolean> => 
   }
 });
 
+/** The Agents lifecycle controls check the management grant; the server rechecks role and branch on writes. */
+export const canManageRepo = cache(async (fullName: string): Promise<boolean> => {
+  const token = await sessionToken();
+  if (!token) return false;
+  try {
+    const access = await rpcFor(token).call(AuthService.method.checkAccess, { repo: { fullName }, action: "manage_settings", paths: [""] });
+    return access.allowed?.[0] === true;
+  } catch (error) {
+    if (error instanceof BeeError) return false;
+    throw error;
+  }
+});
+
 /*
  * Stars and follows for the repo header and the star/follow buttons. These call UserService
  * directly because the typed UI methods for them (`starRepo`, `followUser`, …) arrive with the

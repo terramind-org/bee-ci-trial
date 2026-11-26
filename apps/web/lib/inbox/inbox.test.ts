@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentSummary, ChangeRequest, CheckRun, FeedEvent, LandingEvaluation, Post, Principal, Review } from "@/lib/api/types";
-import { classify, needsOf, postNeed, sortNeeds, type ChangeFacts } from "./needs";
+import { classify, needWords, needsOf, postNeed, sortNeeds, type ChangeFacts } from "./needs";
 import { DAY, agentWork, doneSince, landedTitle, progressOf, weekOf } from "./progress";
 import { checksInWords, missingInWords, parseApproval, riskOf, runtimeName } from "./words";
 
@@ -90,6 +90,34 @@ describe("classify", () => {
     const review1 = classify(facts({ landing: landing(["approval:any (0 of 1)"]) }), me)!;
     const failing = classify(facts({ checks: [check("test", "CHECK_STATUS_FAILED")] }), me)!;
     expect(sortNeeds([review1, failing]).map((n) => n.kind)).toEqual(["failing", "review"]);
+  });
+
+  it("lists the highest risk first, whatever kind of need it is", () => {
+    const classed = (id: string, diffClass: string): ChangeRequest => ({ ...change(bot), id, revisions: [{ n: 1, diffClass, createdAt: "2026-10-20T00:00:00Z" }] });
+    const docsFailing = classify(facts({ change: classed("docs", "docs"), checks: [check("test", "CHECK_STATUS_FAILED")] }), me)!;
+    const depReview = classify(facts({ change: classed("dep", "dependency"), landing: landing(["approval:any (0 of 1)"]) }), me)!;
+    const sensitiveReview = classify(facts({ change: classed("auth", "sensitive"), landing: landing(["approval:human:sensitive (0 of 1)"]) }), me)!;
+    expect(sortNeeds([docsFailing, depReview, sensitiveReview]).map((n) => n.change.id)).toEqual(["auth", "dep", "docs"]);
+  });
+
+  it("says in one sentence why each need is in front of a person", () => {
+    const review1 = classify(facts({ landing: landing(["approval:owner:src/billing (0 of 1)"]), owners: { "src/billing": ["Mara Okafor"] }, branch: "ws/billing/tax" }), me)!;
+    expect(review1.branch).toBe("ws/billing/tax");
+    expect(needWords(review1)).toEqual({ who: "triage", verb: "wants to merge", why: "It touches src/billing, which needs one approval from Mara Okafor." });
+    const failing = classify(facts({ checks: [check("test", "CHECK_STATUS_FAILED")] }), me)!;
+    expect(needWords(failing)).toEqual({ who: "triage", verb: "is stuck on", why: "It failed the test check." });
+    const ready = classify(facts({ landing: landing([], true) }), me)!;
+    expect(needWords(ready).why).toBe("Every rule passes. It waits for a person to merge it.");
+    const blocked = classify(facts({ landing: landing(["lease:exclusive:src/auth"]) }), me)!;
+    expect(needWords(blocked)).toMatchObject({ verb: "cannot merge", why: "It needs exclusive editing of src/auth." });
+  });
+
+  it("names the person who answers for each need: the agent's owner, or the author", () => {
+    const directory = new Map([[me.id, me]]);
+    const [need] = needsOf([facts({ landing: landing(["approval:any (0 of 1)"]) })], [], dev, directory);
+    expect(need?.answers?.display).toBe("Mara Okafor");
+    // An owner the scan could not read is left out.
+    expect(needsOf([facts({ landing: landing(["approval:any (0 of 1)"]) })], [], dev)[0]?.answers).toBeUndefined();
   });
 });
 

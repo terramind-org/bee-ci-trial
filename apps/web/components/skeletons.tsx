@@ -5,6 +5,7 @@
  * from the rendered pages (docs/design/tokens.md, "Loading"); change them together.
  */
 import type { CSSProperties, ReactNode } from "react";
+import { LoadingBee } from "./bees/pieces";
 import { Icon } from "./icons";
 import { Kbd, PageHeader, cx } from "./ui";
 
@@ -13,7 +14,7 @@ export function Line({ w, lh = 20, bar = 10, className }: { w: number | string; 
   return (
     // Never wider than its container: a phone-width page must not scroll sideways while loading.
     <span aria-hidden="true" className={cx("flex max-w-full items-center", className)} style={{ height: lh }}>
-      <span className="block max-w-full animate-pulse rounded-[3px] bg-hover" style={{ width: w, height: bar }} />
+      <span className="block max-w-full rounded-[3px] bg-hover" style={{ width: w, height: bar }} />
     </span>
   );
 }
@@ -22,11 +23,10 @@ export function Line({ w, lh = 20, bar = 10, className }: { w: number | string; 
 const WIDTHS = [62, 48, 71, 55, 40, 66, 52, 44, 58, 69, 46, 60];
 const pct = (i: number, scale = 1) => Math.round(WIDTHS[i % WIDTHS.length]! * scale) + "%";
 
-export function Skel({ children }: { children: ReactNode }) {
+export function Skel({ children, frame = false }: { children: ReactNode; frame?: boolean }) {
   return (
-    // Held back 120ms, then faded in: a fast navigation never flashes a skeleton at all. The
-    // status role is what lets it carry an aria-label: axe refuses one on a role-less div.
-    <div role="status" aria-busy="true" aria-label="Loading" className="[animation:fade_200ms_var(--ease-out)_120ms_both]">
+    <div className="relative [animation:fade_200ms_var(--ease-out)_120ms_both]">
+      <div className={cx("pointer-events-none absolute", frame ? "end-5 top-2" : "end-0 bottom-full")}><LoadingBee /></div>
       {children}
     </div>
   );
@@ -66,12 +66,12 @@ export function DetailHeaderSkeleton({ height, titleW = 360 }: { height: number;
 export function TabsSkeleton({ labels, active = 0, counts = true }: { labels: string[]; active?: number; counts?: boolean }) {
   return (
     // The same boxes as TabLinks (components/ui.tsx): underlined tabs that scroll, never pills.
-    <div aria-hidden="true" className="mb-6 border-b border-line">
+    <div aria-hidden="true" className="mb-8 border-b border-line">
       <div className="-mb-px flex gap-6 overflow-hidden">
         {labels.map((l, i) => (
-          <span key={l} className={cx("inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-base whitespace-nowrap", i === active ? "border-ink font-medium text-ink" : "border-transparent text-ink-2")}>
+          <span key={l} className={cx("inline-flex h-10 shrink-0 items-center gap-1.5 border-b text-base whitespace-nowrap", i === active ? "border-ink text-ink" : "border-transparent text-ink-2")}>
             {l}
-            {counts ? <span className="inline-block h-2 w-2.5 animate-pulse rounded-[2px] bg-hover" /> : null}
+            {counts ? <span className="inline-block h-2 w-2.5 rounded-[2px] bg-hover" /> : null}
           </span>
         ))}
       </div>
@@ -100,16 +100,16 @@ export function RowSkeleton({ i, height, glyph = "ring", lines = 2, trailing = t
   const style: CSSProperties = { height };
   return (
     <li className="flex items-center gap-3" style={style}>
-      {glyph === "ring" ? <span className="size-3.5 shrink-0 animate-pulse rounded-full border-[1.5px] border-line-strong" /> : null}
-      {glyph === "square" ? <span className="size-[30px] shrink-0 animate-pulse rounded-[5px] bg-hover" /> : null}
+      {glyph === "ring" ? <span className="size-3.5 shrink-0 rounded-full border-[1.5px] border-line-strong" /> : null}
+      {glyph === "square" ? <span className="size-[30px] shrink-0 rounded-[5px] bg-hover" /> : null}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="block h-2.5 animate-pulse rounded-[3px] bg-hover" style={{ width: pct(i) }} />
-        {lines === 2 ? <span className="block h-2 animate-pulse rounded-[3px] bg-hover/70" style={{ width: pct(i + 5, 0.5) }} /> : null}
+        <span className="block h-2.5 rounded-[3px] bg-hover" style={{ width: pct(i) }} />
+        {lines === 2 ? <span className="block h-2 rounded-[3px] bg-hover/70" style={{ width: pct(i + 5, 0.5) }} /> : null}
       </div>
       {trailing ? (
         <div className="hidden shrink-0 items-center gap-3 md:flex">
-          <span className="block h-2.5 w-16 animate-pulse rounded-[3px] bg-hover" />
-          <span className="block h-2.5 w-10 animate-pulse rounded-[3px] bg-hover/70" />
+          <span className="block h-2.5 w-16 rounded-[3px] bg-hover" />
+          <span className="block h-2.5 w-10 rounded-[3px] bg-hover/70" />
         </div>
       ) : null}
     </li>
@@ -153,5 +153,33 @@ export function PanelSkeleton({ title, rows, rowHeight, lines = 2, actions = fal
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Rows between hairlines, as the redesigned lists draw them: a sentence and a small line under it. */
+export function RowsSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <ul aria-hidden="true" className="border-t border-line">
+      {Array.from({ length: rows }, (_, i) => (
+        <li key={i} className="flex flex-col gap-1.5 border-b border-line py-5">
+          <Line w={pct(i)} lh={26} bar={13} />
+          <Line w={pct(i + 3, 0.7)} lh={18} bar={9} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A section with its real label in the left column and placeholder lines beside it. */
+export function SectSkeleton({ title, lines = 2 }: { title: string; lines?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-line pt-5 md:grid-cols-[160px_minmax(0,1fr)]">
+      <p className="text-xs font-medium text-ink-2">{title}</p>
+      <div className="flex min-w-0 flex-col gap-1">
+        {Array.from({ length: lines }, (_, i) => (
+          <Line key={i} w={pct(i + 1)} lh={24} bar={10} />
+        ))}
+      </div>
+    </div>
   );
 }

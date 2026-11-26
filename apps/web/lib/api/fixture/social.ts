@@ -130,7 +130,7 @@ export function repoHit(s: FixtureStore, r: RepoState, score = 0): SearchRepoHit
     openIssueCount: v.openIssues,
     licenseSpdxId: v.licenseSpdx,
     archived: v.archived,
-    isFork: false,
+    isFork: !!v.forkParentId,
     isTemplate: false,
     visibility: visibilityWord(r),
     updatedAt: v.pushedAt,

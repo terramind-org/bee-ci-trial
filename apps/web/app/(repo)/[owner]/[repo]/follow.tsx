@@ -23,7 +23,7 @@ export async function followerCount(list: (pageToken: string) => Promise<{ n: nu
   return Math.min(n, FOLLOWER_COUNT_CAP);
 }
 
-export async function RepoFollow({ fullName, signedIn }: { fullName: string; signedIn: boolean }) {
+export async function repoFollowState(fullName: string, signedIn: boolean) {
   const api = await serverClient();
   const repo = { fullName };
   const [count, following] = await Promise.allSettled([
@@ -34,13 +34,22 @@ export async function RepoFollow({ fullName, signedIn }: { fullName: string; sig
     signedIn ? api.user.isFollowingRepo({ repo }).then((r) => r.following) : Promise.resolve(false),
   ]);
   const unimplemented = [count, following].some((r) => r.status === "rejected" && r.reason instanceof BeeError && r.reason.code === "unimplemented");
+  return {
+    following: signedIn && following.status === "fulfilled" ? following.value : undefined,
+    count: count.status === "fulfilled" ? count.value : undefined,
+    unavailable: unimplemented ? "Following is not available on this server (UNIMPLEMENTED)" : undefined,
+  };
+}
+
+export async function RepoFollow({ fullName, signedIn }: { fullName: string; signedIn: boolean }) {
+  const { following, count, unavailable } = await repoFollowState(fullName, signedIn);
   return (
     <FollowRepoButton
       target={fullName}
       signedIn={signedIn}
-      following={following.status === "fulfilled" ? following.value : false}
-      count={count.status === "fulfilled" ? count.value : undefined}
-      unavailable={unimplemented ? "Following is not available on this server (UNIMPLEMENTED)" : undefined}
+      following={following ?? false}
+      count={count}
+      unavailable={unavailable}
     />
   );
 }

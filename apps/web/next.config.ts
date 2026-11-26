@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// The UI makes no third-party requests: fonts are bundled from npm, there are no trackers.
+// The UI makes no third-party requests: it uses the system fonts and there are no trackers.
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,

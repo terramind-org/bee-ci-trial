@@ -17,9 +17,7 @@ export default function Loading() {
         </div>
         <div className="mt-6 h-16 max-w-md rounded-md border border-line bg-sunken" />
       </Skel>
-      <Skel>
-        <div className="h-56 rounded-lg border border-line bg-surface" />
-      </Skel>
+      <div aria-hidden="true" className="h-56 rounded-lg border border-line bg-surface" />
     </main>
   );
 }

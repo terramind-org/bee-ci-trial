@@ -155,7 +155,7 @@ export default async function CodeTab({ params, searchParams }: { params: Promis
             </div>
             {others.length ? (
               <div className="md:col-span-2">
-                <h3 className="mb-2 text-sm text-ink-3">Other open change requests on these paths</h3>
+                <h3 className="mb-2 text-sm text-ink-3">Other open pull requests on these paths</h3>
                 <ul className="flex flex-col gap-1">
                   {others.map((c) => (
                     <li key={c.id}>

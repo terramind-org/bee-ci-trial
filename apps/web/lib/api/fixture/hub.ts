@@ -6,7 +6,7 @@
 import { AppService, type AppInstallationJson, type AppJson } from "../../gen/bee/v1/apps_pb";
 import { PackageService, type PackageJson, type PackageVersionJson } from "../../gen/bee/v1/packages_pb";
 import { PagesService, type PagesDeploymentJson } from "../../gen/bee/v1/pages_pb";
-import { TeamService, type TeamJson } from "../../gen/bee/v1/teams_pb";
+import { TeamService, type TeamJson, type TeamMemberJson } from "../../gen/bee/v1/teams_pb";
 import { BeeError } from "../transport";
 import { defineService, type ServiceDef } from "./router";
 import { digestHex, objectId, ulid } from "./seed";
@@ -29,7 +29,7 @@ interface AppSeed {
 }
 
 const APPS: AppSeed[] = [
-  { slug: "release-notes", name: "Release notes", description: "Drafts release notes from the change requests that landed since the last tag.", permissions: [["changes", "read"], ["releases", "write"]], public: true, ageDays: 61, installs: 3 },
+  { slug: "release-notes", name: "Release notes", description: "Drafts release notes from the pull requests that merged since the last tag.", permissions: [["changes", "read"], ["releases", "write"]], public: true, ageDays: 61, installs: 3 },
   { slug: "status-sync", name: "Status sync", description: "Mirrors check results to the fleet console's status page.", permissions: [["checks", "read"], ["issues", "write"]], public: false, ageDays: 24, installs: 1 },
 ];
 
@@ -96,17 +96,17 @@ interface TeamSeed {
   name: string;
   description: string;
   members: string[];
-  repos: number;
+  repos: Record<string, string>;
   parent?: string;
   secret?: boolean;
   idp?: boolean;
 }
 
 const TEAMS: TeamSeed[] = [
-  { slug: "platform", name: "Platform", description: "Owns the API, the cells and the release train.", members: ["mara", "dev", "lin"], repos: 3 },
-  { slug: "billing", name: "Billing", description: "Invoices, plans and the money paths. Policy requires its approval on src/billing.", members: ["dev", "sam"], repos: 1, parent: "platform" },
-  { slug: "docs", name: "Docs", description: "Keeps the guides and the reference in step with the code.", members: ["lin"], repos: 2 },
-  { slug: "security-review", name: "Security review", description: "Reviews anything that touches auth or secrets.", members: ["mara", "dev"], repos: 3, secret: true, idp: true },
+  { slug: "platform", name: "Platform", description: "Owns the API, the cells and the release train.", members: ["mara", "dev", "lin"], repos: { api: "maintain", web: "maintain", infra: "maintain" } },
+  { slug: "billing", name: "Billing", description: "Invoices, plans and the money paths. Policy requires its approval on src/billing.", members: ["dev", "sam"], repos: { api: "write" }, parent: "platform" },
+  { slug: "docs", name: "Docs", description: "Keeps the guides and the reference in step with the code.", members: ["lin"], repos: { api: "write", web: "write" } },
+  { slug: "security-review", name: "Security review", description: "Reviews anything that touches auth or secrets.", members: ["mara", "dev"], repos: { api: "write", web: "write", infra: "write" }, secret: true, idp: true },
 ];
 
 function teamJson(s: FixtureStore, org: string, t: TeamSeed): TeamJson {
@@ -123,7 +123,7 @@ function teamJson(s: FixtureStore, org: string, t: TeamSeed): TeamJson {
     policyGroup: "@" + org + "/" + t.slug,
     memberCount: t.members.length,
     childTeamCount: TEAMS.filter((c) => c.parent === t.slug).length,
-    repoCount: t.repos,
+    repoCount: Object.keys(t.repos).length,
     idpSynced: !!t.idp,
     createdAt: at,
     updatedAt: at,
@@ -131,6 +131,44 @@ function teamJson(s: FixtureStore, org: string, t: TeamSeed): TeamJson {
 }
 
 const teams = defineService(TeamService, {
+  listRepoTeams: (s, req, ctx) => {
+    const repo = s.repo(req.repo);
+    const actor = s.caller(ctx.token);
+    const role = s.orgRecord(repo.owner).members.get(actor);
+    const maintain = repo.owner === s.org.name && TEAMS.some((team) => team.repos[repo.name] === "maintain" && team.members.includes(actor));
+    if (role !== "ROLE_OWNER" && role !== "ROLE_ADMIN" && !maintain) {
+      throw new BeeError("permission_denied", { reason: "POLICY_DENIED", message: "Repository maintainer access is required." });
+    }
+    const rows = repo.owner === s.org.name ? TEAMS.flatMap((team) => {
+      const role = team.repos[repo.name];
+      return role ? [{ teamId: teamJson(s, repo.owner, team).id, repo: { fullName: repo.repo.fullName }, role }] : [];
+    }) : [];
+    const pg = page(rows, req.page, 100);
+    return { grants: pg.items, page: { nextPageToken: pg.next } };
+  },
+  // Match the team directory's direct and inherited membership response.
+  listTeamMembers: (s, req) => {
+    const org = s.orgRecord(req.org || s.org.name).org.name;
+    const seeds = org === s.org.name ? TEAMS : [];
+    const team = seeds.find((t) => t.slug === req.team || teamJson(s, org, t).id === req.team);
+    if (!team) throw new BeeError("not_found", { reason: "NOT_FOUND", message: "This team could not be found." });
+    const selected = teamJson(s, org, team);
+    const all = new Map<string, TeamMemberJson>();
+    function add(t: TeamSeed, inherited: boolean) {
+      const source = teamJson(s, org, t);
+      for (const handle of t.members) {
+        const principal = s.p(handle);
+        if (!inherited || !all.has(principal.id)) {
+          all.set(principal.id, { teamId: selected.id, principal, role: "TEAM_MEMBER_ROLE_MEMBER", inherited, viaTeamId: inherited ? source.id : "" });
+        }
+      }
+      if (req.includeChildTeams) for (const child of seeds.filter((row) => row.parent === t.slug)) add(child, true);
+    }
+    add(team, false);
+    const rows = [...all.values()].filter((m) => !req.role || req.role === "TEAM_MEMBER_ROLE_UNSPECIFIED" || req.role === m.role);
+    const pg = page(rows, req.page, 100);
+    return { members: pg.items, page: { nextPageToken: pg.next } };
+  },
   listTeams: (s, req) => {
     const org = req.org || s.org.name;
     s.orgRecord(org);

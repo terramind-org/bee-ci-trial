@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import { pressUntil, repoPath, seed } from "./helpers";
 
 test.describe("Shell, palette and keyboard", () => {
-  test("command palette jumps to a change by title", async ({ page }) => {
+  test("command palette jumps to a pull request by title", async ({ page }) => {
     await page.goto(repoPath("activity"));
     const palette = page.getByRole("dialog", { name: "Command palette" });
     await pressUntil(page, "ControlOrMeta+k", () => expect(palette).toBeVisible({ timeout: 1000 }));
-    await page.getByPlaceholder(/Jump to a change/).fill("rotate session");
+    await page.getByPlaceholder(/Jump to a pull request/).fill("rotate session");
     await expect(palette.getByRole("option", { name: /Rotate session ids on role change/ })).toBeVisible();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(seed.changes.rotate.title);
@@ -40,20 +40,34 @@ test.describe("Shell, palette and keyboard", () => {
     await expect(page.getByLabel("Filter changes")).toBeFocused();
   });
 
-  test("theme toggles between light and dark and persists", async ({ page }) => {
+  test("the theme follows the system until a choice is made, then the choice persists", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.goto(repoPath("activity"));
-    const before = await page.evaluate(() => document.documentElement.dataset.theme);
-    await page.getByRole("button", { name: /Switch to (dark|light) theme/ }).click();
-    const after = await page.evaluate(() => document.documentElement.dataset.theme);
-    expect(after).not.toBe(before);
+    const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+    const switcher = page.getByRole("complementary", { name: "Beehive" }).getByRole("group", { name: "Theme" });
+    // Nothing stored: the system decides, and the System position is the pressed one.
+    expect(await theme()).toBe("dark");
+    await expect(switcher.getByRole("button", { name: "Follow the system theme" })).toHaveAttribute("aria-pressed", "true");
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect.poll(theme).toBe("light");
+    // A choice overrides the system and survives a reload.
+    await switcher.getByRole("button", { name: "Switch to dark theme" }).click();
+    expect(await theme()).toBe("dark");
     await page.reload();
-    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(after);
+    expect(await theme()).toBe("dark");
+    await expect(switcher.getByRole("button", { name: "Switch to dark theme" })).toHaveAttribute("aria-pressed", "true");
+    // System forgets the choice.
+    await switcher.getByRole("button", { name: "Follow the system theme" }).click();
+    expect(await theme()).toBe("light");
   });
 
   test("switching repository rescopes every screen", async ({ page }) => {
     await page.goto(repoPath("code"));
     await expect(page.getByRole("region", { name: "README.md" })).toContainText("Invoicing service");
-    await page.getByLabel("Repository", { exact: true }).selectOption("dev/website");
+    // The palette switches to the same section of another repository.
+    const palette = page.getByRole("dialog", { name: "Command palette" });
+    await pressUntil(page, "ControlOrMeta+k", () => expect(palette).toBeVisible({ timeout: 1000 }));
+    await palette.getByRole("option", { name: "Switch to dev/website", exact: true }).click();
     await expect(page).toHaveURL(/\/dev\/website\/code$/);
     await expect(page.getByRole("region", { name: "README.md" })).toContainText("website");
     await expect(page.getByRole("region", { name: "README.md" })).not.toContainText("Invoicing service");
@@ -71,7 +85,7 @@ test.describe("Shell, palette and keyboard", () => {
     await page.goto(repoPath("activity"));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.getByRole("button", { name: "Open navigation" }).click();
-    await page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "Change requests" }).click();
+    await page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "Pull requests" }).click();
     await expect(page).toHaveURL(new RegExp(repoPath("changes") + "$"));
     await page.locator("[data-nav-item]").filter({ hasText: seed.changes.fix.title }).click();
     await expect(page.getByTestId("land-panel").first()).toBeVisible();

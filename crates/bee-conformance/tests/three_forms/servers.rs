@@ -186,7 +186,7 @@ pub async fn run_step(
                 .to_owned(),
             None => server.token.clone(),
         };
-        let r = api::call(http, &server.url, &token, m, &request, None).await;
+        let r = api::call(http, &server.url, &token, m, &request, step.max_items).await;
         match (&r.outcome, step.expect.as_str()) {
             (Outcome::Ok(items), "ok") => {
                 if items.len() == 1 {

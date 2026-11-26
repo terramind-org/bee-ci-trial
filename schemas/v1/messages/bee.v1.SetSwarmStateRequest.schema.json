@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SwarmRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SwarmRef",
+      "type": "object"
+    },
+    "bee.v1.SwarmState": {
+      "enum": [
+        "SWARM_STATE_UNSPECIFIED",
+        "SWARM_STATE_PLANNING",
+        "SWARM_STATE_WORKING",
+        "SWARM_STATE_PAUSED",
+        "SWARM_STATE_STOPPED",
+        "SWARM_STATE_FINISHED"
+      ],
+      "title": "bee.v1.SwarmState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetSwarmStateRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "state": {
+      "$ref": "#/$defs/bee.v1.SwarmState"
+    },
+    "swarm": {
+      "$ref": "#/$defs/bee.v1.SwarmRef"
+    }
+  },
+  "title": "bee.v1.SetSwarmStateRequest",
+  "type": "object"
+}

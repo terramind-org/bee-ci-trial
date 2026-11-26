@@ -37,7 +37,7 @@ export function TrendingRepoList({ repos, since, relations, firstRank = 1 }: { r
             rank={rank}
             className="py-5"
             avatar={<OwnerMark fullName={hit.fullName} size={36} />}
-            trailing={<StarButton starred={relations.starred.includes(hit.fullName)} count={Number(hit.starCount)} target={hit.fullName} signedIn={relations.signedIn} />}
+            trailing={<StarButton starred={relations.starred.includes(hit.fullName)} count={Number(hit.starCount)} target={hit.fullName} signedIn={relations.signedIn} copyAs={false} />}
           >
             <RepoName fullName={hit.fullName} top={isTop(rank)} className="block text-lg" />
             {hit.description ? <p className="mt-1 line-clamp-2 max-w-2xl text-md text-ink-2">{hit.description}</p> : null}
@@ -48,7 +48,7 @@ export function TrendingRepoList({ repos, since, relations, firstRank = 1 }: { r
                 <span className="num">+{compact(Number(t.starsInWindow))}</span> {IN_WINDOW[since]}
               </span>
               {t.builtBy.length ? (
-                <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                <span className="inline-flex items-center flex-wrap gap-2">
                   Built by
                   <span className="inline-flex gap-1">
                     {t.builtBy.map((p) => (
@@ -85,7 +85,7 @@ export function TrendingDeveloperList({ developers, kind, since, relations, firs
             key={user.login}
             rank={rank}
             className="py-4"
-            trailing={self ? null : <FollowButton following={relations.following.includes(user.login)} target={user.login} signedIn={relations.signedIn} />}
+            trailing={self ? null : <FollowButton following={relations.following.includes(user.login)} target={user.login} signedIn={relations.signedIn} copyAs={false} />}
           >
             <PrincipalCell hit={user} top={isTop(rank)} />
             {d.popularRepo || user.bio ? (
@@ -94,7 +94,7 @@ export function TrendingDeveloperList({ developers, kind, since, relations, firs
                 {d.popularRepo ? (
                   <span className="inline-flex min-w-0 items-center gap-1.5">
                     Popular
-                    <Link href={repoHref(d.popularRepo.fullName)} className="min-w-0 truncate text-ink-2 hover:underline">
+                    <Link href={repoHref(d.popularRepo.fullName)} className="link inline-flex min-h-6 min-w-0 items-center break-all text-ink-2">
                       {d.popularRepo.fullName}
                     </Link>
                   </span>

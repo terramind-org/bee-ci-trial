@@ -10,13 +10,16 @@ function facts(id: string, over: Partial<QueueFacts> & { cr?: Parameters<typeof 
   return { change: change({ id, ...cr }), landing: landing(false, ["approval:human:logic (0 of 1)"]), checks: ok, reviews: [], ...rest };
 }
 
-describe("review queue", () => {
-  it("puts each change in the first group that takes it", () => {
+describe("pull request list", () => {
+  it("puts each pull request in the first group that takes it", () => {
     const groups = groupQueue(
       [
         facts("review-me"),
         facts("asks", { cr: { author: LIN, brief: brief({ asks: [{ question: "Ship behind a flag?", options: ["Yes", "No"] }] }) }, landing: landing(true) }),
         facts("ready", { landing: landing(true) }),
+        facts("mine-ready", { cr: { author: MARA }, landing: landing(true) }),
+        facts("running", { landing: landing(false, ["check:e2e (running)"]) }),
+        facts("failing", { landing: landing(false, ["check:e2e (failed)"]), checks: [check("e2e", "CHECK_STATUS_FAILED")] }),
         facts("owes", { landing: landing(false, ["check:e2e (running)"]), checklist: checklist(false, [{ id: "evidence:ui", detail: "a screenshot of the UI change", kinds: [], paths: [], satisfied: false, evidenceIds: [] }]) }),
         facts("blocked", { cr: { author: MARA }, landing: landing(false, ["lease:exclusive:src/auth/"]) }),
         facts("landed", { cr: { state: "CHANGE_STATE_LANDED" }, landedAt: "2026-10-25T00:00:00Z" }),
@@ -27,12 +30,19 @@ describe("review queue", () => {
       NOW,
     );
     const ids = Object.fromEntries(groups.map((g) => [g.key, g.rows.map((r) => r.facts.change.id)]));
-    expect(ids).toEqual({ "needs-you": ["asks", "review-me"].sort(), ready: ["ready"], waiting: ["owes"], blocked: ["blocked"], landed: ["landed"] });
-    const needs = groups[0]?.rows ?? [];
-    expect(needs.find((r) => r.facts.change.id === "asks")?.why).toBe("The author asks you to decide: Ship behind a flag?");
-    expect(needs.find((r) => r.facts.change.id === "review-me")?.why).toBe("Waiting for your review");
-    expect(groups[2]?.rows[0]?.why).toBe("The agent still owes a screenshot of the UI change");
-    expect(groups[3]?.rows[0]?.status.sentence).toBe("Blocked: it needs exclusive editing of src/auth/");
+    for (const k of Object.keys(ids)) ids[k]?.sort();
+    // An agent's pull request that every rule allows waits for a person to merge it; the
+    // viewer's own waits on nobody but them, and is not asked of them.
+    expect(ids).toEqual({ "needs-you": ["asks", "ready", "review-me"], checks: ["owes", "running"], waiting: ["blocked", "failing", "mine-ready"], landed: ["landed"] });
+    const row = (group: number, id: string) => groups[group]?.rows.find((r) => r.facts.change.id === id);
+    expect(row(0, "asks")?.why).toBe("The author asks you to decide: Ship behind a flag?");
+    expect(row(0, "review-me")?.why).toBe("Waiting for your review");
+    expect(row(0, "ready")?.why).toBe("Every rule passes. It waits for a person to merge it");
+    expect(row(1, "owes")?.why).toBe("The agent still owes a screenshot of the UI change");
+    expect(row(1, "running")?.status.headline).toBe("Checks running");
+    expect(row(2, "blocked")?.status.sentence).toBe("Blocked: it needs exclusive editing of src/auth/");
+    expect(row(2, "failing")?.status.headline).toBe("Checks failing");
+    expect(row(2, "mine-ready")?.why).toBe("Ready to merge: the one check passes");
   });
 
   it("does not ask the author, a past approver, or a signed-out viewer", () => {
@@ -41,15 +51,19 @@ describe("review queue", () => {
     const mine = facts("mine", { cr: { author: MARA } });
     const g = groupQueue([answered, approved, mine], MARA, NOW);
     expect(g[0]?.rows).toEqual([]);
-    expect(g[1]?.rows.map((r) => r.facts.change.id)).toEqual(["answered"]);
-    expect(groupQueue([facts("x")], null, NOW)[0]?.rows).toEqual([]);
+    expect(g[2]?.rows.map((r) => r.facts.change.id).sort()).toEqual(["answered", "approved", "mine"]);
+    // Signed out, nothing is asked of the reader: not a review, and not a merge.
+    const out = groupQueue([facts("x"), facts("y", { landing: landing(true) })], null, NOW);
+    expect(out[0]?.rows).toEqual([]);
+    expect(out[2]?.rows).toHaveLength(2);
   });
 
   it("orders rows newest first and returns every group, even empty ones", () => {
     const a = facts("a", { landing: landing(true), cr: { revisions: [{ n: 1, diffClass: "logic", createdAt: "2026-10-27T01:00:00Z" }] } });
     const b = facts("b", { landing: landing(true), cr: { revisions: [{ n: 1, diffClass: "logic", createdAt: "2026-10-27T02:00:00Z" }] } });
     const g = groupQueue([a, b], MARA, NOW);
-    expect(g.map((x) => x.key)).toEqual(["needs-you", "ready", "waiting", "blocked", "landed"]);
-    expect(g[1]?.rows.map((r) => r.facts.change.id)).toEqual(["b", "a"]);
+    expect(g.map((x) => x.key)).toEqual(["needs-you", "checks", "waiting", "landed"]);
+    expect(g.map((x) => x.label)).toEqual(["Needs you", "Checks running", "Waiting on someone else", "Merged this week"]);
+    expect(g[0]?.rows.map((r) => r.facts.change.id)).toEqual(["b", "a"]);
   });
 });

@@ -1,86 +1,99 @@
 "use client";
 
-/** The repo header's client parts: the title block, the plain tabs with More, and Clone. */
+/** The repo header's client parts: the title line, the tabs with More, and Clone. */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { isActive, navHref, repoMore, repoTabs } from "@/lib/nav";
 import { ownerHref, repoHref } from "@/lib/routes";
 import { Icon } from "./icons";
+import { State } from "./parts";
+import { ForkButton, SyncForkButton } from "./repo-header-forks";
+import { Popover } from "./kit/popover";
+import { tabClass } from "./kit/tabs-style";
 import { Menu, MenuLink, PageMenu } from "./menu";
 import type { RepoHeaderProps } from "./repo-header";
 import { cloneTabs, type CloneTab } from "./repo/clone-panel";
 import { StarButton } from "./star-button";
-import { buttonClass, cx } from "./ui";
+import { Button, buttonClass } from "./ui";
 
-/** The repo's home and its Code tab get the full Document header; deeper pages a compact one. */
+/** The info band (branch, files, last merge, Clone) shows on the repo's home and its Code tab. */
 function isFull(path: string, fullName: string): boolean {
   const home = repoHref(fullName);
   return path === home || path === home + "/code";
 }
 
-export function RepoHeaderView({ fullName, description, visibility, canWrite, signedIn, star, counts, band, actions }: RepoHeaderProps) {
+const VISIBILITY: Record<string, string> = { VISIBILITY_PUBLIC: "Public", VISIBILITY_INTERNAL: "Internal" };
+
+export function RepoHeaderView({ fullName, description, visibility, canWrite, signedIn, star, forks, counts, band, actions, upstream, agent, canSync }: RepoHeaderProps) {
   const path = usePathname();
   const [owner, name] = fullName.split("/") as [string, string];
   const full = isFull(path, fullName);
-  const Title = full ? "h1" : "p";
+  // The repo's name is the page's h1 on its home and Code; deeper pages own their h1.
+  const Name = full ? "h1" : "span";
   return (
-    <header className={full ? "mb-10" : "mb-8"}>
-      <p className="flex items-center gap-1.5 text-base text-ink-3">
-        <Link href={ownerHref(owner)} className="inline-flex min-h-7 items-center text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
-          {owner}
-        </Link>
-        <span aria-hidden="true">·</span>
-        {visibility === "VISIBILITY_PUBLIC" ? (
-          <span>public repository</span>
-        ) : (
-          <span className="inline-flex items-center gap-1">
-            <Icon name="lock" size={15} />
-            {visibility === "VISIBILITY_INTERNAL" ? "internal repository" : "private repository"}
-          </span>
-        )}
-      </p>
-      <div className="mt-1 flex flex-wrap items-start gap-x-6 gap-y-3">
-        {/* The repo's name is the page's h1 on its home and Code; deeper pages own their h1. Its
-            12rem basis wraps the buttons below it on a phone instead of breaking the name. */}
-        <Title className={cx("min-w-0 flex-[1_1_12rem] font-semibold tracking-tight text-ink [overflow-wrap:anywhere]", full ? "text-3xl md:text-[48px] md:leading-[52px]" : "text-2xl")}>
-          <Link href={repoHref(fullName)} className="hover:underline hover:decoration-2 hover:underline-offset-4">
-            {name}
+    <header className="mb-10">
+      <div className="mb-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 text-base text-ink-2">
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <Link href={ownerHref(owner)} className="link min-h-6 break-all py-0.5 text-ink-2">
+            {owner}
           </Link>
-        </Title>
-        <div className={cx("flex shrink-0 items-center gap-2", full ? "md:pt-2" : "")}>
-          {actions}
-          <StarButton target={fullName} starred={star.starred} count={star.count} unavailable={star.unavailable} signedIn={signedIn} copyAs={false} />
-          <PageMenu op={{ service: "RepoService", method: "GetRepoHome", request: { fullName }, label: "Read " + fullName }} label={"More actions for " + fullName} register={false} />
-        </div>
+          <span aria-hidden="true">/</span>
+          <Name className="min-w-0 text-base font-medium tracking-normal text-ink [overflow-wrap:anywhere]">
+            <Link href={repoHref(fullName)} className="inline-flex min-h-6 items-center hover:underline hover:underline-offset-4">
+              {name}
+            </Link>
+          </Name>
+        </span>
+        <State shape={visibility === "VISIBILITY_PUBLIC" ? "open" : "closed"} className="text-sm text-ink-2">{VISIBILITY[visibility] ?? "Private"}</State>
+        {description ? <span className="min-w-0 basis-full [overflow-wrap:anywhere] lg:basis-auto lg:flex-1 lg:truncate">{description}</span> : null}
+        {!agent ? (
+          <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
+            {actions}
+            <StarButton target={fullName} starred={star.starred} count={star.count} unavailable={star.unavailable} signedIn={signedIn} copyAs={false} />
+            <ForkButton key={fullName} fullName={fullName} count={forks} signedIn={signedIn} />
+            <PageMenu op={{ service: "RepoService", method: "GetRepoHome", request: { fullName }, label: "Read " + fullName }} label={"More actions for " + fullName} register={false} />
+          </div>
+        ) : null}
       </div>
-      {full && description ? <p className="mt-3 max-w-3xl text-lg text-ink-2">{description}</p> : null}
-      {full ? band : null}
+      {upstream && !agent ? (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
+          <span>Forked from <Link href={repoHref(upstream.fullName)} className="link inline-flex min-h-6 items-center">{upstream.fullName}</Link></span>
+          {canSync && upstream.behind ? <SyncForkButton fullName={fullName} upstream={upstream.fullName} /> : null}
+        </div>
+      ) : null}
+      {full && !agent ? band : null}
       <RepoTabs fullName={fullName} canWrite={canWrite} counts={counts} />
+      {/* Insights owns the Forks subpage without expanding the repository's tab set. */}
+      {path.startsWith(repoHref(fullName, "insights")) ? (
+        <nav aria-label="Repository insights" className="mt-3 flex gap-4 text-sm">
+          <Link href={repoHref(fullName, "insights")} className="link inline-flex min-h-6 items-center" aria-current={path === repoHref(fullName, "insights") ? "page" : undefined}>Overview</Link>
+          <Link href={repoHref(fullName, "insights/forks")} className="link inline-flex min-h-6 items-center" aria-current={path === repoHref(fullName, "insights/forks") ? "page" : undefined}>Forks</Link>
+        </nav>
+      ) : null}
     </header>
   );
 }
 
-const TAB = "inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-base whitespace-nowrap transition-colors duration-[160ms]";
-
 function RepoTabs({ fullName, canWrite, counts }: { fullName: string; canWrite: boolean; counts: RepoHeaderProps["counts"] }) {
   const path = usePathname();
   const atHome = path === repoHref(fullName);
-  const more = repoMore().filter((t) => canWrite || !t.write);
+  const more = repoMore();
   const inMore = more.find((t) => isActive(t, path, fullName));
   const count = (id: string) => (id === "changes" ? counts.changes : id === "work" ? counts.issues : 0);
   return (
     // More sits outside the scrolling row, so its menu is not clipped by the row's overflow.
-    <nav aria-label="Repository sections" className="mt-8 flex items-center gap-6 border-b border-line">
+    <nav aria-label="Repository sections" className="flex items-center gap-6 border-b border-line">
       <ul className="-mb-px flex min-w-0 items-center gap-6 overflow-x-auto scrollbar-thin">
-        {repoTabs().map((t) => {
+        {repoTabs(canWrite).map((t) => {
+          // Code opens the repository's home (README, files, commits); the file browser is one step in.
           const active = isActive(t, path, fullName) || (t.id === "code" && atHome);
           const n = count(t.id);
           return (
             <li key={t.id} className="shrink-0">
-              <Link href={navHref(t, fullName)} aria-current={active ? "page" : undefined} className={cx(TAB, active ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:border-line-strong hover:text-ink")}>
+              <Link href={t.id === "code" ? repoHref(fullName) : navHref(t, fullName)} aria-current={active ? "page" : undefined} className={tabClass(active)}>
                 {t.label}
-                {n ? <span className="num text-ink-3">{n}</span> : null}
+                {n ? <span className="num text-xs text-ink-3">{n}</span> : null}
               </Link>
             </li>
           );
@@ -90,7 +103,7 @@ function RepoTabs({ fullName, canWrite, counts }: { fullName: string; canWrite: 
         <Menu
           label="More repository sections"
           place="below-end"
-          triggerClass={cx(TAB, inMore ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:border-line-strong hover:text-ink")}
+          triggerClass={tabClass(!!inMore)}
           trigger={
             <>
               {inMore ? inMore.label : "More"}
@@ -121,54 +134,34 @@ function useCopied(): [string | null, (key: string, text: string) => void] {
 
 /** One Clone button; HTTPS, SSH (when the server has it) and the Bee CLI inside. */
 export function CloneMenu({ fullName, https, ssh }: { fullName: string; https: string; ssh?: string }) {
-  const [open, setOpen] = useState(false);
   const [copied, copy] = useCopied();
-  const id = useId();
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
   const lines = cloneTabs({ fullName, https, ssh }).filter((t): t is CloneTab & { command: string } => !!t.command);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        button.current?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
   return (
-    <div ref={root} className="relative">
-      <button ref={button} type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)} className={buttonClass("secondary", "sm", "bg-bg")}>
-        Clone
-        <Icon name="chevronDown" size={14} weight="bold" />
-      </button>
-      {open ? (
-        <div id={id} role="group" aria-label={"Clone " + fullName} className="absolute top-[calc(100%+6px)] right-0 z-40 flex w-[min(460px,calc(100vw-40px))] flex-col gap-4 rounded-xl border border-line bg-popover p-4 shadow-overlay animate-enter">
-          {lines.map((t) => (
-            <div key={t.id}>
-              <p className="mb-1.5 text-sm font-medium text-ink">{t.label}</p>
-              <div className="flex items-center gap-2 rounded-md bg-sunken py-1 pr-1 pl-3">
-                <code className="min-w-0 flex-1 truncate text-sm text-ink" tabIndex={0} aria-label={t.label + " command"}>
-                  {t.command}
-                </code>
-                <button type="button" className={buttonClass("ghost", "sm", "size-8 px-0")} aria-label={"Copy the " + t.label + " command"} onClick={() => copy(t.id, t.command)}>
-                  <Icon name={copied === t.id ? "check" : "copy"} size={16} />
-                </button>
-              </div>
-              {t.hint ? <p className="mt-1.5 text-sm text-ink-3">{t.hint}</p> : null}
-            </div>
-          ))}
+    <Popover
+      title={"Clone " + fullName}
+      triggerClass={buttonClass("secondary", "sm")}
+      trigger={
+        <>
+          Clone
+          <Icon name="chevronDown" size={14} weight="bold" />
+        </>
+      }
+      className="flex w-[min(460px,calc(100vw-40px))] flex-col gap-4"
+    >
+      {lines.map((t) => (
+        <div key={t.id}>
+          <p className="mb-1.5 text-xs font-medium text-ink-2">{t.label}</p>
+          <div className="flex items-center gap-2 rounded-xl bg-sunken py-1 pr-1 pl-3">
+            <code className="min-w-0 flex-1 truncate text-sm text-ink" tabIndex={0} aria-label={t.label + " command"}>
+              {t.command}
+            </code>
+            <Button type="button" variant="ghost" size="sm" className="size-8 px-0" aria-label={"Copy the " + t.label + " command"} onClick={() => copy(t.id, t.command)}>
+              <Icon name={copied === t.id ? "check" : "copy"} size={16} />
+            </Button>
+          </div>
+          {t.hint ? <p className="mt-1.5 text-sm text-ink-3">{t.hint}</p> : null}
         </div>
-      ) : null}
-    </div>
+      ))}
+    </Popover>
   );
 }

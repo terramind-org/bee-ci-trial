@@ -156,3 +156,44 @@ test("an agent's draft waits for a person, who approves it; landing publishes it
   await expect(page.getByRole("heading", { level: 1, name: "Feed" })).toBeVisible();
   await expect(page.getByTestId("post-card").filter({ hasText: stamp })).toHaveCount(0);
 });
+
+
+test("a person publishes a standalone post with an article, a pull request and an image", async ({ page }) => {
+  const root = h.api();
+  const fullName = h.seed.repo;
+  const repo = lib.repoRef(fullName);
+  const cr = await openDocsChange(root, "Dev <dev@bee.local>", "Outline the standalone post " + stamp);
+  const summary = "What we changed in the publishing flow " + stamp;
+  const title = "How publishing works " + stamp;
+  await page.goto("/feed");
+  await page.getByRole("link", { name: "Write a post" }).click();
+  await page.getByRole("textbox", { name: "Repository", exact: true }).fill(fullName);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(new RegExp(h.repoPath("posts/new") + "$"));
+  await page.getByRole("textbox", { name: "Post text" }).fill(summary);
+  await page.getByRole("textbox", { name: "Body Markdown" }).fill("The **upload** is finalized first.");
+  await page.getByRole("textbox", { name: "Article title" }).fill(title);
+  await page.getByRole("textbox", { name: "Article Markdown" }).fill("## The steps\n\nThe post references the finalized image.");
+  const picker = page.getByRole("combobox", { name: "Attach from this repository" });
+  const optionLabel = "#" + cr.number + " " + cr.title;
+  await picker.selectOption({ label: optionLabel });
+  await page.getByRole("button", { name: "Attach", exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "post.png", mimeType: "image/png", buffer: Buffer.from(flatPng(64, 40, [40, 90, 200])) });
+  await page.getByRole("textbox", { name: "Image 1 description" }).fill("The sample publishing image");
+  await page.getByRole("button", { name: "Publish post" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  const media = page.getByRole("img", { name: "The sample publishing image" });
+  await expect(media).toBeVisible();
+  await expect(page.getByTestId("post-attachments").getByRole("link", { name: optionLabel })).toBeVisible();
+  await expect(page.getByTestId("post-article").getByRole("heading", { name: "The steps" })).toBeVisible();
+
+  const id = decodeURIComponent(new URL(page.url()).pathname.split("/").at(-1)!);
+  const post = await root.post.getPost({ postId: id });
+  expect(post.state).toBe(PostState.PUBLISHED);
+  expect(post.text).toBe(summary);
+  expect(post.changeId).toBe("");
+  expect(post.article?.title).toBe(title);
+  expect(post.attachments.map((a) => a.id)).toEqual([cr.id]);
+  await root.post.withdrawPost({ repo, postId: id, reason: "End of publishing test" });
+  await root.change.closeChange({ repo, id: cr.id });
+});

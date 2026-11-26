@@ -70,6 +70,10 @@ export function workflowState(s: T.RunStatus): { status: WorkflowStatusJson; con
   switch (s) {
     case "running":
       return { status: "WORKFLOW_STATUS_IN_PROGRESS" };
+    case "protection":
+      return { status: "WORKFLOW_STATUS_WAITING" };
+    case "waiting":
+      return { status: "WORKFLOW_STATUS_ACTION_REQUIRED" };
     case "queued":
       return { status: "WORKFLOW_STATUS_QUEUED" };
     case "passed":
@@ -78,6 +82,14 @@ export function workflowState(s: T.RunStatus): { status: WorkflowStatusJson; con
       return { status: "WORKFLOW_STATUS_COMPLETED", conclusion: "WORKFLOW_CONCLUSION_FAILURE" };
     case "cancelled":
       return { status: "WORKFLOW_STATUS_COMPLETED", conclusion: "WORKFLOW_CONCLUSION_CANCELLED" };
+    case "skipped":
+      return { status: "WORKFLOW_STATUS_COMPLETED", conclusion: "WORKFLOW_CONCLUSION_SKIPPED" };
+    case "neutral":
+      return { status: "WORKFLOW_STATUS_COMPLETED", conclusion: "WORKFLOW_CONCLUSION_NEUTRAL" };
+    case "stale":
+      return { status: "WORKFLOW_STATUS_COMPLETED", conclusion: "WORKFLOW_CONCLUSION_STALE" };
+    case "completed":
+      return { status: "WORKFLOW_STATUS_COMPLETED" };
   }
 }
 
@@ -87,7 +99,7 @@ export function workflowRun(s: FixtureStore, r: T.Run): WorkflowRunJson {
     id: r.id,
     repo: { id: r.repoId },
     workflowId: "wf_" + r.workflow,
-    workflowPath: ".bee/workflows/" + r.workflow + ".yml",
+    workflowPath: ".github/workflows/" + r.workflow + ".yml",
     name: r.workflow,
     displayTitle: r.workflow + " #" + r.number,
     runNumber: String(r.number),
@@ -99,7 +111,8 @@ export function workflowRun(s: FixtureStore, r: T.Run): WorkflowRunJson {
     changeRequestNumbers: cr ? [String(cr.number)] : [],
     changeRequestIds: cr ? [cr.id] : [],
     actor: r.actor,
-    createdAt: r.startedAt,
+    triggeringActor: r.triggeringActor,
+    createdAt: r.createdAt ?? r.startedAt,
     runStartedAt: r.startedAt,
     completedAt: r.finishedAt,
   };

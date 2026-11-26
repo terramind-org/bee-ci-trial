@@ -461,7 +461,8 @@ behind the same request layer (request ids, deadlines, admission, metrics, epoch
    `WikiService`, `GistService`, `ReleaseService`, `NotificationService`, `UserService`,
    `InsightsService`, `SponsorService`, `ChangeService`, `TeamService`, `EnterpriseService`,
    `AppService`, `BillingService`, `ModelService`, `ModerationService`, `WorkflowService`,
-   `RunnerService`, `SecretService`, `DeploymentService`, `SecurityService`, `AgentService`, `WorkspaceService`, `PackageService`,
+   `RunnerService`, `SecretService`, `DeploymentService`, `SecurityService`, `AgentService`,
+   `SwarmService` (`docs/spec/agents.md` §10), `WorkspaceService`, `PackageService`,
    `PagesService`, `BriefService` (evidence bytes go to the CI blob store and its URLs are
    signed with a key derived from the CI key; the maintenance loop calls `Briefs::maintain`
    every 60 s to delete abandoned uploads), `PostService` (posts are attached to the changes module with
@@ -645,6 +646,9 @@ Posts (`docs/spec/forge-community.md` "Posts and feeds") upload media through
 | Image (png, jpeg, gif, webp; sniffed by magic bytes, never SVG, HTML or JavaScript) | 8 MiB each, at most 4 per post, alt text 1–1000 characters |
 | Video (mp4, webm) | 64 MiB, exactly one per post and no images beside it |
 | Post text | 500 Unicode scalar values, NFC, no control characters but `\n` |
+| Post body (Markdown) | 20,000 Unicode scalar values, NFC, `\n` line ends, no control characters but `\n` and tab |
+| Post article | title 1–200 characters on one line; Markdown body 100,000 Unicode scalar values |
+| Post attachments | 32 per post: any number of change requests, at most one release, one issue and one agent run |
 | Pending upload (and its `PUT` URL) | 15 minutes; then `INVALID_STATE` / `upload_expired` |
 | Signed download URL | 15 minutes; redeeming it decides repo `Read` for its principal chain again (SPEC §9.6) |
 | Unattached media (never attached, or removed from a draft) | deleted after 24 hours by the maintenance worker |

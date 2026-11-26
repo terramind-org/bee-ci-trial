@@ -153,6 +153,7 @@ event name and action). The registry rejects duplicates across modules. Naming:
 | changes (reserved) | `cr.opened/revised/landed/closed/reopened/edited/ready_for_review/review_requested`, `review.submitted/dismissed`, `review_thread.resolved`, `merge_queue.entered/left`, `land_conflict.opened/resolved` |
 | briefs | `evidence.added/updated/deleted` (subject: the change request; `cr.brief_set` is the changes module's) |
 | work, community, enterprise, ci, packages, security, agents | see each module's `MODULE` |
+| swarms | `swarm.created`, `swarm.state_changed`, `swarm.status_changed`, `swarm.task_added`, `swarm.task_started`, `swarm.task_finished`, `swarm.join_requested`, `swarm.join_decided` |
 
 ### 3.2 Webhooks
 

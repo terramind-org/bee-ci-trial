@@ -1,5 +1,6 @@
 /** Runs (workflows.proto), issues (issues.proto) and the board (projects.proto). */
 import type { CommentJson } from "../../gen/bee/v1/content_pb";
+import { DeploymentService } from "../../gen/bee/v1/deployments_pb";
 import { ChangeService, CheckService } from "../../gen/bee/v1/forge_pb";
 import { IssueService, type IssueJson } from "../../gen/bee/v1/issues_pb";
 import { ProjectService, type ProjectFieldJson, type ProjectItemJson } from "../../gen/bee/v1/projects_pb";
@@ -7,6 +8,7 @@ import {
   WorkflowService,
   type WorkflowConclusionJson,
   type WorkflowJobJson,
+  type WorkflowJson,
   type WorkflowRunJson,
   type WorkflowStatusJson,
 } from "../../gen/bee/v1/workflows_pb";
@@ -21,19 +23,32 @@ import { clean, list, mapLimit, notFound, num, pageOf, str, wire, type PartialOp
 
 export function runStatus(status: string | undefined, conclusion: string | undefined): T.RunStatus {
   switch (status as WorkflowStatusJson | undefined) {
+    case "WORKFLOW_STATUS_WAITING":
+      return "protection";
+    case "WORKFLOW_STATUS_ACTION_REQUIRED":
+      return "waiting";
     case "WORKFLOW_STATUS_IN_PROGRESS":
       return "running";
     case "WORKFLOW_STATUS_COMPLETED":
       switch (conclusion as WorkflowConclusionJson | undefined) {
+        case "WORKFLOW_CONCLUSION_ACTION_REQUIRED":
+          return "waiting";
         case "WORKFLOW_CONCLUSION_FAILURE":
         case "WORKFLOW_CONCLUSION_TIMED_OUT":
         case "WORKFLOW_CONCLUSION_STARTUP_FAILURE":
           return "failed";
         case "WORKFLOW_CONCLUSION_CANCELLED":
-        case "WORKFLOW_CONCLUSION_SKIPPED":
           return "cancelled";
-        default:
+        case "WORKFLOW_CONCLUSION_SKIPPED":
+          return "skipped";
+        case "WORKFLOW_CONCLUSION_NEUTRAL":
+          return "neutral";
+        case "WORKFLOW_CONCLUSION_STALE":
+          return "stale";
+        case "WORKFLOW_CONCLUSION_SUCCESS":
           return "passed";
+        default:
+          return "completed";
       }
     default:
       return "queued";
@@ -90,7 +105,10 @@ export function runView(r: WorkflowRunJson, jobs: WorkflowJobJson[], crId: strin
     jobs: jobs.map(jobView),
     annotations,
     attempt: num(r.runAttempt),
+    changeRequestNumber: list(r.changeRequestNumbers)[0],
+    triggeringActor: r.triggeringActor as T.Principal | undefined,
     startedAt: r.runStartedAt,
+    createdAt: r.createdAt,
     finishedAt: r.completedAt,
   };
 }
@@ -103,18 +121,21 @@ const LEVEL: Record<string, T.Annotation["level"]> = { ANNOTATION_LEVEL_FAILURE:
 
 async function annotationsOf(rpc: Rpc, repo: T.RepoRef, jobs: WorkflowJobJson[], opts?: CallOptions): Promise<T.Annotation[]> {
   const withChecks = jobs.filter((j) => j.checkRunId);
-  const per = await mapLimit(withChecks, 8, (j) => rpc.call(CheckService.method.listCheckAnnotations, { repo, checkRunId: str(j.checkRunId), page: { pageSize: 200 } }, opts));
-  return per.flatMap((res) =>
-    list(res.annotations).map((a) => ({ path: pathText(str(a.path)), line: num(a.startLine), level: LEVEL[str(a.level)] ?? "notice", title: str(a.title), message: str(a.message) })),
+  const per = await mapLimit(withChecks, 8, async (j) => ({
+    jobId: str(j.id),
+    res: await rpc.call(CheckService.method.listCheckAnnotations, { repo, checkRunId: str(j.checkRunId), page: { pageSize: 200 } }, opts),
+  }));
+  return per.flatMap(({ jobId, res }) =>
+    list(res.annotations).map((a) => ({ jobId, path: pathText(str(a.path)), line: num(a.startLine), level: LEVEL[str(a.level)] ?? "notice", title: str(a.title), message: str(a.message) })),
   );
 }
 
 async function fullRun(rpc: Rpc, repo: T.RepoRef, run: WorkflowRunJson, withAnnotations: boolean, opts?: CallOptions): Promise<T.Run> {
   const jobs = await jobsOf(rpc, repo, str(run.id), opts);
   const annotations = withAnnotations ? await annotationsOf(rpc, repo, jobs, opts) : [];
-  const name = await namer(rpc, [run.actor], opts);
+  const name = await namer(rpc, [run.actor, run.triggeringActor], opts);
   const v = runView(run, jobs, str(list(run.changeRequestIds)[0]), annotations);
-  return { ...v, actor: name(v.actor) };
+  return { ...v, actor: name(v.actor), triggeringActor: name(v.triggeringActor) };
 }
 
 const MARK = /^##\[(group|error|warning)\](.*)$/;
@@ -225,6 +246,10 @@ async function board(rpc: Rpc, repo: T.RepoRef, opts?: CallOptions): Promise<{ p
 
 // ---------------------------------------------------------------- ops
 
+function workflowView(w: WorkflowJson): T.WorkflowDefinition {
+  return { id: str(w.id), name: str(w.name), path: str(w.path), state: w.state };
+}
+
 export const workOps = {
   WorkflowService: {
     ListRuns: {
@@ -234,8 +259,8 @@ export const workOps = {
         if (changeRequestNumber === "0") return { runs: [], page: { nextPageToken: "" } };
         const res = await rpc.call(WorkflowService.method.listWorkflowRuns, { repo: r.repo, ...runFilter(r.status), changeRequestNumber, includeJobs: true, page: r.page }, opts);
         const runs = list(res.runs).map((run) => runView(run, list(run.jobs), str(list(run.changeRequestIds)[0])));
-        const name = await namer(rpc, runs.map((x) => x.actor), opts);
-        return { runs: runs.map((x) => ({ ...x, actor: name(x.actor) })), page: pageOf(res.page) };
+        const name = await namer(rpc, runs.flatMap((x) => [x.actor, x.triggeringActor]), opts);
+        return { runs: runs.map((x) => ({ ...x, actor: name(x.actor), triggeringActor: name(x.triggeringActor) })), page: pageOf(res.page) };
       },
     },
     GetRun: {
@@ -250,9 +275,47 @@ export const workOps = {
         return fullRun(rpc, r.repo, run, false, opts);
       },
     },
+    CancelRun: {
+      wire: (r) => wire(WorkflowService.method.cancelWorkflowRun, { repo: r.repo, runId: r.id }),
+      run: (rpc, r, opts) => rpc.call(WorkflowService.method.cancelWorkflowRun, { repo: r.repo, runId: r.id }, opts),
+    },
+    ListWorkflows: {
+      wire: (r) => wire(WorkflowService.method.listWorkflows, r),
+      run: async (rpc, r, opts) => {
+        const res = await rpc.call(WorkflowService.method.listWorkflows, r, opts);
+        return { workflows: list(res.workflows).map(workflowView), page: pageOf(res.page) };
+      },
+    },
+    EnableWorkflow: {
+      wire: (r) => wire(WorkflowService.method.enableWorkflow, r),
+      run: async (rpc, r, opts) => workflowView(await rpc.call(WorkflowService.method.enableWorkflow, r, opts)),
+    },
+    DisableWorkflow: {
+      wire: (r) => wire(WorkflowService.method.disableWorkflow, r),
+      run: async (rpc, r, opts) => workflowView(await rpc.call(WorkflowService.method.disableWorkflow, r, opts)),
+    },
+    GetWorkflowBadge: {
+      wire: (r) => wire(WorkflowService.method.getWorkflowBadge, r),
+      run: async (rpc, r, opts) => {
+        const badge = await rpc.call(WorkflowService.method.getWorkflowBadge, r, opts);
+        return { message: str(badge.message), svg: str(badge.svg) };
+      },
+    },
     StreamLogs: {
       wire: (r) => wire(WorkflowService.method.tailWorkflowJobLogs, { repo: r.repo, jobId: r.jobId, offset: r.fromOffset, follow: true }),
       run: (rpc, r, opts) => logLines(rpc.stream(WorkflowService.method.tailWorkflowJobLogs, { repo: r.repo, jobId: r.jobId, offset: r.fromOffset, follow: true }, opts), r.jobId, num(r.fromOffset)),
+    },
+  },
+  DeploymentService: {
+    ListDeployments: {
+      wire: (r) => wire(DeploymentService.method.listDeployments, r),
+      run: async (rpc, r, opts) => {
+        const res = await rpc.call(DeploymentService.method.listDeployments, r, opts);
+        return {
+          deployments: list(res.deployments).map((d) => ({ id: str(d.id), environment: str(d.environment), ref: str(d.ref), commit: d.changeset as T.ObjectId | undefined, state: d.state })),
+          page: pageOf(res.page),
+        };
+      },
     },
   },
   IssueService: {
@@ -319,7 +382,7 @@ export const workOps = {
       },
     },
   },
-} satisfies PartialOps<"WorkflowService" | "IssueService" | "ProjectService">;
+} satisfies PartialOps<"DeploymentService" | "WorkflowService" | "IssueService" | "ProjectService">;
 
 function listIssuesReq(r: T.ListIssuesRequest) {
   return {

@@ -316,6 +316,10 @@ function feed(s: FixtureStore, viewer: string): FeedItem[] {
 }
 
 const users = defineService(UserService, {
+  getViewer: (s, _req, ctx) => {
+    const viewer = me(s, ctx);
+    return profileJson(s, viewer, userAccount(s, { id: s.p(viewer).id }));
+  },
   ...repoFollowImpl,
   getUser: (s, req, ctx) => {
     if (!req.login && !req.id) throw invalid("pass a login or an id", "INVALID_ARGUMENT");
@@ -339,6 +343,18 @@ const users = defineService(UserService, {
   isRepoStarred: (s, req, ctx) => {
     const login = loginOf(s, me(s, ctx));
     return { starred: (s.stars.get(s.repo(req.repo).name) ?? []).some((r) => lower(r.who) === lower(login)), starListIds: [] };
+  },
+  listRepoStargazers: (s, req) => {
+    const rows = s.stars.get(s.repo(req.repo).name) ?? [];
+    const result = page(rows, req.page);
+    return {
+      stargazers: result.items.flatMap(({ who, at }) => {
+        const account = accountByLogin(s, who);
+        return account ? [{ user: summary(s, account), starredAt: s.iso(at) }] : [];
+      }),
+      totalCount: String(rows.length),
+      page: { nextPageToken: result.next },
+    };
   },
   listStarredRepos: (s, req, ctx) => {
     const viewer = s.viewer(ctx.token);

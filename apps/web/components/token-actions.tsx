@@ -6,6 +6,7 @@ import { browserClient } from "@/lib/api/browser";
 import { pathBytes } from "@/lib/api/ids";
 import type { MintTokenRequest } from "@/lib/api/types";
 import { CopyAs } from "./copy-as";
+import { ConfirmButton, askPerson } from "./kit/confirm";
 import { useToast } from "./toast";
 import { Button, Field, Input, Select, buttonClass } from "./ui";
 
@@ -18,12 +19,13 @@ export function RevokeToken({ tokenId, label }: { tokenId: string; label: string
   const [busy, setBusy] = useState(false);
   return (
     <span className="inline-flex items-center gap-1">
-      <Button
+      <ConfirmButton
+        agentConfirm={"Revokes " + label + " and every token derived from it; this cannot be undone"}
+        consequence="destructive"
         size="sm"
-        variant="danger"
         disabled={busy}
         onClick={async () => {
-          if (!window.confirm("Revoke " + label + "? Every token derived from it stops working too.")) return;
+          if (!(await askPerson({ title: "Revoke " + label + "?", description: "Every token derived from it stops working too. This cannot be undone.", confirmLabel: "Revoke", destructive: true }))) return;
           setBusy(true);
           try {
             await browserClient().auth.revoke({ tokenId });
@@ -37,7 +39,7 @@ export function RevokeToken({ tokenId, label }: { tokenId: string; label: string
         }}
       >
         Revoke
-      </Button>
+      </ConfirmButton>
       <CopyAs compact op={{ service: "AuthService", method: "Revoke", request: { tokenId }, label: "Revoke this token" }} />
     </span>
   );
@@ -136,15 +138,15 @@ export function MintTokenForm({ principalId, defaultRepo, now }: { principalId: 
           {ACTIONS.map((a) => (
             <label key={a} className="flex items-center gap-1.5 text-sm">
               <input type="checkbox" checked={actions.includes(a)} onChange={(e) => setActions((xs) => (e.target.checked ? [...xs, a] : xs.filter((x) => x !== a)))} className="accent-[var(--accent)]" />
-              <span className="mono">{a}</span>
+              <span className="mono">{a === "land" ? "merge" : a}</span>
             </label>
           ))}
         </div>
       </fieldset>
-      <Field label="Budget: changesets" htmlFor="mint-cs">
+      <Field label="Budget: commits" htmlFor="mint-cs">
         <Input id="mint-cs" type="number" min={0} value={maxCs} onChange={(e) => setMaxCs(e.target.value)} />
       </Field>
-      <Field label="Budget: landed changes" htmlFor="mint-landed">
+      <Field label="Budget: merged commits" htmlFor="mint-landed">
         <Input id="mint-landed" type="number" min={0} value={maxLanded} onChange={(e) => setMaxLanded(e.target.value)} />
       </Field>
       {error ? (

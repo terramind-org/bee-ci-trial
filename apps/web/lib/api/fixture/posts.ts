@@ -2,7 +2,8 @@
  * Fixture handlers for posts and following: the PostService, repo follows in the UserService,
  * the AgentService feed trigger and the runs it started. The rules are the server's (design
  * "Posts on merged change requests"): states, who may write, approval, visibility, the Following
- * feed's order, dedupe and cursor, likes, reposts, adoptions and `inspired_by`.
+ * feed's order, dedupe and cursor, likes, reposts, adoptions and `inspired_by`; and posts of
+ * their own (`CreatePost`): no change request, a Markdown body, an article and attachments.
  *
  * State lives in `PostsWorld` on the store. Time is the store's clock and ids are derived from
  * content, so a run of the fixture is reproducible.
@@ -23,6 +24,7 @@ import {
   LIKES,
   MEDIA_ALT,
   MEDIA_FILES,
+  OWN_POST_SEEDS,
   POST_SEEDS,
   REPO_FOLLOWS,
   REPOSTS,
@@ -33,6 +35,10 @@ import { CRS } from "./world";
 const MIN = 60_000;
 const DAY = 86_400_000;
 const MAX_TEXT = 500;
+const MAX_BODY = 20_000;
+const MAX_ARTICLE = 100_000;
+const MAX_ARTICLE_TITLE = 200;
+const MAX_ATTACHMENTS = 32;
 const MAX_IMAGES = 4;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const VIDEO_TYPES = ["video/mp4", "video/webm"];
@@ -47,14 +53,30 @@ const PUBLISHED: State = "POST_STATE_PUBLISHED";
 const WITHDRAWN: State = "POST_STATE_WITHDRAWN";
 const DISCARDED: State = "POST_STATE_DISCARDED";
 
+const A_CHANGE: T.PostAttachmentKind = "POST_ATTACHMENT_KIND_CHANGE_REQUEST";
+const A_RELEASE: T.PostAttachmentKind = "POST_ATTACHMENT_KIND_RELEASE";
+const A_ISSUE: T.PostAttachmentKind = "POST_ATTACHMENT_KIND_ISSUE";
+const A_RUN: T.PostAttachmentKind = "POST_ATTACHMENT_KIND_AGENT_RUN";
+
+/** An attachment as stored: what it points at, nothing of its card. */
+export interface AttachmentRef {
+  kind: T.PostAttachmentKind;
+  id: string;
+}
+
 export interface PostRow {
   id: string;
   /** Store key of the repo. */
   repo: string;
+  /** The change request that carries the post; "" for a post of its own. */
   crId: string;
   /** Handle of the author: whoever last set the text. */
   author: string;
   text: string;
+  bodyMarkdown?: string;
+  article?: T.PostArticle;
+  /** Beside the change request that carries the post, which is always its first attachment. */
+  attachments?: AttachmentRef[];
   mediaIds: string[];
   state: State;
   createdAt: number;
@@ -69,6 +91,7 @@ export interface PostRow {
 export interface MediaRow {
   id: string;
   repo: string;
+  /** "" when it was uploaded for a post of its own; then only `by` may finalize and attach it. */
   crId: string;
   by: string;
   kind: T.PostMediaKind;
@@ -185,7 +208,7 @@ export class PostsWorld {
     return this.posts.find((p) => p.id === id);
   }
   forChange(crId: string): PostRow | undefined {
-    return this.posts.find((p) => p.crId === crId);
+    return crId ? this.posts.find((p) => p.crId === crId) : undefined;
   }
 
   // ------------------------------------------------------------------ who may do what
@@ -219,6 +242,8 @@ export class PostsWorld {
     const repo = s.repos.get(p.repo);
     if (!repo || !s.canRead(viewer, repo)) return false;
     if (p.state === PUBLISHED || p.state === WITHDRAWN) return true;
+    // A post of its own that waits for approval: its author and those who may approve it.
+    if (!p.crId) return !!viewer && (viewer === p.author || this.canWrite(s, viewer, repo));
     const cr = s.crs.find((c) => c.id === p.crId);
     return !!cr && this.canEditChange(s, viewer, repo, cr.author);
   }
@@ -247,6 +272,86 @@ export class PostsWorld {
     const r = s.repos.get(key) as RepoState;
     // A RepoRef holds one of id and full_name, never both; screens link by name.
     return { fullName: r.repo.fullName };
+  }
+
+  /** The card of an attachment as it is now, or undefined when the repo has no such thing. */
+  card(s: FixtureStore, repoKey: string, a: T.PostAttachment): T.PostAttachment | undefined {
+    const repo = s.repos.get(repoKey) as RepoState;
+    const id = (a.id ?? "").trim();
+    const numbered = (n: number) => !id && !!a.number && a.number !== "0" && String(n) === String(a.number);
+    if (a.kind === A_CHANGE) {
+      const c = s.crs.find((x) => x.repo === repoKey && (x.id === id || numbered(x.number)));
+      return c && { kind: a.kind, id: c.id, number: String(c.number), title: c.title, state: c.state.replace("CHANGE_STATE_", "").toLowerCase() };
+    }
+    if (a.kind === A_ISSUE) {
+      const i = s.issues.find((x) => x.repoId === repo.repo.id && (x.id === id || numbered(x.number)));
+      return i && { kind: a.kind, id: i.id, number: String(i.number), title: i.title, state: i.state };
+    }
+    if (a.kind === A_RELEASE) {
+      const r = s.releases.find((x) => x.repoId === repo.repo.id && x.id === id);
+      return r && { kind: a.kind, id: r.id, title: r.name || r.tag, state: r.prerelease ? "prerelease" : "published", tagName: r.tag };
+    }
+    if (a.kind === A_RUN) {
+      const r = this.runs.find((x) => x.repo === repoKey && x.id === id);
+      return r && { kind: a.kind, id: r.id, title: s.p(r.agent).display, state: "succeeded" };
+    }
+    return undefined;
+  }
+
+  /** `Post.attachments`: the change request that carries the post first, then the stored ones, as cards. */
+  attachmentsView(s: FixtureStore, p: PostRow): T.PostAttachment[] {
+    const refs: AttachmentRef[] = [...(p.crId ? [{ kind: A_CHANGE, id: p.crId }] : []), ...(p.attachments ?? []).filter((a) => !(a.kind === A_CHANGE && a.id === p.crId))];
+    return refs.map((a) => this.card(s, p.repo, a) ?? { kind: a.kind, id: a.id });
+  }
+
+  /**
+   * Checks the attachments a writer sent and returns them as stored, without the change request
+   * that carries the post. Everything must be in the post's own repo.
+   */
+  resolve(s: FixtureStore, repoKey: string, input: T.PostAttachment[], ownChange: string): AttachmentRef[] {
+    if (input.length > MAX_ATTACHMENTS) throw invalid("a post carries at most " + MAX_ATTACHMENTS + " attachments", "bad_attachment");
+    const single = new Set<string>();
+    const seen = new Set<string>();
+    const out: AttachmentRef[] = [];
+    for (const a of input) {
+      if (a.kind === "POST_ATTACHMENT_KIND_SWARM") throw invalid("swarms cannot be attached to a post yet", "bad_attachment");
+      if (a.kind !== A_CHANGE && a.kind !== A_RELEASE && a.kind !== A_ISSUE && a.kind !== A_RUN) throw invalid("an attachment is a change request, a release, an issue or an agent run", "bad_attachment");
+      const byNumber = (a.kind === A_CHANGE || a.kind === A_ISSUE) && !!a.number && a.number !== "0";
+      if (!(a.id ?? "").trim() && !byNumber) throw invalid("an attachment needs its id", "bad_attachment");
+      if (a.kind !== A_CHANGE) {
+        if (single.has(a.kind)) throw invalid("a post carries at most one release, one issue and one agent run", "bad_attachment");
+        single.add(a.kind);
+      }
+      const card = this.card(s, repoKey, a);
+      if (!card?.id) throw invalid("the attachment " + ((a.id ?? "").trim() || "#" + a.number) + " is not in this repository", "attachment_not_found");
+      const key = card.kind + ":" + card.id;
+      if (seen.has(key)) throw invalid("the attachment " + card.id + " is listed twice", "bad_attachment");
+      seen.add(key);
+      if (card.kind === A_CHANGE && card.id === ownChange) continue;
+      out.push({ kind: card.kind, id: card.id });
+    }
+    return out;
+  }
+
+  /** Validates a Markdown body and an article and returns them as stored. */
+  words(body: string | undefined, article: T.PostArticle | undefined): { bodyMarkdown?: string; article?: T.PostArticle } {
+    const markdown = (x: string, max: number, code: string, what: string): string => {
+      const t = nfc(x.replace(/\r\n/g, "\n"));
+      if (/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(t)) throw invalid(what + " cannot contain control characters other than a newline and a tab", "bad_text");
+      if (Array.from(t).length > max) throw invalid(what + " is at most " + max + " characters", code);
+      return t;
+    };
+    const b = markdown(body ?? "", MAX_BODY, "body_too_long", "a post body");
+    const title = nfc((article?.title ?? "").trim());
+    const long = article?.bodyMarkdown ?? "";
+    let art: T.PostArticle | undefined;
+    if (title || long.trim()) {
+      if (!title || Array.from(title).length > MAX_ARTICLE_TITLE || /[\u0000-\u001f\u007f-\u009f]/.test(title)) throw invalid("an article needs a one-line title of 1 to " + MAX_ARTICLE_TITLE + " characters", "bad_article");
+      const t = markdown(long, MAX_ARTICLE, "article_too_long", "an article");
+      if (!t.trim()) throw invalid("an article needs a body", "bad_article");
+      art = { title, bodyMarkdown: t };
+    }
+    return { bodyMarkdown: b.trim() ? b : undefined, article: art };
   }
 
   postView(s: FixtureStore, p: PostRow, viewer: string | undefined): T.Post {
@@ -285,6 +390,9 @@ export class PostsWorld {
       },
       version: String(p.version),
       withdrawnReason: p.withdrawnReason,
+      bodyMarkdown: withdrawn ? undefined : p.bodyMarkdown,
+      article: withdrawn ? undefined : p.article,
+      attachments: this.attachmentsView(s, p),
     };
   }
 
@@ -315,12 +423,12 @@ export class PostsWorld {
 
   // ------------------------------------------------------------------ the post rules
 
-  /** Validates text and media for a post and returns the normalised text. */
-  validate(text: string, media: MediaRow[]): string {
+  /** Validates text and media for a post and returns the normalised text. `words`: it has a body or an article. */
+  validate(text: string, media: MediaRow[], words = false): string {
     const t = nfc(text);
     if (Array.from(t).length > MAX_TEXT) throw invalid("a post is at most " + MAX_TEXT + " characters", "text_too_long");
     if (/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/.test(t)) throw invalid("a post cannot contain control characters other than a newline", "bad_text");
-    if (!t.trim() && media.length === 0) throw invalid("a post needs text or media", "empty_post");
+    if (!t.trim() && media.length === 0 && !words) throw invalid("a post needs text, a body, an article or media", "empty_post");
     const images = media.filter((m) => m.kind === "POST_MEDIA_KIND_IMAGE");
     const videos = media.filter((m) => m.kind === "POST_MEDIA_KIND_VIDEO");
     if (images.length > MAX_IMAGES) throw invalid("a post has at most " + MAX_IMAGES + " images", "bad_media");
@@ -492,6 +600,57 @@ export class PostsWorld {
       this.posts.push(row);
     }
 
+    // Posts of their own: no change request carries them.
+    for (const sp of OWN_POST_SEEDS) {
+      const publishedAt = s.ago(sp.ago);
+      const createdAt = publishedAt - 20 * MIN;
+      const id = ulid(publishedAt, "post:own:" + sp.key);
+      const row: PostRow = {
+        id,
+        repo: sp.repo,
+        crId: "",
+        author: sp.by,
+        text: sp.text,
+        bodyMarkdown: sp.body,
+        article: sp.article,
+        attachments: sp.changes.map((key) => ({ kind: A_CHANGE, id: s.crByKey(key).id })),
+        mediaIds: [],
+        state: PUBLISHED,
+        createdAt,
+        updatedAt: publishedAt,
+        publishedAt,
+        approvedBy: sp.approvedBy,
+        version: 1,
+        withdrawnReason: "",
+        comments: 0,
+      };
+      sp.media.forEach((key, i) => {
+        const f = MEDIA_FILES[key];
+        if (!f) throw new Error("post seed: no media " + key);
+        const mid = ulid(createdAt, "media:own:" + sp.key + ":" + i);
+        this.media.set(mid, {
+          id: mid,
+          repo: sp.repo,
+          crId: "",
+          by: sp.by,
+          kind: f.kind === "image" ? "POST_MEDIA_KIND_IMAGE" : "POST_MEDIA_KIND_VIDEO",
+          contentType: f.contentType,
+          sizeBytes: f.sizeBytes,
+          width: f.width,
+          height: f.height,
+          durationMs: f.durationMs ?? 0,
+          altText: MEDIA_ALT[key] ?? "",
+          sha256: f.sha256,
+          file: f.file,
+          finalized: true,
+          attachedTo: id,
+          createdAt,
+        });
+        row.mediaIds.push(mid);
+      });
+      this.posts.push(row);
+    }
+
     const postOf = (key: string): PostRow => {
       const p = this.forChange(s.crByKey(key).id);
       if (!p) throw new Error("post seed: no post on " + key);
@@ -603,6 +762,44 @@ function engage(s: FixtureStore, rows: Engagement[], kind: string, ctx: Ctx, pos
 }
 
 const postService = defineService(PostService, {
+  createPost: (s, req, ctx) => {
+    const actor = me(s, ctx);
+    const repo = s.repo(req.repo);
+    if (!s.posts.canWrite(s, actor, repo)) throw denied("PERMISSION_DENIED", "writing a post needs write access to " + repo.repo.fullName);
+    const ids = req.mediaIds ?? [];
+    if (new Set(ids).size !== ids.length) throw invalid("a media is listed twice", "bad_media");
+    const media = ids.map((id) => mediaFor(s, id));
+    for (const m of media) {
+      if (m.crId !== "" || m.by !== actor || m.repo !== repo.name || !m.finalized || m.attachedTo) throw invalid("media " + m.id + " is not ready for this post", "bad_media");
+    }
+    const words = s.posts.words(req.bodyMarkdown, req.article as T.PostArticle | undefined);
+    const text = s.posts.validate(req.text ?? "", media, !!words.bodyMarkdown || !!words.article);
+    const attachments = s.posts.resolve(s, repo.name, (req.attachments ?? []) as T.PostAttachment[], "");
+    const now = s.now();
+    // A person's post goes out at once; an agent's waits for a person, as on a change request.
+    const human = s.kindOf(actor) === "human";
+    const row: PostRow = {
+      id: ulid(now, "post:own:new:" + repo.name + ":" + s.posts.posts.length),
+      repo: repo.name,
+      crId: "",
+      author: actor,
+      text,
+      ...words,
+      attachments,
+      mediaIds: ids,
+      state: human ? PUBLISHED : PENDING,
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: human ? now : undefined,
+      version: 1,
+      withdrawnReason: "",
+      comments: 0,
+    };
+    for (const m of media) m.attachedTo = row.id;
+    s.posts.posts.push(row);
+    s.posts.announce(s, repo, human ? "post.published" : "post.approval_requested", actor, row);
+    return s.posts.postView(s, row, actor);
+  },
   setChangePost: (s, req, ctx) => {
     const actor = me(s, ctx);
     const repo = s.repo(req.repo);
@@ -621,7 +818,9 @@ const postService = defineService(PostService, {
     for (const m of media) {
       if (m.crId !== cr.id || !m.finalized || (m.attachedTo && m.attachedTo !== existing?.id)) throw invalid("media " + m.id + " is not ready for this post", "bad_media");
     }
-    const text = s.posts.validate(req.text ?? "", media);
+    const words = s.posts.words(req.bodyMarkdown, req.article as T.PostArticle | undefined);
+    const text = s.posts.validate(req.text ?? "", media, !!words.bodyMarkdown || !!words.article);
+    const attachments = s.posts.resolve(s, repo.name, (req.attachments ?? []) as T.PostAttachment[], cr.id);
     const now = s.now();
     const row: PostRow = existing ?? { id: ulid(now, "post:new:" + cr.id), repo: cr.repo, crId: cr.id, author: actor, text: "", mediaIds: [], state: DRAFT, createdAt: now, updatedAt: now, version: 0, withdrawnReason: "", comments: 0 };
     for (const id of row.mediaIds) if (!ids.includes(id)) delete (s.posts.media.get(id) as MediaRow).attachedTo;
@@ -630,6 +829,9 @@ const postService = defineService(PostService, {
     if (row.text !== text || row.mediaIds.join() !== ids.join()) row.approvedBy = undefined;
     row.author = actor;
     row.text = text;
+    row.bodyMarkdown = words.bodyMarkdown;
+    row.article = words.article;
+    row.attachments = attachments;
     row.mediaIds = ids;
     row.version += 1;
     row.updatedAt = now;
@@ -662,11 +864,16 @@ const postService = defineService(PostService, {
   beginPostMediaUpload: (s, req, ctx) => {
     const actor = me(s, ctx);
     const repo = s.repo(req.repo);
-    const cr = changeFor(s, repo, req.changeId);
-    if (!s.posts.canEditChange(s, actor, repo, cr.author)) throw denied("PERMISSION_DENIED", "only the author of the change, or someone with write access, can add media to its post");
-    const existing = s.posts.forChange(cr.id);
-    if (existing && existing.state !== DRAFT && existing.state !== PENDING) throw invalidState("this post can no longer be edited");
-    if (!existing && cr.state !== "CHANGE_STATE_OPEN") throw invalidState("a post is written while the change is open");
+    // Without a change request the upload is for a post of its own and belongs to its uploader.
+    const cr = req.changeId ? changeFor(s, repo, req.changeId) : undefined;
+    if (cr) {
+      if (!s.posts.canEditChange(s, actor, repo, cr.author)) throw denied("PERMISSION_DENIED", "only the author of the change, or someone with write access, can add media to its post");
+      const existing = s.posts.forChange(cr.id);
+      if (existing && existing.state !== DRAFT && existing.state !== PENDING) throw invalidState("this post can no longer be edited");
+      if (!existing && cr.state !== "CHANGE_STATE_OPEN") throw invalidState("a post is written while the change is open");
+    } else if (!s.posts.canWrite(s, actor, repo)) {
+      throw denied("PERMISSION_DENIED", "adding media to a post needs write access to " + repo.repo.fullName);
+    }
     const kind = req.kind;
     const type = req.contentType ?? "";
     const size = Number(req.sizeBytes ?? 0);
@@ -675,8 +882,8 @@ const postService = defineService(PostService, {
     if (!(size > 0)) throw invalid("say how many bytes you will upload", "bad_media");
     if (size > (kind === "POST_MEDIA_KIND_IMAGE" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES)) throw new BeeError("resource_exhausted", { reason: "TOO_LARGE", message: "an image is at most 8 MiB and a video 64 MiB" });
     const now = s.now();
-    const id = ulid(now, "media:new:" + cr.id + ":" + s.posts.media.size);
-    s.posts.media.set(id, { id, repo: cr.repo, crId: cr.id, by: actor, kind, contentType: type, sizeBytes: size, width: 0, height: 0, durationMs: 0, altText: "", sha256: "", finalized: false, createdAt: now });
+    const id = ulid(now, "media:new:" + (cr?.id ?? "own:" + actor) + ":" + s.posts.media.size);
+    s.posts.media.set(id, { id, repo: repo.name, crId: cr?.id ?? "", by: actor, kind, contentType: type, sizeBytes: size, width: 0, height: 0, durationMs: 0, altText: "", sha256: "", finalized: false, createdAt: now });
     return { mediaId: id, uploadUrl: "/api/fixture/posts/" + repo.repo.id + "/" + id, uploadHeaders: { "content-type": type }, expiresAt: s.iso(now + UPLOAD_TTL) };
   },
   finalizePostMedia: (s, req, ctx) => {
@@ -684,7 +891,8 @@ const postService = defineService(PostService, {
     const repo = s.repo(req.repo);
     const m = mediaFor(s, req.mediaId ?? "");
     const cr = s.crs.find((c) => c.id === m.crId);
-    if (m.repo !== repo.name || !cr || !s.posts.canEditChange(s, actor, repo, cr.author)) throw notFound(req.mediaId ?? "");
+    const mine = m.crId === "" ? m.by === actor && s.posts.canWrite(s, actor, repo) : !!cr && s.posts.canEditChange(s, actor, repo, cr.author);
+    if (m.repo !== repo.name || !mine) throw notFound(req.mediaId ?? "");
     if (m.finalized) throw invalidState("this media is already finalized");
     if (s.now() > m.createdAt + UPLOAD_TTL) throw invalidState("this upload expired after 15 minutes");
     if (!/^[0-9a-f]{64}$/.test(req.sha256 ?? "")) throw invalid("sha256 is 64 lower-case hex digits", "bad_media");
@@ -849,7 +1057,7 @@ function triggerOf(s: FixtureStore, repo: RepoState, agentId: string | undefined
   return s.posts.triggers.find((t) => t.repo === repo.name && t.agent === handle);
 }
 
-function runJson(s: FixtureStore, r: AdoptRunRow): AgentRunJson {
+export function feedAgentRun(s: FixtureStore, r: AdoptRunRow): AgentRunJson {
   const repo = s.repos.get(r.repo) as RepoState;
   return {
     id: r.id,
@@ -868,7 +1076,7 @@ function runJson(s: FixtureStore, r: AdoptRunRow): AgentRunJson {
   };
 }
 
-export const feedTriggerImpl: Pick<Impl<typeof AgentService>, "setAgentFeedTrigger" | "getAgentFeedTrigger" | "listAgentFeedTriggers" | "listAgentRuns"> = {
+export const feedTriggerImpl: Pick<Impl<typeof AgentService>, "setAgentFeedTrigger" | "getAgentFeedTrigger" | "listAgentFeedTriggers"> = {
   setAgentFeedTrigger: (s, req, ctx) => {
     const actor = me(s, ctx);
     const repo = s.repo(req.repo);
@@ -909,19 +1117,6 @@ export const feedTriggerImpl: Pick<Impl<typeof AgentService>, "setAgentFeedTrigg
     const rows = s.posts.triggers.filter((t) => t.repo === repo.name).sort((a, b) => a.agent.localeCompare(b.agent));
     const pg = page(rows, req.page, 50);
     return { triggers: pg.items.map((t) => s.posts.triggerView(s, t)), page: { nextPageToken: pg.next } };
-  },
-  listAgentRuns: (s, req, ctx) => {
-    const actor = me(s, ctx);
-    const repo = s.repo(req.repo);
-    if (!s.posts.canWrite(s, actor, repo)) throw denied("PERMISSION_DENIED", "runs are visible to members of " + repo.owner);
-    const agent = req.agentPrincipalId ? s.handleOf(req.agentPrincipalId) : undefined;
-    const rows = s.posts.runs
-      .filter((x) => x.repo === repo.name && (!agent || x.agent === agent))
-      .filter(() => !req.taskKind || req.taskKind === "AGENT_TASK_KIND_UNSPECIFIED" || req.taskKind === "AGENT_TASK_KIND_ADOPT_EVALUATE")
-      .filter(() => !req.states?.length || req.states.includes("AGENT_RUN_STATE_SUCCEEDED"))
-      .sort((a, b) => b.startedAt - a.startedAt || (a.id < b.id ? 1 : -1));
-    const pg = page(rows, req.page, 20);
-    return { runs: pg.items.map((r) => runJson(s, r)), page: { nextPageToken: pg.next } };
   },
 };
 

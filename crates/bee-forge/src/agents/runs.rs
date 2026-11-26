@@ -73,6 +73,8 @@ pub enum Trigger {
     Retry,
     /// A post published in a repo the agent follows (its feed trigger).
     Feed,
+    /// A worker admitted to a swarm.
+    SwarmJoin,
 }
 
 impl Trigger {
@@ -88,6 +90,7 @@ impl Trigger {
             Trigger::Revise => "revise",
             Trigger::Retry => "retry",
             Trigger::Feed => "feed",
+            Trigger::SwarmJoin => "swarm_join",
         }
     }
 }
@@ -133,6 +136,8 @@ pub struct StartRun {
     pub feed_trigger: String,
     /// ADOPT_EVALUATE: every post folded into the run, oldest first.
     pub feed_post_ids: Vec<String>,
+    /// The reason the swarm lead gave for admitting this worker.
+    pub swarm_join_reason: String,
 }
 
 /// A provenance session.
@@ -427,6 +432,12 @@ impl Agents {
                     .with_subcode("agent_disabled"),
             );
         }
+        if req.trigger == Trigger::SwarmJoin && def.owner() != starter {
+            return Err(
+                ForgeError::permission_denied("The joining agent changed owners")
+                    .with_subcode("swarm_join_owner"),
+            );
+        }
         let mut runtime_id = def.runtime_id.clone();
         let mut runtime_name = def.runtime.clone();
         let mut default_model = String::new();
@@ -494,7 +505,9 @@ impl Agents {
         };
         let agent = def.agent.clone();
         let work_ref = format!("ws/{}/{}", agent.id, run_id.to_lowercase());
-        let refs: Vec<String> = if req.scope.refs.is_empty() {
+        let refs: Vec<String> = if req.trigger == Trigger::SwarmJoin {
+            vec![work_ref.clone(), base_ref.clone()]
+        } else if req.scope.refs.is_empty() {
             vec![format!("ws/{}/*", agent.id), base_ref.clone()]
         } else {
             req.scope.refs.clone()
@@ -621,6 +634,8 @@ impl Agents {
         let mut issued_token_id = None;
         let out = async {
             let mut tx = self.db.begin(SURFACE, cx).await?;
+            // Race starts against Stop Everything before minting a run credential.
+            crate::safety::control::require_running_in_tx(&mut tx, &req.repo.org_id).await?;
             if !req.idempotency_key.is_empty() {
                 let kind = format!("idem:{starter}");
                 if let Err(error) =
@@ -639,6 +654,18 @@ impl Agents {
                     let (existing, _) = load_run(&mut read_tx, &existing).await?;
                     return Ok(existing.run());
                 }
+            }
+            if req.trigger == Trigger::SwarmJoin {
+                // Membership and the queued run must commit together. Admission also takes
+                // the swarm lock shared with pause, stop and other join decisions.
+                crate::swarms::store::admit(
+                    &mut tx,
+                    &req.repo,
+                    &req.trigger_ref,
+                    &req.swarm_join_reason,
+                    &rec.run(),
+                )
+                .await?;
             }
             let issued = self
                 .ports
@@ -709,7 +736,10 @@ impl Agents {
         err: ForgeError,
     ) -> Result<AgentRun> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
-        if req.trigger == Trigger::Manual || req.trigger == Trigger::Retry {
+        if matches!(
+            req.trigger,
+            Trigger::Manual | Trigger::Retry | Trigger::SwarmJoin
+        ) {
             tx.audit(run_audit("agent.run_refused", &rec).result(err.reason_name()))
                 .await?;
             tx.commit().await?;
@@ -858,12 +888,35 @@ impl Agents {
     pub async fn cancel_run(&self, cx: &Cx, id: &str, reason: &str) -> Result<AgentRun> {
         check_len("reason", reason, 4096)?;
         let mut tx = self.db.begin(SURFACE, cx).await?;
-        let (mut rec, row) = load_run(&mut tx, id).await?;
-        let run = rec.run();
-        if terminal(run.state) {
+        let Some((rec, was_running)) = self.cancel_in_tx(cx, &mut tx, id, reason).await? else {
             return Err(ForgeError::invalid_state(format!(
                 "run {id} already finished"
             )));
+        };
+        tx.commit().await?;
+        self.after_cancel(&rec, was_running).await;
+        Ok(rec.run())
+    }
+
+    // Swarm stop uses the ordinary cancellation path for all members in one transaction.
+    pub(crate) async fn cancel_in_tx(
+        &self,
+        cx: &Cx,
+        tx: &mut Tx,
+        id: &str,
+        reason: &str,
+    ) -> Result<Option<(RunRec, bool)>> {
+        let repo = locate(tx, "run", id)
+            .await?
+            .ok_or_else(|| ForgeError::not_found(format!("agent run {id}")))?;
+        let row = tx
+            .get_for_update(&RUNS, &repo, id)
+            .await?
+            .ok_or_else(|| ForgeError::not_found(format!("agent run {id}")))?;
+        let mut rec: RunRec = row.decode()?;
+        let run = rec.run();
+        if terminal(run.state) {
+            return Ok(None);
         }
         let was_running = run.state == St::Running as i32;
         let mut r = rec.run();
@@ -873,7 +926,7 @@ impl Agents {
         }
         rec.run = Some(r);
         set_state(
-            &mut tx,
+            tx,
             &mut rec,
             St::Cancelled,
             &format!(
@@ -887,19 +940,21 @@ impl Agents {
             ),
         )
         .await?;
-        save_run(&mut tx, &rec, &row).await?;
+        save_run(tx, &rec, &row).await?;
         tx.delete(&QUEUE, "", id).await?;
         tx.delete(&RUN_TOKENS, id, "token").await?;
         tx.emit_event(run_event("agent_run.completed", &rec))
             .await?;
         tx.audit(run_audit("agent.run_cancel", &rec)).await?;
-        tx.commit().await?;
+        Ok(Some((rec, was_running)))
+    }
+
+    pub(crate) async fn after_cancel(&self, rec: &RunRec, was_running: bool) {
         self.run_done.notify_waiters();
         if was_running {
-            let _ = self.ports.runner.cancel(id).await;
+            let _ = self.ports.runner.cancel(&rec.run().id).await;
         }
-        self.after_finish(&rec, "cancelled").await;
-        Ok(rec.run())
+        self.after_finish(rec, "cancelled").await;
     }
 
     /// Starts a new run with a finished run's task.
@@ -957,6 +1012,10 @@ impl Agents {
         }
         check_len("body", body, MAX_MESSAGE)?;
         let mut tx = self.db.begin(SURFACE, cx).await?;
+        let repo_id = locate(&mut tx, "run", id)
+            .await?
+            .ok_or_else(|| ForgeError::not_found(format!("agent run {id}")))?;
+        crate::swarms::store::guard_message(&mut tx, &repo_id, id).await?;
         let (mut rec, row) = load_run(&mut tx, id).await?;
         let run = rec.run();
         if terminal(run.state) {
@@ -1025,14 +1084,27 @@ impl Agents {
 
     pub(crate) async fn run_queued(self: &Arc<Self>, cx: &Cx) -> Result<usize> {
         let limit = self.config.max_concurrent_runs.max(1);
-        let queued = {
-            let mut tx = self.db.begin(SURFACE, cx).await?;
-            tx.scan(&QUEUE, &Scan::scope("", limit).by_n1()).await?
-        };
         let mut claimed = Vec::new();
-        for q in queued {
-            if let Some(id) = self.claim(cx, &q.id).await? {
-                claimed.push(id);
+        let mut cursor = None;
+        // Paused swarms retain their rows. Walk past them so they do not hide runnable work.
+        while claimed.len() < limit {
+            let queued = {
+                let mut tx = self.db.begin(SURFACE, cx).await?;
+                tx.scan(&QUEUE, &Scan::scope("", 128).by_n1().after(cursor))
+                    .await?
+            };
+            cursor = queued.last().map(crate::store::Cursor::after);
+            let done = queued.len() < 128;
+            for q in queued {
+                if let Some(id) = self.claim(cx, &q.id).await? {
+                    claimed.push(id);
+                    if claimed.len() == limit {
+                        break;
+                    }
+                }
+            }
+            if done {
+                break;
             }
         }
         let n = claimed.len();
@@ -1051,14 +1123,22 @@ impl Agents {
 
     async fn claim(&self, cx: &Cx, id: &str) -> Result<Option<String>> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
-        if tx.get(&QUEUE, "", id).await?.is_none() {
+        let Some(q) = tx.get(&QUEUE, "", id).await? else {
+            return Ok(None);
+        };
+        let repo = q.k1.as_deref().unwrap_or_default();
+        if !crate::swarms::store::may_dispatch(&mut tx, repo, id).await? {
             return Ok(None);
         }
-        tx.delete(&QUEUE, "", id).await?;
-        let Ok((mut rec, row)) = load_run(&mut tx, id).await else {
+        let Some(row) = tx.get_for_update(&RUNS, repo, id).await? else {
+            tx.delete(&QUEUE, "", id).await?;
             tx.commit().await?;
             return Ok(None);
         };
+        if !tx.delete(&QUEUE, "", id).await? {
+            return Ok(None);
+        }
+        let mut rec: RunRec = row.decode()?;
         if rec.run().state != St::Queued as i32 {
             tx.commit().await?;
             return Ok(None);

@@ -9,10 +9,11 @@ import { cache } from "react";
 import { objectIdText, parseObjectId } from "@/lib/api/ids";
 import { serverClient } from "@/lib/api/server";
 import { BeeError } from "@/lib/api/transport";
-import type { BriefChecklist, ChangeRequest, LandingEvaluation, ObjectId, RepoRef } from "@/lib/api/types";
+import type { BriefChecklist, ChangeRequest, Changeset, LandingEvaluation, ObjectId, Principal, Ref, RepoRef } from "@/lib/api/types";
 import type { ChangeMdInput } from "@/lib/changemd";
 import type { Op } from "@/lib/copyas";
 import { landEntryFor, landedStack, openStack, type StackMember } from "@/lib/infra";
+import { branchOf, directoryOf } from "@/lib/pulls";
 
 export type Api = Awaited<ReturnType<typeof serverClient>>;
 
@@ -112,16 +113,52 @@ export const loadStack = cache(async (fullName: string, cr: ChangeRequest): Prom
       const { changesets } = await a.query.getChangesets({ repo, ids: sources, includeMeta: false });
       const parents = new Map(changesets.map((c) => [objectIdText(c.id), c.parents]));
       const members = landedStack(entry, (src) => parents.get(objectIdText(src)) ?? []).reverse();
-      return { members, op: { service: "RefService", method: "GetRefLog", request: req, label: "Read the land from the ref log" } };
+      return { members, op: { service: "RefService", method: "GetRefLog", request: req, label: "Read the merge from the ref log" } };
     }
     if (cr.state !== "CHANGE_STATE_OPEN" || !headId || !parseObjectId(objectIdText(headId))) return null;
     const req = { repo, base: { expr: cr.targetRef }, head: { expr: objectIdText(headId) } };
     const { changesets } = await a.query.compareRevisions(req);
     const members = openStack(headId, changesets);
-    return members.length ? { members, op: { service: "QueryService", method: "CompareRevisions", request: req, label: "List the changesets this change adds" } } : null;
+    return members.length ? { members, op: { service: "QueryService", method: "CompareRevisions", request: req, label: "List the commits this pull request adds" } } : null;
   } catch {
     return null;
   }
+});
+
+/**
+ * The commits a pull request merges, with their messages and provenance. When the server lists
+ * the stack (`loadStack`), these are its members, oldest first, and `known` is true: the count
+ * is the pull request's. When it cannot, they are the head of each revision instead and `known`
+ * is false, so the page shows them without claiming a count.
+ */
+export const loadCommits = cache(async (fullName: string, cr: ChangeRequest): Promise<{ known: boolean; commits: Changeset[] }> => {
+  const stack = await loadStack(fullName, cr);
+  const wanted = stack ? [...stack.members].reverse().map((m) => parseObjectId(m.id)) : cr.revisions.map((r) => r.head ?? null);
+  const ids = wanted.filter((id): id is ObjectId => !!id && !!parseObjectId(objectIdText(id)));
+  if (!ids.length) return { known: !!stack, commits: [] };
+  try {
+    const { changesets } = await (await api()).query.getChangesets({ repo: refOf(fullName), ids, includeMeta: true });
+    const by = new Map(changesets.map((c) => [objectIdText(c.id), c]));
+    return { known: !!stack, commits: ids.map((id) => by.get(objectIdText(id))).filter((c): c is Changeset => !!c) };
+  } catch (err) {
+    if (err instanceof BeeError) return { known: !!stack, commits: [] };
+    throw err;
+  }
+});
+
+/** The branch the pull request comes from: the ref at its head. Empty when no ref points there. */
+export const loadBranch = cache(async (fullName: string, cr: ChangeRequest): Promise<string> => {
+  const refs = await (await api()).ref.listRefs({ repo: refOf(fullName) }).then((r) => r.refs, (): Ref[] => []);
+  return branchOf(refs, cr.revisions.at(-1)?.head, cr.targetRef);
+});
+
+/**
+ * The organisation's people by id, to name the person who answers for an agent. Members only:
+ * for anyone else (and when the list cannot be read) it is empty and the person is not named.
+ */
+export const loadPeople = cache(async (org: string): Promise<Map<string, Principal>> => {
+  const members = await (await api()).org.listMembers({ org }).then((r) => r.members.map((m) => m.principal), (): (Principal | undefined)[] => []);
+  return directoryOf(members);
 });
 
 /** The head's provenance (runtime, model, session, cost) and import marks, for one revision. */

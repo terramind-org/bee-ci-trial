@@ -66,12 +66,15 @@ test.describe("Owner routes", () => {
   test("repo pages carry the repo header, tabs and the scope in the URL", async ({ page }) => {
     await page.goto(repoPath("changes"));
     const tabs = page.getByRole("navigation", { name: "Repository sections" });
-    await expect(tabs.getByRole("link", { name: /^Change requests/ })).toHaveAttribute("aria-current", "page");
-    // The rarer sections sit under More; Settings shows to writers.
+    await expect(tabs.getByRole("link", { name: /^Pull requests/ })).toHaveAttribute("aria-current", "page");
+    // The familiar tabs, in order; Settings shows to writers.
+    await expect(tabs.getByRole("link")).toHaveText([/^Code/, /^Issues/, /^Pull requests/, /^Agents/, /^CI/, /^Safety/, /^Insights/, /^Settings/]);
+    // The rarer sections sit under More.
     await tabs.getByRole("button", { name: "More" }).click();
-    await expect(page.getByRole("menu", { name: "More repository sections" }).getByRole("menuitem", { name: "Settings" })).toBeVisible();
+    const more = page.getByRole("menu", { name: "More repository sections" });
+    await expect(more.getByRole("menuitem")).toHaveText(["Releases", "Packages", "Pages", "Security", "Activity", "Updates"]);
     await page.keyboard.press("Escape");
-    await tabs.getByRole("link", { name: "Runs" }).click();
+    await tabs.getByRole("link", { name: "CI", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(repoPath("runs") + "$"));
     await expect(page.getByRole("link", { name: seed.repo.split("/")[1], exact: true })).toHaveAttribute("href", repoPath());
   });

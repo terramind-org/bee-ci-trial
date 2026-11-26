@@ -9,7 +9,7 @@ import type { Rpc } from "../rpc";
 import { namer } from "./agents";
 import { BeeError, type CallOptions } from "../transport";
 import type * as T from "../types";
-import { clean, list, mapLimit, num, str, wire, type PartialOps } from "./shared";
+import { clean, list, mapLimit, num, pageOf, pass, str, wire, type PartialOps } from "./shared";
 
 async function listPackages(rpc: Rpc, r: T.ListPackagesRequest, opts?: CallOptions): Promise<T.ListPackagesResponse> {
   const res = await rpc.call(PackageService.method.listPackages, clean({ owner: r.owner, repo: r.repo, page: { pageSize: 100 } }), opts);
@@ -67,9 +67,31 @@ export const hubOps = {
     },
   },
   TeamService: {
+    ListRepoTeams: {
+      wire: (r) => wire(TeamService.method.listRepoTeams, r),
+      run: async (rpc, r, opts) => {
+        const res = await rpc.call(TeamService.method.listRepoTeams, clean(r), opts);
+        return {
+          grants: list(res.grants).map((grant) => ({
+            teamId: str(grant.teamId), role: str(grant.role), inherited: !!grant.inherited, viaTeamId: str(grant.viaTeamId),
+          })),
+          page: pageOf(res.page),
+        };
+      },
+    },
+    ListTeamMembers: pass(TeamService.method.listTeamMembers),
     ListTeams: {
       wire: (r) => wire(TeamService.method.listTeams, { org: r.org }),
-      run: async (rpc, r, opts) => ({ teams: list((await rpc.call(TeamService.method.listTeams, { org: r.org, page: { pageSize: 200 } }, opts)).teams) }),
+      run: async (rpc, r, opts) => {
+        const teams: T.ListTeamsResponse["teams"] = [];
+        let pageToken = "";
+        do {
+          const page = await rpc.call(TeamService.method.listTeams, { org: r.org, page: { pageSize: 200, pageToken } }, opts);
+          teams.push(...list(page.teams));
+          pageToken = str(page.page?.nextPageToken);
+        } while (pageToken);
+        return { teams };
+      },
     },
   },
   AppService: {

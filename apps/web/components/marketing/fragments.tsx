@@ -37,12 +37,12 @@ export function LeaseFragment() {
 
 export function TrainFragment() {
   const rows: { state: "landed" | "queued" | "ready"; title: string; note: string }[] = [
-    { state: "landed", title: "Retry failed uploads", note: "landed" },
+    { state: "landed", title: "Retry failed uploads", note: "merged" },
     { state: "queued", title: "Cache the schema lookup", note: "in the queue" },
-    { state: "ready", title: "Fix the rounding in invoices", note: "ready to land" },
+    { state: "ready", title: "Fix the rounding in invoices", note: "ready to merge" },
   ];
   return (
-    <figure className={frame} aria-label="Example: changes in a landing train">
+    <figure className={frame} aria-label="Example: pull requests in a merge queue">
       <ul className="divide-y divide-line">
         {rows.map((r) => (
           <li key={r.title} className="flex items-center gap-2.5 px-3 py-2.5">
@@ -58,12 +58,12 @@ export function TrainFragment() {
 
 export function PolicyFragment() {
   const rows: { cls: string; risk: "low" | "elevated" | "high"; rule: string }[] = [
-    { cls: "docs", risk: "low", rule: "lands on green checks" },
+    { cls: "docs", risk: "low", rule: "merges on green checks" },
     { cls: "logic", risk: "elevated", rule: "needs one review" },
     { cls: "sensitive", risk: "high", rule: "needs a human" },
   ];
   return (
-    <figure className={frame} aria-label="Example: landing policy by kind of change">
+    <figure className={frame} aria-label="Example: the rules for merging, by kind of change">
       <ul className="divide-y divide-line">
         {rows.map((r) => (
           <li key={r.cls} className="flex items-center gap-2.5 px-3 py-2.5">

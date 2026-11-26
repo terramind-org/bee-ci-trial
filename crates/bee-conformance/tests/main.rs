@@ -26,3 +26,10 @@ mod repo_scoped_tokens;
 mod scale_support;
 #[path = "spec_records.rs"]
 mod spec_records;
+#[path = "swarms.rs"]
+mod swarms;
+
+#[path = "safety.rs"]
+mod safety;
+#[path = "safety_stop.rs"]
+mod safety_stop;

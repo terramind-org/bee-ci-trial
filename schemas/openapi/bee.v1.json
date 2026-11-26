@@ -38,6 +38,18 @@
         "title": "bee.v1.AccessClass",
         "type": "string"
       },
+      "bee.v1.AcknowledgeSafetyAttentionRequest": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.AcknowledgeSafetyAttentionRequest",
+        "type": "object"
+      },
       "bee.v1.AcknowledgeWatcherAnomalyRequest": {
         "description": "Request for AcknowledgeWatcherAnomaly.",
         "properties": {
@@ -867,6 +879,25 @@
           }
         },
         "title": "bee.v1.AddStarListRepoRequest",
+        "type": "object"
+      },
+      "bee.v1.AddSwarmTaskRequest": {
+        "properties": {
+          "paths": {
+            "items": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.AddSwarmTaskRequest",
         "type": "object"
       },
       "bee.v1.AddTeamMemberRequest": {
@@ -3420,6 +3451,7 @@
         "description": "Request for BeginPostMediaUpload.",
         "properties": {
           "changeId": {
+            "description": "empty: for a post of its own (CreatePost)",
             "type": "string"
           },
           "contentType": {
@@ -8963,6 +8995,40 @@
         "title": "bee.v1.CreatePagesSiteRequest",
         "type": "object"
       },
+      "bee.v1.CreatePostRequest": {
+        "description": "Request for CreatePost.",
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle"
+          },
+          "attachments": {
+            "description": "`kind` and `id` (or `number`); at most 32",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
+          },
+          "bodyMarkdown": {
+            "type": "string"
+          },
+          "mediaIds": {
+            "description": "finalized media uploaded without a `change_id`, in display order",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          },
+          "text": {
+            "description": "the summary; may be empty beside a body, an article or media",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.CreatePostRequest",
+        "type": "object"
+      },
       "bee.v1.CreateProjectChartRequest": {
         "description": "Request for CreateProjectChart.",
         "properties": {
@@ -9937,6 +10003,30 @@
         "title": "bee.v1.CreateStarListRequest",
         "type": "object"
       },
+      "bee.v1.CreateSwarmRequest": {
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          },
+          "leadRunId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.CreateSwarmRequest",
+        "type": "object"
+      },
       "bee.v1.CreateTakedownRequest": {
         "description": "Request for CreateTakedown.",
         "properties": {
@@ -10428,6 +10518,24 @@
           }
         },
         "title": "bee.v1.DeactivatePrincipalRequest",
+        "type": "object"
+      },
+      "bee.v1.DecideSwarmJoinRequest": {
+        "properties": {
+          "accept": {
+            "type": "boolean"
+          },
+          "joinId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          }
+        },
+        "title": "bee.v1.DecideSwarmJoinRequest",
         "type": "object"
       },
       "bee.v1.DeclineOrgInvitationRequest": {
@@ -15313,6 +15421,36 @@
         "title": "bee.v1.FinishSecondFactorEnrollmentRequest",
         "type": "object"
       },
+      "bee.v1.FinishSwarmTaskRequest": {
+        "properties": {
+          "attemptNumber": {
+            "description": "1-based position in task.attempts",
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "handBack": {
+            "$ref": "#/components/schemas/bee.v1.SwarmHandBack"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/bee.v1.SwarmAttemptOutcome"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.FinishSwarmTaskRequest",
+        "type": "object"
+      },
       "bee.v1.FollowRepoRequest": {
         "description": "Request for FollowRepo.",
         "properties": {
@@ -18101,6 +18239,18 @@
           }
         },
         "title": "bee.v1.GetRunnerRequest",
+        "type": "object"
+      },
+      "bee.v1.GetSafetySummaryRequest": {
+        "properties": {
+          "org": {
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/bee.v1.SafetyPeriod"
+          }
+        },
+        "title": "bee.v1.GetSafetySummaryRequest",
         "type": "object"
       },
       "bee.v1.GetSamlSsoConfigRequest": {
@@ -28268,6 +28418,33 @@
         "title": "bee.v1.ListRepoWatchersResponse",
         "type": "object"
       },
+      "bee.v1.ListRepoWorkRequest": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageRequest"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.ListRepoWorkRequest",
+        "type": "object"
+      },
+      "bee.v1.ListRepoWorkResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.RepoWorkItem"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageResponse"
+          }
+        },
+        "title": "bee.v1.ListRepoWorkResponse",
+        "type": "object"
+      },
       "bee.v1.ListReposRequest": {
         "properties": {
           "org": {
@@ -28689,6 +28866,60 @@
           }
         },
         "title": "bee.v1.ListRunnersResponse",
+        "type": "object"
+      },
+      "bee.v1.ListSafetyAttentionRequest": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageRequest"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.ListSafetyAttentionRequest",
+        "type": "object"
+      },
+      "bee.v1.ListSafetyAttentionResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyAttention"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageResponse"
+          }
+        },
+        "title": "bee.v1.ListSafetyAttentionResponse",
+        "type": "object"
+      },
+      "bee.v1.ListSafetyRecordsRequest": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageRequest"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.ListSafetyRecordsRequest",
+        "type": "object"
+      },
+      "bee.v1.ListSafetyRecordsResponse": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/bee.v1.PageResponse"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyRecord"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.ListSafetyRecordsResponse",
         "type": "object"
       },
       "bee.v1.ListSamlIdentitiesRequest": {
@@ -36104,16 +36335,32 @@
         "type": "object"
       },
       "bee.v1.Post": {
-        "description": "A post on a change request.",
+        "description": "A post: on its own, or on a change request.",
         "properties": {
           "approvedBy": {
             "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle",
+            "description": "unset when the post has no article"
+          },
+          "attachments": {
+            "description": "What the post is about, in order. A post on a change request lists that change request\nfirst, whether or not it was written before attachments existed.",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
           },
           "author": {
             "$ref": "#/components/schemas/bee.v1.Principal",
             "description": "the caller who last set the text; may be an agent"
           },
+          "bodyMarkdown": {
+            "description": "Markdown, at most 20000 characters; may be empty",
+            "type": "string"
+          },
           "changeId": {
+            "description": "the change request carrying it; empty for a post of its own",
             "type": "string"
           },
           "changeNumber": {
@@ -36154,7 +36401,7 @@
             "$ref": "#/components/schemas/bee.v1.PostState"
           },
           "text": {
-            "description": "NFC plain text, at most 500 characters",
+            "description": "the summary: NFC plain text, at most 500 characters",
             "type": "string"
           },
           "updatedAt": {
@@ -36202,6 +36449,68 @@
         },
         "title": "bee.v1.PostAdoption",
         "type": "object"
+      },
+      "bee.v1.PostArticle": {
+        "description": "The long-form part of a post.",
+        "properties": {
+          "bodyMarkdown": {
+            "description": "Markdown, at most 100000 characters, not empty",
+            "type": "string"
+          },
+          "title": {
+            "description": "NFC plain text on one line, 1-200 characters",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.PostArticle",
+        "type": "object"
+      },
+      "bee.v1.PostAttachment": {
+        "description": "Something in the post's repo that the post is about, with what a client needs to show it as\na card. A writer sets `kind` and `id` (or, for a change request or an issue, `number`); the\nserver checks it and fills the rest on every read from the attachment as it is now. When the\nattachment is gone (or a release went back to draft) only `kind` and `id` are set.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.PostAttachmentKind"
+          },
+          "number": {
+            "description": "change request and issue only",
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "state": {
+            "description": "The attachment's state in lower case: `open`, `landed` or `closed` for a change request,\n`open` or `closed` for an issue, `published` or `prerelease` for a release, and the\nAgentRunState name without its prefix (`running`, `succeeded`, ...) for an agent run.",
+            "type": "string"
+          },
+          "tagName": {
+            "description": "release only",
+            "type": "string"
+          },
+          "title": {
+            "description": "A release's name (else its tag); the first line of an agent run's prompt (else its agent's\nname).",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.PostAttachment",
+        "type": "object"
+      },
+      "bee.v1.PostAttachmentKind": {
+        "description": "What a post's attachment points at.",
+        "enum": [
+          "POST_ATTACHMENT_KIND_UNSPECIFIED",
+          "POST_ATTACHMENT_KIND_CHANGE_REQUEST",
+          "POST_ATTACHMENT_KIND_RELEASE",
+          "POST_ATTACHMENT_KIND_ISSUE",
+          "POST_ATTACHMENT_KIND_AGENT_RUN",
+          "POST_ATTACHMENT_KIND_SWARM"
+        ],
+        "title": "bee.v1.PostAttachmentKind",
+        "type": "string"
       },
       "bee.v1.PostCounts": {
         "description": "Engagement counts of a post.",
@@ -36309,6 +36618,7 @@
         "description": "A reference to a post, as carried by the issues and change requests it inspired. Empty when\nthe reader cannot read the post's repo.",
         "properties": {
           "changeNumber": {
+            "description": "0 for a post of its own",
             "format": "uint64",
             "pattern": "^[0-9]+$",
             "type": [
@@ -36317,6 +36627,7 @@
             ]
           },
           "changeTitle": {
+            "description": "empty for a post of its own",
             "type": "string"
           },
           "postId": {
@@ -38052,6 +38363,24 @@
           }
         },
         "title": "bee.v1.QueryProjectChartResponse",
+        "type": "object"
+      },
+      "bee.v1.RaiseConcernRequest": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/bee.v1.SafetyConcernCategory"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.RaiseConcernRequest",
         "type": "object"
       },
       "bee.v1.Reaction": {
@@ -40139,6 +40468,29 @@
         "title": "bee.v1.RepoWatchLevel",
         "type": "string"
       },
+      "bee.v1.RepoWorkItem": {
+        "description": "Oneof `work`: at most one of `swarm`, `run` is set.",
+        "properties": {
+          "activityAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "changeRequestIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/bee.v1.AgentRun"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.Swarm"
+          }
+        },
+        "title": "bee.v1.RepoWorkItem",
+        "type": "object"
+      },
       "bee.v1.ReportCheckRequest": {
         "properties": {
           "actions": {
@@ -40234,6 +40586,21 @@
         "description": "Response for ReportDeploymentProtectionRuleResult.",
         "properties": {},
         "title": "bee.v1.ReportDeploymentProtectionRuleResultResponse",
+        "type": "object"
+      },
+      "bee.v1.ReportFindingRequest": {
+        "properties": {
+          "report": {
+            "$ref": "#/components/schemas/bee.v1.SafetyFindingReport"
+          },
+          "reviewId": {
+            "type": "string"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.ReportFindingRequest",
         "type": "object"
       },
       "bee.v1.ReportWatcherAnomalyRequest": {
@@ -40412,6 +40779,33 @@
           }
         },
         "title": "bee.v1.RequestReviewersRequest",
+        "type": "object"
+      },
+      "bee.v1.RequestSafetyReviewRequest": {
+        "properties": {
+          "reviewerId": {
+            "type": "string"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.RequestSafetyReviewRequest",
+        "type": "object"
+      },
+      "bee.v1.RequestSwarmJoinRequest": {
+        "properties": {
+          "agentPrincipalId": {
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/bee.v1.AgentRunBudget"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          }
+        },
+        "title": "bee.v1.RequestSwarmJoinRequest",
         "type": "object"
       },
       "bee.v1.RequestUserDataExportRequest": {
@@ -40679,6 +41073,24 @@
           }
         },
         "title": "bee.v1.ResolveContentReportRequest",
+        "type": "object"
+      },
+      "bee.v1.ResolveFindingRequest": {
+        "properties": {
+          "findingId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SafetyFindingState"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.ResolveFindingRequest",
         "type": "object"
       },
       "bee.v1.ResolveGitSshKeyRequest": {
@@ -42952,6 +43364,498 @@
         },
         "title": "bee.v1.RunnerToken",
         "type": "object"
+      },
+      "bee.v1.SafetyAsk": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/bee.v1.SubjectRef"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SafetyAsk",
+        "type": "object"
+      },
+      "bee.v1.SafetyAttention": {
+        "properties": {
+          "acknowledgedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "answerable": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "concern": {
+            "$ref": "#/components/schemas/bee.v1.SafetyConcern"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "tripwire": {
+            "$ref": "#/components/schemas/bee.v1.SafetyTripwire"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.SafetyAttention",
+        "type": "object"
+      },
+      "bee.v1.SafetyConcern": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/bee.v1.SafetyConcernCategory"
+          },
+          "id": {
+            "type": "string"
+          },
+          "raisedBy": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SafetyConcern",
+        "type": "object"
+      },
+      "bee.v1.SafetyConcernCategory": {
+        "enum": [
+          "SAFETY_CONCERN_CATEGORY_UNSPECIFIED",
+          "SAFETY_CONCERN_CATEGORY_RULE_CONFLICT",
+          "SAFETY_CONCERN_CATEGORY_UNSAFE",
+          "SAFETY_CONCERN_CATEGORY_POTENTIALLY_UNLAWFUL"
+        ],
+        "title": "bee.v1.SafetyConcernCategory",
+        "type": "string"
+      },
+      "bee.v1.SafetyDone": {
+        "properties": {
+          "commands": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mergedChangeRequestIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "networkDestinations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SafetyDone",
+        "type": "object"
+      },
+      "bee.v1.SafetyEvidence": {
+        "properties": {
+          "observation": {
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SubjectRef"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SafetyEvidence",
+        "type": "object"
+      },
+      "bee.v1.SafetyFinding": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "report": {
+            "$ref": "#/components/schemas/bee.v1.SafetyFindingReport"
+          },
+          "reportedBy": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "resolutionReason": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "resolvedBy": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SafetyFindingState"
+          }
+        },
+        "title": "bee.v1.SafetyFinding",
+        "type": "object"
+      },
+      "bee.v1.SafetyFindingReport": {
+        "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/bee.v1.SafetyEvidence"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.SafetySignalKind"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/bee.v1.SafetySeverity"
+          }
+        },
+        "title": "bee.v1.SafetyFindingReport",
+        "type": "object"
+      },
+      "bee.v1.SafetyFindingState": {
+        "enum": [
+          "SAFETY_FINDING_STATE_UNSPECIFIED",
+          "SAFETY_FINDING_STATE_OPEN",
+          "SAFETY_FINDING_STATE_DISMISSED",
+          "SAFETY_FINDING_STATE_CONFIRMED"
+        ],
+        "title": "bee.v1.SafetyFindingState",
+        "type": "string"
+      },
+      "bee.v1.SafetyPeriod": {
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SafetyPeriod",
+        "type": "object"
+      },
+      "bee.v1.SafetyRecord": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.Principal"
+            },
+            "type": "array"
+          },
+          "answerable": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "asked": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyAsk"
+            },
+            "type": "array"
+          },
+          "done": {
+            "$ref": "#/components/schemas/bee.v1.SafetyDone"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyFinding"
+            },
+            "type": "array"
+          },
+          "override": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdictOverride"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyReview"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdict"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.SafetyRecord",
+        "type": "object"
+      },
+      "bee.v1.SafetyRef": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.SafetyWorkKind"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.SafetyRef",
+        "type": "object"
+      },
+      "bee.v1.SafetyReview": {
+        "properties": {
+          "findingIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "proposedVerdict": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdict"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "reviewer": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SafetyReview",
+        "type": "object"
+      },
+      "bee.v1.SafetySeverity": {
+        "enum": [
+          "SAFETY_SEVERITY_UNSPECIFIED",
+          "SAFETY_SEVERITY_NOTE",
+          "SAFETY_SEVERITY_WARNING",
+          "SAFETY_SEVERITY_SEVERE"
+        ],
+        "title": "bee.v1.SafetySeverity",
+        "type": "string"
+      },
+      "bee.v1.SafetySignalCount": {
+        "properties": {
+          "count": {
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.SafetySignalKind"
+          }
+        },
+        "title": "bee.v1.SafetySignalCount",
+        "type": "object"
+      },
+      "bee.v1.SafetySignalKind": {
+        "enum": [
+          "SAFETY_SIGNAL_KIND_UNSPECIFIED",
+          "SAFETY_SIGNAL_KIND_OUTSIDE_TASK",
+          "SAFETY_SIGNAL_KIND_AROUND_REFUSAL",
+          "SAFETY_SIGNAL_KIND_TESTS_WEAKENED",
+          "SAFETY_SIGNAL_KIND_OWN_LEASH",
+          "SAFETY_SIGNAL_KIND_SAID_VS_SHOWN",
+          "SAFETY_SIGNAL_KIND_SECRETS_AND_EXIT",
+          "SAFETY_SIGNAL_KIND_FOLLOWING_STRANGERS",
+          "SAFETY_SIGNAL_KIND_HARM_TO_CODE",
+          "SAFETY_SIGNAL_KIND_HARM_TO_OTHERS",
+          "SAFETY_SIGNAL_KIND_LEGAL_FLAGS"
+        ],
+        "title": "bee.v1.SafetySignalKind",
+        "type": "string"
+      },
+      "bee.v1.SafetyStop": {
+        "properties": {
+          "frozen": {
+            "type": "boolean"
+          },
+          "org": {
+            "type": "string"
+          },
+          "pausedSwarmCount": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pausedSwarmIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "stoppedRunCount": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stoppedRunIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SafetyStop",
+        "type": "object"
+      },
+      "bee.v1.SafetySummary": {
+        "properties": {
+          "medianWaitMs": {
+            "format": "uint64",
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetySignalCount"
+            },
+            "type": "array"
+          },
+          "tripwires": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyAttention"
+            },
+            "type": "array"
+          },
+          "work": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyWorkCount"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SafetySummary",
+        "type": "object"
+      },
+      "bee.v1.SafetyTripwire": {
+        "properties": {
+          "findingId": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.SafetySignalKind"
+          },
+          "pausedSwarm": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "stoppedRunIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SafetyTripwire",
+        "type": "object"
+      },
+      "bee.v1.SafetyVerdict": {
+        "enum": [
+          "SAFETY_VERDICT_UNSPECIFIED",
+          "SAFETY_VERDICT_AS_ASKED",
+          "SAFETY_VERDICT_MORE_THAN_ASKED",
+          "SAFETY_VERDICT_LESS_THAN_ASKED",
+          "SAFETY_VERDICT_SOMETHING_ELSE",
+          "SAFETY_VERDICT_NEEDS_A_LOOK"
+        ],
+        "title": "bee.v1.SafetyVerdict",
+        "type": "string"
+      },
+      "bee.v1.SafetyVerdictOverride": {
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "person": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdict"
+          }
+        },
+        "title": "bee.v1.SafetyVerdictOverride",
+        "type": "object"
+      },
+      "bee.v1.SafetyWorkCount": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/bee.v1.SafetyWorkKind"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetySignalCount"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SafetyWorkCount",
+        "type": "object"
+      },
+      "bee.v1.SafetyWorkKind": {
+        "enum": [
+          "SAFETY_WORK_KIND_UNSPECIFIED",
+          "SAFETY_WORK_KIND_RUN",
+          "SAFETY_WORK_KIND_SWARM"
+        ],
+        "title": "bee.v1.SafetyWorkKind",
+        "type": "string"
       },
       "bee.v1.SamlIdentity": {
         "description": "A SAML identity linked to a principal.",
@@ -45361,6 +46265,18 @@
         "title": "bee.v1.SendAgentRunMessageRequest",
         "type": "object"
       },
+      "bee.v1.SendSwarmMessageRequest": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          }
+        },
+        "title": "bee.v1.SendSwarmMessageRequest",
+        "type": "object"
+      },
       "bee.v1.ServerInfo": {
         "properties": {
           "algorithms": {
@@ -45847,6 +46763,21 @@
       "bee.v1.SetChangePostRequest": {
         "description": "Request for SetChangePost.",
         "properties": {
+          "article": {
+            "$ref": "#/components/schemas/bee.v1.PostArticle",
+            "description": "replaces the article; unset removes it"
+          },
+          "attachments": {
+            "description": "beside the change request itself; replaces the list",
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.PostAttachment"
+            },
+            "type": "array"
+          },
+          "bodyMarkdown": {
+            "description": "replaces the body",
+            "type": "string"
+          },
           "changeId": {
             "type": "string"
           },
@@ -46546,6 +47477,18 @@
         "title": "bee.v1.SetRunnerLabelsRequest",
         "type": "object"
       },
+      "bee.v1.SetSafetyStopRequest": {
+        "properties": {
+          "org": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SetSafetyStopRequest",
+        "type": "object"
+      },
       "bee.v1.SetSecretScanningValidityChecksRequest": {
         "description": "Request for SetSecretScanningValidityChecks.\n\nOneof `scope`: at most one of `org`, `repo` is set.",
         "properties": {
@@ -46595,6 +47538,30 @@
         "description": "Response for SetSecretSelectedRepos.",
         "properties": {},
         "title": "bee.v1.SetSecretSelectedReposResponse",
+        "type": "object"
+      },
+      "bee.v1.SetSwarmStateRequest": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SwarmState"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          }
+        },
+        "title": "bee.v1.SetSwarmStateRequest",
+        "type": "object"
+      },
+      "bee.v1.SetSwarmStatusRequest": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          }
+        },
+        "title": "bee.v1.SetSwarmStatusRequest",
         "type": "object"
       },
       "bee.v1.SetUserPinnedItemsRequest": {
@@ -46657,6 +47624,21 @@
         "description": "Response for SetVariableSelectedRepos.",
         "properties": {},
         "title": "bee.v1.SetVariableSelectedReposResponse",
+        "type": "object"
+      },
+      "bee.v1.SetVerdictRequest": {
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdict"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.SetVerdictRequest",
         "type": "object"
       },
       "bee.v1.SetWikiFooterRequest": {
@@ -47328,6 +48310,38 @@
         "title": "bee.v1.SponsorshipState",
         "type": "string"
       },
+      "bee.v1.SpotCheckRequest": {
+        "properties": {
+          "limit": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "period": {
+            "$ref": "#/components/schemas/bee.v1.SafetyPeriod"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          },
+          "seed": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SpotCheckRequest",
+        "type": "object"
+      },
+      "bee.v1.SpotCheckResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyRecord"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SpotCheckResponse",
+        "type": "object"
+      },
       "bee.v1.StarGazer": {
         "description": "A stargazer of a repo.",
         "properties": {
@@ -47649,6 +48663,21 @@
         "title": "bee.v1.StartRestoreRequest",
         "type": "object"
       },
+      "bee.v1.StartSwarmTaskRequest": {
+        "properties": {
+          "runId": {
+            "type": "string"
+          },
+          "swarm": {
+            "$ref": "#/components/schemas/bee.v1.SwarmRef"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.StartSwarmTaskRequest",
+        "type": "object"
+      },
       "bee.v1.StartWorkspaceRequest": {
         "description": "Request for StartWorkspace.",
         "properties": {
@@ -47854,7 +48883,9 @@
           "SUBJECT_KIND_TEAM",
           "SUBJECT_KIND_AGENT_RUN",
           "SUBJECT_KIND_ADVISORY",
-          "SUBJECT_KIND_POST"
+          "SUBJECT_KIND_POST",
+          "SUBJECT_KIND_SWARM",
+          "SUBJECT_KIND_SAFETY_RECORD"
         ],
         "title": "bee.v1.SubjectKind",
         "type": "string"
@@ -47978,6 +49009,33 @@
         "title": "bee.v1.SubmitReviewRequest",
         "type": "object"
       },
+      "bee.v1.SubmitSafetyReviewRequest": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SafetyFindingReport"
+            },
+            "type": "array"
+          },
+          "model": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "proposedVerdict": {
+            "$ref": "#/components/schemas/bee.v1.SafetyVerdict"
+          },
+          "reviewId": {
+            "type": "string"
+          },
+          "work": {
+            "$ref": "#/components/schemas/bee.v1.SafetyRef"
+          }
+        },
+        "title": "bee.v1.SubmitSafetyReviewRequest",
+        "type": "object"
+      },
       "bee.v1.SubmitVulnerabilityReportRequest": {
         "description": "Request for SubmitVulnerabilityReport.",
         "properties": {
@@ -48083,6 +49141,265 @@
         },
         "title": "bee.v1.SuspendAppInstallationRequest",
         "type": "object"
+      },
+      "bee.v1.Swarm": {
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/bee.v1.AgentRunBudget"
+          },
+          "changeRequestIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/bee.v1.Cost"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          },
+          "joins": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SwarmJoin"
+            },
+            "type": "array"
+          },
+          "lead": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "leadRunId": {
+            "type": "string"
+          },
+          "memberRunIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          },
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SwarmState"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SwarmTask"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.Swarm",
+        "type": "object"
+      },
+      "bee.v1.SwarmAttempt": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "handBack": {
+            "$ref": "#/components/schemas/bee.v1.SwarmHandBack"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/bee.v1.SwarmAttemptOutcome"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SwarmAttempt",
+        "type": "object"
+      },
+      "bee.v1.SwarmAttemptOutcome": {
+        "enum": [
+          "SWARM_ATTEMPT_OUTCOME_UNSPECIFIED",
+          "SWARM_ATTEMPT_OUTCOME_FINISHED",
+          "SWARM_ATTEMPT_OUTCOME_EMPTY",
+          "SWARM_ATTEMPT_OUTCOME_REFUSED"
+        ],
+        "title": "bee.v1.SwarmAttemptOutcome",
+        "type": "string"
+      },
+      "bee.v1.SwarmHandBack": {
+        "properties": {
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deviations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "done": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "followUps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "title": "bee.v1.SwarmHandBack",
+        "type": "object"
+      },
+      "bee.v1.SwarmJoin": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/bee.v1.AgentRunBudget"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "requester": {
+            "$ref": "#/components/schemas/bee.v1.Principal"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SwarmJoinState"
+          }
+        },
+        "title": "bee.v1.SwarmJoin",
+        "type": "object"
+      },
+      "bee.v1.SwarmJoinState": {
+        "enum": [
+          "SWARM_JOIN_STATE_UNSPECIFIED",
+          "SWARM_JOIN_STATE_PENDING",
+          "SWARM_JOIN_STATE_ACCEPTED",
+          "SWARM_JOIN_STATE_DECLINED",
+          "SWARM_JOIN_STATE_REFUSED"
+        ],
+        "title": "bee.v1.SwarmJoinState",
+        "type": "string"
+      },
+      "bee.v1.SwarmRef": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/bee.v1.RepoRef"
+          }
+        },
+        "title": "bee.v1.SwarmRef",
+        "type": "object"
+      },
+      "bee.v1.SwarmState": {
+        "enum": [
+          "SWARM_STATE_UNSPECIFIED",
+          "SWARM_STATE_PLANNING",
+          "SWARM_STATE_WORKING",
+          "SWARM_STATE_PAUSED",
+          "SWARM_STATE_STOPPED",
+          "SWARM_STATE_FINISHED"
+        ],
+        "title": "bee.v1.SwarmState",
+        "type": "string"
+      },
+      "bee.v1.SwarmTask": {
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/bee.v1.SwarmAttempt"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "runId": {
+            "description": "only while working",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/bee.v1.SwarmTaskState"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "title": "bee.v1.SwarmTask",
+        "type": "object"
+      },
+      "bee.v1.SwarmTaskState": {
+        "enum": [
+          "SWARM_TASK_STATE_UNSPECIFIED",
+          "SWARM_TASK_STATE_OPEN",
+          "SWARM_TASK_STATE_WORKING",
+          "SWARM_TASK_STATE_FINISHED",
+          "SWARM_TASK_STATE_EMPTY"
+        ],
+        "title": "bee.v1.SwarmTaskState",
+        "type": "string"
       },
       "bee.v1.SymbolInfo": {
         "description": "A symbol definition.",
@@ -98596,7 +99913,7 @@
     },
     "/bee.v1.PostService/ApprovePost": {
       "post": {
-        "description": "Approves an agent-written post. Needs a human with repo Write who is not the post author.\nBefore the change lands it records `approved_by`; after it landed the post publishes now.\n\nShape: unary.",
+        "description": "Approves an agent-written post. Needs a human with repo Write who is not the post author.\nBefore the change lands it records `approved_by`; after it landed, and for a post of its\nown, the post publishes now.\n\nShape: unary.",
         "operationId": "PostService_ApprovePost",
         "parameters": [
           {
@@ -98660,7 +99977,7 @@
     },
     "/bee.v1.PostService/BeginPostMediaUpload": {
       "post": {
-        "description": "Starts an image or video upload for a change request's post and returns a signed PUT URL.\nThe pending upload expires after 15 minutes. TOO_LARGE above 8 MiB for an image or 64 MiB\nfor a video; INVALID_ARGUMENT (subcode `bad_media`) for an unsupported content type.\n\nShape: unary.",
+        "description": "Starts an image or video upload for a change request's post and returns a signed PUT URL.\nWithout a `change_id` the upload is for a post of its own (CreatePost): it needs repo Write\nand only its uploader may finalize and attach it. The pending upload expires after 15\nminutes. TOO_LARGE above 8 MiB for an image or 64 MiB for a video; INVALID_ARGUMENT\n(subcode `bad_media`) for an unsupported content type.\n\nShape: unary.",
         "operationId": "PostService_BeginPostMediaUpload",
         "parameters": [
           {
@@ -98781,6 +100098,70 @@
           }
         },
         "summary": "Removes a change request's draft post and its media. Same rights as SetChangePost.",
+        "tags": [
+          "bee.v1.PostService"
+        ]
+      }
+    },
+    "/bee.v1.PostService/CreatePost": {
+      "post": {
+        "description": "Writes a post of its own in a repo: no change request carries it. The caller becomes its\nauthor and needs repo Write. A person's post is PUBLISHED at once; one by an agent or\nservice is PENDING_APPROVAL until ApprovePost. `media_ids` name media uploaded by the\ncaller with BeginPostMediaUpload without a `change_id`. INVALID_ARGUMENT for the text and\nmedia rules of SetChangePost, a body or article over its limit (subcodes `body_too_long`,\n`article_too_long`, `bad_article`), an attachment the rules refuse (`bad_attachment`), and\nan attachment that is not in this repo or that the caller cannot read\n(`attachment_not_found`). A post of its own is not edited: withdraw it and write another.\n\nShape: unary.",
+        "operationId": "PostService_CreatePost",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.CreatePostRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Post"
+                }
+              }
+            },
+            "description": "bee.v1.Post message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Writes a post of its own in a repo: no change request carries it. The caller becomes its",
         "tags": [
           "bee.v1.PostService"
         ]
@@ -99300,7 +100681,7 @@
     },
     "/bee.v1.PostService/SetChangePost": {
       "post": {
-        "description": "Sets the text and media of a change request's post, creating it as a draft. The caller\nbecomes the post author. Needs the right to edit the change request (its author, or repo\nWrite) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH\nwhen `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,\ncontrol characters other than newline, empty text without media, or a media set the rules\nrefuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`).\n\nShape: unary.",
+        "description": "Sets the text and media of a change request's post, creating it as a draft. The caller\nbecomes the post author. Needs the right to edit the change request (its author, or repo\nWrite) while the post is DRAFT or PENDING_APPROVAL, else INVALID_STATE. VERSION_MISMATCH\nwhen `expected_version` is set and stale. INVALID_ARGUMENT for text over 500 characters,\ncontrol characters other than newline, empty text without media, or a media set the rules\nrefuse (subcodes `text_too_long`, `bad_text`, `empty_post`, `bad_media`), and for the body,\narticle and attachment rules of CreatePost. The body, article and attachments are replaced\nwith the text; the change request itself is always the post's first attachment.\n\nShape: unary.",
         "operationId": "PostService_SetChangePost",
         "parameters": [
           {
@@ -109986,6 +111367,902 @@
         ]
       }
     },
+    "/bee.v1.SafetyService/AcknowledgeSafetyAttention": {
+      "post": {
+        "description": "Acknowledge an item addressed to the signed-in person.\n\nShape: unary.",
+        "operationId": "SafetyService_AcknowledgeSafetyAttention",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.AcknowledgeSafetyAttentionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyAttention"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyAttention message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Acknowledge an item addressed to the signed-in person.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/GetSafetyRecord": {
+      "post": {
+        "description": "Read the requested work and its evidence.\n\nShape: unary.",
+        "operationId": "SafetyService_GetSafetyRecord",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SafetyRef"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyRecord"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyRecord message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Read the requested work and its evidence.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/GetSafetySummary": {
+      "post": {
+        "description": "Summarize an organization's safety record for a period.\n\nShape: unary.",
+        "operationId": "SafetyService_GetSafetySummary",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.GetSafetySummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetySummary"
+                }
+              }
+            },
+            "description": "bee.v1.SafetySummary message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Summarize an organization's safety record for a period.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/ListSafetyAttention": {
+      "post": {
+        "description": "List safety items addressed to the signed-in person.\n\nShape: unary.",
+        "operationId": "SafetyService_ListSafetyAttention",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.ListSafetyAttentionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.ListSafetyAttentionResponse"
+                }
+              }
+            },
+            "description": "bee.v1.ListSafetyAttentionResponse message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "List safety items addressed to the signed-in person.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/ListSafetyRecords": {
+      "post": {
+        "description": "List work in a repository.\n\nShape: unary.",
+        "operationId": "SafetyService_ListSafetyRecords",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.ListSafetyRecordsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.ListSafetyRecordsResponse"
+                }
+              }
+            },
+            "description": "bee.v1.ListSafetyRecordsResponse message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "List work in a repository.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/RaiseConcern": {
+      "post": {
+        "description": "Stop the caller's run and ask its answerable person to review a concern.\n\nShape: unary.",
+        "operationId": "SafetyService_RaiseConcern",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.RaiseConcernRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyConcern"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyConcern message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Stop the caller's run and ask its answerable person to review a concern.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/ReportFinding": {
+      "post": {
+        "description": "Record a report made by a person or assigned independent reviewer.\n\nShape: unary.",
+        "operationId": "SafetyService_ReportFinding",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.ReportFindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyFinding"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyFinding message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Record a report made by a person or assigned independent reviewer.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/RequestSafetyReview": {
+      "post": {
+        "description": "Ask an independent agent to review work.\n\nShape: unary.",
+        "operationId": "SafetyService_RequestSafetyReview",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.RequestSafetyReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyReview"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyReview message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Ask an independent agent to review work.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/ResolveFinding": {
+      "post": {
+        "description": "Dismiss or confirm a finding with a reason.\n\nShape: unary.",
+        "operationId": "SafetyService_ResolveFinding",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.ResolveFindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyFinding"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyFinding message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Dismiss or confirm a finding with a reason.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/ResumeEverything": {
+      "post": {
+        "description": "Lift the organization's agent merge freeze.\n\nShape: unary.",
+        "operationId": "SafetyService_ResumeEverything",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SetSafetyStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyStop"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyStop message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Lift the organization's agent merge freeze.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/SetVerdict": {
+      "post": {
+        "description": "Record a person's verdict and note.\n\nShape: unary.",
+        "operationId": "SafetyService_SetVerdict",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SetVerdictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyRecord"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyRecord message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Record a person's verdict and note.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/SpotCheck": {
+      "post": {
+        "description": "Sample agent-merged work for a person to review.\n\nShape: unary.",
+        "operationId": "SafetyService_SpotCheck",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SpotCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SpotCheckResponse"
+                }
+              }
+            },
+            "description": "bee.v1.SpotCheckResponse message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Sample agent-merged work for a person to review.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/StopEverything": {
+      "post": {
+        "description": "Freeze agent merges and interrupt agent work in the organization.\n\nShape: unary.",
+        "operationId": "SafetyService_StopEverything",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SetSafetyStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyStop"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyStop message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Freeze agent merges and interrupt agent work in the organization.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
+    "/bee.v1.SafetyService/SubmitSafetyReview": {
+      "post": {
+        "description": "Submit evidence and a proposed verdict for a requested review.\n\nShape: unary.",
+        "operationId": "SafetyService_SubmitSafetyReview",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SubmitSafetyReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SafetyReview"
+                }
+              }
+            },
+            "description": "bee.v1.SafetyReview message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Submit evidence and a proposed verdict for a requested review.",
+        "tags": [
+          "bee.v1.SafetyService"
+        ]
+      }
+    },
     "/bee.v1.SearchService/CreateSavedSearch": {
       "post": {
         "description": "Saves a search for the caller. ALREADY_EXISTS when the name is taken.\n\nShape: unary.",
@@ -117663,6 +119940,710 @@
         "summary": "Edits a tier. The amount of a tier with active sponsors cannot change (INVALID_STATE);",
         "tags": [
           "bee.v1.SponsorService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/AddSwarmTask": {
+      "post": {
+        "description": "Add an open task and its repository-relative path claims as the swarm lead or owner.\n\nShape: unary.",
+        "operationId": "SwarmService_AddSwarmTask",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.AddSwarmTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SwarmTask"
+                }
+              }
+            },
+            "description": "bee.v1.SwarmTask message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Add an open task and its repository-relative path claims as the swarm lead or owner.",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/CreateSwarm": {
+      "post": {
+        "description": "Create a planning swarm from an active lead run in this repository. The lead's human owner\nsupplies the goal and shared branch.\n\nShape: unary.",
+        "operationId": "SwarmService_CreateSwarm",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.CreateSwarmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Swarm"
+                }
+              }
+            },
+            "description": "bee.v1.Swarm message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Create a planning swarm from an active lead run in this repository. The lead's human owner",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/DecideSwarmJoin": {
+      "post": {
+        "description": "Accept or decline a pending join as the lead or owner. Beehive records any refusal by\nrepository policy and queues accepted runs.\n\nShape: unary.",
+        "operationId": "SwarmService_DecideSwarmJoin",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.DecideSwarmJoinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SwarmJoin"
+                }
+              }
+            },
+            "description": "bee.v1.SwarmJoin message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Accept or decline a pending join as the lead or owner. Beehive records any refusal by",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/FinishSwarmTask": {
+      "post": {
+        "description": "End the current attempt with an outcome, reason and structured hand-back. Use the 1-based\nattempt number returned in the task history.\n\nShape: unary.",
+        "operationId": "SwarmService_FinishSwarmTask",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.FinishSwarmTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SwarmTask"
+                }
+              }
+            },
+            "description": "bee.v1.SwarmTask message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "End the current attempt with an outcome, reason and structured hand-back. Use the 1-based",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/GetSwarm": {
+      "post": {
+        "description": "Read a swarm, its tasks and attempts. Budget, cost and join requests are scoped to authorized\nviewers.\n\nShape: unary.",
+        "operationId": "SwarmService_GetSwarm",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SwarmRef"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Swarm"
+                }
+              }
+            },
+            "description": "bee.v1.Swarm message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Read a swarm, its tasks and attempts. Budget, cost and join requests are scoped to authorized",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/ListRepoWork": {
+      "post": {
+        "description": "List swarms and independent agent runs, newest activity first, with linked pull request IDs.\n\nShape: unary.",
+        "operationId": "SwarmService_ListRepoWork",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.ListRepoWorkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.ListRepoWorkResponse"
+                }
+              }
+            },
+            "description": "bee.v1.ListRepoWorkResponse message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "List swarms and independent agent runs, newest activity first, with linked pull request IDs.",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/RequestSwarmJoin": {
+      "post": {
+        "description": "Offer an agent you control and a positive spending limit. A signed-in reader can ask to join a\npublic repository's swarm.\n\nShape: unary.",
+        "operationId": "SwarmService_RequestSwarmJoin",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.RequestSwarmJoinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SwarmJoin"
+                }
+              }
+            },
+            "description": "bee.v1.SwarmJoin message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Offer an agent you control and a positive spending limit. A signed-in reader can ask to join a",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/SendSwarmMessage": {
+      "post": {
+        "description": "Send a person's steering message to the lead run only.\n\nShape: unary.",
+        "operationId": "SwarmService_SendSwarmMessage",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SendSwarmMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.AgentRunEvent"
+                }
+              }
+            },
+            "description": "bee.v1.AgentRunEvent message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Send a person's steering message to the lead run only.",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/SetSwarmState": {
+      "post": {
+        "description": "Start, pause, resume, stop or finish a swarm as its owner or a repository admin. Stopping\ncancels its live runs.\n\nShape: unary.",
+        "operationId": "SwarmService_SetSwarmState",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SetSwarmStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Swarm"
+                }
+              }
+            },
+            "description": "bee.v1.Swarm message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Start, pause, resume, stop or finish a swarm as its owner or a repository admin. Stopping",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/SetSwarmStatus": {
+      "post": {
+        "description": "Write the plain-text status line using the lead run's issued credential.\n\nShape: unary.",
+        "operationId": "SwarmService_SetSwarmStatus",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.SetSwarmStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.Swarm"
+                }
+              }
+            },
+            "description": "bee.v1.Swarm message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Write the plain-text status line using the lead run's issued credential.",
+        "tags": [
+          "bee.v1.SwarmService"
+        ]
+      }
+    },
+    "/bee.v1.SwarmService/StartSwarmTask": {
+      "post": {
+        "description": "Begin an attempt by an active member of a working swarm. Concurrent task claims cannot overlap.\n\nShape: unary.",
+        "operationId": "SwarmService_StartSwarmTask",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Connect-Protocol-Version",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Connect-Timeout-Ms",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/bee.v1.StartSwarmTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/bee.v1.SwarmTask"
+                }
+              }
+            },
+            "description": "bee.v1.SwarmTask message(s)."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/connect.Error"
+                }
+              }
+            },
+            "description": "Connect error."
+          }
+        },
+        "summary": "Begin an attempt by an active member of a working swarm. Concurrent task claims cannot overlap.",
+        "tags": [
+          "bee.v1.SwarmService"
         ]
       }
     },
@@ -129635,7 +132616,7 @@
       "name": "bee.v1.PolicyService"
     },
     {
-      "description": "Posts and the Following feed. A change request has at most one post. It is a draft while the\nchange is open and publishes when the change lands; a post written by an agent or service\npublishes only once a human with repo Write approved it. Every read checks repo Read for the\ncaller: posts on private repos are visible only to readers of that repo, and posts on deleted\nrepos are never shown. Following, liking and reposting need an account; agents follow and\nread the feed like humans.",
+      "description": "Posts and the Following feed. A post is its own unit: CreatePost writes one in a repo with no\nchange request, and it publishes at once. A change request may also carry one post\n(SetChangePost): a draft while the change is open, published when the change lands. Either\nway a post written by an agent or service publishes only once a human with repo Write\napproved it. Every read checks repo Read for the caller: posts on private repos are visible\nonly to readers of that repo, and posts on deleted repos are never shown. Following, liking\nand reposting need an account; agents follow and read the feed like humans.",
       "name": "bee.v1.PostService"
     },
     {
@@ -129663,6 +132644,10 @@
       "name": "bee.v1.RunnerService"
     },
     {
+      "description": "",
+      "name": "bee.v1.SafetyService"
+    },
+    {
       "description": "Search across code, forge objects and people, code navigation, saved searches and the\nexplore surfaces (trending, topics, collections). Every result honors the caller's read\naccess, including restricted paths (SPEC §9.3): a hit the caller cannot read is never\nreturned, counted or hinted at. Query syntax errors fail with INVALID_ARGUMENT (subcode\n`bad_query`); ParseSearchQuery explains them with positions.",
       "name": "bee.v1.SearchService"
     },
@@ -129677,6 +132662,10 @@
     {
       "description": "Sponsorable profiles, tiers and sponsorships for users and orgs, plus FUNDING.yml parsing.\nMoney moves through an external payment processor; this service records intent and state.\nAmounts are integer cents in `currency`.",
       "name": "bee.v1.SponsorService"
+    },
+    {
+      "description": "",
+      "name": "bee.v1.SwarmService"
     },
     {
       "description": "Manages teams. Every team is also a policy group named \"@<org>/<slug>\", so a team can be\nnamed anywhere policy, rulesets or CODEOWNERS accept a group.",

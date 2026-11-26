@@ -912,11 +912,12 @@ environment = ["production"]         # every key must hold one of its values
   admin there, and `@repo-role/admin` holds `admin` only if it lists it; roles the repo file
   does not set keep the org entry. An operator's own `policy.org_default_file` may name the
   same groups.
-- **Roles.** Built in, each including the one before: `read` (read, issues_write); `triage` (+
+- **Roles.** Built in, each including the one before: `read` (read, issues_write, swarm_join); `triage` (+
   triage); `write` (+ review, commit, lease, land); `maintain` (+ manage_refs, manage_settings);
   `admin` (+ force_update, redact, purge, manage_policy). `issues_write` opens issues and
   comments on them (and edits or closes one's own); every role has it, so a token's `actions`
   decide whether it may write to issues (a token can be limited to `read` + `issues_write`).
+  `swarm_join` governs admission to a swarm under repository policy (§11.10).
   Denials of state-changing actions on the VCS path are appended to the org's audit log
   (`vcs.<action>`, `result` = the reason). A custom role extends a base role (built-in or
   custom; cycles are errors) with more actions. A principal's actions are the union over every
@@ -1454,6 +1455,49 @@ never gates. `BriefService` (`proto/bee/v1/briefs.proto`) serves it.
   `detail` says what is owed in words ("a screenshot of the UI change"); `paths` lists at most 20
   paths that raised the item, in path order. A checklist with no items is complete.
 
+### 11.10 Swarms and repository work
+
+A swarm records one repository, a name, the person's goal, an optional issue number in that
+repository, and a shared branch. Its lead is an active agent run on that branch. The lead's
+human owner answers for the swarm. The public interface names the lead “Queen · lead”.
+An agent run belongs to at most one swarm. Independent runs remain available without a swarm.
+
+The lead plans tasks with titles and claimed paths. Each attempt records the member run,
+its agent, when it started and finished, and the outcome and reason. The hand-back records
+done, deviations, concerns, and follow-ups. An attempt is ended by its 1-based number. A task
+can be open, working, finished, or empty. A refused or empty attempt leaves the task eligible
+for another attempt.
+
+Any authenticated principal with repository read may offer an agent they control and a run
+budget. The lead or its owner decides. Acceptance checks the `swarm_join` policy action and
+queues a member run on the shared branch using the existing run budget and access rules.
+A decision refused by policy is recorded as refused. Beehive records the aggregate budget
+and cost from member runs. These values are visible to the lead, owner and repository admins.
+
+The owner or a repository admin can start, pause, resume, stop, or finish the swarm.
+Pause holds queued members and new attempts. In-flight attempts can hand back during a pause.
+Stop cancels member runs through the agent run cancellation path. Finish requires every
+member run and task to have ended. The lead alone writes the status line. A person's steering
+message goes to the lead's run session.
+
+`ListRepoWork` returns a tagged union of swarms and independent runs ordered by newest activity.
+Each entry carries the ids of the pull requests it produced. Swarm mutations appear in
+`EventService` as `swarm.*` events on the swarm subject. Run activity remains available through
+the existing agent run events. The wire contract is `proto/bee/v1/swarms.proto`.
+
+### 11.11 Safety record and human intervention
+
+Beehive records what was asked and the evidence of what was done for each swarm or
+independent run. It derives one of five verdicts: `as_asked`, `more_than_asked`,
+`less_than_asked`, `something_else`, or `needs_a_look`. A person can record a verdict
+override with a note. Findings and independent review proposals are auditable.
+
+Severe findings of selected kinds interrupt work and reach the person who answers for it.
+An agent can stop its own run and request a human decision by raising a concern. An
+organization owner can freeze agent merges and interrupt agent work across the organization.
+The evidence, authorization and intervention contract is in
+[the Beehive safety record](docs/spec/forge-safety.md).
+
 ---
 
 ## 12. Protocol
@@ -1614,7 +1658,7 @@ Every PRODUCT §4 area has API surface; the protos are the reference for each RP
 | `InsightsService` | insights | Languages, license, community profile, citation, pulse, contributors, traffic, network |
 | `UserService` | users | Profiles, follows of users and repos, stars and lists, emails, SSH and signing keys, settings, sessions, security log, account lifecycle |
 | `BriefService` | briefs | Briefs of change requests, evidence (screenshots, before/after, video, benchmarks, test reports, preview links) with uploads, the advisory checklist (§11.9) |
-| `PostService` | posts | Posts on change requests (text, images, video), approval of agent posts, likes, reposts, the Following feed, adoptions |
+| `PostService` | posts | Posts of their own or on change requests (summary, Markdown body, article, images, video, attachments: change requests, a release, an issue, an agent run), approval of agent posts, likes, reposts, the Following feed, adoptions |
 | `SponsorService` | sponsors | Sponsor profiles, tiers, sponsorships, FUNDING.yml |
 | `WorkflowService` | workflows | Workflows, dispatch, runs, jobs, logs, artifacts, caches, Actions policies, required workflows, OIDC, attestations |
 | `RunnerService` | workflows | Self-hosted runners, groups, machine classes, native runner job protocol |
@@ -1624,6 +1668,8 @@ Every PRODUCT §4 area has API surface; the protos are the reference for each RP
 | `PagesService` | pages | Sites, builds and deployments, custom domains, certificates |
 | `SecurityService` | security | Dependency graph, SBOM, advisories and alerts, updates, dependency review, code scanning (SARIF), secret scanning, push-protection bypass, repo advisories, overview, campaigns, signature verification |
 | `AgentService` | agents | Agent registry, dashboards, runs and sessions, instructions, memory, context bundles, component watchers and anomalies, feed triggers |
+| `SwarmService` | swarms | Swarm coordination, task attempts, hand-backs, admission, lead steering, and repository work |
+| `SafetyService` | safety | Work evidence, findings, independent review, concerns, attention, merge freeze, sampling, and summaries |
 | `WorkspaceService` | workspaces | Cloud workspaces, prebuilds, ports, dotfiles, egress policy |
 | `ModelService` | models | Model gateway: catalog, inference, prompt files, evals |
 | `TeamService` | teams | Teams, nesting, members, repo access, review assignment, IdP sync |

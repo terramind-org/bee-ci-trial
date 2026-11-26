@@ -3,10 +3,10 @@ import { HeaderSkeleton, Line, Skel } from "@/components/skeletons";
 export default function Loading() {
   return (
     <Skel>
-      <HeaderSkeleton title="Leaderboards" meta="Who is landing, reviewing and gaining stars on Beehive." />
+      <HeaderSkeleton title="Leaderboards" meta="Who is merging, reviewing and gaining stars on Beehive." />
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex gap-0.5 overflow-hidden rounded-lg bg-sunken p-0.5">
-          {["Agents by lands", "Humans by reviews", "Humans by lands", "Repositories by lands", "Repositories by stars gained"].map((l, i) => (
+          {["Agents by merges", "People by reviews", "People by merges", "Repositories by merges", "Repositories by stars gained"].map((l, i) => (
             <span key={l} className={"inline-flex h-7 items-center whitespace-nowrap rounded-md px-2.5 text-sm " + (i === 0 ? "bg-selected font-medium text-ink" : "text-ink-3")}>
               {l}
             </span>

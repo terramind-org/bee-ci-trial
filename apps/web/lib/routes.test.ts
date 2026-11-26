@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { proxy } from "../proxy";
-import { AGENTS_FALLBACK, NAV, isActive, navHref, railItems, repoMore, repoTabs } from "./nav";
+import { AGENTS_FALLBACK, NAV, isActive, navHref, orgRailItems, paletteExtras, railItems, repoMore, repoTabs, withRecent } from "./nav";
 import { PATH_HEADER, RESERVED_OWNERS, isRepoFullName, legacyRedirect, orgSettingsHref, ownerHref, repoFromPath, repoHref, repoSubPath, safeNext } from "./routes";
 
 describe("url helpers", () => {
@@ -67,35 +67,88 @@ describe("legacy redirects", () => {
     const page = proxy(new NextRequest("http://localhost/orgs/acme/settings?x=1"));
     expect(page.status).toBe(200);
     expect(page.headers.get("x-middleware-request-" + PATH_HEADER)).toBe("/orgs/acme/settings?x=1");
+    expect(page.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("proxy remembers a preview of the agent's view asked for in the URL, and nothing it does not know", () => {
+    const bee = proxy(new NextRequest("http://localhost/acme/api?mode=bee"));
+    expect(bee.status).toBe(200);
+    expect(bee.headers.get("set-cookie")).toMatch(/^bee_mode=bee; Path=\/; .*SameSite=lax/i);
+    expect(proxy(new NextRequest("http://localhost/acme/api?mode=keeper")).headers.get("set-cookie")).toMatch(/^bee_mode=keeper;/);
+    expect(proxy(new NextRequest("http://localhost/acme/api?mode=admin")).headers.get("set-cookie")).toBeNull();
   });
 });
 
 describe("nav", () => {
+  const byId = (id: string) => NAV.find((n) => n.id === id)!;
+
   it("resolves repo, org and global items against the current repo", () => {
-    const byId = (id: string) => NAV.find((n) => n.id === id)!;
     expect(navHref(byId("changes"), "acme/api")).toBe("/acme/api/changes");
     expect(navHref(byId("settings"), "acme/api")).toBe("/acme/api/settings");
     expect(navHref(byId("org-settings"), "acme/api")).toBe("/orgs/acme/settings");
     expect(navHref(byId("search"), "acme/api")).toBe("/search");
     expect(new Set(NAV.map((n) => n.key)).size).toBe(NAV.length);
-    expect(repoTabs().map((t) => t.label)).toEqual(["Code", "Change requests", "Issues", "Runs", "Updates"]);
-    expect(repoMore().map((t) => t.label)).toEqual(["Activity", "Agents", "Releases", "Packages", "Pages", "Security", "Settings"]);
+    expect(new Set(NAV.map((n) => n.id)).size).toBe(NAV.length);
   });
 
-  it("puts the global destinations in the rail, Inbox and Feed only when signed in", () => {
-    expect(railItems(true).map((n) => n.label)).toEqual(["Inbox", "Feed", "Agents", "Repositories", "Explore"]);
-    expect(railItems(false).map((n) => n.label)).toEqual(["Agents", "Repositories", "Explore"]);
-    const agents = NAV.find((n) => n.id === "agents")!;
+  it("gives a repository the familiar tabs, Settings only to writers, and the rest under More", () => {
+    expect(repoTabs().map((t) => t.label)).toEqual(["Code", "Issues", "Pull requests", "Agents", "CI", "Safety", "Insights", "Settings"]);
+    expect(repoTabs(false).map((t) => t.label)).toEqual(["Code", "Issues", "Pull requests", "Agents", "CI", "Safety", "Insights"]);
+    expect(repoMore().map((t) => t.label)).toEqual(["Releases", "Packages", "Pages", "Security", "Activity", "Updates"]);
+  });
+
+  it("keeps the routes under the renamed tabs, so old URLs still open", () => {
+    expect(navHref(byId("work"), "acme/api")).toBe("/acme/api/work");
+    expect(byId("work").label).toBe("Issues");
+    expect(navHref(byId("changes"), "acme/api")).toBe("/acme/api/changes");
+    expect(byId("changes").label).toBe("Pull requests");
+    expect(navHref(byId("runs"), "acme/api")).toBe("/acme/api/runs");
+    expect(byId("runs").label).toBe("CI");
+    expect(navHref(byId("safety"), "acme/api")).toBe("/acme/api/safety");
+    expect(navHref(byId("insights"), "acme/api")).toBe("/acme/api/insights");
+    expect(navHref(byId("activity"), "acme/api")).toBe("/acme/api/activity");
+  });
+
+  it("puts Needs you, Feed and Repositories in the rail, the first two only when signed in", () => {
+    expect(railItems(true).map((n) => n.label)).toEqual(["Needs you", "Feed", "Repositories"]);
+    expect(railItems(false).map((n) => n.label)).toEqual(["Repositories"]);
+    expect(navHref(byId("inbox"), "acme/api")).toBe("/");
+  });
+
+  it("adds the organization's group for a signed-in member, on the existing settings routes", () => {
+    const org = orgRailItems(true, "acme");
+    expect(org.map((n) => n.label)).toEqual(["People and teams", "Agents and budgets", "Record", "Safety"]);
+    expect(org.map((n) => navHref(n, "acme/api", "acme"))).toEqual(["/orgs/acme/settings/members", "/orgs/acme/settings/agents", "/orgs/acme/settings/audit", "/orgs/acme/settings/safety"]);
+    expect(orgRailItems(true, "")).toEqual([]);
+    expect(orgRailItems(false, "acme")).toEqual([]);
+  });
+
+  it("lists in the palette every destination the chrome does not link to", () => {
+    expect(paletteExtras(true, "acme").map((n) => n.id)).toEqual(["explore", "search", "org-settings", "import"]);
+    // Without an organization there are no organization pages to offer; signed out, none that need a session.
+    expect(paletteExtras(true, "").map((n) => n.id)).toEqual(["explore", "search", "import"]);
+    expect(paletteExtras(false, "").map((n) => n.id)).toEqual(["explore", "search"]);
+    // Every nav item is in the rail, the organization group, a repository's tabs or More, or the palette's extras.
+    const placed = new Set([...railItems(true), ...orgRailItems(true, "acme"), ...repoTabs(), ...repoMore(), ...paletteExtras(true, "acme")].map((n) => n.id));
+    expect(NAV.filter((n) => !placed.has(n.id))).toEqual([]);
+  });
+
+  it("opens the agent leaderboard for Agents when no repository is in reach", () => {
+    const agents = byId("agents");
     expect(navHref(agents, "acme/api")).toBe("/acme/api/agents");
     expect(navHref(agents, "acme/")).toBe(AGENTS_FALLBACK);
   });
 
-  it("keeps the old routes behind the renamed sections", () => {
-    const byId = (id: string) => NAV.find((n) => n.id === id)!;
-    expect(navHref(byId("work"), "acme/api")).toBe("/acme/api/work");
-    expect(navHref(byId("activity"), "acme/api")).toBe("/acme/api/activity");
+  it("marks the current item, Needs you only on the home page itself", () => {
     expect(isActive(byId("inbox"), "/", "")).toBe(true);
     expect(isActive(byId("inbox"), "/explore", "")).toBe(false);
     expect(isActive(byId("changes"), "/acme/api/changes/01H", "acme/api")).toBe(true);
+    expect(isActive(byId("record"), "/orgs/acme/settings/audit", "acme/api", "acme")).toBe(true);
+  });
+
+  it("keeps the five repositories opened last, newest first, without repeats", () => {
+    expect(withRecent([], "acme/api")).toEqual(["acme/api"]);
+    expect(withRecent(["acme/web", "acme/api"], "acme/api")).toEqual(["acme/api", "acme/web"]);
+    expect(withRecent(["a/1", "a/2", "a/3", "a/4", "a/5"], "a/6")).toEqual(["a/6", "a/1", "a/2", "a/3", "a/4"]);
   });
 });

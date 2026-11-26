@@ -4,6 +4,7 @@
 //! | RPCs | who |
 //! |---|---|
 //! | `GetPost`, `ListRepoPosts`, `GetChangePost` | repo `read` (signed-out callers on public repos too) |
+//! | `CreatePost`, media upload without a change request | `commit` on the repo |
 //! | `SetChangePost`, `ClearChangePost`, media upload | whoever may edit the change request: its author (with `read`) or `commit` on the repo |
 //! | `ApprovePost` | a human with `commit` who is not the post's author |
 //! | `WithdrawPost` | the post's author or a repo admin |
@@ -13,8 +14,9 @@
 //! Every post a call returns is checked for repo `read`; one in a deleted repo is
 //! `NOT_FOUND`. `PostCounts.adoptions` counts adoptions in repos the caller reads, and the
 //! `inspired_by` of an issue or change request is set only when the caller reads the post's
-//! repo ([`fill_change_posts`], [`fill_issue_inspirations`]). Media URLs are signed for the caller's principal chain (empty for a signed-out
-//! caller) and expire after 15 minutes.
+//! repo ([`fill_change_posts`], [`fill_issue_inspirations`]). `Post.attachments` are cards
+//! read from the attachments as they are now ([`super::attach`]). Media URLs are signed for
+//! the caller's principal chain (empty for a signed-out caller) and expire after 15 minutes.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -28,7 +30,7 @@ use tonic::{Request, Response, Status};
 use super::adopt::{self, AdoptionRec};
 use super::feed::{self, Dir, Readable, Sources};
 use super::model::PostRec;
-use super::store::Posts;
+use super::store::{Content, Posts, is_own_media_owner, own_media_owner};
 use super::{MEDIA_PREFIX, store::At};
 use crate::auth::Caller;
 use crate::cx::Cx;
@@ -147,8 +149,10 @@ impl<'a> View<'a> {
             .readable_adoptions(&seen.cx, &rec.post().id)
             .await?
             .len() as u64;
+        let attachments = self.posts.attachments(&seen.cx, rec.post()).await?;
         let mut p = rec.post().clone();
         p.version = version;
+        p.attachments = attachments;
         // A `RepoRef` carries one of id or name; clients (agents too) read the name.
         p.repo = Some(RepoRef {
             repo: Some(repo_ref::Repo::FullName(seen.full_name.clone())),
@@ -166,7 +170,11 @@ impl<'a> View<'a> {
         p.viewer = Some(PostViewer {
             liked: e.liked,
             reposted: e.reposted,
-            can_edit: signed_in && open && (seen.commit || e.change_author == *me),
+            // A post of its own is not edited (it is withdrawn and written again).
+            can_edit: signed_in
+                && open
+                && !p.change_id.is_empty()
+                && (seen.commit || e.change_author == *me),
             can_approve: open
                 && human
                 && seen.commit
@@ -180,6 +188,8 @@ impl<'a> View<'a> {
         if state == PostState::Withdrawn {
             p.text.clear();
             p.media.clear();
+            p.body_markdown.clear();
+            p.article = None;
         } else {
             let now = self.posts.db.now_ms();
             for m in &mut p.media {
@@ -412,6 +422,52 @@ impl PostServices {
             .await
     }
 
+    /// The right to write a post of its own in `repo`: `commit` on the repo, with a token that
+    /// allows it; never on an archived repo. As for a change request's post, a caller who
+    /// cannot read the repo learns nothing about it (`NOT_FOUND`).
+    async fn write_cx(&self, caller: &Caller, repo: &Repo, audit: &str) -> Result<Cx> {
+        let read = self.read_cx(caller, repo).await;
+        self.base
+            .guarded(caller, &repo.org_id, &repo.id, audit, read)
+            .await?;
+        if repo.archived {
+            return Err(ForgeError::archived(&repo.full_name));
+        }
+        if !caller.token.allows_action(Action::Commit) {
+            return Err(ForgeError::new(
+                ErrorReason::PolicyDenied,
+                "token does not allow `commit`",
+            ));
+        }
+        let write = self
+            .forge()
+            .authz
+            .repo(caller, repo, Action::Commit, &[], None, None)
+            .await;
+        self.base
+            .guarded(caller, &repo.org_id, &repo.id, audit, write)
+            .await
+    }
+
+    /// The right to upload or finalize media owned by `owner`: a change request (whoever may
+    /// edit it), or the uploader of media for a post of its own (that principal, with
+    /// `commit`; to anyone else the media is `NOT_FOUND`).
+    async fn media_cx(
+        &self,
+        caller: &Caller,
+        repo: &Repo,
+        owner: &str,
+        media_id: &str,
+    ) -> Result<Cx> {
+        if !is_own_media_owner(owner) {
+            return self.edit_cx(caller, repo, owner, "post.media_upload").await;
+        }
+        if owner != own_media_owner(&caller.cx.actor_id) {
+            return Err(ForgeError::not_found(format!("post media {media_id}")));
+        }
+        self.write_cx(caller, repo, "post.media_upload").await
+    }
+
     /// An account-level write (likes, reposts): the token allows `commit`.
     fn account_cx(&self, caller: &Caller) -> Result<Cx> {
         if caller.is_anonymous() {
@@ -478,6 +534,27 @@ impl PostServices {
 
 #[async_trait]
 impl PostService for PostServices {
+    async fn create_post(&self, req: Request<CreatePostRequest>) -> Res<Post> {
+        let caller = self.base.caller(&req)?;
+        let r = req.into_inner();
+        let out = async {
+            let repo = self.base.repo(&caller, &r.repo).await?;
+            let cx = self.write_cx(&caller, &repo, "post.create").await?;
+            let content = Content {
+                body_markdown: r.body_markdown.clone(),
+                article: r.article.clone(),
+                attachments: r.attachments.clone(),
+            };
+            let (rec, v) = self
+                .posts
+                .create(&cx, &repo, &r.text, &r.media_ids, &content)
+                .await?;
+            self.serve(&caller, &rec, v).await
+        }
+        .await;
+        reply(&caller, out)
+    }
+
     async fn set_change_post(&self, req: Request<SetChangePostRequest>) -> Res<Post> {
         let caller = self.base.caller(&req)?;
         let r = req.into_inner();
@@ -486,14 +563,20 @@ impl PostService for PostServices {
             let cx = self
                 .edit_cx(&caller, &repo, &r.change_id, "post.set")
                 .await?;
+            let content = Content {
+                body_markdown: r.body_markdown.clone(),
+                article: r.article.clone(),
+                attachments: r.attachments.clone(),
+            };
             let (rec, v) = self
                 .posts
-                .set(
+                .set_with(
                     &cx,
                     &repo,
                     &r.change_id,
                     &r.text,
                     &r.media_ids,
+                    &content,
                     r.expected_version,
                 )
                 .await?;
@@ -551,9 +634,12 @@ impl PostService for PostServices {
         let r = req.into_inner();
         let out = async {
             let repo = self.base.repo(&caller, &r.repo).await?;
-            let cx = self
-                .edit_cx(&caller, &repo, &r.change_id, "post.media_upload")
-                .await?;
+            let cx = if r.change_id.is_empty() {
+                self.write_cx(&caller, &repo, "post.media_upload").await?
+            } else {
+                self.edit_cx(&caller, &repo, &r.change_id, "post.media_upload")
+                    .await?
+            };
             let kind = PostMediaKind::try_from(r.kind).unwrap_or(PostMediaKind::Unspecified);
             let (rec, url) = self
                 .posts
@@ -587,9 +673,7 @@ impl PostService for PostServices {
             let repo = self.base.repo(&caller, &r.repo).await?;
             let read = self.read_cx(&caller, &repo).await?;
             let owner = self.posts.media_owner(&read, &repo, &r.media_id).await?;
-            let cx = self
-                .edit_cx(&caller, &repo, &owner, "post.media_upload")
-                .await?;
+            let cx = self.media_cx(&caller, &repo, &owner, &r.media_id).await?;
             let rec = self
                 .posts
                 .finalize_media(

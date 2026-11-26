@@ -221,6 +221,7 @@ export const communityOps = {
     } satisfies UnaryOp<T.ListPublicActivityRequest, T.ListPublicActivityResponse>,
   },
   UserService: {
+    GetViewer: pass(UserService.method.getViewer),
     GetProfile: {
       wire: (r) => wire(UserService.method.getUser, { login: r.owner }),
       run: (rpc, r, opts) => profile(rpc, r, opts),

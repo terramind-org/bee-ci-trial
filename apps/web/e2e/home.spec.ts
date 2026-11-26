@@ -22,18 +22,23 @@ test.describe("Home: signed in", () => {
     const items = await list.getByRole("listitem").count();
 
     const rail = page.getByRole("complementary", { name: "Beehive" }).getByRole("navigation", { name: "Main" });
-    const inboxLink = rail.getByRole("link", { name: /^Inbox/ });
-    await expect(inboxLink).toHaveAccessibleName(items === 0 ? /^Inbox$/ : new RegExp(`^Inbox\\s*, ${items} needs? you$`));
+    const needsYou = rail.getByRole("link", { name: /^Needs you/ });
+    await expect(needsYou).toHaveAccessibleName(items === 0 ? /^Needs you$/ : new RegExp(`^Needs you\\s*, ${items} waiting$`));
 
     for (const item of await list.getByRole("listitem").all()) {
-      // One action: a button-styled link to the change request (or its post panel).
-      const actions = item.getByRole("link", { name: /^(Review|Open|Merge|Read post)\s*:/ });
+      // Each row has one action for its safety record, pull request or post.
+      const actions = item.getByRole("link", { name: /^(Review safety|Review|Open|Merge|Read post)\s*:/ });
       await expect(actions).toHaveCount(1);
-      await expect(actions).toHaveAttribute("href", /\/changes\/[^/]+(#post)?$/);
+      const kind = await item.getAttribute("data-kind");
+      if (kind === "tripwire" || kind === "concern") {
+        await expect(actions).toHaveAttribute("href", /\/safety\?work=[^&]+&kind=SAFETY_WORK_KIND_(RUN|SWARM)$/);
+      } else {
+        await expect(actions).toHaveAttribute("href", /\/changes\/[^/]+(#post)?$/);
+      }
     }
     if (!items) return;
-    // The first item is the next thing to do: it opens its change request.
-    const first = list.getByRole("listitem").first().getByRole("link", { name: /^(Review|Open|Merge|Read post)\s*:/ });
+    // The first item is the next thing to do.
+    const first = list.getByRole("listitem").first().getByRole("link", { name: /^(Review safety|Review|Open|Merge|Read post)\s*:/ });
     const href = await first.getAttribute("href");
     await first.click();
     await expect(page).toHaveURL(new RegExp((href ?? "").replace(/#.*$/, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));

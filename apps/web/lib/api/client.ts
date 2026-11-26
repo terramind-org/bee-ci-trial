@@ -47,7 +47,10 @@ export const SERVICE_KEYS: Record<ServiceName, string> = {
   AuthService: "auth",
   ImportService: "import",
   AgentService: "agent",
+  SwarmService: "swarm",
+  SafetyService: "safety",
   WorkflowService: "workflow",
+  DeploymentService: "deployment", // CI shows deployment records alongside runs.
   IssueService: "issue",
   ProjectService: "project",
   ReleaseService: "release",

@@ -187,7 +187,7 @@ async function getPolicy(rpc: Rpc, r: T.GetPolicyRequest, opts?: CallOptions): P
   const path = str(src?.path) || ".beehive/policy.toml";
   const at = src?.changeset as T.ObjectId | undefined;
   const source = at ? await readText(rpc, r.repo, objectIdText(at), path, opts) : "";
-  return { path, source, epoch: str(doc.epoch), atChangeset: at };
+  return { path, source, normalizedJson: str(doc.normalizedJson), epoch: str(doc.epoch), atChangeset: at };
 }
 
 async function evaluatePolicy(rpc: Rpc, r: T.EvaluatePolicyRequest, opts?: CallOptions): Promise<T.PolicyEvaluation> {
@@ -199,6 +199,7 @@ async function evaluatePolicy(rpc: Rpc, r: T.EvaluatePolicyRequest, opts?: CallO
   return {
     valid: true,
     errors,
+    normalizedJson: str(v.normalizedJson),
     rules: list(v.ruleSummaries),
     decisions: list(v.replay).map((d) => ({
       changeRequestId: str(d.changeRequestId),
@@ -215,7 +216,16 @@ async function evaluatePolicy(rpc: Rpc, r: T.EvaluatePolicyRequest, opts?: CallO
 
 function subjectText(s: SubjectRefJson | undefined): string {
   if (!s?.id) return "";
-  return str(s.kind).replace("SUBJECT_KIND_", "").toLowerCase() + " " + s.id;
+  const kind = str(s.kind).replace("SUBJECT_KIND_", "");
+  const label = kind === "CHANGE_REQUEST" ? "pull request" : kind === "CHANGESET" ? "commit" : kind.toLowerCase().replaceAll("_", " ");
+  return [label, s.id].filter(Boolean).join(" ");
+}
+
+function delegationOf(e: AuditEntryJson): string[] {
+  const actor = e.actor?.id;
+  const chain = list(e.delegationChain).filter((id) => id !== actor);
+  const root = e.onBehalfOf;
+  return root && root !== actor && !chain.includes(root) ? [...chain, root] : chain;
 }
 
 async function listAudit(rpc: Rpc, r: T.ListAuditRequest, opts?: CallOptions): Promise<T.ListAuditResponse> {
@@ -223,20 +233,21 @@ async function listAudit(rpc: Rpc, r: T.ListAuditRequest, opts?: CallOptions): P
     rpc.call(AuditService.method.queryAuditLog, { org: r.org, filter: auditFilter(r), page: r.page }, opts),
     rpc.call(AuditService.method.verifyAuditChain, { org: r.org }, opts),
   ]);
-  // A server that ignores AuditLogFilter.denied_only must still never show an allowed entry.
-  const entries = list(q.entries).filter((e) => !r.deniedOnly || !allowed(e));
-  const ids = (e: AuditEntryJson) => [...list(e.delegationChain), str(e.actor?.id)].filter((id) => /^[0-9A-HJKMNP-TV-Z]{26}$/.test(id));
+  // Record's result filter works on older servers and on ones that only support denied_only.
+  const entries = list(q.entries).filter((e) => (!r.deniedOnly || !allowed(e)) && (!r.allowedOnly || allowed(e)));
+  const ids = (e: AuditEntryJson) => [...delegationOf(e), str(e.actor?.id)].filter((id) => /^[0-9A-HJKMNP-TV-Z]{26}$/.test(id));
   const repoIds = [...new Set(entries.flatMap((e) => (e.repo?.id && !e.repo.fullName ? [e.repo.id] : [])))];
   const [names, repoNames] = await Promise.all([principals(rpc, entries.flatMap(ids), opts), reposById(rpc, repoIds, opts)]);
   return {
     entries: entries.map((e): T.AuditEntry => {
+      const delegation = delegationOf(e);
+      const root = names.get(e.onBehalfOf || delegation.at(-1) || "");
       return {
         seq: str(e.seq),
         time: e.time,
         actor: e.actor?.id && !e.actor.display ? (names.get(e.actor.id) ?? (e.actor as T.Principal)) : (e.actor as T.Principal | undefined),
-        onBehalfOf: list(e.delegationChain)
-          .slice(1)
-          .map((id) => names.get(id)?.display ?? id),
+        onBehalfOf: delegation.map((id) => names.get(id)?.display || id),
+        answerable: root?.kind === "PRINCIPAL_KIND_HUMAN" && root.id !== e.actor?.id ? root : undefined,
         action: str(e.action),
         target: str(e.targetDisplay) || subjectText(e.target),
         repo: str(e.repo?.fullName) || repoNames.get(str(e.repo?.id)) || str(e.repo?.id),
@@ -248,6 +259,9 @@ async function listAudit(rpc: Rpc, r: T.ListAuditRequest, opts?: CallOptions): P
       };
     }),
     chainVerified: !!verify.ok,
+    verifiedToSeq: str(verify.verifiedToSeq) || "0",
+    firstBrokenSeq: str(verify.firstBrokenSeq) || "0",
+    verificationFailure: str(verify.failure),
     page: pageOf(q.page),
   };
 }
@@ -316,7 +330,7 @@ export const governanceOps = {
       run: (rpc, r, opts) => getPolicy(rpc, r, opts),
     },
     EvaluatePolicy: {
-      wire: (r) => wire(PolicyService.method.validatePolicy, { repo: r.repo, toml: r.source }),
+      wire: (r) => wire(PolicyService.method.validatePolicy, { repo: r.repo, toml: r.source, replaySample: r.sample }),
       run: (rpc, r, opts) => evaluatePolicy(rpc, r, opts),
     },
   },
@@ -325,6 +339,7 @@ export const governanceOps = {
       wire: (r) => wire(AuditService.method.queryAuditLog, { org: r.org, filter: auditFilter(r), page: r.page }),
       run: (rpc, r, opts) => listAudit(rpc, r, opts),
     },
+    VerifyAuditChain: pass(AuditService.method.verifyAuditChain),
   },
 } satisfies PartialOps<"ReleaseService" | "SecurityService" | "PolicyService" | "AuditService">;
 

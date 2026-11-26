@@ -46,7 +46,7 @@ export function CommentForm({ repo, crId, signedIn, next }: { repo: string; crId
         <Textarea id="cr-comment" value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Ask a question or leave a note for the author." />
       </Field>
       <div>
-        <Button type="submit" variant="primary" size="sm" disabled={busy || !body.trim()}>
+        <Button type="submit" size="sm" disabled={busy || !body.trim()}>
           {busy ? "Posting…" : "Comment"}
         </Button>
       </div>

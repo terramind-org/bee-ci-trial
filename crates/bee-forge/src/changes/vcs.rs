@@ -260,6 +260,8 @@ pub struct LandIntent {
     pub change_request_id: String,
     /// The landing principal (actor first).
     pub chain: Vec<String>,
+    /// Kind of the acting principal from the authenticated landing context.
+    pub actor_kind: bee_proto::v1::PrincipalKind,
     /// ChangeId of the squash or merge changeset (raw), when the caller picks one.
     pub change_id: Option<Vec<u8>>,
 }

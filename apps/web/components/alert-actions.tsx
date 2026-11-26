@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserClient } from "@/lib/api/browser";
 import { CopyAs } from "./copy-as";
+import { ConfirmButton } from "./kit/confirm";
 import { useToast } from "./toast";
-import { Button, Select } from "./ui";
+import { Select } from "./ui";
 
 const REASONS = ["False positive", "Used in tests only", "Risk accepted", "No bandwidth to fix"];
 
@@ -24,7 +25,10 @@ export function DismissAlert({ repo, id }: { repo: string; id: string }) {
           <option key={r}>{r}</option>
         ))}
       </Select>
-      <Button
+      <ConfirmButton
+        agentConfirm={"Dismisses this security alert in " + repo + " with the reason chosen beside it; the reason goes in the audit log"}
+        consequence="destructive"
+        variant="secondary"
         size="sm"
         onClick={async () => {
           try {
@@ -37,7 +41,7 @@ export function DismissAlert({ repo, id }: { repo: string; id: string }) {
         }}
       >
         Dismiss
-      </Button>
+      </ConfirmButton>
       <CopyAs compact op={{ service: "SecurityService", method: "DismissAlert", request: req, label: "Dismiss this alert" }} />
     </div>
   );

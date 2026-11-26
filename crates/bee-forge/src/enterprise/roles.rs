@@ -123,6 +123,13 @@ const CATALOG: &[Perm] = &[
         Action::IssuesWrite,
     ),
     repo_perm(
+        "swarm_join",
+        "agents",
+        "Ask to join a swarm",
+        true,
+        Action::SwarmJoin,
+    ),
+    repo_perm(
         "triage",
         "change_requests",
         "Manage issues, labels and change-request metadata",

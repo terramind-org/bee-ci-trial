@@ -232,6 +232,55 @@ export const POST_SEEDS: PostSeed[] = [
   },
 ];
 
+/** A post of its own: no change request carries it. */
+export interface OwnPostSeed {
+  key: string;
+  repo: string;
+  /** Handle of the author. */
+  by: string;
+  text: string;
+  /** Markdown under the summary. */
+  body?: string;
+  article?: { title: string; bodyMarkdown: string };
+  media: string[];
+  /** Keys of the change requests attached to it. */
+  changes: string[];
+  /** Minutes before the anchor that it went live. */
+  ago: number;
+  /** Who signed off an agent's post. */
+  approvedBy?: string;
+}
+
+export const OWN_POST_SEEDS: OwnPostSeed[] = [
+  // An outcome: an agent sums up two landed changes, with a picture. A person approved it.
+  {
+    key: "engine-rebase-outcome",
+    repo: LAT + "engine",
+    by: "patcher",
+    text: "Rebase in the engine is done: it replays a change onto a new base, and deep histories no longer overflow the stack.",
+    body: "Two changes landed for this.\n\n- **Three-way rebase** replays a change onto a new base and reports a conflict as data instead of guessing.\n- **The graph walk** is iterative now, so a million changes use flat memory.\n\nBoth keep the same promise: the same inputs give the same bytes.",
+    media: ["workspace-change"],
+    changes: ["lat-rebase", "lat-graph-walk"],
+    ago: 2_600,
+    approvedBy: "rhea",
+  },
+  // An article by a person, about no change in particular.
+  {
+    key: "engine-order-article",
+    repo: LAT + "engine",
+    by: "omar",
+    text: "I wrote up why nothing in the engine may depend on file order, and how we test for it.",
+    article: {
+      title: "Order is not an input",
+      bodyMarkdown:
+        "## The rule\n\nA rebase gets a change, a base and a target. It does not get the order in which a directory happened to be listed. If the result changes when that order changes, the result is wrong.\n\n## How it goes wrong\n\nMost of our early bugs had the same shape: a map was iterated, and the iteration order leaked into the output. Two runs over the same graph listed conflicts differently, so nobody could diff them.\n\n## What we do now\n\n1. Every list we return is sorted by a key that is part of the data.\n2. Tests run each case twice with the inputs shuffled and compare the bytes.\n3. A conflict is an entry in the result, never a side effect.\n\n```rust\nconflicts.sort_by(|a, b| a.path.cmp(&b.path));\n```\n\nThat is the whole trick. It is boring, and it is why the output can be trusted.",
+    },
+    media: [],
+    changes: [],
+    ago: 2_200,
+  },
+];
+
 // ---------------------------------------------------------------- change requests behind the posts
 
 /** A change request that landed an existing commit of main, so the post has a change to belong to. */

@@ -199,11 +199,26 @@ pub async fn internal_token(
     state: &AppState,
     chain: &[String],
 ) -> crate::errors::ApiResult<String> {
+    internal_token_with_kind(state, chain, v1::PrincipalKind::Unspecified).await
+}
+
+async fn internal_token_with_kind(
+    state: &AppState,
+    chain: &[String],
+    kind: v1::PrincipalKind,
+) -> crate::errors::ApiResult<String> {
     let actor = chain.first().ok_or_else(|| {
         crate::errors::ApiError::invalid("missing_field", "empty principal chain")
     })?;
     let principal = match state.principal(actor).await? {
         Some(r) => r.to_auth(),
+        None if matches!(kind, v1::PrincipalKind::Agent | v1::PrincipalKind::Service) => {
+            // An unregistered non-human must not be reconstructed as a person and skip
+            // the publication freeze.
+            return Err(crate::errors::ApiError::denied(
+                "The landing principal is unavailable",
+            ));
+        }
         None => bee_auth::Principal::human(actor.clone(), actor.clone()),
     };
     let mut on_behalf_of = Vec::new();
@@ -254,7 +269,7 @@ impl Lander for ServerLander {
             .state
             .upgrade()
             .ok_or_else(|| ForgeError::unavailable("server stopping"))?;
-        let token = internal_token(&state, &intent.chain)
+        let token = internal_token_with_kind(&state, &intent.chain, intent.actor_kind)
             .await
             .map_err(api_to_forge)?;
         let mut req = tonic::Request::new(v1::LandRequest {
@@ -583,6 +598,7 @@ impl ForgeWiring {
     /// close and leases release).
     pub(crate) async fn landed(
         &self,
+        caller: &Caller,
         repo: &RepoCtx,
         ref_name: &str,
         resp: &v1::LandResponse,
@@ -612,7 +628,9 @@ impl ForgeWiring {
         if !cr_id.is_empty() {
             return;
         }
-        let cx = quick_cx();
+        // Native land can close a pull request too. Retain its authenticated principal so
+        // safety sampling can tell agent merges from those a person performed.
+        let cx = caller_cx(caller).with_deadline(quick_cx().deadline);
         let Some(frepo) = self.forge_repo(&cx, &repo.id_text()).await else {
             return;
         };
@@ -630,7 +648,7 @@ impl ForgeWiring {
             }
             if let Err(e) = self
                 .changes
-                .record_landed(&Cx::system(), &frepo, &cr.id, resp, false)
+                .record_landed(&cx, &frepo, &cr.id, resp, false)
                 .await
             {
                 logging::log(
@@ -823,6 +841,7 @@ pub fn caller_cx(caller: &Caller) -> Cx {
 
 /// Wakes the merge-queue worker for refs whose queue changed.
 pub struct QueueListener {
+    changes: Arc<Changes>,
     pending: Arc<Mutex<BTreeSet<(String, String)>>>,
     wake: Arc<Notify>,
 }
@@ -830,16 +849,37 @@ pub struct QueueListener {
 impl QueueListener {
     /// A listener feeding `pending` and waking `wake`.
     pub fn new(
+        changes: Arc<Changes>,
         pending: Arc<Mutex<BTreeSet<(String, String)>>>,
         wake: Arc<Notify>,
     ) -> QueueListener {
-        QueueListener { pending, wake }
+        QueueListener {
+            changes,
+            pending,
+            wake,
+        }
     }
 }
 
 #[async_trait]
 impl EventListener for QueueListener {
     async fn on_event(&self, event: &Event) {
+        if event.kind == "safety.resumed" && !event.repo_id.is_empty() {
+            let targets = self
+                .changes
+                .queued_targets(&Cx::system(), &event.repo_id)
+                .await
+                .unwrap_or_default();
+            if let Ok(mut p) = self.pending.lock() {
+                p.extend(
+                    targets
+                        .into_iter()
+                        .map(|target| (event.repo_id.clone(), target)),
+                );
+            }
+            self.wake.notify_one();
+            return;
+        }
         if !matches!(
             event.kind.as_str(),
             "merge_queue.entered" | "merge_queue.updated" | "check.updated" | "cr.landed"

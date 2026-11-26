@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserClient } from "@/lib/api/browser";
 import { CopyAs } from "./copy-as";
+import { ConfirmButton } from "./kit/confirm";
 import { Markdown } from "./markdown";
 import { useToast } from "./toast";
 import { Button, Field, Input, Textarea } from "./ui";
@@ -60,7 +61,7 @@ export function NewRelease({ repo, suggestedTag }: { repo: string; suggestedTag:
                   }
                 }}
               >
-                Generate from landed changes
+                Generate from merged pull requests
               </Button>
               <CopyAs compact op={{ service: "ReleaseService", method: "GenerateNotes", request: { repo: r, tag }, label: "Generate release notes" }} />
               <Button size="sm" variant="ghost" onClick={() => setPreview((p) => !p)} aria-pressed={preview}>
@@ -76,9 +77,9 @@ export function NewRelease({ repo, suggestedTag }: { repo: string; suggestedTag:
         Pre-release (mutable until promoted)
       </label>
       <div className="flex items-center gap-1.5">
-        <Button type="submit" variant="primary" icon="releases" disabled={busy || !tag}>
+        <ConfirmButton type="submit" agentConfirm={"Publishes release " + tag + " of " + repo + " with these notes"} consequence="approving" icon="releases" disabled={busy || !tag}>
           Publish {tag}
-        </Button>
+        </ConfirmButton>
         <CopyAs op={{ service: "ReleaseService", method: "CreateRelease", request: req, label: "Publish this release" }} />
       </div>
     </form>

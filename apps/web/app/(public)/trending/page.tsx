@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { CopyAs, PageOp } from "@/components/copy-as";
+import { PageFacts } from "@/components/bee/page-facts";
+import { PageMenu } from "@/components/menu";
 import { ExploreTabs } from "@/components/discover/explore-tabs";
 import { Pager, href } from "@/components/discover/pager";
 import { SINCE_LABEL, SINCE_WINDOW, parseChoice, type Since } from "@/components/discover/params";
-import { SectionError, attempt } from "@/components/discover/section";
+import { SectionError, attempt, discoveryFacts } from "@/components/discover/section";
 import { TrendingDeveloperList, TrendingRepoList, type Relations } from "@/components/discover/trending-list";
 import { Segments, WindowSwitch } from "@/components/discover/window-switch";
 import { Button, Input, PageHeader } from "@/components/ui";
+import type { ListTrendingDevelopersResponse, ListTrendingReposResponse } from "@/lib/api/types";
 import { currentPrincipal, serverClient } from "@/lib/api/server";
+import { ownerHref, repoHref } from "@/lib/routes";
+import { toolFor } from "@/lib/tools";
+import { requestMode } from "../../request-mode";
 import { guard, param, type SearchParams } from "@/lib/page";
 
 export const metadata: Metadata = { title: "Trending" };
@@ -28,7 +33,8 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
 
   return guard(async () => {
     const api = await serverClient();
-    const me = await currentPrincipal();
+    const [me, { mode }] = await Promise.all([currentPrincipal(), requestMode()]);
+    const viewer = me && kind !== "repos" && mode === "keeper" ? await attempt(api.user.getViewer({})) : null;
     const window = SINCE_WINDOW[since];
     const page = { pageSize: PAGE, ...(after ? { pageToken: after } : {}) };
 
@@ -39,8 +45,8 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
     const [main, languages, starred, following] = await Promise.all([
       kind === "repos" ? attempt(api.search.listTrendingRepos(repoReq)) : attempt(api.search.listTrendingDevelopers(devReq)),
       attempt(api.search.listTrendingRepos({ window, page: { pageSize: 100 } })),
-      me ? attempt(api.user.listStarred({ login: me.display, page: { pageSize: 200 } })) : Promise.resolve(null),
-      me ? attempt(api.user.listFollowing({ login: me.display, page: { pageSize: 200 } })) : Promise.resolve(null),
+      me && kind === "repos" && mode === "keeper" ? attempt(api.user.listStarred({ login: "", page: { pageSize: 200 } })) : Promise.resolve(null),
+      viewer?.ok ? attempt(api.user.listFollowing({ login: viewer.data.login, page: { pageSize: 200 } })) : Promise.resolve(null),
     ]);
     const relations: Relations = {
       signedIn: !!me,
@@ -55,21 +61,49 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
         : { service: "SearchService" as const, method: "ListTrendingDevelopers", request: devReq, label: kind === "agents" ? "List trending agents" : "List trending developers" };
     const next = main.ok && main.data.page?.nextPageToken ? here({ after: main.data.page.nextPageToken }) : null;
 
+    const filterKinds = <Segments label="Kind" current={kind} segments={KINDS.map((k) => ({ value: k, label: KIND_LABEL[k], href: here({ kind: k === "repos" ? undefined : k, after: undefined }) }))} />;
+    const filterWindow = <WindowSwitch current={since} options={SINCES} hrefFor={(s) => here({ since: s === "week" ? undefined : s, after: undefined })} />;
+    if (mode === "bee") {
+      return (
+        <>
+          <PageFacts page="trending" title="Trending" tools={[
+            toolFor(kind === "repos" ? "SearchService/ListTrendingRepos" : "SearchService/ListTrendingDevelopers", "Read the rankings for this time window"),
+            ...(me ? kind === "repos" ? [
+              toolFor("UserService/StarRepo", "Star a repository"),
+              toolFor("UserService/UnstarRepo", "Remove your star"),
+            ] : [
+              toolFor("UserService/FollowUser", "Follow a person or agent"),
+              toolFor("UserService/UnfollowUser", "Stop following a person or agent"),
+            ] : []),
+          ]} groups={[
+            { title: "filters", facts: [
+              { label: "kind", value: KIND_LABEL[kind] }, { label: "window", value: SINCE_LABEL[since] },
+              language ? { label: "language", value: language } : null,
+            ] },
+            discoveryFacts<ListTrendingReposResponse | ListTrendingDevelopersResponse>("rankings", main, (data) => "repos" in data
+              ? data.repos.flatMap((t, i) => t.repo ? [[t.rank || i + 1, t.repo.fullName, t.repo.description, t.repo.primaryLanguage, t.starsInWindow + " new stars", t.repo.starCount + " stars total", t.builtBy.map((p) => [p.display, p.runtime].filter(Boolean).join(" · ")).join(", "), repoHref(t.repo.fullName)].filter(Boolean).join(" · ")] : [])
+              : data.developers.flatMap((d, i) => d.user ? [[d.rank || i + 1, d.user.login, d.user.principal?.runtime, d.user.bio, d.popularRepo?.fullName, ownerHref(d.user.login)].filter(Boolean).join(" · ")] : []),
+            "Nothing is trending in this time window yet."),
+          ]} />
+          <div className="mt-6"><ExploreTabs current="trending" />{filterKinds}{filterWindow}<Pager nextHref={next} /></div>
+        </>
+      );
+    }
+
     return (
       <>
-        <PageOp op={op} />
-        <PageHeader title="Trending" lede={"What is gaining attention on Beehive, " + SINCE_LABEL[since].toLowerCase() + "."} actions={<CopyAs op={op} />} />
+        <PageHeader title="Trending" actions={<PageMenu op={op} />} />
         <ExploreTabs current="trending" />
         <div className="mb-6 flex flex-wrap items-center gap-x-8 gap-y-3">
-          <Segments label="Kind" current={kind} segments={KINDS.map((k) => ({ value: k, label: KIND_LABEL[k], href: here({ kind: k === "repos" ? undefined : k, after: undefined }) }))} />
-          <WindowSwitch current={since} options={SINCES} hrefFor={(s) => here({ since: s === "week" ? undefined : s, after: undefined })} />
-          <form action="/trending" method="get" className="flex items-center gap-2">
+          {filterKinds}
+          {filterWindow}
+          <form action="/trending" method="get" className="flex max-w-full flex-wrap items-center gap-2">
             {kind !== "repos" ? <input type="hidden" name="kind" value={kind} /> : null}
             {since !== "week" ? <input type="hidden" name="since" value={since} /> : null}
-            <label htmlFor="language" className="text-base text-ink-2">
+            <label htmlFor="language" className="sr-only">
               Language
             </label>
-            <Input id="language" name="language" defaultValue={language} list="trending-languages" placeholder="Any language" autoComplete="off" className="w-40" />
+            <Input id="language" name="language" defaultValue={language} list="trending-languages" placeholder="Any language" autoComplete="off" className="h-[34px] w-36 text-sm" />
             <datalist id="trending-languages">
               {langs.map((l) => (
                 <option key={l} value={l} />
@@ -83,10 +117,10 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
         <div>
           {!main.ok ? (
             <SectionError what="Trending" error={main.error} />
-          ) : kind === "repos" ? (
-            <TrendingRepoList repos={(main.data as { repos: never[] }).repos} since={since} relations={relations} />
+          ) : "repos" in main.data ? (
+            <TrendingRepoList repos={main.data.repos} since={since} relations={relations} />
           ) : (
-            <TrendingDeveloperList developers={(main.data as { developers: never[] }).developers} kind={kind} since={since} relations={relations} />
+            <TrendingDeveloperList developers={main.data.developers} kind={kind === "agents" ? "agents" : "developers"} since={since} relations={relations} />
           )}
           <Pager nextHref={next} />
         </div>

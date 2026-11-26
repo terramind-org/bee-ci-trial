@@ -17,7 +17,14 @@ export function RepoFilters({ params, signedIn, languages, target }: { params: L
   const [q, setQ] = useState(params.q);
   const [topic, setTopic] = useState(params.topic);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const go = (patch: Partial<ListParams>) => router.replace(listHref({ ...patch, cursor: "", page: 1 }, params, signedIn, target), { scroll: false });
+  const go = (patch: Partial<ListParams>) => {
+    if (timer.current) clearTimeout(timer.current);
+    router.replace(listHref({
+      q: q.trim().replace(/\s+/g, " "),
+      topic: topic.trim().toLowerCase().replace(/[\s:"]+/g, ""),
+      ...patch, cursor: "", page: 1,
+    }, params, signedIn, target), { scroll: false });
+  };
 
   // Back/forward changes the URL under us: follow it (adjusting state while rendering, not in an effect).
   const [seen, setSeen] = useState(params.q + "\0" + params.topic);
@@ -41,11 +48,10 @@ export function RepoFilters({ params, signedIn, languages, target }: { params: L
     <form
       role="search"
       aria-label="Filter repositories"
-      className="flex flex-wrap items-center gap-2"
+      className="flex flex-wrap items-center gap-2 text-sm"
       onSubmit={(e) => {
         e.preventDefault();
-        if (timer.current) clearTimeout(timer.current);
-        go({ q, topic });
+        go({});
       }}
     >
       <div className="relative min-w-[200px] flex-1 basis-64">
@@ -57,7 +63,7 @@ export function RepoFilters({ params, signedIn, languages, target }: { params: L
           aria-label="Find a repository"
           placeholder="Find a repository"
           autoComplete="off"
-          className="pl-8 pr-9"
+          className="h-[34px] pl-8 pr-9 text-sm"
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
@@ -68,25 +74,15 @@ export function RepoFilters({ params, signedIn, languages, target }: { params: L
           <Kbd>/</Kbd>
         </span>
       </div>
-      <Select
-        aria-label="Visibility"
-        name="visibility"
-        value={isPublicTab ? "public" : params.visibility}
-        disabled={isPublicTab || starred}
-        title={isPublicTab ? "The Public tab only lists public repositories" : starred ? "Starred repositories cannot be filtered by visibility" : undefined}
-        className="w-auto!"
-        onChange={(e) => go({ visibility: e.target.value as ListParams["visibility"] })}
-      >
-        {isPublicTab ? null : <option value="">Any visibility</option>}
-        <option value="public">Public</option>
-        {isPublicTab ? null : (
-          <>
-            <option value="internal">Internal</option>
-            <option value="private">Private</option>
-          </>
-        )}
-      </Select>
-      <Select aria-label="Language" name="language" value={params.language} className="w-auto!" onChange={(e) => go({ language: e.target.value })}>
+      {isPublicTab || starred ? null : (
+        <Select aria-label="Visibility" name="visibility" value={params.visibility} className="h-[34px] w-auto text-sm" onChange={(e) => go({ visibility: e.target.value as ListParams["visibility"] })}>
+          <option value="">Any visibility</option>
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="private">Private</option>
+        </Select>
+      )}
+      <Select aria-label="Language" name="language" value={params.language} className="h-[34px] w-auto text-sm" onChange={(e) => go({ language: e.target.value })}>
         <option value="">Any language</option>
         {langs.map((l) => (
           <option key={l} value={l}>
@@ -94,21 +90,19 @@ export function RepoFilters({ params, signedIn, languages, target }: { params: L
           </option>
         ))}
       </Select>
-      <Input
+      {starred ? null : <Input
         name="topic"
         aria-label="Topic"
         placeholder="Topic"
-        disabled={starred}
-        title={starred ? "Starred repositories cannot be filtered by topic" : undefined}
         autoComplete="off"
-        className="w-32!"
+        className="h-[34px] w-32 text-sm"
         value={topic}
         onChange={(e) => {
           setTopic(e.target.value);
           later({ topic: e.target.value.trim().toLowerCase().replace(/[\s:"]+/g, "") });
         }}
-      />
-      <Select aria-label="Sort" name="sort" value={params.sort} className="w-auto!" onChange={(e) => go({ sort: e.target.value as ListParams["sort"] })}>
+      />}
+      <Select aria-label="Sort" name="sort" value={params.sort} className="h-[34px] w-auto text-sm" onChange={(e) => go({ sort: e.target.value as ListParams["sort"] })}>
         <option value="updated">Recently updated</option>
         <option value="stars">Most stars</option>
         <option value="name">Name</option>

@@ -35,11 +35,13 @@ export function PrincipalCell({ hit, top = false, nav = true, size = 36 }: { hit
   return (
     <span className="inline-flex min-w-0 items-center gap-3">
       <PrincipalMark principal={p} size={size} />
-      <Link href={ownerHref(hit.login)} className={cx("min-w-0 truncate text-md text-ink hover:underline", top ? "font-semibold" : "font-medium")} data-nav-item={nav ? "" : undefined}>
-        {hit.login}
-      </Link>
-      {p.kind === "PRINCIPAL_KIND_AGENT" && p.runtime ? <span className="shrink-0 text-sm text-ink-3">{p.runtime}</span> : null}
-      {hit.name && hit.name !== hit.login ? <span className="hidden min-w-0 truncate text-base text-ink-3 sm:inline">{hit.name}</span> : null}
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+        <Link href={ownerHref(hit.login)} className={cx("link inline-flex min-h-6 max-w-full shrink-0 items-center [overflow-wrap:anywhere] text-md text-ink", top ? "font-semibold" : "font-medium")} data-nav-item={nav ? "" : undefined}>
+          {hit.login}
+        </Link>
+        {p.kind === "PRINCIPAL_KIND_AGENT" && p.runtime ? <span className="text-sm text-ink-3">{p.runtime}</span> : null}
+        {hit.name && hit.name !== hit.login ? <span className="hidden min-w-0 truncate text-base text-ink-3 sm:inline">{hit.name}</span> : null}
+      </span>
     </span>
   );
 }
@@ -50,7 +52,7 @@ export function RepoName({ fullName, top = false, nav = true, className }: { ful
   const owner = slash < 0 ? "" : fullName.slice(0, slash + 1);
   const name = slash < 0 ? fullName : fullName.slice(slash + 1);
   return (
-    <Link href={repoHref(fullName)} className={cx("min-w-0 truncate text-md hover:underline", className)} data-nav-item={nav ? "" : undefined}>
+    <Link href={repoHref(fullName)} aria-label={fullName} className={cx("link inline-block min-h-6 min-w-0 break-all text-md", className)} data-nav-item={nav ? "" : undefined}>
       <span className="text-ink-3">{owner}</span>
       <span className={cx("text-ink", top ? "font-semibold" : "font-medium")}>{name}</span>
     </Link>
@@ -66,7 +68,7 @@ export function RepoCell({ hit, top = false, nav = true, size = 36 }: { hit: Sea
   );
 }
 
-/** The share of a list as a 2px line in `ink-3` (cobalt is for actions). */
+/** The share of a list as a 2px line in `ink-3` (the score carries the meaning). */
 export function ShareBar({ share, className }: { share: number; className?: string }) {
   const pct = Math.max(0, Math.min(100, Math.round(share * 100)));
   return (
@@ -95,7 +97,7 @@ export function RankRow({
 }) {
   return (
     <li className={cx("py-3.5", className)} data-rank={rank}>
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-3 sm:flex-nowrap">
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2 sm:flex-nowrap">
         <Rank rank={rank} />
         {avatar ? <div className="shrink-0">{avatar}</div> : null}
         <div className="min-w-[10rem] flex-1 basis-0 self-center">{children}</div>

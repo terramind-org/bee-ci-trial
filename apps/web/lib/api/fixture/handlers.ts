@@ -21,9 +21,14 @@ import { invalid, overlaps, page } from "./util";
 import { VIEW_SERVICES } from "./views";
 import { ADMIN_SERVICES } from "./admin";
 import { COMMUNITY_SERVICES, createOrg, createRepo } from "./community";
+import { forkRepo, isAncestor, listForks, syncFork } from "./forks";
 import { BRIEF_SERVICES, listConversation } from "./briefs";
 import { POST_SERVICES } from "./posts";
+import { safetyService } from "./safety";
+import { swarmService } from "./swarms";
 import { HUB_SERVICES } from "./hub";
+import { repoSettingsImpl } from "./settings";
+import { createOrgInvitation, setMember } from "./org-members";
 
 function changesetView(s: FixtureStore, c: Commit, includeMeta: boolean): T.Changeset {
   const author = s.p(c.author);
@@ -107,9 +112,12 @@ const org = defineService(OrgService, {
     return { members: pg.items, page: { nextPageToken: pg.next } };
   },
   createOrg,
+  createOrgInvitation,
+  setMember,
 });
 
 const repoSvc = defineService(RepoService, {
+  ...repoSettingsImpl,
   getRepo: (s, req) => s.repoView(s.repo(req.repo)),
   listRepos: (s, req, ctx) => {
     const viewer = s.viewer(ctx.token);
@@ -119,6 +127,9 @@ const repoSvc = defineService(RepoService, {
   },
   getContext: (s, req) => s.context(s.repo(req.repo), (req.paths ?? []).map(pathText)),
   createRepo,
+  forkRepo,
+  listForks,
+  syncFork,
 });
 
 const change = defineService(ChangeService, {
@@ -482,6 +493,7 @@ function revisionDiff(s: FixtureStore, from: Commit, to: Commit) {
 }
 
 const query = defineService(QueryService, {
+  isAncestor,
   getChangesets: (s, req) => ({
     changesets: (req.ids ?? [])
       .map((id) => s.commits.get(objectIdText(id as T.ObjectId)))
@@ -737,4 +749,4 @@ function importOf(s: FixtureStore, id: string | undefined) {
 }
 
 /** Every service the fixture serves. */
-export const SERVICES: ServiceDef[] = [org, repoSvc, change, check, lease, event, object, query, write, ref, auth, importSvc, ...VIEW_SERVICES, ...COMMUNITY_SERVICES, ...POST_SERVICES, ...BRIEF_SERVICES, ...ADMIN_SERVICES, ...HUB_SERVICES];
+export const SERVICES: ServiceDef[] = [org, repoSvc, change, check, lease, event, object, query, write, ref, auth, importSvc, swarmService, safetyService, ...VIEW_SERVICES, ...COMMUNITY_SERVICES, ...POST_SERVICES, ...BRIEF_SERVICES, ...ADMIN_SERVICES, ...HUB_SERVICES];

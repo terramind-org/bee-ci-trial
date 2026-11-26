@@ -24,6 +24,11 @@ describe("markdown", () => {
     expect(html).toContain('<a href="/work/12">#12</a>');
   });
 
+  it("nests instruction headings and treats an incomplete table as prose", () => {
+    expect(renderMarkdown("# Root instructions\n\n| an unpaired row |", "acme/api", undefined, 3))
+      .toBe("<h4>Root instructions</h4>\n<p>| an unpaired row |</p>");
+  });
+
   it("links issue numbers into the repo it renders for", () => {
     expect(renderMarkdown("Fixes #12.", "acme/api")).toContain('<a href="/acme/api/work/12">#12</a>');
   });
@@ -65,7 +70,12 @@ describe("policy reader", () => {
   });
 
   it("flags unknown sections, classes and unclosed arrays with line numbers", () => {
-    const { errors } = parsePolicy('[nope]\n[land."main"]\nagents_may_land = ["docs", "magic"]\napprovals = [\n');
-    expect(errors.map((e) => e.line)).toEqual([1, 3, 4]);
+    // Use the same table syntax as the policy file that the Settings draft now copies.
+    const { errors } = parsePolicy(['version = 1', '[nope]', '[[land]]', 'ref = "main"', 'agents_may_land_without_human = ["docs", "magic"]', 'required_checks = ['].join("\n"));
+    expect(errors).toEqual([
+      { line: 2, message: 'unknown section "[nope]"' },
+      { line: 5, message: 'unknown diff class "magic"' },
+      { line: 6, message: "array is never closed" },
+    ]);
   });
 });

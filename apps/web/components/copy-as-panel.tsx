@@ -6,11 +6,11 @@
  * (`wireOf`, about 200 KB of gzipped script); `copy-as.tsx` loads it only when a dialog opens, so
  * the descriptors stay out of every page's first load.
  */
-import * as Tabs from "@radix-ui/react-tabs";
 import { useState } from "react";
 import { wireOf } from "@/lib/api/ops";
 import { httpLine, mcpToolName, toCli, toCurl, toMcp, type Op } from "@/lib/copyas";
 import { Icon } from "./icons";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "./kit/tabs";
 import { buttonClass } from "./ui";
 
 function CopyBlock({ text, label }: { text: string; label: string }) {
@@ -46,38 +46,34 @@ function CopyBlock({ text, label }: { text: string; label: string }) {
 export function CopyAsPanel({ op }: { op: Op }) {
   const wire = wireOf(op.service, op.method, op.request ?? {});
   return (
-    <Tabs.Root defaultValue="cli" className="flex flex-col gap-3">
-      <Tabs.List aria-label="Format" className="flex gap-1 border-b border-line">
+    <Tabs defaultValue="cli">
+      <TabsList label="Format">
         {[
           ["cli", "CLI"],
           ["http", "HTTP"],
           ["mcp", "MCP"],
         ].map(([v, l]) => (
-          <Tabs.Trigger
-            key={v}
-            value={v as string}
-            className="-mb-px h-8 border-b-2 border-transparent px-2.5 text-base text-ink-2 hover:text-ink data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ink"
-          >
+          <TabsTab key={v} value={v as string}>
             {l}
-          </Tabs.Trigger>
+          </TabsTab>
         ))}
-      </Tabs.List>
-      <Tabs.Content value="cli" className="flex flex-col gap-2">
+      </TabsList>
+      <TabsPanel value="cli" className="flex flex-col gap-2">
         <CopyBlock text={toCli(op)} label="CLI command" />
         <p className="text-xs text-ink-3">
           Add <code>--json</code> for one JSON document on stdout; errors carry a stable <code>reason</code>.
         </p>
-      </Tabs.Content>
-      <Tabs.Content value="http" className="flex flex-col gap-2">
+      </TabsPanel>
+      <TabsPanel value="http" className="flex flex-col gap-2">
         <p className="mono text-sm text-ink-2">{httpLine(op)}</p>
         <CopyBlock text={toCurl(op)} label="curl request" />
-      </Tabs.Content>
-      <Tabs.Content value="mcp" className="flex flex-col gap-2">
+      </TabsPanel>
+      <TabsPanel value="mcp" className="flex flex-col gap-2">
         <p className="text-sm text-ink-2">
           Tool <code className="mono">{mcpToolName(wire.service, wire.method)}</code> on <code className="mono">bee mcp</code> or <code className="mono">/mcp</code>
         </p>
         <CopyBlock text={toMcp(op)} label="MCP tool call" />
-      </Tabs.Content>
-    </Tabs.Root>
+      </TabsPanel>
+    </Tabs>
   );
 }

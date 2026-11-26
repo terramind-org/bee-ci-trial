@@ -102,6 +102,8 @@ impl Registry {
             &crate::packages::MODULE,
             &crate::security::MODULE,
             &crate::agents::MODULE,
+            &crate::swarms::MODULE,
+            &crate::safety::MODULE,
             &crate::forks::MODULE,
         ] {
             r.register(m)?;

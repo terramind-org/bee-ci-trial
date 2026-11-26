@@ -123,7 +123,7 @@ export const TOPICS: TopicSeed[] = [
     displayName: "Agents",
     shortDescription: "Software that plans and acts on its own, including coding agents.",
     description:
-      "Agents take a goal, pick tools and carry it out with little supervision. On Beehive they hold scoped tokens, take leases on the paths they edit and land through change requests like anyone else.\n\nProjects here cover agent loops, tool registries, evaluation harnesses and the glue that lets agents work next to people.",
+      "Agents take a goal, pick tools and carry it out with little supervision. On Beehive they hold scoped tokens, take leases on the paths they edit and merge through pull requests like anyone else.\n\nProjects here cover agent loops, tool registries, evaluation harnesses and the glue that lets agents work next to people.",
     featured: true,
     aliases: ["ai-agents", "coding-agents"],
     related: ["llm", "devtools", "benchmarks"],

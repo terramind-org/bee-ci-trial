@@ -50,10 +50,12 @@ function inline(s: string, repo?: string, evidence?: EvidenceIndex): string {
   return out.replace(/\u0000(\d+)\u0000/g, (_, i: string) => held[Number(i)] ?? "");
 }
 
-export function renderMarkdown(src: string, repo?: string, evidence?: EvidenceIndex): string {
+export function renderMarkdown(src: string, repo?: string, evidence?: EvidenceIndex, headingOffset?: number): string {
   const lines = src.replace(/\r\n/g, "\n").split("\n");
   const out: string[] = [];
+  const startsTable = (i: number) => /^\|.*\|\s*$/.test(lines[i] ?? "") && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1] ?? "");
   let i = 0;
+  let previousHeading = headingOffset ?? 1;
   while (i < lines.length) {
     const line = lines[i] ?? "";
     if (/^```/.test(line)) {
@@ -66,12 +68,15 @@ export function renderMarkdown(src: string, repo?: string, evidence?: EvidenceIn
     }
     const h = /^(#{1,3})\s+(.*)$/.exec(line);
     if (h) {
-      const level = (h[1] ?? "#").length + 1; // page owns the h1
+      const requestedLevel = (h[1] ?? "#").length + (headingOffset ?? 1);
+      // Embedded Markdown starts below its containing section and cannot skip a heading level.
+      const level = Math.min(6, requestedLevel, headingOffset === undefined ? 6 : previousHeading + 1);
+      previousHeading = level;
       out.push("<h" + level + ">" + inline(h[2] ?? "", repo, evidence) + "</h" + level + ">");
       i++;
       continue;
     }
-    if (/^\|.*\|\s*$/.test(line) && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1] ?? "")) {
+    if (startsTable(i)) {
       const cells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
       const head = cells(line);
       i += 2;
@@ -98,15 +103,18 @@ export function renderMarkdown(src: string, repo?: string, evidence?: EvidenceIn
       i++;
       continue;
     }
-    const para: string[] = [];
-    while (i < lines.length && (lines[i] ?? "").trim() !== "" && !/^(```|#{1,3}\s|\s*[-*]\s|\s*\d+\.\s|\|)/.test(lines[i] ?? "")) para.push(lines[i++] ?? "");
+    // A literal pipe is prose unless it starts a complete table header. Always consume
+    // the current line before looking for the next block.
+    const para = [line];
+    i++;
+    while (i < lines.length && (lines[i] ?? "").trim() !== "" && !/^(```|#{1,3}\s|\s*[-*]\s|\s*\d+\.\s)/.test(lines[i] ?? "") && !startsTable(i)) para.push(lines[i++] ?? "");
     out.push("<p>" + inline(para.join(" "), repo, evidence) + "</p>");
   }
   return out.join("\n");
 }
 
 /** `evidence` is the change's evidence (`evidenceIndex` in lib/evidence-view.ts), for `evidence:` images. */
-export function Markdown({ source, className, repo, evidence }: { source: string; className?: string; repo?: string; evidence?: EvidenceIndex }) {
+export function Markdown({ source, className, repo, evidence, headingOffset }: { source: string; className?: string; repo?: string; evidence?: EvidenceIndex; headingOffset?: number }) {
   if (!source.trim()) return <p className="text-ink-3 italic">No description.</p>;
-  return <div className={"prose-bee " + (className ?? "")} dangerouslySetInnerHTML={{ __html: renderMarkdown(source, repo, evidence) }} />;
+  return <div className={"prose-bee " + (className ?? "")} dangerouslySetInnerHTML={{ __html: renderMarkdown(source, repo, evidence, headingOffset) }} />;
 }

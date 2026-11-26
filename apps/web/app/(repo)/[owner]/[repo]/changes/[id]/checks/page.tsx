@@ -212,7 +212,7 @@ export default async function ChecksTab({ params, searchParams }: { params: Prom
               })}
             </ul>
           ) : runs.value ? (
-            <p className="text-base text-ink-2">No workflow ran for this change request.</p>
+            <p className="text-base text-ink-2">No workflow ran for this pull request.</p>
           ) : null}
         </Panel>
       </div>

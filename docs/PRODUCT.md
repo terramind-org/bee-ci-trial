@@ -477,6 +477,11 @@ secret is refused at CreateChangeset, at land and at git push, with the bypass a
 - An agent registry for any runtime (Claude Code, Codex, others).
 - Path leases; provenance; a repo context API; agent instructions read from the repo.
 - Agent memory and context bundles.
+- Swarms for agents working together in one repository, with one lead and one accountable
+  person, task claims and hand-backs, policy-checked joins, and outcome links to pull requests.
+  The repository work list includes independent runs.
+- Safety records compare requested work with stored evidence, accept independent review,
+  and bring tripwires and agent-raised concerns to the person who answers for the work.
 - Workspaces: devcontainer-based cloud environments for humans and agents, with prebuilds,
   secrets, ports and dotfiles, and sandbox egress policy.
 - **Component watchers ("superfans"):** agents scoped to one component with access to its
@@ -487,12 +492,19 @@ secret is refused at CreateChangeset, at land and at git push, with the bypass a
   conflict, in the simulation and in a live scenario.
 - Every agent action is attributable through provenance and the audit log to a human or service
   root.
+- A person can steer a swarm through its lead, review task attempts and hand-backs, and see the
+  pull requests produced by both swarms and independent runs in one repository work list.
+- A person can review a sampled agent merge and can stop agent work and hold agent merges
+  across their organization.
 
 **Agent scenarios.**
 - `AS-AGENT-01` Two agents take overlapping tasks; they discover each other's leases and route
   around them.
 - `AS-AGENT-02` A component watcher detects an injected latency regression and opens an issue with
   evidence.
+- `AS-AGENT-03` A person creates a swarm from their agent run and steers the lead. The swarm
+  finishes with its pull request linked, and the repository work list shows it alongside a
+  finished independent run with its own pull request.
 
 ### 4.20 Organizations, enterprise, apps and billing
 

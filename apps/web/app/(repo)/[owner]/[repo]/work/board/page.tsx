@@ -1,71 +1,115 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PageFacts } from "@/components/bee/page-facts";
+import { ButtonLink } from "@/components/kit";
 import { PageMenu } from "@/components/menu";
-import { PrincipalMark } from "@/components/domain";
-import { BoardMove } from "@/components/issue-actions";
+import { Quiet, Rows, Sep, State } from "@/components/parts";
 import { PageHeader } from "@/components/ui";
-import { type RepoParams, scopeFromParams, serverClient } from "@/lib/api/server";
-import { repoHref } from "@/lib/routes";
+import { issueAssignees } from "@/components/work/assignees";
+import { BoardMove } from "@/components/work/issue-actions";
+import { IssueWorkState } from "@/components/work/issue-work-state";
+import { type RepoParams, currentPrincipal, scopeFromParams, serverClient } from "@/lib/api/server";
+import { BeeError } from "@/lib/api/transport";
+import type { Issue } from "@/lib/api/types";
+import { issueWork, issueWorkText } from "@/lib/issues";
 import { guard } from "@/lib/page";
+import { directoryOf } from "@/lib/pulls";
+import { repoHref } from "@/lib/routes";
+import { pageTools } from "@/lib/tools";
+import { requestMode } from "../../../../../request-mode";
 
 export const metadata: Metadata = { title: "Board" };
 
 export default async function BoardPage({ params }: { params: Promise<RepoParams> }) {
   return guard(async () => {
     const api = await serverClient();
-    const { ref, fullName } = await scopeFromParams(params);
-    const [project, issues] = await Promise.all([api.project.getProject({ repo: ref }), api.issue.listIssues({ repo: ref })]);
-    const byNumber = new Map(issues.issues.map((i) => [i.number, i]));
+    const { ref, fullName, owner } = await scopeFromParams(params);
+    const [me, { mode }, project] = await Promise.all([
+      currentPrincipal(),
+      requestMode(),
+      api.project.getProject({ repo: ref }).catch((err: unknown) => {
+        if (err instanceof BeeError && err.code === "not_found") return null;
+        throw err;
+      }),
+    ]);
     const op = { service: "ProjectService" as const, method: "GetProject", request: { repo: ref }, label: "Show the board" };
+    const back = <ButtonLink href={repoHref(fullName, "work")} size="sm">Issues</ButtonLink>;
+    if (!project) {
+      const empty = "No board is linked to this repository.";
+      return mode === "bee" ? (
+        <PageFacts page="issue-board" title={fullName + " · Board"} groups={[{ title: "board", empty }]} tools={pageTools("issue-board").filter((tool) => tool.op === "ProjectService/GetProject")} />
+      ) : (
+        <>
+          <PageHeader title="Board" actions={back} />
+          <Quiet>{empty}</Quiet>
+        </>
+      );
+    }
+
+    const [{ issues }, { members }] = await Promise.all([
+      api.issue.listIssues({ repo: ref }),
+      issueAssignees(api, owner, ref, !!me, false),
+    ]);
+    const directory = directoryOf(members);
+    const byNumber = new Map(issues.map((issue) => [issue.number, issue]));
+    const columns = project.columns.map((column) => ({
+      ...column,
+      issues: column.issueNumbers.map((number) => byNumber.get(number)).filter((issue): issue is Issue => !!issue),
+    }));
+
+    if (mode === "bee") {
+      return (
+        <PageFacts
+          page="issue-board"
+          title={fullName + " · " + project.name}
+          groups={columns.length ? columns.map((column) => ({
+            title: column.name,
+            lines: column.issues.map((issue) => (
+              "#" + issue.number + " · " + issue.title + " · " + issue.state + " · " +
+              issueWorkText(issueWork(issue, directory)) +
+              (issue.labels.length ? " · " + issue.labels.join(", ") : "") +
+              " · " + repoHref(fullName, "work/" + issue.number)
+            )),
+            empty: "No issues in this column.",
+          })) : [{ title: "board", empty: "This board has no columns." }]}
+          tools={pageTools("issue-board").filter((tool) => tool.kind === "read" || !!me)}
+        />
+      );
+    }
+
     return (
       <>
-        <PageHeader
-          eyebrow={
-            <Link href={repoHref(fullName, "work")} className="hover:text-ink">
-              Issues
-            </Link>
-          }
-          title={project.name}
-          lede="Agents move cards through the same API you do, so everyone works on one board."
-          actions={<PageMenu op={op} />}
-        />
-        <div className="grid gap-8 overflow-x-auto pb-2 md:grid-cols-4">
-          {project.columns.map((col) => (
-            <section key={col.id} aria-labelledby={"col-" + col.id} className="flex min-w-0 flex-col">
-              <h2 id={"col-" + col.id} className="mb-3 flex items-baseline justify-between border-b border-line pb-2 text-md font-semibold">
-                {col.name}
-                <span className="num text-base font-normal text-ink-3">{col.issueNumbers.length}</span>
-              </h2>
-              <ul className="flex flex-col gap-1">
-                {col.issueNumbers.map((n) => {
-                  const i = byNumber.get(n);
-                  if (!i) return null;
-                  return (
-                    <li key={n} className="rounded-md px-2 py-3 hover:bg-hover" data-testid={"card-" + n}>
-                      <Link href={repoHref(fullName, "work/" + n)} className="text-base font-medium hover:underline">
-                        <span className="num text-ink-3">#{n}</span> {i.title}
-                      </Link>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="flex flex-wrap gap-x-2 text-sm text-ink-3">
-                          {i.labels.slice(0, 2).map((l) => (
-                            <span key={l}>{l}</span>
-                          ))}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          {i.assignees.map((a) => (
-                            <PrincipalMark key={a.id} principal={a} size={28} />
-                          ))}
-                          <BoardMove repo={fullName} project={project} number={n} column={col.id} />
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-                {col.issueNumbers.length === 0 ? <li className="px-2 py-3 text-base text-ink-3">Nothing here</li> : null}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <PageHeader title={project.name} actions={<>{back}<PageMenu op={op} /></>} />
+        {columns.length ? (
+          <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+            {columns.map((column) => (
+              <section key={column.id} aria-labelledby={"col-" + column.id} className="min-w-0">
+                <h2 id={"col-" + column.id} className="mb-3 flex items-baseline justify-between gap-2 text-md font-medium">
+                  {column.name}
+                  <span aria-hidden="true" className="num text-sm font-normal text-ink-2">{column.issues.length}</span>
+                </h2>
+                {column.issues.length ? (
+                  <Rows>
+                    {column.issues.map((issue) => (
+                      <li key={issue.id} data-testid={"card-" + issue.number} className="border-b border-line py-5">
+                        <Link href={repoHref(fullName, "work/" + issue.number)} className="link inline-block min-h-6 max-w-full text-lg font-light [overflow-wrap:anywhere]">
+                          <span className="num text-ink-2">#{issue.number}</span> {issue.title}
+                        </Link>
+                        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
+                          <State shape={issue.state}>{issue.state === "open" ? "Open" : "Closed"}</State>
+                          <Sep />
+                          <IssueWorkState work={issueWork(issue, directory)} />
+                          {issue.labels.length ? <><Sep /><span>{issue.labels.join(", ")}</span></> : null}
+                        </p>
+                        {me ? <div className="mt-3"><BoardMove repo={fullName} project={project} number={issue.number} column={column.id} /></div> : null}
+                      </li>
+                    ))}
+                  </Rows>
+                ) : <Quiet>No issues in this column.</Quiet>}
+              </section>
+            ))}
+          </div>
+        ) : <Quiet>This board has no columns.</Quiet>}
       </>
     );
   });

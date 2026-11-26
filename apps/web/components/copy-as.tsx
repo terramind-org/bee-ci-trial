@@ -1,16 +1,16 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
 import dynamic from "next/dynamic";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Op } from "@/lib/copyas";
 import { Icon } from "./icons";
+import { Modal } from "./kit/dialog";
 import { Kbd, buttonClass, cx } from "./ui";
 
 /** Loaded when a dialog opens: the panel needs every service's descriptors (see copy-as-panel.tsx). */
 const CopyAsPanel = dynamic(() => import("./copy-as-panel").then((m) => m.CopyAsPanel), {
   ssr: false,
-  loading: () => <span aria-hidden="true" className="block h-[148px] animate-pulse rounded-md bg-sunken" />,
+  loading: () => <span aria-hidden="true" className="block h-[148px] rounded-md bg-sunken" />,
 });
 
 /* ---------- page op registry: `y` opens Copy-as for the page's primary operation ---------- */
@@ -46,23 +46,9 @@ export function PageOp({ op }: { op: Op }) {
 
 export function CopyAsDialog({ op, open, onOpenChange }: { op: Op; open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 data-[state=open]:animate-enter" />
-        <Dialog.Content className="fixed top-[12vh] left-1/2 z-50 w-[min(680px,calc(100vw-24px))] -translate-x-1/2 rounded-lg border border-line bg-popover p-4 shadow-overlay data-[state=open]:animate-enter">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <Dialog.Title className="text-md font-semibold">{op.label ?? "Copy as"}</Dialog.Title>
-              <Dialog.Description className="text-sm text-ink-2">The same operation for agents: CLI, HTTP or MCP. All three behave identically.</Dialog.Description>
-            </div>
-            <Dialog.Close className={buttonClass("ghost", "sm")} aria-label="Close">
-              <Icon name="x" size={14} />
-            </Dialog.Close>
-          </div>
-          <CopyAsPanel op={op} />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Modal open={open} onOpenChange={onOpenChange} title={op.label ?? "Copy as"} description="The same operation for agents: CLI, HTTP or MCP. All three behave identically." className="top-[12vh] w-[min(680px,calc(100vw-24px))]">
+      <CopyAsPanel op={op} />
+    </Modal>
   );
 }
 

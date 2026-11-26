@@ -130,6 +130,8 @@ mod signing_keys_pg_race;
 mod store_conformance;
 #[path = "stream_reauth.rs"]
 mod stream_reauth;
+#[path = "swarms.rs"]
+mod swarms;
 #[path = "team_invite_pg_race.rs"]
 mod team_invite_pg_race;
 #[path = "verified_email_pg_race.rs"]
@@ -142,3 +144,9 @@ mod webhooks;
 mod work_service;
 #[path = "work_store.rs"]
 mod work_store;
+
+#[path = "safety.rs"]
+mod safety;
+
+#[path = "safety_detectors.rs"]
+mod safety_detectors;

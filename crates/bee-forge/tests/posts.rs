@@ -4,7 +4,10 @@
 //! waiting for a person's approval, discard and restore, withdrawal, visibility (private,
 //! deleted and signed-out), likes and reposts, the feed's sources, order, paging and polling,
 //! agents following and reading the feed, auto-follow on repo creation, `ChangeRequest.post`,
-//! media URLs bound to the principal chain, and the upkeep of unattached media.
+//! media URLs bound to the principal chain, and the upkeep of unattached media; and posts of
+//! their own (`CreatePost`): no change request, a Markdown body and an article, attachments
+//! checked against the repo and read back as cards, agent posts held for approval, their own
+//! media, and the same likes, reposts, adoptions and feed.
 
 use crate::common;
 use std::sync::Arc;
@@ -24,6 +27,7 @@ use bee_forge::posts::{PostPorts, Posts};
 use bee_forge::service::ForgeServices;
 use bee_forge::store::memory::MemoryStore;
 use bee_proto::v1::change_service_server::ChangeService;
+use bee_proto::v1::issue_service_server::IssueService;
 use bee_proto::v1::post_service_server::PostService;
 use bee_proto::v1::user_service_server::UserService;
 use bee_proto::v1::*;
@@ -393,6 +397,7 @@ impl World {
                     text: text.into(),
                     media_ids: media.to_vec(),
                     expected_version: 0,
+                    ..Default::default()
                 },
             ))
             .await
@@ -506,6 +511,166 @@ impl World {
             .follow_repo(common::req(token, FollowRepoRequest { repo: rref(repo) }))
             .await
             .unwrap();
+    }
+
+    /// How many published posts `repo` lists.
+    async fn listed(&self, repo: &Repo) -> usize {
+        self.s
+            .list_repo_posts(common::req(
+                &self.tok("owner"),
+                ListRepoPostsRequest {
+                    repo: rref(repo),
+                    page: None,
+                },
+            ))
+            .await
+            .unwrap()
+            .into_inner()
+            .posts
+            .len()
+    }
+
+    /// `CreatePost` as `who` in `repo`: `r` without its repo.
+    async fn create(
+        &self,
+        who: &str,
+        repo: &Repo,
+        r: CreatePostRequest,
+    ) -> std::result::Result<tonic::Response<Post>, tonic::Status> {
+        self.s
+            .create_post(common::req(
+                &self.tok(who),
+                CreatePostRequest {
+                    repo: rref(repo),
+                    ..r
+                },
+            ))
+            .await
+    }
+
+    /// Uploads `bytes` as `who` for a post of its own (no change request) and finalizes it.
+    async fn upload_own(&self, who: &str, repo: &Repo, bytes: &[u8], alt: &str) -> PostMedia {
+        let b = self
+            .s
+            .begin_post_media_upload(common::req(
+                &self.tok(who),
+                BeginPostMediaUploadRequest {
+                    repo: rref(repo),
+                    change_id: String::new(),
+                    kind: PostMediaKind::Image as i32,
+                    content_type: "image/png".into(),
+                    size_bytes: bytes.len() as u64,
+                },
+            ))
+            .await
+            .unwrap()
+            .into_inner();
+        self.posts
+            .receive_media(
+                &Cx::system(),
+                &repo.id,
+                &b.media_id,
+                bytes::Bytes::from(bytes.to_vec()),
+            )
+            .await
+            .unwrap();
+        self.s
+            .finalize_post_media(common::req(
+                &self.tok(who),
+                FinalizePostMediaRequest {
+                    repo: rref(repo),
+                    media_id: b.media_id,
+                    sha256: sha(bytes),
+                    alt_text: alt.into(),
+                    ..Default::default()
+                },
+            ))
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
+    async fn issue(&self, who: &str, repo: &Repo, title: &str, inspired_by: &str) -> Issue {
+        self.u
+            .create_issue(common::req(
+                &self.tok(who),
+                CreateIssueRequest {
+                    repo: rref(repo),
+                    title: title.into(),
+                    inspired_by_post_id: inspired_by.into(),
+                    ..Default::default()
+                },
+            ))
+            .await
+            .unwrap()
+            .into_inner()
+    }
+
+    /// Stores a release row as `ReleaseService` keeps it (this world has no tag store to cut
+    /// a release from).
+    async fn release(&self, repo: &Repo, id: &str, tag: &str, name: &str, draft: bool) {
+        use bee_forge::community::releases::{RELEASES, ReleaseRec};
+        let rec = ReleaseRec {
+            release: Some(Release {
+                tag_name: tag.into(),
+                name: name.into(),
+                draft,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let mut tx = self
+            .forge
+            .db
+            .begin(bee_forge::community::SURFACE, &self.cx("owner"))
+            .await
+            .unwrap();
+        tx.insert(
+            &RELEASES,
+            &bee_forge::store::Row::new(repo.id.clone(), id)
+                .k1(tag)
+                .n1(T0 as i64)
+                .msg(&rec),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    /// Stores an agent run row as the agents module keeps it (this world runs no agents).
+    async fn run(&self, repo: &Repo, id: &str, prompt: &str, state: AgentRunState) {
+        use bee_forge::agents::model::RunRec;
+        let rec = RunRec {
+            run: Some(AgentRun {
+                id: id.into(),
+                repo: Some(RepoRef {
+                    repo: Some(repo_ref::Repo::Id(repo.id.clone())),
+                }),
+                task: Some(AgentTask {
+                    prompt: prompt.into(),
+                    ..Default::default()
+                }),
+                state: state as i32,
+                ..Default::default()
+            }),
+            org_id: repo.org_id.clone(),
+            ..Default::default()
+        };
+        let mut tx = self
+            .forge
+            .db
+            .begin(bee_forge::agents::SURFACE, &self.cx("owner"))
+            .await
+            .unwrap();
+        tx.insert(
+            &bee_forge::agents::RUNS,
+            &bee_forge::store::Row::new(repo.id.clone(), id)
+                .n1(T0 as i64)
+                .msg(&rec),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
     }
 
     /// A published post by `who` on `repo` (opened, written, landed).
@@ -1748,4 +1913,839 @@ async fn list_changes_carries_each_post() {
     let by_id = |id: &str| list.changes.iter().find(|c| c.id == id).unwrap();
     assert_eq!(by_id(&a.id).post.as_ref().unwrap().id, pa.id);
     assert!(by_id(&b.id).post.is_none());
+}
+
+fn attach(kind: PostAttachmentKind, id: &str) -> PostAttachment {
+    PostAttachment {
+        kind: kind as i32,
+        id: id.into(),
+        ..Default::default()
+    }
+}
+
+fn article(title: &str, body: &str) -> Option<PostArticle> {
+    Some(PostArticle {
+        title: title.into(),
+        body_markdown: body.into(),
+    })
+}
+
+#[tokio::test]
+async fn a_post_of_its_own_needs_no_change_request() {
+    let w = world().await;
+    let p = w
+        .create(
+            "writer",
+            &w.app,
+            CreatePostRequest {
+                text: "Builds are 3\u{d7} faster".into(),
+                body_markdown: "## What changed\r\n\r\n- layers are cached, cafe\u{301}\n".into(),
+                article: article(
+                    "  How we cut build time  ",
+                    "# Before\r\n\r\n\tmake all\r\n",
+                ),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    // Published at once, by its author, with no change request and nothing attached.
+    assert_eq!(p.state(), PostState::Published);
+    assert!(p.published_at.is_some());
+    assert_eq!(p.author.as_ref().unwrap().id, "writer");
+    assert_eq!(
+        (
+            p.change_id.as_str(),
+            p.change_number,
+            p.change_title.as_str()
+        ),
+        ("", 0, "")
+    );
+    assert!(p.attachments.is_empty());
+    // The body and the article come back as stored: NFC, `\n` line ends, the title trimmed.
+    assert_eq!(p.text, "Builds are 3\u{d7} faster");
+    assert_eq!(
+        p.body_markdown,
+        "## What changed\n\n- layers are cached, caf\u{e9}\n"
+    );
+    assert_eq!(
+        p.article,
+        article("How we cut build time", "# Before\n\n\tmake all\n")
+    );
+    let v = p.viewer.as_ref().unwrap();
+    assert!(!v.can_edit && !v.can_approve && v.can_withdraw);
+    assert!(
+        w.kinds(&w.app)
+            .await
+            .contains(&"post.published".to_string())
+    );
+    // Readers of the repo read it by id and in the repo's list; nobody else does.
+    let got = w.get_post("reader", &p.id).await;
+    assert_eq!(
+        (&got.body_markdown, &got.article),
+        (&p.body_markdown, &p.article)
+    );
+    assert!(!got.viewer.as_ref().unwrap().can_withdraw);
+    let list =
+        w.s.list_repo_posts(common::req(
+            &w.tok("reader"),
+            ListRepoPostsRequest {
+                repo: rref(&w.app),
+                page: None,
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(list.posts.len(), 1);
+    assert_eq!(list.posts[0].id, p.id);
+    let r =
+        w.s.get_post(common::req(
+            &w.tok("outsider"),
+            GetPostRequest {
+                post_id: p.id.clone(),
+            },
+        ))
+        .await;
+    assert_eq!(reason(r), "NOT_FOUND");
+    // A body alone is a post; nothing at all is not.
+    let body_only = w
+        .create(
+            "writer",
+            &w.app,
+            CreatePostRequest {
+                body_markdown: "Only a body.".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(
+        (body_only.text.as_str(), body_only.body_markdown.as_str()),
+        ("", "Only a body.")
+    );
+    assert!(body_only.article.is_none());
+    assert_eq!(
+        subcode(
+            w.create("writer", &w.app, CreatePostRequest::default())
+                .await
+        ),
+        "INVALID_ARGUMENT/empty_post"
+    );
+    // The limits: summary, body, article and its title.
+    let with = |f: fn(&mut CreatePostRequest)| {
+        let mut r = CreatePostRequest {
+            text: "a summary".into(),
+            ..Default::default()
+        };
+        f(&mut r);
+        r
+    };
+    for (r, want) in [
+        (
+            with(|r| r.text = "x".repeat(501)),
+            "INVALID_ARGUMENT/text_too_long",
+        ),
+        (
+            with(|r| r.body_markdown = "x".repeat(20_001)),
+            "INVALID_ARGUMENT/body_too_long",
+        ),
+        (
+            with(|r| r.body_markdown = "bell\u{7}".into()),
+            "INVALID_ARGUMENT/bad_text",
+        ),
+        (
+            with(|r| r.article = article("Title", &"x".repeat(100_001))),
+            "INVALID_ARGUMENT/article_too_long",
+        ),
+        (
+            with(|r| r.article = article("", "A body without a title.")),
+            "INVALID_ARGUMENT/bad_article",
+        ),
+        (
+            with(|r| r.article = article("A title without a body", "")),
+            "INVALID_ARGUMENT/bad_article",
+        ),
+    ] {
+        assert_eq!(subcode(w.create("writer", &w.app, r).await), want);
+    }
+    // A body at the limit is accepted.
+    assert!(
+        w.create(
+            "writer",
+            &w.app,
+            with(|r| r.body_markdown = "x".repeat(20_000))
+        )
+        .await
+        .is_ok()
+    );
+    // Who may write: repo Write with a token that allows it.
+    let hi = || CreatePostRequest {
+        text: "hi".into(),
+        ..Default::default()
+    };
+    assert_eq!(
+        reason(w.create("reader", &w.app, hi()).await),
+        "PERMISSION_DENIED"
+    );
+    assert_eq!(
+        reason(w.create("outsider", &w.app, hi()).await),
+        "NOT_FOUND"
+    );
+    let read_only = w.mint(
+        "writer",
+        bee_auth::Scope::new().actions([bee_policy::Action::Read]),
+    );
+    let r =
+        w.s.create_post(common::req(
+            &read_only,
+            CreatePostRequest {
+                repo: rref(&w.app),
+                ..hi()
+            },
+        ))
+        .await;
+    assert_eq!(reason(r), "POLICY_DENIED");
+    // Its author withdraws it: the words are gone, the permalink stays.
+    let gone =
+        w.s.withdraw_post(common::req(
+            &w.tok("writer"),
+            WithdrawPostRequest {
+                repo: rref(&w.app),
+                post_id: p.id.clone(),
+                reason: "wrong numbers".into(),
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(gone.state(), PostState::Withdrawn);
+    assert!(gone.text.is_empty() && gone.body_markdown.is_empty() && gone.article.is_none());
+}
+
+#[tokio::test]
+async fn attachments_are_checked_and_read_back_as_cards() {
+    use PostAttachmentKind as K;
+    let w = world().await;
+    let cr1 = w
+        .open_cr("writer", &w.app, "docs/a.md", "Cache layers")
+        .await;
+    let cr2 = w
+        .open_cr("writer", &w.app, "docs/b.md", "Trim images")
+        .await;
+    let issue = w.issue("writer", &w.app, "Builds are slow", "").await;
+    w.release(&w.app, "01RELEASE", "v1.2.0", "Bee 1.2", false)
+        .await;
+    w.run(
+        &w.app,
+        "01RUN",
+        "Speed up the build\n\nStart with the cache.",
+        AgentRunState::Succeeded,
+    )
+    .await;
+    let post = |attachments: Vec<PostAttachment>| CreatePostRequest {
+        text: "The build work, in one place".into(),
+        attachments,
+        ..Default::default()
+    };
+    // Change requests and issues by id or by number; the rest by id.
+    let p = w
+        .create(
+            "writer",
+            &w.app,
+            post(vec![
+                attach(K::ChangeRequest, &cr1.id),
+                PostAttachment {
+                    kind: K::ChangeRequest as i32,
+                    number: cr2.number,
+                    ..Default::default()
+                },
+                attach(K::Release, "01RELEASE"),
+                PostAttachment {
+                    kind: K::Issue as i32,
+                    number: issue.number,
+                    ..Default::default()
+                },
+                attach(K::AgentRun, "01RUN"),
+            ]),
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    let card =
+        |kind: K, id: &str, number: u64, title: &str, state: &str, tag: &str| PostAttachment {
+            kind: kind as i32,
+            id: id.into(),
+            number,
+            title: title.into(),
+            state: state.into(),
+            tag_name: tag.into(),
+        };
+    let want = vec![
+        card(
+            K::ChangeRequest,
+            &cr1.id,
+            cr1.number,
+            "Cache layers",
+            "open",
+            "",
+        ),
+        card(
+            K::ChangeRequest,
+            &cr2.id,
+            cr2.number,
+            "Trim images",
+            "open",
+            "",
+        ),
+        card(K::Release, "01RELEASE", 0, "Bee 1.2", "published", "v1.2.0"),
+        card(
+            K::Issue,
+            &issue.id,
+            issue.number,
+            "Builds are slow",
+            "open",
+            "",
+        ),
+        card(
+            K::AgentRun,
+            "01RUN",
+            0,
+            "Speed up the build",
+            "succeeded",
+            "",
+        ),
+    ];
+    assert_eq!(p.attachments, want);
+    assert!(p.change_id.is_empty());
+    // Stored as references; the cards are read from the attachments as they are now.
+    let (rec, _) = w.posts.get(&w.cx("owner"), &w.app.id, &p.id).await.unwrap();
+    assert_eq!(
+        rec.post().attachments,
+        vec![
+            attach(K::ChangeRequest, &cr1.id),
+            attach(K::ChangeRequest, &cr2.id),
+            attach(K::Release, "01RELEASE"),
+            attach(K::Issue, &issue.id),
+            attach(K::AgentRun, "01RUN"),
+        ]
+    );
+    w.land(&w.app, &cr1).await;
+    let got = w.get_post("reader", &p.id).await;
+    assert_eq!(got.attachments[0].state, "landed");
+    assert_eq!(got.attachments[1..], want[1..]);
+    // Something from another repository is refused, whatever its kind, and so is anything
+    // that does not exist or that the post's readers could not read (a draft release).
+    let elsewhere = w.open_cr("owner", &w.open, "docs/c.md", "Elsewhere").await;
+    let their_issue = w.issue("owner", &w.open, "Theirs", "").await;
+    w.release(&w.open, "01THEIRS", "v9.0.0", "Theirs", false)
+        .await;
+    w.run(&w.open, "01THEIRRUN", "Theirs", AgentRunState::Running)
+        .await;
+    w.release(&w.app, "01DRAFT", "v2.0.0", "Not out yet", true)
+        .await;
+    for bad in [
+        attach(K::ChangeRequest, &elsewhere.id),
+        attach(K::Issue, &their_issue.id),
+        attach(K::Release, "01THEIRS"),
+        attach(K::AgentRun, "01THEIRRUN"),
+        attach(K::ChangeRequest, "01NOSUCHCHANGE"),
+        PostAttachment {
+            kind: K::Issue as i32,
+            number: 9_999,
+            ..Default::default()
+        },
+        attach(K::Release, "01DRAFT"),
+    ] {
+        assert_eq!(
+            subcode(w.create("writer", &w.app, post(vec![bad.clone()])).await),
+            "INVALID_ARGUMENT/attachment_not_found",
+            "{bad:?}"
+        );
+    }
+    // Lists the rules refuse: the reserved swarm kind, no kind, the same attachment twice
+    // (by id and by number), two issues.
+    let other_issue = w.issue("writer", &w.app, "Another", "").await;
+    for bad in [
+        vec![attach(K::Swarm, "01SWARM")],
+        vec![attach(K::Unspecified, &cr2.id)],
+        vec![
+            attach(K::ChangeRequest, &cr2.id),
+            PostAttachment {
+                kind: K::ChangeRequest as i32,
+                number: cr2.number,
+                ..Default::default()
+            },
+        ],
+        vec![
+            attach(K::Issue, &issue.id),
+            attach(K::Issue, &other_issue.id),
+        ],
+    ] {
+        assert_eq!(
+            subcode(w.create("writer", &w.app, post(bad.clone())).await),
+            "INVALID_ARGUMENT/bad_attachment",
+            "{bad:?}"
+        );
+    }
+    // A refused post is not written.
+    let list =
+        w.s.list_repo_posts(common::req(
+            &w.tok("reader"),
+            ListRepoPostsRequest {
+                repo: rref(&w.app),
+                page: None,
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(list.posts.len(), 1);
+}
+
+#[tokio::test]
+async fn a_change_requests_post_reads_back_with_its_change_attached() {
+    use PostAttachmentKind as K;
+    let w = world().await;
+    // The shape every post had before attachments existed: text on a change request.
+    let cr = w
+        .open_cr("writer", &w.app, "docs/a.md", "Cache layers")
+        .await;
+    let draft = w
+        .set("writer", &w.app, &cr, "Layers are cached now", &[])
+        .await
+        .unwrap()
+        .into_inner();
+    let (rec, _) = w
+        .posts
+        .get(&w.cx("owner"), &w.app.id, &draft.id)
+        .await
+        .unwrap();
+    assert!(rec.post().attachments.is_empty(), "nothing new is stored");
+    assert!(rec.post().body_markdown.is_empty() && rec.post().article.is_none());
+    let own = |state: &str| PostAttachment {
+        kind: K::ChangeRequest as i32,
+        id: cr.id.clone(),
+        number: cr.number,
+        title: "Cache layers".into(),
+        state: state.into(),
+        tag_name: String::new(),
+    };
+    assert_eq!(draft.attachments, vec![own("open")]);
+    assert_eq!(draft.change_id, cr.id);
+    // The newer fields on the same RPC: a body, an article and attachments beside the change
+    // request itself, which stays first and is never listed twice.
+    let issue = w.issue("writer", &w.app, "Builds are slow", "").await;
+    let full =
+        w.s.set_change_post(common::req(
+            &w.tok("writer"),
+            SetChangePostRequest {
+                repo: rref(&w.app),
+                change_id: cr.id.clone(),
+                text: "Layers are cached now".into(),
+                body_markdown: "Each layer is keyed by its inputs.".into(),
+                article: article("Layer caching", "## Keys\n"),
+                attachments: vec![
+                    attach(K::Issue, &issue.id),
+                    attach(K::ChangeRequest, &cr.id),
+                ],
+                ..Default::default()
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(full.id, draft.id);
+    assert_eq!(full.body_markdown, "Each layer is keyed by its inputs.");
+    assert_eq!(full.article, article("Layer caching", "## Keys\n"));
+    assert_eq!(full.attachments.len(), 2);
+    assert_eq!(full.attachments[0], own("open"));
+    assert_eq!(
+        (
+            full.attachments[1].kind(),
+            full.attachments[1].id.as_str(),
+            full.attachments[1].number,
+            full.attachments[1].title.as_str(),
+            full.attachments[1].state.as_str()
+        ),
+        (
+            K::Issue,
+            issue.id.as_str(),
+            issue.number,
+            "Builds are slow",
+            "open"
+        )
+    );
+    // It is the change request's post, as before.
+    let on_change =
+        w.s.get_change_post(common::req(
+            &w.tok("reader"),
+            GetChangePostRequest {
+                repo: rref(&w.app),
+                change_id: cr.id.clone(),
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(on_change.attachments, full.attachments);
+    // A client that knows only text and media replaces the rest with nothing.
+    let plain = w
+        .set("writer", &w.app, &cr, "Layers are cached", &[])
+        .await
+        .unwrap()
+        .into_inner();
+    assert!(plain.body_markdown.is_empty() && plain.article.is_none());
+    assert_eq!(plain.attachments, vec![own("open")]);
+    // Landing publishes it; the card follows the change request.
+    w.land(&w.app, &cr).await;
+    let p = w.get_post("reader", &draft.id).await;
+    assert_eq!(p.state(), PostState::Published);
+    assert_eq!(p.attachments, vec![own("landed")]);
+    assert_eq!(
+        (p.change_number, p.change_title.as_str()),
+        (cr.number, "Cache layers")
+    );
+}
+
+#[tokio::test]
+async fn the_carrying_change_request_counts_toward_the_attachment_limit() {
+    use bee_forge::posts::MAX_ATTACHMENTS;
+
+    let w = world().await;
+    let cr = w
+        .open_cr("writer", &w.app, "docs/carrier.md", "Carrier")
+        .await;
+    let mut attachments = Vec::new();
+    for i in 0..MAX_ATTACHMENTS {
+        let other = w
+            .open_cr(
+                "writer",
+                &w.app,
+                &format!("docs/attached-{i}.md"),
+                "Attached",
+            )
+            .await;
+        attachments.push(attach(PostAttachmentKind::ChangeRequest, &other.id));
+    }
+    let set = |attachments| {
+        common::req(
+            &w.tok("writer"),
+            SetChangePostRequest {
+                repo: rref(&w.app),
+                change_id: cr.id.clone(),
+                text: "At the attachment limit".into(),
+                attachments,
+                ..Default::default()
+            },
+        )
+    };
+    assert_eq!(
+        subcode(w.s.set_change_post(set(attachments.clone())).await),
+        "INVALID_ARGUMENT/bad_attachment"
+    );
+    attachments.pop();
+    attachments.push(attach(PostAttachmentKind::ChangeRequest, &cr.id));
+    let post =
+        w.s.set_change_post(set(attachments))
+            .await
+            .unwrap()
+            .into_inner();
+    assert_eq!(post.attachments.len(), MAX_ATTACHMENTS);
+    assert_eq!(post.attachments[0].id, cr.id);
+}
+
+#[tokio::test]
+async fn an_agents_own_post_waits_for_a_persons_approval() {
+    let w = world().await;
+    let p = w
+        .create(
+            "agent",
+            &w.app,
+            CreatePostRequest {
+                text: "I ported the layer cache".into(),
+                body_markdown: "Three change requests, all landed.".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(p.author.as_ref().unwrap().kind(), PrincipalKind::Agent);
+    assert_eq!(p.state(), PostState::PendingApproval);
+    assert!(p.published_at.is_none());
+    assert!(!p.viewer.as_ref().unwrap().can_approve);
+    let kinds = w.kinds(&w.app).await;
+    assert!(kinds.contains(&"post.approval_requested".to_string()));
+    assert!(!kinds.contains(&"post.published".to_string()));
+    // Not published: not in the repo's list, not likeable.
+    assert_eq!(w.listed(&w.app).await, 0);
+    let like =
+        w.s.like_post(common::req(
+            &w.tok("reader"),
+            LikePostRequest {
+                post_id: p.id.clone(),
+            },
+        ))
+        .await;
+    assert_eq!(subcode(like), "INVALID_STATE/post_not_published");
+    let approve = |who: &str| {
+        common::req(
+            &w.tok(who),
+            ApprovePostRequest {
+                repo: rref(&w.app),
+                post_id: p.id.clone(),
+            },
+        )
+    };
+    // Agents, services and readers cannot approve; a person with Write can.
+    assert_eq!(
+        subcode(w.s.approve_post(approve("agent")).await),
+        "PERMISSION_DENIED/human_required"
+    );
+    assert_eq!(
+        subcode(w.s.approve_post(approve("ci")).await),
+        "PERMISSION_DENIED/human_required"
+    );
+    assert_eq!(
+        reason(w.s.approve_post(approve("reader")).await),
+        "PERMISSION_DENIED"
+    );
+    assert!(w.get_post("alice", &p.id).await.viewer.unwrap().can_approve);
+    w.clock.advance(60_000);
+    let approved =
+        w.s.approve_post(approve("alice"))
+            .await
+            .unwrap()
+            .into_inner();
+    assert_eq!(approved.state(), PostState::Published);
+    assert_eq!(approved.approved_by.as_ref().unwrap().id, "alice");
+    assert!(approved.published_at.is_some());
+    assert_eq!(w.listed(&w.app).await, 1);
+    assert!(
+        w.kinds(&w.app)
+            .await
+            .contains(&"post.published".to_string())
+    );
+    // A person's own post needs no approval.
+    let mine = w
+        .create(
+            "writer",
+            &w.app,
+            CreatePostRequest {
+                text: "mine".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    let r =
+        w.s.approve_post(common::req(
+            &w.tok("alice"),
+            ApprovePostRequest {
+                repo: rref(&w.app),
+                post_id: mine.id.clone(),
+            },
+        ))
+        .await;
+    assert_eq!(subcode(r), "INVALID_STATE/approval_not_needed");
+}
+
+#[tokio::test]
+async fn own_posts_carry_media_uploaded_by_their_author() {
+    let w = world().await;
+    let img = png(800, 600);
+    let m = w.upload_own("writer", &w.app, &img, "A chart").await;
+    // Uploading for a post of one's own needs Write, like the post.
+    let begin = |who: &str| {
+        common::req(
+            &w.tok(who),
+            BeginPostMediaUploadRequest {
+                repo: rref(&w.app),
+                change_id: String::new(),
+                kind: PostMediaKind::Image as i32,
+                content_type: "image/png".into(),
+                size_bytes: img.len() as u64,
+            },
+        )
+    };
+    assert_eq!(
+        reason(w.s.begin_post_media_upload(begin("reader")).await),
+        "PERMISSION_DENIED"
+    );
+    // Only the uploader finalizes and attaches it.
+    let pending =
+        w.s.begin_post_media_upload(begin("writer"))
+            .await
+            .unwrap()
+            .into_inner();
+    for who in ["alice", "reader"] {
+        let r =
+            w.s.finalize_post_media(common::req(
+                &w.tok(who),
+                FinalizePostMediaRequest {
+                    repo: rref(&w.app),
+                    media_id: pending.media_id.clone(),
+                    sha256: sha(&img),
+                    alt_text: "not mine".into(),
+                    ..Default::default()
+                },
+            ))
+            .await;
+        assert_eq!(reason(r), "NOT_FOUND", "{who}");
+    }
+    let with = |ids: Vec<String>| CreatePostRequest {
+        text: "with a chart".into(),
+        media_ids: ids,
+        ..Default::default()
+    };
+    assert_eq!(
+        subcode(w.create("alice", &w.app, with(vec![m.id.clone()])).await),
+        "INVALID_ARGUMENT/bad_media"
+    );
+    assert_eq!(
+        subcode(
+            w.create("writer", &w.app, with(vec![pending.media_id.clone()]))
+                .await
+        ),
+        "INVALID_STATE/media_not_final"
+    );
+    // Media uploaded for a change request stays with that change request.
+    let cr = w.open_cr("writer", &w.app, "docs/m.md", "Charts").await;
+    let theirs = w
+        .upload("writer", &w.app, &cr, "image/png", &img, "On the change")
+        .await;
+    assert_eq!(
+        subcode(
+            w.create("writer", &w.app, with(vec![theirs.id.clone()]))
+                .await
+        ),
+        "INVALID_ARGUMENT/bad_media"
+    );
+    let p = w
+        .create("writer", &w.app, with(vec![m.id.clone()]))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(p.media.len(), 1);
+    assert_eq!(
+        (p.media[0].id.as_str(), p.media[0].alt_text.as_str()),
+        (m.id.as_str(), "A chart")
+    );
+    assert!(!p.media[0].url.is_empty());
+    // One post per upload.
+    assert_eq!(
+        subcode(w.create("writer", &w.app, with(vec![m.id.clone()])).await),
+        "INVALID_ARGUMENT/bad_media"
+    );
+    // Media alone is a post.
+    let m2 = w.upload_own("writer", &w.app, &img, "Another chart").await;
+    let bare = w
+        .create(
+            "writer",
+            &w.app,
+            CreatePostRequest {
+                media_ids: vec![m2.id.clone()],
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    assert!(bare.text.is_empty());
+    assert_eq!(bare.media.len(), 1);
+}
+
+#[tokio::test]
+async fn own_posts_are_liked_reposted_adopted_and_in_the_feed() {
+    let w = world().await;
+    let reader = w.tok("reader");
+    w.follow_repo(&reader, &w.open).await;
+    // A post of its own on the public repo, then an older-style post on a landed change.
+    let own = w
+        .create(
+            "owner",
+            &w.open,
+            CreatePostRequest {
+                text: "How we cut build time".into(),
+                article: article("Caching, step by step", "## One\n"),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    w.tick();
+    let landed = w.published("owner", &w.open, "docs/1.md", "one").await;
+    let f = w.feed("reader", 10, "", "").await;
+    let ids: Vec<String> = f
+        .items
+        .iter()
+        .map(|i| i.post.as_ref().unwrap().id.clone())
+        .collect();
+    assert_eq!(ids, vec![landed.id.clone(), own.id.clone()]);
+    let in_feed = f.items[1].post.as_ref().unwrap();
+    assert_eq!(in_feed.article, own.article);
+    assert!(in_feed.attachments.is_empty());
+    assert_eq!(f.items[1].at, own.published_at);
+    assert_eq!(f.items[0].post.as_ref().unwrap().attachments.len(), 1);
+    // Likes and reposts count as on any published post.
+    let p =
+        w.s.like_post(common::req(
+            &reader,
+            LikePostRequest {
+                post_id: own.id.clone(),
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(p.counts.as_ref().unwrap().likes, 1);
+    assert_eq!(p.counts.as_ref().unwrap().comments, 0);
+    let p =
+        w.s.repost_post(common::req(
+            &w.tok("alice"),
+            RepostPostRequest {
+                post_id: own.id.clone(),
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(p.counts.as_ref().unwrap().reposts, 1);
+    assert!(p.viewer.as_ref().unwrap().reposted);
+    // Adopting: an issue names the post as its inspiration. The link needs nothing of a
+    // change request, so the reference carries the post and its repo alone.
+    let issue = w
+        .issue("writer", &w.app, "Cache our layers too", &own.id)
+        .await;
+    let by = issue.inspired_by.expect("inspired_by on the created issue");
+    assert_eq!(by.post_id, own.id);
+    assert_eq!(by.repo, rref(&w.open));
+    assert_eq!((by.change_number, by.change_title.as_str()), (0, ""));
+    assert_eq!(
+        w.get_post("writer", &own.id)
+            .await
+            .counts
+            .as_ref()
+            .unwrap()
+            .adoptions,
+        1
+    );
+    let adoptions =
+        w.s.list_post_adoptions(common::req(
+            &w.tok("writer"),
+            ListPostAdoptionsRequest {
+                post_id: own.id.clone(),
+                page: None,
+            },
+        ))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(adoptions.adoptions.len(), 1);
+    assert_eq!(adoptions.adoptions[0].title, "Cache our layers too");
 }

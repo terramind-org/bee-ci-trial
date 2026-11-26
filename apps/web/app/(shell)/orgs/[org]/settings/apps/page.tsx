@@ -1,77 +1,114 @@
 import type { Metadata } from "next";
+import { requestMode } from "@/app/request-mode";
+import { PageFacts } from "@/components/bee/page-facts";
+import { EmptyState } from "@/components/kit";
 import { PageMenu } from "@/components/menu";
-import { PrincipalName } from "@/components/domain";
-import { Time } from "@/components/time";
-import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui";
+import { Row, Rows, Sect, Sep, State } from "@/components/parts";
+import { PageHeader } from "@/components/ui";
 import { serverClient } from "@/lib/api/server";
 import type { App } from "@/lib/api/types";
-import { principalOf } from "@/lib/format";
-import { guardSection } from "@/lib/page";
+import { absoluteTime, plural } from "@/lib/format";
+import { guard } from "@/lib/page";
+import { toolFor } from "@/lib/tools";
 import { SettingsTabs } from "../tabs";
 
 export const metadata: Metadata = { title: "Apps" };
 
-const perms = (a: Pick<App, "permissions">) => (a.permissions ?? []).map((p) => p.resource + ":" + (p.level ?? "").replace("APP_PERMISSION_LEVEL_", "").toLowerCase()).join(", ");
+function permissions(app: Pick<App, "permissions">): string {
+  return (app.permissions ?? []).map((p) => {
+    const level = p.level?.replace("APP_PERMISSION_LEVEL_", "").toLowerCase();
+    return level && level !== "unspecified" ? p.resource + ":" + level : p.resource;
+  }).join(", ");
+}
+
+const noApps = "This organization owns no apps.";
+const noInstalls = "No apps are installed.";
 
 export default async function AppsPage({ params }: { params: Promise<{ org: string }> }) {
-  const org = decodeURIComponent((await params).org);
-  const req = { org };
-  return (
-    <>
-      <PageHeader title="Settings" lede={<>Apps {org} owns and apps installed on it. An app acts as its own service principal, scoped by the permissions it was granted.</>} actions={<PageMenu op={{ service: "AppService", method: "ListApps", request: req, label: "List apps" }} />} />
-      <SettingsTabs org={org} active="apps" />
-      {await guardSection("Apps", async () => {
-        const api = await serverClient();
-        const { apps, installations } = await api.app.listApps(req);
-        return (
-        <div className="flex flex-col gap-5">
-          <Panel title="Owned by this org" id="apps-owned-title">
-            {apps.length === 0 ? (
-              <EmptyState title="No apps yet" icon="key">
-                Register one from a manifest with <code className="mono">bee api AppService/CreateAppFromManifest</code>.
-              </EmptyState>
-            ) : (
-              <ul className="divide-y divide-line" data-testid="app-list">
-                {apps.map((a) => (
-                  <li key={a.id} className="flex flex-col gap-1 py-3 md:flex-row md:items-center md:gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-ink">{a.name}</span>
-                        <span className="mono text-sm text-ink-3">{a.slug}</span>
-                        <Badge tone={a.public ? "accent" : "neutral"}>{a.public ? "public" : "private"}</Badge>
-                      </p>
-                      {a.description ? <p className="text-base text-ink-2">{a.description}</p> : null}
-                      <p className="mono text-sm text-ink-3">{perms(a) || "no permissions requested"}</p>
-                    </div>
-                    <span className="text-base text-ink-2">
-                      <span className="num font-semibold text-ink">{a.installationCount ?? 0}</span> installations
-                    </span>
-                    <Time iso={a.createdAt} />
-                  </li>
+  return guard(async () => {
+    const [api, { org: encodedOrg }, { mode }] = await Promise.all([serverClient(), params, requestMode()]);
+    const org = decodeURIComponent(encodedOrg);
+    const request = { org };
+    const { apps, installations } = await api.app.listApps(request);
+    const owned = apps.map((app) => ({
+      id: app.id,
+      name: app.name || app.slug,
+      slug: app.name && app.slug !== app.name ? app.slug : undefined,
+      visibility: app.public ? "Public" : "Private",
+      description: app.description,
+      permissions: permissions(app),
+      installations: app.installationCount === undefined ? undefined : plural(Number(app.installationCount), "installation"),
+      createdAt: app.createdAt,
+    }));
+    const installed = installations.map((app) => ({
+      id: app.id,
+      name: app.appSlug,
+      status: app.suspended ? "Suspended" : "Active",
+      permissions: permissions(app),
+      installer: app.installedBy?.display || app.installedBy?.id,
+      createdAt: app.createdAt,
+    }));
+
+    if (mode === "bee") {
+      return <PageFacts
+        page="org-apps"
+        title={org + " · apps"}
+        groups={[
+          {
+            title: "owned apps",
+            lines: owned.map((app) => [app.name, app.slug, app.visibility, app.description, app.permissions, app.installations, absoluteTime(app.createdAt)].filter(Boolean).join(" · ")),
+            empty: noApps,
+          },
+          {
+            title: "installed apps",
+            lines: installed.map((app) => [app.name, app.status, app.permissions, app.installer && "installed by " + app.installer, absoluteTime(app.createdAt)].filter(Boolean).join(" · ")),
+            empty: noInstalls,
+          },
+        ]}
+        tools={[toolFor("AppService/ListApps", "List this organization’s apps")]}
+      />;
+    }
+
+    return (
+      <>
+        <PageHeader eyebrow={org} title="Apps" actions={<PageMenu op={{ service: "AppService", method: "ListApps", request, label: "List apps" }} />} />
+        <SettingsTabs org={org} active="apps" />
+        <div className="flex max-w-5xl flex-col gap-10">
+          <Sect title="Owned apps" id="apps-owned-title">
+            {owned.length ? (
+              <Rows testId="app-list" className="border-t-0">
+                {owned.map((app) => (
+                  <Row key={app.id} meta={<>
+                    <State shape={app.visibility === "Public" ? "open" : "closed"}>{app.visibility}</State>
+                    {app.slug ? <><Sep /><span className="mono [overflow-wrap:anywhere]">{app.slug}</span></> : null}
+                    {app.permissions ? <><Sep /><span className="[overflow-wrap:anywhere]">{app.permissions}</span></> : null}
+                    {app.installations ? <><Sep />{app.installations}</> : null}
+                    {app.createdAt ? <><Sep /><time dateTime={app.createdAt}>{absoluteTime(app.createdAt)}</time></> : null}
+                  </>}>
+                    {app.name}{app.description ? <span className="text-ink-2"> · {app.description}</span> : null}
+                  </Row>
                 ))}
-              </ul>
-            )}
-          </Panel>
-          <Panel title="Installed on this org" id="apps-installed-title">
-            {installations.length === 0 ? (
-              <EmptyState title="Nothing installed" icon="key" />
-            ) : (
-              <ul className="divide-y divide-line">
-                {installations.map((i) => (
-                  <li key={i.id} className="flex flex-col gap-1 py-3 md:flex-row md:items-center md:gap-4">
-                    <span className="mono font-medium">{i.appSlug}</span>
-                    {i.suspended ? <Badge tone="bad">suspended</Badge> : <Badge tone="ok">active</Badge>}
-                    <span className="mono flex-1 text-sm text-ink-3">{perms(i)}</span>
-                    {i.installedBy ? <PrincipalName principal={principalOf(i.installedBy)} /> : null}
-                    <Time iso={i.createdAt} />
-                  </li>
+              </Rows>
+            ) : <EmptyState title={noApps} />}
+          </Sect>
+          <Sect title="Installed apps" id="apps-installed-title">
+            {installed.length ? (
+              <Rows className="border-t-0">
+                {installed.map((app) => (
+                  <Row key={app.id} meta={<>
+                    <State shape={app.status === "Suspended" ? "closed" : "open"}>{app.status}</State>
+                    {app.permissions ? <><Sep /><span className="[overflow-wrap:anywhere]">{app.permissions}</span></> : null}
+                    {app.installer ? <><Sep />Installed by {app.installer}</> : null}
+                    {app.createdAt ? <><Sep /><time dateTime={app.createdAt}>{absoluteTime(app.createdAt)}</time></> : null}
+                  </>}>
+                    {app.name}
+                  </Row>
                 ))}
-              </ul>
-            )}
-          </Panel>
+              </Rows>
+            ) : <EmptyState title={noInstalls} />}
+          </Sect>
         </div>
-        );
-      })}
-    </>
-  );
+      </>
+    );
+  });
 }

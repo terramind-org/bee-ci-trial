@@ -8,10 +8,10 @@ export default function Loading() {
         <HeaderSkeleton title="New repository" meta="Pick an owner, name the repository, then connect your agent." />
         <div className="mb-5 flex gap-2">
           {["Owner", "Repository", "Connect your agent"].map((l) => (
-            <span key={l} className="h-[30px] animate-pulse rounded-md border border-line bg-surface px-2.5" style={{ width: l.length * 8 + 56 }} />
+            <span key={l} className="h-[30px] rounded-md border border-line bg-surface px-2.5" style={{ width: l.length * 8 + 56 }} />
           ))}
         </div>
-        <div className="h-[330px] max-w-2xl animate-pulse rounded-lg border border-line bg-surface" />
+        <div className="h-[330px] max-w-2xl rounded-lg border border-line bg-surface" />
       </div>
     </Skel>
   );

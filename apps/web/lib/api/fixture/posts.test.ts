@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createClient, type BeeClient } from "../client";
 import type * as T from "../types";
 import { FixtureStore, fixtureRpc } from "./index";
-import { MEDIA_ALT, MEDIA_FILES, POST_SEEDS } from "./posts-world";
+import { MEDIA_ALT, MEDIA_FILES, OWN_POST_SEEDS, POST_SEEDS } from "./posts-world";
 import { sniff } from "./posts";
 
 const ANCHOR = Date.UTC(2026, 9, 18, 9, 0, 0);
@@ -53,18 +53,18 @@ const find = async (c: BeeClient, repo: T.RepoRef, title: string): Promise<T.Cha
 const published = async (c: BeeClient, repo: T.RepoRef) => (await c.post.listRepoPosts({ repo, page: { pageSize: 100 } })).posts;
 
 describe("the demo world's posts", () => {
-  it("has about 14 published posts on public repos, plus a pending, a withdrawn and a draft", async () => {
+  it("has about 16 published posts on public repos, plus a pending, a withdrawn and a draft", async () => {
     const { store, mara } = world();
     const states = new Map<string, number>();
     for (const p of store.posts.posts) states.set(p.state, (states.get(p.state) ?? 0) + 1);
-    expect(states.get("POST_STATE_PUBLISHED")).toBe(15);
+    expect(states.get("POST_STATE_PUBLISHED")).toBe(17);
     expect(states.get("POST_STATE_PENDING_APPROVAL")).toBe(1);
     expect(states.get("POST_STATE_WITHDRAWN")).toBe(1);
     expect(states.get("POST_STATE_DRAFT")).toBe(1);
     const publicRepos = [engine, kit, sdk, { fullName: "lattice/docs" }, { fullName: "lattice/bench" }];
     const counts = await Promise.all(publicRepos.map(async (r) => (await published(mara, r)).length));
-    expect(counts.reduce((a, b) => a + b, 0)).toBe(14);
-    expect(counts).toEqual([4, 4, 3, 1, 2]);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(16);
+    expect(counts).toEqual([6, 4, 3, 1, 2]);
     // Both humans and agents write.
     const kinds = new Set(store.posts.posts.map((p) => store.kindOf(p.author)));
     expect(kinds).toEqual(new Set(["human", "agent"]));
@@ -72,6 +72,36 @@ describe("the demo world's posts", () => {
     const draft = store.posts.posts.find((p) => p.state === "POST_STATE_DRAFT");
     const cr = store.crs.find((c) => c.id === draft?.crId);
     expect([cr?.repo, cr?.state]).toEqual(["api", "CHANGE_STATE_OPEN"]);
+  });
+
+  it("has two posts of their own: an outcome with two change requests and an image, and an article", async () => {
+    const { store, anon } = world();
+    const own = store.posts.posts.filter((p) => p.crId === "");
+    expect(own).toHaveLength(OWN_POST_SEEDS.length);
+    const posts = await Promise.all(own.map((p) => anon.post.getPost({ postId: p.id })));
+    const outcome = posts.find((p) => (p.attachments ?? []).length === 2)!;
+    expect(outcome).toMatchObject({ state: "POST_STATE_PUBLISHED", changeId: "", changeNumber: "0", changeTitle: "", author: { display: "patcher" }, approvedBy: { display: "Rhea Lindqvist" } });
+    expect(outcome.bodyMarkdown).toContain("**Three-way rebase**");
+    expect(outcome.article).toBeUndefined();
+    expect(outcome.media).toHaveLength(1);
+    expect(outcome.attachments!.map((a) => [a.kind, a.title, a.state])).toEqual([
+      ["POST_ATTACHMENT_KIND_CHANGE_REQUEST", "Add three-way rebase", "landed"],
+      ["POST_ATTACHMENT_KIND_CHANGE_REQUEST", store.crByKey("lat-graph-walk").title, "landed"],
+    ]);
+    expect(outcome.attachments!.every((a) => Number(a.number) > 0 && !!a.id)).toBe(true);
+    const article = posts.find((p) => p.article)!;
+    expect(article.article).toMatchObject({ title: "Order is not an input" });
+    expect(article.article!.bodyMarkdown).toContain("## The rule");
+    expect([article.changeId, article.attachments, article.media, article.bodyMarkdown]).toEqual(["", [], [], ""]);
+    expect(article.author?.display).toBe("Omar Haddad");
+    // They are in their repo's list and in the feed of someone who follows it.
+    expect((await published(anon, engine)).map((p) => p.id)).toEqual(expect.arrayContaining(own.map((p) => p.id)));
+    const { mara } = world();
+    const feed = (await mara.post.listFollowingFeed({ page: { pageSize: 100 } })).items.map((i) => i.post!.id);
+    expect(feed).toEqual(expect.arrayContaining(own.map((p) => p.id)));
+    // A post on a change request reads back with that change request as its one attachment.
+    const old = (await published(anon, engine)).find((p) => p.changeTitle === "Add three-way rebase")!;
+    expect(old.attachments).toEqual([{ kind: "POST_ATTACHMENT_KIND_CHANGE_REQUEST", id: old.changeId, number: old.changeNumber, title: old.changeTitle, state: "landed", tagName: "" }]);
   });
 
   it("ships real media: every file exists, matches its size and sha256, and stays small", () => {
@@ -448,6 +478,115 @@ describe("writing a post", () => {
     const omar = asHandle("omar");
     expect((await omar.post.setChangePost({ repo: engine, changeId: cr.id, text: "Ancestor lookups are cached." })).author?.display).toBe("Omar Haddad");
     expect((await asHandle("rhea").post.setChangePost({ repo: engine, changeId: cr.id, text: "Ancestor lookups are cached per id." })).author?.display).toBe("Rhea Lindqvist");
+  });
+});
+
+describe("a post of its own", () => {
+  const CHANGE = "POST_ATTACHMENT_KIND_CHANGE_REQUEST" as const;
+  const ISSUE = "POST_ATTACHMENT_KIND_ISSUE" as const;
+
+  it("is written with no change request: a body, an article and attachments, published at once for a person", async () => {
+    const { mara, store, asHandle } = world();
+    const cr = await find(mara, infra, "Add the us-east-2 cell");
+    const post = await mara.post.createPost({
+      repo: infra,
+      text: "What changed in infra this week",
+      bodyMarkdown: "## Cells\r\n\r\nOne more, in us-east-2.\n",
+      article: { title: "  A second cell  ", bodyMarkdown: "# Why\n\nLatency." },
+      attachments: [{ kind: CHANGE, number: cr.number }],
+    });
+    expect(post).toMatchObject({ state: "POST_STATE_PUBLISHED", changeId: "", changeNumber: "0", version: "1", viewer: { canEdit: false, canApprove: false, canWithdraw: true } });
+    expect(post.publishedAt).toBeDefined();
+    expect(post.bodyMarkdown).toBe("## Cells\n\nOne more, in us-east-2.\n");
+    expect(post.article).toEqual({ title: "A second cell", bodyMarkdown: "# Why\n\nLatency." });
+    expect(post.attachments).toEqual([{ kind: CHANGE, id: cr.id, number: cr.number, title: cr.title, state: "open", tagName: "" }]);
+    expect((await mara.post.getPost({ postId: post.id })).attachments).toEqual(post.attachments);
+    expect((await published(mara, infra)).map((p) => p.id)).toContain(post.id);
+    // The card follows the change request.
+    store.land(store.crs.find((c) => c.id === cr.id)!, "mara");
+    expect((await mara.post.getPost({ postId: post.id })).attachments![0]!.state).toBe("landed");
+    // A body or an article alone is a post; nothing at all is not.
+    expect((await mara.post.createPost({ repo: infra, bodyMarkdown: "Only a body." })).text).toBe("");
+    expect(await fails(mara.post.createPost({ repo: infra }))).toMatchObject({ code: "invalid_argument", reason: "empty_post" });
+    // It needs write access to the repo, and an account.
+    expect(await fails(asHandle("rhea").post.createPost({ repo: infra, text: "hi" }))).toMatchObject({ code: "not_found" });
+    expect(await fails(asHandle("rhea").post.createPost({ repo: sdk, text: "hi" }))).toMatchObject({ code: "permission_denied" });
+    // Its author withdraws it; the words go, the permalink stays.
+    const gone = await mara.post.withdrawPost({ repo: infra, postId: post.id, reason: "wrong week" });
+    expect([gone.state, gone.text, gone.bodyMarkdown, gone.article]).toEqual(["POST_STATE_WITHDRAWN", "", "", undefined]);
+  });
+
+  it("applies the body, article and attachment rules", async () => {
+    const { mara } = world();
+    const create = (over: Partial<T.CreatePostRequest>) => mara.post.createPost({ repo: api, text: "a summary", ...over });
+    expect(await fails(create({ bodyMarkdown: "x".repeat(20_001) }))).toMatchObject({ reason: "body_too_long" });
+    expect(await fails(create({ bodyMarkdown: "bell\u0007" }))).toMatchObject({ reason: "bad_text" });
+    expect((await create({ bodyMarkdown: "x".repeat(20_000) })).bodyMarkdown).toHaveLength(20_000);
+    expect(await fails(create({ article: { title: "", bodyMarkdown: "no title" } }))).toMatchObject({ reason: "bad_article" });
+    expect(await fails(create({ article: { title: "No body", bodyMarkdown: " " } }))).toMatchObject({ reason: "bad_article" });
+    expect(await fails(create({ article: { title: "two\nlines", bodyMarkdown: "x" } }))).toMatchObject({ reason: "bad_article" });
+    expect(await fails(create({ article: { title: "Long", bodyMarkdown: "x".repeat(100_001) } }))).toMatchObject({ reason: "article_too_long" });
+    // Attachments are things of the post's own repo.
+    const here = await find(mara, api, "Document the webhook retry schedule");
+    const elsewhere = await find(mara, infra, "Add the us-east-2 cell");
+    expect(await fails(create({ attachments: [{ kind: CHANGE, id: elsewhere.id }] }))).toMatchObject({ code: "invalid_argument", reason: "attachment_not_found" });
+    expect(await fails(create({ attachments: [{ kind: ISSUE, number: "999999" }] }))).toMatchObject({ reason: "attachment_not_found" });
+    expect(await fails(create({ attachments: [{ kind: "POST_ATTACHMENT_KIND_SWARM", id: "01SWARM" }] }))).toMatchObject({ reason: "bad_attachment" });
+    expect(await fails(create({ attachments: [{ kind: "POST_ATTACHMENT_KIND_UNSPECIFIED", id: here.id }] }))).toMatchObject({ reason: "bad_attachment" });
+    expect(await fails(create({ attachments: [{ kind: CHANGE, id: here.id }, { kind: CHANGE, number: here.number }] }))).toMatchObject({ reason: "bad_attachment" });
+    const issues = (await mara.issue.listIssues({ repo: api })).issues;
+    expect(await fails(create({ attachments: [{ kind: ISSUE, id: issues[0]!.id }, { kind: ISSUE, id: issues[1]!.id }] }))).toMatchObject({ reason: "bad_attachment" });
+    const release = (await mara.release.listReleases({ repo: api })).releases[0]!;
+    const ok = await create({ attachments: [{ kind: CHANGE, id: here.id }, { kind: ISSUE, id: issues[0]!.id }, { kind: "POST_ATTACHMENT_KIND_RELEASE", id: release.id }] });
+    expect(ok.attachments!.map((a) => [a.kind, a.title])).toEqual([
+      [CHANGE, here.title],
+      [ISSUE, issues[0]!.title],
+      ["POST_ATTACHMENT_KIND_RELEASE", release.name || release.tag],
+    ]);
+    expect(ok.attachments![2]).toMatchObject({ tagName: release.tag });
+  });
+
+  it("holds an agent's post until a person approves it", async () => {
+    const { asHandle, anon } = world();
+    const patcher = asHandle("patcher");
+    const rhea = asHandle("rhea");
+    const post = await patcher.post.createPost({ repo: kit, text: "Streaming tool output is ready to try.", bodyMarkdown: "Start with the README." });
+    expect(post).toMatchObject({ state: "POST_STATE_PENDING_APPROVAL", author: { display: "patcher" }, viewer: { canEdit: false, canApprove: false } });
+    expect(post.publishedAt).toBeUndefined();
+    // Not out yet: readers do not see it, and it cannot be liked.
+    expect(await fails(anon.post.getPost({ postId: post.id }))).toMatchObject({ code: "not_found" });
+    expect((await published(anon, kit)).map((p) => p.id)).not.toContain(post.id);
+    expect(await fails(rhea.post.likePost({ postId: post.id }))).toMatchObject({ reason: "INVALID_STATE" });
+    expect(await fails(patcher.post.approvePost({ repo: kit, postId: post.id }))).toMatchObject({ code: "permission_denied" });
+    expect((await rhea.post.getPost({ postId: post.id })).viewer?.canApprove).toBe(true);
+    const live = await rhea.post.approvePost({ repo: kit, postId: post.id });
+    expect(live).toMatchObject({ state: "POST_STATE_PUBLISHED", approvedBy: { display: "Rhea Lindqvist" } });
+    expect((await published(anon, kit)).map((p) => p.id)).toContain(post.id);
+    expect((await rhea.post.likePost({ postId: post.id })).counts?.likes).toBe("1");
+  });
+
+  it("carries media its author uploaded without a change request, and extends a change request's post", async () => {
+    const { mara, store, asHandle } = world();
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+    const sha = createHash("sha256").update(png).digest("hex");
+    const up = await mara.post.beginPostMediaUpload({ repo: infra, changeId: "", kind: "POST_MEDIA_KIND_IMAGE", contentType: "image/png", sizeBytes: String(png.length) });
+    store.posts.receive(up.mediaId, png);
+    // Only its uploader finalizes and attaches it.
+    expect(await fails(asHandle("dev").post.finalizePostMedia({ repo: infra, mediaId: up.mediaId, sha256: sha, altText: "x" }))).toMatchObject({ code: "not_found" });
+    const media = await mara.post.finalizePostMedia({ repo: infra, mediaId: up.mediaId, sha256: sha, altText: "A tiny test image" });
+    expect(await fails(asHandle("dev").post.createPost({ repo: infra, mediaIds: [media.id] }))).toMatchObject({ reason: "bad_media" });
+    const post = await mara.post.createPost({ repo: infra, mediaIds: [media.id] });
+    expect(post.media.map((m) => m.id)).toEqual([media.id]);
+    expect(await fails(mara.post.createPost({ repo: infra, mediaIds: [media.id] }))).toMatchObject({ reason: "bad_media" });
+    // The same fields on a change request's post; the change request stays its first attachment.
+    const cr = await find(mara, api, "Document the webhook retry schedule");
+    const other = (await mara.change.listChanges({ repo: api })).changes.find((c) => c.id !== cr.id)!;
+    const draft = await mara.post.setChangePost({ repo: api, changeId: cr.id, text: "Retries are documented.", bodyMarkdown: "With the schedule.", attachments: [{ kind: CHANGE, id: other.id }, { kind: CHANGE, id: cr.id }] });
+    expect(draft.bodyMarkdown).toBe("With the schedule.");
+    expect(draft.attachments!.map((a) => a.id)).toEqual([cr.id, other.id]);
+    // A client that sends text alone removes them.
+    const plain = await mara.post.setChangePost({ repo: api, changeId: cr.id, text: "Retries are documented." });
+    expect([plain.bodyMarkdown, plain.attachments!.map((a) => a.id)]).toEqual(["", [cr.id]]);
   });
 });
 

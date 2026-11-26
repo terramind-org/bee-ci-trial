@@ -1,5 +1,6 @@
 /** Choices whose options are links: the choice is in the URL, so it survives reload and share. Plain words, the current one underlined. */
 import Link from "next/link";
+import { tabClass } from "@/components/kit/tabs-style";
 import { cx } from "@/components/ui";
 import { SINCE_LABEL, type Since } from "./params";
 
@@ -17,10 +18,7 @@ export function Segments({ label, segments, current }: { label: string; segments
           key={s.value}
           href={s.href}
           aria-current={s.value === current ? "page" : undefined}
-          className={cx(
-            "inline-flex h-8 items-center whitespace-nowrap border-b-2 text-base transition-colors duration-[160ms]",
-            s.value === current ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:border-line-strong hover:text-ink",
-          )}
+          className={cx(tabClass(s.value === current), "min-h-8 py-1 text-sm")}
         >
           {s.label}
         </Link>

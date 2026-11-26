@@ -22,7 +22,7 @@ export type Role = "author" | "brief" | "approved" | "requested changes" | "revi
 const ROLE_ORDER: Role[] = ["author", "brief", "ran a session", "approved", "requested changes", "reviewed", "commented"];
 
 const ROLE_WORDS: Record<Role, string> = {
-  author: "Wrote the change",
+  author: "Wrote the code",
   brief: "Wrote the brief",
   approved: "Approved",
   "requested changes": "Asked for changes",
@@ -37,7 +37,7 @@ export interface Member {
   principal?: Principal;
   agent: boolean;
   roles: Role[];
-  /** "Wrote the change and the brief" style, built from roles. */
+  /** "Wrote the code and the brief" style, built from roles. */
   rolesText: string;
   models: string[];
   sessions: number;
@@ -70,7 +70,7 @@ function rolesText(roles: Role[]): string {
   const words = roles.map((r) => ROLE_WORDS[r]);
   if (roles.includes("author") && roles.includes("brief")) {
     const rest = roles.filter((r) => r !== "author" && r !== "brief").map((r) => ROLE_WORDS[r].toLowerCase());
-    return listing(["Wrote the change and the brief", ...rest]);
+    return listing(["Wrote the code and the brief", ...rest]);
   }
   return listing(words.map((w, i) => (i === 0 ? w : w.toLowerCase())));
 }

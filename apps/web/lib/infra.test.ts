@@ -7,7 +7,8 @@ import { objectIdText, parseObjectId } from "./api/ids";
 import type { Changeset, ObjectId, RefLogEntry } from "./api/types";
 import { DegradedBanner } from "../components/degraded-banner";
 import { ImportedBadge, PrincipalName } from "../components/domain";
-import { LinearRefusal, LandPanel, explainRequirement } from "../components/change-actions";
+import { RuleList } from "../components/brief/rules";
+import { LinearRefusal } from "../components/change-actions";
 import { StackList } from "../app/(repo)/[owner]/[repo]/changes/[id]/stack-panel";
 import { ArchiveRefusal } from "../app/(repo)/[owner]/[repo]/releases/archive-links";
 import {
@@ -15,6 +16,7 @@ import {
   LINEAR_MESSAGE,
   archiveRefusalText,
   degradedMessage,
+  explainRequirement,
   isImported,
   isImporterPrincipal,
   isLinearRefusal,
@@ -34,20 +36,25 @@ const cs = (id: number, parents: number[]): Changeset => ({ id: oid(id), parents
 describe("linear history refusal", () => {
   it("says it in words, then the raw token, then the remedy", () => {
     const html = renderToStaticMarkup(h(LinearRefusal));
-    expect(html).toContain("This stack contains a merge changeset and the target requires linear history.");
+    expect(html).toContain("This pull request contains a merge commit and the target branch requires linear history.");
     expect(html).toContain("POLICY_DENIED · linear");
     expect(html).toContain("Rebase the merge away");
-    expect(html).toContain("ask an admin to change the land rule");
+    expect(html).toContain("ask an admin to change the rule");
     expect(explainRequirement("linear")).toBe(LINEAR_MESSAGE);
   });
 
-  it("shows on the landing panel when EvaluateLanding names the `linear` requirement, and keeps the other requirements", () => {
-    const evaluation = { allowed: false, satisfied: [], missing: ["linear", "check:test"], diffClass: "" };
-    const html = renderToStaticMarkup(h(LandPanel, { repo: "acme/api", crId: "cr1", state: "CHANGE_STATE_OPEN", evaluation, queue: null }));
+  it("shows among the rules when EvaluateLanding names the `linear` requirement, and keeps the other requirements", () => {
+    const evaluation = { allowed: false, satisfied: ["check:lint"], missing: ["linear", "check:test"], diffClass: "" };
+    const html = renderToStaticMarkup(h(RuleList, { evaluation }));
     expect(html).toContain('data-testid="linear-refusal"');
     expect(html).toContain("Check test");
+    // The raw requirement stays beside the words, for an agent to match on.
+    expect(html).toContain(">check:test<");
+    expect(html).toContain(">check:lint<");
     expect(html.match(/linear history/g)?.length).toBe(1);
-    const clean = renderToStaticMarkup(h(LandPanel, { repo: "acme/api", crId: "cr1", state: "CHANGE_STATE_OPEN", evaluation: { ...evaluation, allowed: true, missing: [] }, queue: null }));
+    // The list is read-only: the decisions are the buttons under the title.
+    expect(html).not.toContain("<button");
+    const clean = renderToStaticMarkup(h(RuleList, { evaluation: { ...evaluation, allowed: true, missing: [] } }));
     expect(clean).not.toContain("linear-refusal");
   });
 
@@ -89,7 +96,7 @@ describe("landed empty", () => {
     const members = landedStack(entry([l(1, 10, 2), l(2, 11, 2), l(3, 12, 3)]), () => []);
     expect(members.map((m) => m.empty)).toEqual([false, true, false]);
     const html = renderToStaticMarkup(h(StackList, { members }));
-    expect(html.match(/landed empty \(no changes after rebase\)/g)?.length).toBe(1);
+    expect(html.match(/merged empty \(no changes after rebase\)/g)?.length).toBe(1);
   });
 
   it("is not a skipped member, and the first member compares with the ref's old target", () => {

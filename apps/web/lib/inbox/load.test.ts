@@ -10,7 +10,7 @@ vi.mock("@/lib/api/server", () => ({
   sessionState: async () => ({ me: (await current.client!.auth.whoAmI({})).principal ?? null, error: null }),
 }));
 
-const { loadNeeds } = await import("./load");
+const { loadNeeds, needCount } = await import("./load");
 const { needsOf } = await import("./needs");
 
 describe("loadNeeds", () => {
@@ -30,6 +30,16 @@ describe("loadNeeds", () => {
     for (const n of scan.needs) if (n.kind === "post") expect(n.post?.author?.id).not.toBe(scan.me.id);
     // Recomputing from the scan's facts gives the same open-change needs.
     expect(needsOf(scan.facts, [], scan.me).map((n) => n.change.id)).toEqual(scan.needs.filter((n) => n.kind !== "post").map((n) => n.change.id));
+  });
+
+  it("delivers tripwire and concern reasons to the person who answers, and includes both in the rail count", async () => {
+    const scan = await loadNeeds();
+    expect(scan.safetyFailed).toEqual([]);
+    expect(scan.safety).toMatchObject([
+      { kind: "tripwire", repo: "acme/api", reason: expect.stringContaining("customer identifiers"), answers: { id: scan.me.id } },
+      { kind: "concern", repo: "acme/api", reason: expect.stringContaining("redacted session"), answers: { id: scan.me.id } },
+    ]);
+    expect(needCount(scan)).toBe(scan.needs.length + 2);
   });
 
   it("lists an agent's merged post that waits for this person's approval, in place of the review", async () => {

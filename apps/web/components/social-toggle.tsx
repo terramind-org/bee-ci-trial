@@ -1,16 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ServiceName } from "@/lib/api/methods";
 import type { Op } from "@/lib/copyas";
 import { CopyAs } from "./copy-as";
-import { Icon, type IconName } from "./icons";
+import type { IconName } from "./icons";
 import { Swap } from "./motion";
 import type { SocialResult } from "./social-actions";
 import { useToast } from "./toast";
-import { buttonClass, cx } from "./ui";
+import { Button, ButtonLink } from "./ui";
 
 /**
  * The shared body of the star and follow buttons: an on/off toggle with an optional count,
@@ -19,7 +18,8 @@ import { buttonClass, cx } from "./ui";
 export interface SocialToggleProps {
   on: boolean;
   count?: number;
-  icon: IconName;
+  /** Kept for callers; the pill shows words only. */
+  icon?: IconName;
   labels: { on: string; off: string };
   /** What the toggle acts on (`acme/api`, `mara`), read after the visible label by screen readers. */
   subject: string;
@@ -40,7 +40,7 @@ export interface SocialToggleProps {
  */
 const USER_SERVICE = "UserService" as ServiceName;
 
-export function SocialToggle({ on: initial, count: initialCount, icon, labels, subject, signedIn, unavailable, act, op, copyAs = true }: SocialToggleProps) {
+export function SocialToggle({ on: initial, count: initialCount, labels, subject, signedIn, unavailable, act, op, copyAs = true }: SocialToggleProps) {
   const [on, setOn] = useState(initial);
   const [count, setCount] = useState(initialCount);
   const [pending, start] = useTransition();
@@ -48,31 +48,37 @@ export function SocialToggle({ on: initial, count: initialCount, icon, labels, s
   const path = usePathname();
   const next = op(!on);
   const copy: Op = { service: USER_SERVICE, method: next.method, request: next.request, label: next.label };
+  // "Follow · 3": the word, then the count, quiet. The pressed state is the word and the fill.
   const body = (
     <>
-      <Icon name={icon} size={16} weight={on ? "fill" : "regular"} className={on ? "text-ink" : undefined} />
       <span>{on ? labels.on : labels.off}</span>
       <span className="sr-only">{" " + subject}</span>
       {count !== undefined ? (
-        <Swap value={count} className="num border-l border-line pl-1.5 text-xs text-ink-3">
-          {count}
-        </Swap>
+        <>
+          <span aria-hidden="true" className="text-ink-3">
+            ·
+          </span>
+          <Swap value={count} className="num text-ink-2">
+            {count}
+          </Swap>
+        </>
       ) : null}
     </>
   );
   if (!signedIn) {
     return (
-      <Link href={"/signin?next=" + encodeURIComponent(path ?? "/")} className={buttonClass("secondary", "sm")}>
+      <ButtonLink size="sm" href={"/signin?next=" + encodeURIComponent(path ?? "/")}>
         {body}
         <span className="sr-only"> (sign in first)</span>
-      </Link>
+      </ButtonLink>
     );
   }
   return (
     <span className="inline-flex items-center gap-1">
-      <button
+      <Button
         type="button"
-        className={buttonClass("secondary", "sm", cx(on && "bg-selected"))}
+        size="sm"
+        className={on ? "bg-selected" : undefined}
         aria-pressed={on}
         title={unavailable}
         disabled={pending || !!unavailable}
@@ -91,7 +97,7 @@ export function SocialToggle({ on: initial, count: initialCount, icon, labels, s
         }}
       >
         {body}
-      </button>
+      </Button>
       {unavailable || !copyAs ? null : <CopyAs compact op={copy} />}
     </span>
   );

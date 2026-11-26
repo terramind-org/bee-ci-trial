@@ -34,7 +34,9 @@ use std::time::Duration;
 use bee_core::{ChangeId, ObjectId, RefName};
 use bee_history::{RebaseOptions, StackOutcome, StackStep};
 use bee_object::DeltaOp;
-use bee_policy::{ChangedPath, CommitInfo, DiffClass, LandContext, Policy, SignatureState};
+use bee_policy::{
+    ChangedPath, CommitInfo, DiffClass, LandContext, Policy, PrincipalKind, SignatureState,
+};
 use bee_proto::v1::{self, ErrorReason};
 use bee_store::{Expected, LandedEntry, RefStep, RefUpdate, RepoId};
 use serde::{Deserialize, Serialize};
@@ -1094,6 +1096,10 @@ struct Accepted {
     target: ObjectId,
 }
 
+fn is_nonhuman(job: &LandJob) -> bool {
+    job.caller.token.principal.kind != PrincipalKind::Human
+}
+
 /// Processes queued lands for one ref; with `fence`, publication requires still owning the
 /// ref's coalescer lease with that fencing token.
 async fn process_batch(
@@ -1110,12 +1116,12 @@ async fn process_batch(
     let budget = state.cfg.land.attempt_budget;
     // Identical lands in one batch (a client retry racing its first attempt) are planned once
     // and answered with the first one's result, members marked skipped.
-    let mut first_by_head: HashMap<(ObjectId, u64), usize> = HashMap::new();
+    let mut first_by_head: HashMap<(ObjectId, u64, bool), usize> = HashMap::new();
     let dup_of: Vec<Option<usize>> = jobs
         .iter()
         .enumerate()
         .map(|(i, j)| {
-            let k = (j.head, j.expected_version);
+            let k = (j.head, j.expected_version, is_nonhuman(j));
             match first_by_head.get(&k) {
                 Some(f) => Some(*f),
                 None => {
@@ -1126,6 +1132,7 @@ async fn process_batch(
         })
         .collect();
     let mut attempt = 0u32;
+    let mut nonhuman_error: Option<ApiError> = None;
     loop {
         attempt += 1;
         let current = match state.meta.get_ref(repo.repo.id, &name).await {
@@ -1156,6 +1163,12 @@ async fn process_batch(
         let mut steps: Vec<RefStep> = Vec::new();
         let mut events = Vec::new();
         for (i, job) in jobs.iter().enumerate() {
+            if let Some(error) = nonhuman_error.as_ref()
+                && is_nonhuman(job)
+            {
+                results[i] = Some(Err(error.clone()));
+                continue;
+            }
             if results[i].is_some() || dup_of[i].is_some() {
                 continue;
             }
@@ -1234,6 +1247,21 @@ async fn process_batch(
         if let Err(e) = history.flush_buffered().await {
             return Ok(publication_failed(results, e.into()));
         }
+        // Serialize a non-human publication with Stop Everything. If the stop won, replan
+        // human jobs on their own so their outcome cannot depend on a blocked stack.
+        let safety = if accepted.iter().any(|a| is_nonhuman(&jobs[a.index])) {
+            match state.forge.fence_agent_landing(&repo).await {
+                Ok(fence) => fence,
+                Err(error) => {
+                    nonhuman_error = Some(error);
+                    results.iter_mut().for_each(|result| *result = None);
+                    attempt = attempt.saturating_sub(1);
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
         if let Some(f) = fence {
             // Renew-and-check: succeeds only while the lease row still names this process
             // with the same fencing token (a long batch extends its own lease).
@@ -1262,7 +1290,9 @@ async fn process_batch(
             at_ms: state.now_ms(),
             events,
         };
-        match state.writer.update_ref(update).await {
+        let publication = state.writer.update_ref(update).await;
+        drop(safety);
+        match publication {
             Ok(updated) => {
                 state.metrics.batch(k);
                 state

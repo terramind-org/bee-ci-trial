@@ -50,7 +50,7 @@ export function SignIn({ edition }: { edition: Edition }) {
     try {
       const pasted = t.trim();
       // A pasted GitHub token is exchanged for a Beehive one; the server creates the account on first login.
-      await establish(GITHUB_TOKEN.test(pasted) ? (await browserClient().auth.login({ githubToken: pasted })).token : t);
+      await establish(GITHUB_TOKEN.test(pasted) ? (await browserClient().auth.login({ githubToken: pasted })).token : pasted);
       router.push(await destination());
       router.refresh();
     } catch (e) {
@@ -94,13 +94,13 @@ export function SignIn({ edition }: { edition: Edition }) {
   }, [device]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <section aria-labelledby="gh-title">
-        <h2 id="gh-title" className="text-xl font-semibold tracking-tight">
-          {cloud ? "Create your account with GitHub" : "Sign in with GitHub"}
+        <h2 id="gh-title" className="text-lg font-medium">
+          GitHub
         </h2>
         <p className="mt-1 text-base text-ink-2">
-          {cloud ? "New here? Signing in creates your account. " : ""}Device flow: no password passes through Beehive. Your identity is your stable GitHub id, never your login.
+          {cloud ? "Your first GitHub sign-in creates your account." : "Approve sign-in on GitHub using a one-time code."}
         </p>
         {device ? (
           <div className="mt-3 flex flex-col gap-2" role="status" aria-live="polite">
@@ -139,14 +139,14 @@ export function SignIn({ edition }: { edition: Edition }) {
       </section>
 
       <section aria-labelledby="tok-title" className="rule pt-6">
-        <h2 id="tok-title" className="text-xl font-semibold tracking-tight">
+        <h2 id="tok-title" className="text-lg font-medium">
           Paste a token
         </h2>
         <p className="mt-1 text-base text-ink-2">
-          Any Beehive token works, including one minted for an agent. {cloud ? "A GitHub token works too and creates your account. " : ""}The UI then shows exactly what that token can see.
+          Use a Beehive {cloud ? "or GitHub " : ""}access token.
         </p>
         <form
-          className="mt-3 flex flex-col gap-3"
+          className="mt-3 flex flex-wrap items-end gap-3 [&>div]:min-w-[180px] [&>div]:flex-1"
           onSubmit={(e) => {
             e.preventDefault();
             void withToken(token);
@@ -161,9 +161,9 @@ export function SignIn({ edition }: { edition: Edition }) {
         </form>
       </section>
 
-      <details className="rule pt-4">
+      <details className="rule pt-2">
         <summary className={buttonClass("ghost", "md", "-ml-2.5 justify-start")}>
-          <Icon name="terminal" /> Signing in an agent instead?
+          <Icon name="terminal" /> Check an agent token
         </summary>
         <div className="pt-4">
           <CopyAsPanel op={{ service: "AuthService", method: "WhoAmI", request: {}, label: "Check a token" }} />

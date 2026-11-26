@@ -1,9 +1,10 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { adminWrite, type AdminResult, type AdminWrite } from "@/app/(shell)/admin/actions";
+import { ConfirmButton as MarkedButton } from "../kit/confirm";
+import { Modal } from "../kit/dialog";
 import { useToast } from "../toast";
 import { Button, cx } from "../ui";
 
@@ -54,12 +55,17 @@ export function ActionError({ error }: { error: ActionFailure | null }) {
   );
 }
 
-/** A button that asks first. The dialog names what will happen; the confirm button does it. */
+/**
+ * A button that asks first. The dialog names what will happen; the confirm button does it. Both
+ * buttons are marked for agents (`agentConfirm`, by default the dialog's question), so an agent
+ * driving the page cannot answer for the operator.
+ */
 export function ConfirmButton({
   label,
   title,
   description,
   confirmLabel,
+  agentConfirm,
   variant = "danger",
   size = "sm",
   disabled,
@@ -70,6 +76,8 @@ export function ConfirmButton({
   title: string;
   description: ReactNode;
   confirmLabel: string;
+  /** What confirming does, as a sentence for agents. Defaults to the confirm label and the question. */
+  agentConfirm?: string;
   variant?: "danger" | "primary" | "secondary";
   size?: "sm" | "md";
   disabled?: boolean;
@@ -77,38 +85,31 @@ export function ConfirmButton({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const sentence = agentConfirm ?? confirmLabel + ". " + title;
+  const consequence = variant === "danger" ? "destructive" : "approving";
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <Button size={size} variant={variant === "primary" ? "primary" : variant === "danger" ? "danger" : "secondary"} disabled={disabled}>
-          {label}
-        </Button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 data-[state=open]:animate-enter" />
-        <Dialog.Content className="fixed top-[12vh] left-1/2 z-50 w-[min(440px,calc(100vw-24px))] -translate-x-1/2 rounded-lg border border-line bg-popover p-4 shadow-overlay data-[state=open]:animate-enter">
-          <Dialog.Title className="text-md font-semibold">{title}</Dialog.Title>
-          <Dialog.Description asChild>
-            <div className="mt-1.5 text-sm text-ink-2">{description}</div>
-          </Dialog.Description>
-          {children}
-          <div className="mt-4 flex justify-end gap-2">
-            <Dialog.Close asChild>
-              <Button>Cancel</Button>
-            </Dialog.Close>
-            <Button
-              variant={variant === "danger" ? "danger" : "primary"}
-              onClick={async () => {
-                setOpen(false);
-                await onConfirm();
-              }}
-            >
-              {confirmLabel}
-            </Button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <>
+      <MarkedButton agentConfirm={sentence} consequence={consequence} size={size} variant={variant} disabled={disabled} onClick={() => setOpen(true)}>
+        {label}
+      </MarkedButton>
+      <Modal open={open} onOpenChange={setOpen} title={title} description={description} hideClose className="top-[12vh] w-[min(460px,calc(100vw-24px))]">
+        {children}
+        <div className="mt-5 flex justify-end gap-2.5">
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <MarkedButton
+            agentConfirm={sentence}
+            consequence={consequence}
+            variant={variant === "danger" ? "danger" : "primary"}
+            onClick={async () => {
+              setOpen(false);
+              await onConfirm();
+            }}
+          >
+            {confirmLabel}
+          </MarkedButton>
+        </div>
+      </Modal>
+    </>
   );
 }
 

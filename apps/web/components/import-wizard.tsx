@@ -5,10 +5,11 @@ import { browserClient } from "@/lib/api/browser";
 import type { FidelityReport, Import, ImportPhase, StartImportRequest } from "@/lib/api/types";
 import { compact } from "@/lib/format";
 import { CopyAs } from "./copy-as";
-import { Icon } from "./icons";
+import { ConfirmButton } from "./kit/confirm";
+import { State } from "./parts";
 import { Time } from "./time";
 import { useToast } from "./toast";
-import { Badge, Button, Field, Input, cx } from "./ui";
+import { Button, Field, Input, cx } from "./ui";
 
 type Step = "source" | "estimate" | "progress" | "report";
 const STEPS: { id: Step; label: string }[] = [
@@ -112,11 +113,10 @@ export function ImportWizard({ org }: { org: string }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <ol className="flex flex-wrap gap-2" aria-label="Import steps">
+      <ol className="flex flex-wrap gap-x-6 gap-y-2 border-b border-line pb-4" aria-label="Import steps">
         {STEPS.map((s, i) => (
-          <li key={s.id} aria-current={s.id === step ? "step" : undefined} className={cx("flex items-center gap-2 rounded-md border px-2.5 py-1 text-base", s.id === step ? "border-accent bg-accent-soft text-accent-ink" : i < idx ? "border-line text-ink-2" : "border-line text-ink-3")}>
-            <span className="num grid size-5 place-items-center rounded-full border border-current text-sm">{i < idx ? <Icon name="check" size={12} /> : i + 1}</span>
-            {s.label}
+          <li key={s.id} aria-current={s.id === step ? "step" : undefined}>
+            <State shape={i < idx ? "passed" : i === idx ? "running" : "open"} className={cx("text-sm", i !== idx && "text-ink-3")}>{s.label}</State>
           </li>
         ))}
       </ol>
@@ -132,20 +132,20 @@ export function ImportWizard({ org }: { org: string }) {
           <Field label="GitHub repository or organization" htmlFor="imp-source" hint="owner/repo, or an org name with “whole organization” checked." error={error || undefined}>
             <Input id="imp-source" value={source} onChange={(e) => setSource(e.target.value)} className="mono" placeholder="octo-org/service" />
           </Field>
-          <label className="flex items-center gap-1.5 text-base">
-            <input type="checkbox" checked={isOrg} onChange={(e) => setIsOrg(e.target.checked)} className="accent-[var(--accent)]" />
+          <label className="flex min-h-6 items-center gap-2 text-base">
+            <Input type="checkbox" checked={isOrg} onChange={(e) => setIsOrg(e.target.checked)} className="size-4 shrink-0 p-0 accent-ink shadow-none" />
             Whole organization
           </label>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-base font-medium">Read GitHub with</legend>
-            <label className="flex items-start gap-2 text-base">
-              <input type="radio" name="auth" checked={auth === "app"} onChange={() => setAuth("app")} className="mt-1 accent-[var(--accent)]" />
+            <label className="flex min-h-6 items-start gap-2 text-base">
+              <Input type="radio" name="auth" checked={auth === "app"} onChange={() => setAuth("app")} className="mt-1 size-4 shrink-0 p-0 accent-ink shadow-none" />
               <span>
                 GitHub App installation <span className="text-ink-3">(recommended: 3x the rate limit, needed for bridge mode)</span>
               </span>
             </label>
-            <label className="flex items-start gap-2 text-base">
-              <input type="radio" name="auth" checked={auth === "token"} onChange={() => setAuth("token")} className="mt-1 accent-[var(--accent)]" />
+            <label className="flex min-h-6 items-start gap-2 text-base">
+              <Input type="radio" name="auth" checked={auth === "token"} onChange={() => setAuth("token")} className="mt-1 size-4 shrink-0 p-0 accent-ink shadow-none" />
               Personal access token
             </label>
           </fieldset>
@@ -168,21 +168,21 @@ export function ImportWizard({ org }: { org: string }) {
       ) : null}
 
       {step === "estimate" && imp ? (
-        <section aria-labelledby="est-title" className="rounded-lg border border-line bg-surface">
+        <section aria-labelledby="est-title" className="min-w-0">
           <header className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 id="est-title" className="text-xl font-semibold tracking-tight">
+            <h2 id="est-title" className="text-xl font-light tracking-tight">
               Dry run · <span className="mono">{imp.source}</span>
             </h2>
-            {finished ? <Badge tone="ok">estimate ready</Badge> : <Badge tone="warn">counting…</Badge>}
+            <State shape={finished ? "passed" : "running"} className="text-sm text-ink-2">{finished ? "Estimate ready" : "Counting"}</State>
             <span className="ml-auto text-sm text-ink-3">{imp.rateLimitNote}</span>
           </header>
           {report ? (
             <>
               <FidelityTable report={report} estimate />
               <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-4 mt-4">
-                <Button variant="primary" onClick={() => run("IMPORT_PHASE_MIRROR")} disabled={busy}>
+                <ConfirmButton consequence="approving" agentConfirm={"Starts mirroring " + source + " into " + org} onClick={() => run("IMPORT_PHASE_MIRROR")} disabled={busy}>
                   Start mirror
-                </Button>
+                </ConfirmButton>
                 <Button variant="ghost" onClick={() => setStep("source")}>
                   Back
                 </Button>
@@ -191,18 +191,21 @@ export function ImportWizard({ org }: { org: string }) {
               </div>
             </>
           ) : (
-            <Progress imp={imp} />
+            <>
+              <Progress imp={imp} />
+              {running ? <Button className="mt-4" size="sm" variant="ghost" icon="refresh" onClick={refresh}>Check status</Button> : null}
+            </>
           )}
         </section>
       ) : null}
 
       {step === "progress" && imp ? (
-        <section aria-labelledby="prog-title" className="rounded-lg border border-line bg-surface">
+        <section aria-labelledby="prog-title" className="min-w-0">
           <header className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 id="prog-title" className="text-xl font-semibold tracking-tight">
+            <h2 id="prog-title" className="text-xl font-light tracking-tight">
               Mirroring <span className="mono">{imp.source}</span>
             </h2>
-            <Badge tone={finished ? "ok" : "warn"}>{STATE_LABEL[imp.state] ?? imp.state}</Badge>
+            <State shape={finished ? "passed" : imp.state === "IMPORT_STATE_FAILED" ? "failed" : imp.state === "IMPORT_STATE_CANCELLED" ? "closed" : "running"} className="text-sm text-ink-2">{STATE_LABEL[imp.state] ?? imp.state}</State>
             {imp.eta && !finished ? (
               <span className="text-sm text-ink-3">
                 done <Time iso={imp.eta} />
@@ -213,7 +216,7 @@ export function ImportWizard({ org }: { org: string }) {
             </span>
           </header>
           <Progress imp={imp} />
-          <div className="flex items-center gap-1.5 border-t border-line pt-4 mt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4 mt-4">
             <Button variant="primary" disabled={!report} onClick={() => setStep("report")}>
               {report ? "View fidelity report" : "Report is ready when the mirror is live"}
             </Button>
@@ -228,12 +231,12 @@ export function ImportWizard({ org }: { org: string }) {
       ) : null}
 
       {step === "report" && report && imp ? (
-        <section aria-labelledby="rep-title" className="rounded-lg border border-line bg-surface">
+        <section aria-labelledby="rep-title" className="min-w-0">
           <header className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 id="rep-title" className="text-xl font-semibold tracking-tight">
+            <h2 id="rep-title" className="text-xl font-light tracking-tight">
               Fidelity report · <span className="mono">{imp.source}</span>
             </h2>
-            <Badge tone="ok">live since <Time iso={imp.liveSince} /></Badge>
+            <State shape="passed" className="text-sm text-ink-2">Live since <Time iso={imp.liveSince} /></State>
             <span className="ml-auto">
               <CopyAs compact op={{ service: "ImportService", method: "GetFidelityReport", request: { id: imp.id }, label: "Fidelity report" }} />
             </span>
@@ -261,10 +264,10 @@ function Progress({ imp }: { imp: Import }) {
         const total = Number(p.total);
         const pct = total ? Math.round((done / total) * 100) : 0;
         return (
-          <li key={p.category} className="grid grid-cols-[140px_1fr_110px] items-center gap-3 text-base">
+          <li key={p.category} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-base">
             <span className="capitalize">{label(p.category)}</span>
-            <span className="h-1.5 overflow-hidden rounded-full bg-sunken" role="progressbar" aria-label={label(p.category)} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-              <span className={cx("block h-full rounded-full transition-[width] duration-500", pct === 100 ? "bg-ok" : "bg-accent")} style={{ width: pct + "%" }} />
+            <span className="col-span-2 row-start-2 h-1 overflow-hidden rounded-full bg-sunken" role="progressbar" aria-label={label(p.category)} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+              <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: pct + "%" }} />
             </span>
             <span className="num text-right text-sm text-ink-2">
               {compact(done)} / {compact(total)}

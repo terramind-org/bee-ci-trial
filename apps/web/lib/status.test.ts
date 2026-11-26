@@ -7,14 +7,14 @@ const pass = (n: number) => Array.from({ length: n }, (_, i) => check("c" + i, "
 describe("status sentence", () => {
   it("reads ready to land with approvals and checks", () => {
     const s = statusOf({ change: change(), landing: landing(true), checks: pass(14), reviews: [review(MARA, "VERDICT_APPROVE", 2), review(LIN, "VERDICT_APPROVE", 2)] });
-    expect(s.sentence).toBe("Ready to land: 2 approvals, all 14 checks pass");
+    expect(s.sentence).toBe("Ready to merge: 2 approvals, all 14 checks pass");
     expect(s.kind).toBe("ready");
     expect(s.tone).toBe("ok");
   });
 
   it("does not count an approval of an older revision", () => {
     const s = statusOf({ change: change(), landing: landing(true), checks: pass(2), reviews: [review(MARA, "VERDICT_APPROVE", 1)] });
-    expect(s.sentence).toBe("Ready to land: all 2 checks pass");
+    expect(s.sentence).toBe("Ready to merge: all 2 checks pass");
   });
 
   it("puts failing checks before everything but the queue and the end states", () => {

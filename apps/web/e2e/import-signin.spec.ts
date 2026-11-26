@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { orgPath, repoPath, rootToken, seed } from "./helpers";
+import { expectAccessible, orgPath, pressUntil, repoPath, rootToken, seed } from "./helpers";
 
 test.describe("Import", () => {
   test("copy as names the real StartImport call; a GitHub App is required for installation ids", async ({ page }) => {
     await page.goto("/import");
+    await expect(page.getByRole("heading", { level: 1, name: "Import from GitHub" })).toBeVisible();
     await page.getByLabel("GitHub repository or organization").fill("octo-org/service");
     await page.getByLabel("Installation id").fill("12345");
     await page.locator("main").getByRole("button", { name: "Copy as" }).first().click();
@@ -21,6 +22,7 @@ test.describe("Import", () => {
     await page.goto("/import");
     await page.getByLabel("GitHub repository or organization").fill("octo-org/service");
     await page.getByLabel("Personal access token").check();
+    await expect(page.getByLabel("Token", { exact: true })).toHaveAttribute("type", "password");
     await page.getByLabel("Token", { exact: true }).fill("ghp_not_a_real_token");
     await page.getByRole("button", { name: "Estimate with a dry run" }).click();
     // Rejected by GitHub (UNAUTHENTICATED) or unreachable from here (UNAVAILABLE): either way, typed.
@@ -40,21 +42,25 @@ test.describe("Sign-in", () => {
 
   test("GitHub device flow reports that this server has no GitHub app", async ({ page }) => {
     await page.goto("/signin");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expectAccessible(page);
     await page.getByRole("button", { name: "Continue with GitHub" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /GitHub|UNIMPLEMENTED|INVALID_STATE/ }).first()).toBeVisible();
   });
 
   test("token paste rejects an invalid token, accepts the dev token, returns to the page, and signs out", async ({ page }) => {
     await page.goto("/signin?next=" + encodeURIComponent(repoPath("activity")));
-    await page.getByRole("textbox", { name: "Token" }).fill("not-a-bee-token");
+    await page.getByLabel("Token", { exact: true }).fill("not-a-bee-token");
     await page.getByRole("button", { name: "Sign in with token" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /TOKEN|UNAUTHENTICATED|INVALID/ }).first()).toBeVisible();
-    await page.getByRole("textbox", { name: "Token" }).fill(rootToken());
+    await page.getByLabel("Token", { exact: true }).fill(rootToken());
     await page.getByRole("button", { name: "Sign in with token" }).click();
     await expect(page).toHaveURL(new RegExp(repoPath("activity") + "$"));
-    await page.getByRole("button", { name: /^Account menu/ }).click();
-    await expect(page.getByRole("menu")).toContainText("dev");
-    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    // The rail's foot names who is signed in; signing out is a palette action.
+    await expect(page.getByRole("complementary", { name: "Beehive" }).getByRole("link", { name: /^Your profile: / })).toContainText("dev");
+    const palette = page.getByRole("dialog", { name: "Command palette" });
+    await pressUntil(page, "ControlOrMeta+k", () => expect(palette).toBeVisible({ timeout: 1000 }));
+    await palette.getByRole("option", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/signin/);
     await page.goto("/import");
     await expect(page).toHaveURL(/\/signin\?next=%2Fimport$/);

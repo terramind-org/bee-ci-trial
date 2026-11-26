@@ -4,8 +4,8 @@ import { Badge, Panel } from "@/components/ui";
 import type { Op } from "@/lib/copyas";
 import type { StackMember } from "@/lib/infra";
 
-/** Words shown for a member that landed with no changeset written (SPEC §7.4 step 3, `allow_empty`). */
-export const LANDED_EMPTY = "landed empty (no changes after rebase)";
+/** Words shown for a member that merged with no commit written (SPEC §7.4 step 3, `allow_empty`). */
+export const LANDED_EMPTY = "merged empty (no changes after rebase)";
 
 /**
  * The changesets a change lands, first-parent chain, newest first. A merge changeset is marked

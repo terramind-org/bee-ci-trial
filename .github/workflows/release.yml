@@ -1,3 +1,4 @@
+# Move to .github/workflows/release.yml to activate; kept here because workflow-file pushes are restricted.
 name: Release
 
 on:
@@ -11,7 +12,7 @@ on:
       - "Dockerfile"
       - "apps/web/Dockerfile"
       - "scripts/package-release.sh"
-      - ".github/workflows/release.yml"
+      - "ci/workflows/release.yml"
   push:
     tags: ["v*"]
 

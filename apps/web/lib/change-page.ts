@@ -11,10 +11,13 @@ import { isReservedOwner, repoHref } from "./routes";
 
 export type ChangeTab = "brief" | "code" | "checks" | "agents";
 
-/** The tabs in order: the segment under `changes/[id]/` ("" for the Brief) and the label. */
+/**
+ * The tabs in order: the segment under `changes/[id]/` ("" for the overview) and the label, in
+ * the words people know from a pull request. The identifiers keep their first names.
+ */
 export const CHANGE_TABS: readonly { tab: ChangeTab; segment: string; label: string }[] = [
-  { tab: "brief", segment: "", label: "Brief" },
-  { tab: "code", segment: "code", label: "Code" },
+  { tab: "brief", segment: "", label: "Overview" },
+  { tab: "code", segment: "code", label: "Files changed" },
   { tab: "checks", segment: "checks", label: "Checks" },
   { tab: "agents", segment: "agents", label: "For agents" },
 ];

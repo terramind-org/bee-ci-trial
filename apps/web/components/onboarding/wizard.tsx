@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CopyAs } from "@/components/copy-as";
-import { Icon } from "@/components/icons";
+import { State } from "@/components/parts";
 import { CodeSample } from "@/components/marketing/code-sample";
 import { PromptCard } from "@/components/prompt-card";
 import { Button, ButtonLink, Field, Input, Select, Textarea, cx } from "@/components/ui";
@@ -108,11 +108,10 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
 
   return (
     <div data-testid="onboarding" className="flex flex-col gap-8">
-      <ol className="flex flex-wrap gap-2" aria-label="Steps">
+      <ol className="flex flex-wrap gap-x-6 gap-y-2 border-b border-line pb-4" aria-label="Steps">
         {STEPS.map((s, i) => (
-          <li key={s.id} aria-current={s.id === step ? "step" : undefined} className={cx("flex items-center gap-2 rounded-md border px-2.5 py-1 text-base", s.id === step ? "border-accent bg-accent-soft text-accent-ink" : i < idx ? "border-line text-ink-2" : "border-line text-ink-3")}>
-            <span className="num grid size-5 place-items-center rounded-full border border-current text-sm">{i < idx ? <Icon name="check" size={12} /> : i + 1}</span>
-            {s.label}
+          <li key={s.id} aria-current={s.id === step ? "step" : undefined}>
+            <State shape={i < idx ? "passed" : i === idx ? "running" : "open"} className={cx("text-sm", i !== idx && "text-ink-3")}>{s.label}</State>
           </li>
         ))}
       </ol>
@@ -125,7 +124,7 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
             void chooseOwner();
           }}
         >
-          <h2 className="text-xl font-semibold tracking-tight">Who will own it?</h2>
+          <h2 className="text-xl font-light tracking-tight">Who will own it?</h2>
           <fieldset className="flex flex-col gap-1.5">
             <legend className="sr-only">Owner</legend>
             {orgs.map((o) => (
@@ -166,7 +165,7 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
             void createRepo();
           }}
         >
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h2 className="text-xl font-light tracking-tight">
             Name the repository <span className="text-base font-normal text-ink-3">under {owner}</span>
           </h2>
           <Field label="Repository name" htmlFor="repo-name" hint="Letters, digits, dots, underscores and hyphens.">
@@ -182,8 +181,8 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
               {edition === "enterprise" ? <option value="VISIBILITY_INTERNAL">Internal</option> : null}
             </Select>
           </Field>
-          <label className="flex items-center gap-1.5 text-base">
-            <input type="checkbox" checked={readme} onChange={(e) => setReadme(e.target.checked)} /> Add a README as the first change
+          <label className="flex min-h-6 items-center gap-2 text-base">
+            <Input type="checkbox" className="size-4 shrink-0 p-0 accent-ink shadow-none" checked={readme} onChange={(e) => setReadme(e.target.checked)} /> Add a README as the first commit
           </label>
           {error ? (
             <p role="alert" className="text-base text-bad [overflow-wrap:anywhere]">
@@ -204,9 +203,6 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
               Back
             </Button>
             <CopyAs op={{ ...repoOp, request: { ...repoReq, org: owner } }} />
-            <ButtonLink href="/import" variant="ghost" className="sm:ml-auto">
-              Import instead
-            </ButtonLink>
           </div>
         </form>
       ) : null}
@@ -214,7 +210,7 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
       {step === "agent" && repo ? (
         <div className="flex flex-col gap-4">
           <div className="max-w-3xl">
-            <h2 className="text-xl font-semibold tracking-tight">
+            <h2 className="text-xl font-light tracking-tight">
               <span>{repo.fullName}</span> is ready
             </h2>
             <p className="mt-1 text-base text-ink-2">Clone it, or hand an agent the prompt below. The prompt carries this server&apos;s address and the repository name.</p>
@@ -246,8 +242,8 @@ export function OnboardingWizard({ login, orgs: initialOrgs, endpoint, edition }
 function Radio({ value, choice, onChange, label, hint }: { value: string; choice: string; onChange: (v: string) => void; label: string; hint: string }) {
   const on = value === choice;
   return (
-    <label className={cx("flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5", on ? "border-accent bg-accent-soft" : "border-line hover:bg-hover")}>
-      <input type="radio" name="owner" value={value} checked={on} onChange={() => onChange(value)} className="mt-0.5" />
+    <label className={cx("flex cursor-pointer items-start gap-2.5 border-b border-line px-1 py-2.5", on ? "text-ink" : "text-ink-2 hover:bg-hover")}>
+      <Input type="radio" name="owner" value={value} checked={on} onChange={() => onChange(value)} className="mt-1 size-4 shrink-0 p-0 accent-ink shadow-none" />
       <span className="min-w-0">
         <span className="block text-base font-medium">{label}</span>
         <span className="block text-sm text-ink-3 [overflow-wrap:anywhere]">{hint}</span>

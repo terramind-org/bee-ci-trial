@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { FactGroup } from "@/components/bee/page-facts";
 import { Unavailable } from "@/components/error-state";
 import { Panel } from "@/components/ui";
 import { BeeError } from "@/lib/api/transport";
@@ -17,6 +18,12 @@ export async function attempt<T>(read: Promise<T>): Promise<Loaded<T>> {
     if (err instanceof BeeError) return { ok: false, error: err };
     throw err;
   }
+}
+
+export function discoveryFacts<T>(title: string, read: Loaded<T>, lines: (data: T) => string[], empty: string): FactGroup {
+  return read.ok
+    ? { title, lines: lines(read.data), empty }
+    : { title, empty: read.error.reason + " · " + read.error.message };
 }
 
 /** The server's reason, shown in place of a section that could not load. Never invented data. */
@@ -39,7 +46,7 @@ export function Section({ id, title, seeAll, children }: { id: string; title: st
       title={title}
       actions={
         seeAll ? (
-          <Link href={seeAll.href} className="link text-sm">
+          <Link href={seeAll.href} className="link inline-flex min-h-6 items-center text-sm">
             {seeAll.label}
           </Link>
         ) : undefined

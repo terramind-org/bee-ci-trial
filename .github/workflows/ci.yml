@@ -1,3 +1,4 @@
+# Move to .github/workflows/ci.yml to activate; kept here because the automation that wrote it may not push workflow files.
 name: CI
 
 on:

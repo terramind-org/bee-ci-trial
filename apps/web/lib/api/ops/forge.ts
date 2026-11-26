@@ -95,6 +95,7 @@ const NOTE_PREFIX: Record<string, string> = {
   SUBJECT_KIND_CHANGE_REQUEST: "cr",
   SUBJECT_KIND_SECURITY_ALERT: "alert",
   SUBJECT_KIND_PACKAGE: "package",
+  SUBJECT_KIND_SWARM: "swarm",
 };
 
 const words = (s: string) => s.replace(/_/g, " ");
@@ -192,10 +193,31 @@ export const forgeOps = {
     GetOrg: pass(OrgService.method.getOrg),
     ListOrgs: pass(OrgService.method.listOrgs),
     ListMembers: pass(OrgService.method.listMembers),
+    SetMember: pass(OrgService.method.setMember),
+    CreateOrgInvitation: pass(OrgService.method.createOrgInvitation),
   },
   RepoService: {
     GetRepo: pass(RepoService.method.getRepo),
+    UpdateRepo: pass(RepoService.method.updateRepo),
+    ListCollaborators: pass(RepoService.method.listCollaborators),
+    ListDeployKeys: {
+      wire: (r) => wire(RepoService.method.listDeployKeys, r),
+      run: async (rpc, r, opts) => {
+        const result = await rpc.call(RepoService.method.listDeployKeys, r, opts);
+        return {
+          keys: list(result.keys).map((key) => ({
+            id: str(key.id),
+            title: str(key.title),
+            readOnly: !!key.readOnly,
+            principalId: str(key.principalId),
+          })),
+        };
+      },
+    },
     ListRepos: pass(RepoService.method.listRepos),
+    ForkRepo: pass(RepoService.method.forkRepo),
+    ListForks: pass(RepoService.method.listForks),
+    SyncFork: pass(RepoService.method.syncFork),
     GetContext: {
       wire: (r) => wire(RepoService.method.getContext, r),
       run: async (rpc, r, opts) => {
@@ -207,6 +229,7 @@ export const forgeOps = {
   ChangeService: {
     OpenChange: pass(ChangeService.method.openChange),
     GetChange: pass(ChangeService.method.getChange),
+    GetChangeByNumber: pass(ChangeService.method.getChangeByNumber),
     ListChanges: pass(ChangeService.method.listChanges),
     CloseChange: pass(ChangeService.method.closeChange),
     SubmitReview: pass(ChangeService.method.submitReview),
@@ -318,7 +341,14 @@ async function leasesOf(rpc: Rpc, r: T.ListLeasesRequest, opts?: CallOptions): P
     // A server without ListLeasesRequest.org (G10) insists on `repo`: ask each repo instead.
     if (!(err instanceof BeeError) || err.code !== "invalid_argument") throw err;
   }
-  const repos = list((await rpc.call(RepoService.method.listRepos, { org, page: { pageSize: 200 } }, opts)).repos);
+  // The organisation roster needs leases from every repository page on older servers too.
+  const repos = [];
+  let pageToken = "";
+  do {
+    const response = await rpc.call(RepoService.method.listRepos, { org, page: { pageSize: 200, pageToken } }, opts);
+    repos.push(...list(response.repos));
+    pageToken = str(response.page?.nextPageToken);
+  } while (pageToken);
   const per = await mapLimit(repos, 8, (repo) => rpc.call(LeaseService.method.listLeases, clean({ repo: { fullName: repo.fullName }, paths: r.paths }), opts));
   return per.flatMap((x) => list(x.leases)) as unknown as T.Lease[];
 }

@@ -284,7 +284,7 @@ describe("fixture: policy evaluate mode", () => {
   it("reports which recent changes a proposed policy would block", async () => {
     const { api } = fixture();
     const current = await api.policy.getPolicy({ repo });
-    const stricter = current.source.replace('agents_may_land = ["generated", "docs", "comment_only", "test_only", "rename_only"]', 'agents_may_land = ["generated"]');
+    const stricter = current.source.replace('agents_may_land_without_human = ["generated", "docs", "comment_only", "test_only", "rename_only"]', 'agents_may_land_without_human = ["generated"]');
     const ev = await api.policy.evaluatePolicy({ repo, source: stricter, sample: 20 });
     expect(ev.valid).toBe(true);
     const blocked = ev.decisions.filter((d) => d.current && !d.proposed);
@@ -293,7 +293,7 @@ describe("fixture: policy evaluate mode", () => {
 
   it("returns line-numbered errors for invalid policy", async () => {
     const { api } = fixture();
-    const ev = await api.policy.evaluatePolicy({ repo, source: 'version = 1\n[land."main"]\napprovals = [\n  { class = "risky", need = 1, from = "owner" },\n]\n', sample: 5 });
+    const ev = await api.policy.evaluatePolicy({ repo, source: 'version = 1\n[[land]]\nagents_may_land_without_human = ["risky"]\nref = "main"\n', sample: 5 });
     expect(ev.valid).toBe(false);
     expect(ev.errors[0]).toMatchObject({ line: 3 });
   });

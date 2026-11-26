@@ -178,7 +178,9 @@
         "SUBJECT_KIND_TEAM",
         "SUBJECT_KIND_AGENT_RUN",
         "SUBJECT_KIND_ADVISORY",
-        "SUBJECT_KIND_POST"
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
       ],
       "title": "bee.v1.SubjectKind",
       "type": "string"

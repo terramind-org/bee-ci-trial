@@ -96,6 +96,33 @@ const HISTORY_ROWS_REPOS: usize = 256;
 /// that require approvals or checks deny, as they must).
 #[async_trait]
 pub trait ForgeInputs: Send + Sync {
+    /// Locks the organization safety flag through a non-human ref publication.
+    async fn fence_agent_landing(
+        &self,
+        _repo: &RepoCtx,
+    ) -> ApiResult<Option<bee_forge::safety::control::LandFence>> {
+        Ok(None)
+    }
+
+    /// Records the result of a native land for its verified run, if it has one.
+    async fn note_safety_land(
+        &self,
+        _caller: &crate::auth::Caller,
+        _repo: &RepoCtx,
+        _effect: &str,
+        _reason: Option<bee_proto::v1::ErrorReason>,
+    ) {
+    }
+
+    /// Attributes a newly stored native changeset to its verified run, if it has one.
+    async fn note_safety_changeset(
+        &self,
+        _caller: &crate::auth::Caller,
+        _repo: &RepoCtx,
+        _id: &ObjectId,
+    ) {
+    }
+
     /// Refuses a publication that has not reached the merge queue's landing step.
     async fn require_landing_queue_entry(
         &self,
@@ -120,6 +147,7 @@ pub trait ForgeInputs: Send + Sync {
     /// a change request, which the forge then records itself). Never fails the land.
     async fn landed(
         &self,
+        _caller: &crate::auth::Caller,
         _repo: &RepoCtx,
         _ref_name: &str,
         _resp: &v1::LandResponse,

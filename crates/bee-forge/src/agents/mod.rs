@@ -284,7 +284,14 @@ static M3: Migration = Migration {
 pub static MODULE: ForgeModule = ForgeModule {
     name: "agents",
     surfaces: &[SURFACE, WS_SURFACE],
-    migrations: &[&M1, &M2, &M3],
+    // Safety interventions share the agents surface so they can interrupt work atomically.
+    migrations: &[
+        &M1,
+        &M2,
+        &M3,
+        &crate::swarms::MIGRATION,
+        &crate::safety::MIGRATION,
+    ],
     event_kinds: &[
         EventKind::new(
             "agent_runtime.registered",
@@ -453,6 +460,10 @@ impl Agents {
         self.forge
             .events
             .add_listener(Arc::new(triggers::AgentListener::new(self.clone())));
+        // Refresh the safety record after attributable work changes.
+        self.forge
+            .events
+            .add_listener(Arc::new(crate::safety::SafetyListener::new(self.clone())));
         let mut hooks = self.forge.work.hooks();
         hooks.agents = Arc::new(triggers::RegistryGate::new(self.clone()));
         self.forge.work.set_hooks(hooks);

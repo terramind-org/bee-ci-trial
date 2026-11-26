@@ -3,18 +3,21 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { renderMarkdown } from "../markdown";
 import { evidenceIndex } from "@/lib/evidence-view";
-import { AGENT, brief, change, check, checklist, comment, diffItem, evidence, image, landing, LIN, MARA, review } from "@/lib/brief-samples";
+import { AGENT, brief, change, check, checklist, comment, diffItem, evidence, image, LIN, MARA, review } from "@/lib/brief-samples";
 import { BenchmarkChart } from "./benchmark-chart";
 import { clampPosition, CompareSlider, keyStep } from "./compare-slider";
 import { EvidenceGallery } from "./evidence-gallery";
 import { EvidenceVideo } from "./evidence-video";
 import { HumanChecks, checkHref } from "./human-checks";
+import { PullDecisionButtons } from "../pull/decisions";
+import { ToastProvider } from "../toast";
 import { NeedsYou, owedSentence } from "./needs-you";
 import { PreviewLink, safePreviewUrl } from "./preview-link";
 import { SourceChip, StaleBadge } from "./source-chip";
 import { Team } from "./team";
 import { TestReport } from "./test-report";
 import { WhatChanged } from "./what-changed";
+import { WhoDidIt } from "./who-did-it";
 import { WorthALook } from "./worth-a-look";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {}, push: () => {} }), usePathname: () => "/acme/api/changes/cr-1" }));
@@ -154,33 +157,79 @@ describe("evidence gallery", () => {
   });
 });
 
-describe("needs you", () => {
+describe("what the author asks of a person", () => {
   const ask = { question: "Sign out other devices?", options: ["Only this session", "Every device"] };
   const cr = change({ brief: brief({ asks: [ask] }) });
   const owes = checklist(false, [{ id: "evidence:ui", detail: "a screenshot of the UI change", kinds: [], paths: [], satisfied: false, evidenceIds: [] }]);
 
-  it("offers decisions, review and land to a reviewer, and says what the agent owes", () => {
-    const html = render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [], reviews: [], checklist: owes, landing: landing(true), viewer: MARA }));
+  it("offers the asks as decisions to a reviewer, and says what the agent owes", () => {
+    const html = render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [], checklist: owes, viewer: MARA }));
     expect(html).toContain('role="group" aria-label="Sign out other devices?"');
     expect(html).toContain(">Every device<");
     expect(html).toContain("The agent still owes: a screenshot of the UI change.");
-    expect(html).toContain("Approve r2");
-    expect(html).toContain("Ask for changes");
-    expect(html).toContain(">Land<");
+    // Approving, requesting changes and merging are the buttons under the title, not here.
+    expect(html).not.toContain("Approve");
+    expect(html).not.toContain("data-agent-confirm");
   });
 
-  it("shows the decision taken, and no review buttons to the author", () => {
-    const html = render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [comment(MARA, 'Decision on "Sign out other devices?": Every device', "2026-10-27T12:00:00Z")], reviews: [], landing: landing(false), viewer: AGENT }));
+  it("shows the decision taken, and no decision buttons to the author", () => {
+    const html = render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [comment(MARA, 'Decision on "Sign out other devices?": Every device', "2026-10-27T12:00:00Z")], viewer: AGENT }));
     expect(html).toContain("Decided: “Every device” by Mara Okafor");
-    expect(html).not.toContain("Approve r2");
     expect(html).not.toContain('role="group"');
   });
 
-  it("asks a signed-out visitor to sign in, and has nothing for a merged change", () => {
-    expect(render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [], reviews: [], viewer: null, signInNext: "/acme/api/changes/cr-1" }))).toContain('href="/signin?next=%2Facme%2Fapi%2Fchanges%2Fcr-1"');
-    expect(render(h(NeedsYou, { repo: "acme/api", change: change({ state: "CHANGE_STATE_LANDED" }), comments: [], reviews: [], viewer: MARA }))).toContain("Nothing: this change merged.");
-    expect(render(h(NeedsYou, { repo: "acme/api", change: change(), comments: [], reviews: [review(MARA, "VERDICT_APPROVE", 2)], landing: landing(false), viewer: MARA }))).toContain("Approved r2");
+  it("asks a signed-out visitor to sign in, and renders nothing when nothing is asked or owed", () => {
+    expect(render(h(NeedsYou, { repo: "acme/api", change: cr, comments: [], viewer: null, signInNext: "/acme/api/changes/cr-1" }))).toContain('href="/signin?next=%2Facme%2Fapi%2Fchanges%2Fcr-1"');
+    expect(render(h(NeedsYou, { repo: "acme/api", change: change({ state: "CHANGE_STATE_LANDED", brief: brief({ asks: [ask] }) }), comments: [], viewer: MARA }))).toBe("");
+    expect(render(h(NeedsYou, { repo: "acme/api", change: change(), comments: [], viewer: MARA }))).toBe("");
     expect(owedSentence(checklist(true), AGENT)).toBeNull();
+  });
+});
+
+describe("the decisions under the title", () => {
+  const html = (decisions: Parameters<typeof PullDecisionButtons>[0]["decisions"], signInHref?: string) => render(h(ToastProvider, null, h(PullDecisionButtons, { repo: "acme/api", crId: "cr-1", number: "41", revision: 2, target: "main", decisions, signInHref })));
+
+  it("offers Approve and merge, Request changes and Close, with one solid button, each marked for agents", () => {
+    const out = html({ primary: "approve-and-merge", canRequestChanges: true, canClose: true, note: "Your approval is recorded first; it merges if the rules then allow it." });
+    expect(out).toContain(">Approve and merge<");
+    expect(out).toContain(">Request changes<");
+    expect(out).toContain(">Close<");
+    expect(out.match(/bg-accent /g)).toHaveLength(1);
+    expect(out).toContain('data-agent-confirm="Approves revision 2 of pull request #41 in acme/api and merges it into main if the rules then allow it"');
+    expect(out).toContain('data-agent-confirm="Closes pull request #41 in acme/api without merging it"');
+    expect(out).toContain("Your approval is recorded first");
+  });
+
+  it("offers Merge alone to someone who already approved, and nothing to press on a merged one", () => {
+    const merge = html({ primary: "merge", canRequestChanges: true, canClose: true, note: "You approved revision 2. The rules allow merging it." });
+    expect(merge).toContain(">Merge<");
+    expect(merge).not.toContain("Approve and merge");
+    const done = html({ primary: null, canRequestChanges: false, canClose: false, note: "It merged. Nothing needs you here." });
+    expect(done).not.toContain("<button");
+    expect(done).toContain("It merged. Nothing needs you here.");
+  });
+
+  it("asks a signed-out reader to sign in", () => {
+    const out = html({ primary: null, canRequestChanges: false, canClose: false, note: "Sign in to approve it, request changes or close it." }, "/signin?next=%2Facme%2Fapi%2Fchanges%2Fcr-1");
+    expect(out).toContain('href="/signin?next=%2Facme%2Fapi%2Fchanges%2Fcr-1"');
+    expect(out).not.toContain("<button");
+  });
+});
+
+describe("who did it", () => {
+  it("shows the agent, the person with the mark, model, cost and the prompt digest, and omits what is absent", () => {
+    const full = render(h(WhoDidIt, { who: { author: "triage", agent: true, agentId: "p-agent", person: "Mara Okafor", models: ["claude-opus-5"], runtimes: ["Claude Code"], costMicros: 870_000, sessions: 1, revisions: 2, promptDigests: ["b8152e3ad0ed5346a175d0a9506e39bb"], ownChecks: ["bun test passed"], elapsedMs: 0 } }));
+    expect(full).toContain(">Agent<");
+    expect(full).toMatch(/class="dot"[^>]*><\/span><span>Mara Okafor/);
+    expect(full.match(/class="dot"/g)).toHaveLength(1);
+    expect(full).toContain("claude-opus-5");
+    expect(full).toContain("$0.87");
+    expect(full).toContain('data-testid="prompt-digest"');
+    expect(full).toContain("b8152e3ad0ed5346a175d0a9506e39bb");
+    expect(full).toContain("bun test passed");
+    const bare = render(h(WhoDidIt, { who: { author: "Lin Chen", agent: false, person: "Lin Chen", models: [], runtimes: [], costMicros: 0, sessions: 0, revisions: 1, promptDigests: [], ownChecks: [], elapsedMs: 0 } }));
+    expect(bare).toContain(">Person<");
+    for (const absent of ["Model", "Runtime", "Cost", "Sessions", "Prompt", "Ran itself", "Time"]) expect(bare).not.toContain(">" + absent + "<");
   });
 });
 
@@ -222,7 +271,7 @@ describe("what changed, worth a look, checks and team", () => {
     expect(html).toContain("1 agent and 1 person");
     expect(html).toContain("$1.50");
     expect(html).toContain("Agent on Claude Code");
-    expect(html).toContain("Wrote the change and ran a session");
+    expect(html).toContain("Wrote the code and ran a session");
     expect(html).toContain("claude-opus-5-5");
     expect(html).toContain('href="/acme/api/agents/p-agent"');
   });

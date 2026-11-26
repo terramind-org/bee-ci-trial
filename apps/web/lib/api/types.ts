@@ -15,7 +15,15 @@
  * Responses are written with unpopulated fields emitted, so scalars and repeated fields are
  * typed as always present. Message-typed and oneof fields are optional.
  */
-import type { SubjectKindJson } from "../gen/bee/v1/common_pb";
+import type { DeploymentStateJson } from "../gen/bee/v1/deployments_pb";
+import type { WorkflowStateJson } from "../gen/bee/v1/workflows_pb";
+import type { SubjectKindJson, SubjectRefJson } from "../gen/bee/v1/common_pb";
+import type {
+  AgentInstructionSourceJson, AgentOwnerBudgetJson, AgentRunBudgetJson, AgentRunEventJson, AgentRunJson,
+  CancelAgentRunRequestJson, GetAgentBudgetRequestJson, ListAgentRunEventsRequestJson, ListAgentRunsRequestJson,
+  RetryAgentRunRequestJson, SendAgentRunMessageRequestJson, SetAgentBudgetRequestJson,
+} from "../gen/bee/v1/agents_pb";
+import type { RepoRoleJson } from "../gen/bee/v1/forge_pb";
 import type { AppInstallationJson, AppJson } from "../gen/bee/v1/apps_pb";
 import type { PackageJson, PackageVersionJson } from "../gen/bee/v1/packages_pb";
 import type { PagesDeploymentJson, PagesSiteJson } from "../gen/bee/v1/pages_pb";
@@ -32,6 +40,15 @@ import type {
 import type { GetLanguageStatsRequestJson, GetLanguageStatsResponseJson } from "../gen/bee/v1/insights_pb";
 import type { HealthStatusJson } from "../gen/bee/v1/ops_pb";
 import type { CodeSearchHitJson, LeaderboardMetricJson, LeaderboardSubjectJson, SearchSortOrderJson, TrendingWindowJson } from "../gen/bee/v1/search_pb";
+import type {
+  SafetyConcernCategoryJson,
+  SafetyFindingStateJson,
+  SafetySeverityJson,
+  SafetySignalKindJson,
+  SafetyVerdictJson,
+  SafetyWorkKindJson,
+} from "../gen/bee/v1/safety_pb";
+import type { SwarmAttemptOutcomeJson, SwarmJoinStateJson, SwarmStateJson, SwarmTaskStateJson } from "../gen/bee/v1/swarms_pb";
 import type { TeamJson } from "../gen/bee/v1/teams_pb";
 
 export type U64 = string;
@@ -151,6 +168,7 @@ export interface PolicyDenial {
 }
 export interface ErrorDetail {
   reason: string;
+  subcode?: string;
   message: string;
   retryable: boolean;
   leaseConflict?: LeaseConflict;
@@ -172,7 +190,7 @@ export interface Org {
   display: string;
   createdAt?: Timestamp;
 }
-export type Role = "ROLE_UNSPECIFIED" | "ROLE_OWNER" | "ROLE_ADMIN" | "ROLE_MEMBER";
+export type Role = "ROLE_UNSPECIFIED" | "ROLE_OWNER" | "ROLE_ADMIN" | "ROLE_MEMBER" | "ROLE_BILLING_MANAGER" | "ROLE_SECURITY_MANAGER" | "ROLE_MODERATOR" | "ROLE_APP_MANAGER";
 export interface Member {
   principal?: Principal;
   role: Role;
@@ -216,14 +234,72 @@ export interface Repo {
   pushedAt?: Timestamp;
   stars: U64;
   forks: U64;
+  forkParentId?: string;
   openIssues: U64;
   openChanges: U64;
   /** SPDX id of the repo's license; empty when none was detected. */
   licenseSpdx: string;
   primaryLanguage: string;
+  version?: U64;
+}
+export interface ForkRepoRequest {
+  repo: RepoRef;
+  org?: string;
+  name?: string;
+  defaultRefOnly?: boolean;
+}
+export interface ListForksRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListForksResponse {
+  forks: Repo[];
+  page?: PageResponse;
+}
+export interface SyncForkRequest {
+  repo: RepoRef;
+  ref?: string;
+}
+export interface SyncForkResponse {
+  ref?: Ref;
+  changesetsPulled: U64;
+}
+export interface IsAncestorRequest {
+  repo: RepoRef;
+  ancestor: Revision;
+  descendant: Revision;
+}
+export interface IsAncestorResponse {
+  isAncestor: boolean;
 }
 export interface GetRepoRequest {
   repo: RepoRef;
+}
+export interface UpdateRepoRequest {
+  repo: RepoRef;
+  visibility: Visibility;
+  expectedVersion: U64;
+}
+export interface Collaborator {
+  principal?: Principal;
+  role: RepoRoleJson;
+  customRoleId: string;
+  outsideCollaborator: boolean;
+}
+export interface ListCollaboratorsRequest {
+  repo: RepoRef;
+  directOnly?: boolean;
+  page?: PageRequest;
+}
+export interface ListCollaboratorsResponse {
+  collaborators: Collaborator[];
+  page?: PageResponse;
+}
+export interface ListDeployKeysRequest {
+  repo: RepoRef;
+}
+export interface ListDeployKeysResponse {
+  keys: { id: string; title: string; readOnly: boolean; principalId: string }[];
 }
 export interface ListReposRequest {
   org: string;
@@ -288,6 +364,8 @@ export interface ChangeRequest {
   revisions: ChangeRevision[];
   dependsOn: string;
   createdAt?: Timestamp;
+  /** The server records when a merge succeeds, independently of its last revision. */
+  landedAt?: Timestamp;
   /** Per-repo number shared with issues; runs refer to change requests by number. */
   number: U64;
   /** The change's post, as a read-only summary; absent when it has none. */
@@ -314,6 +392,11 @@ export interface OpenChangeRequest {
 export interface GetChangeRequest {
   repo: RepoRef;
   id: string;
+}
+// Run events and live runner records refer to pull requests by their repository number.
+export interface GetChangeByNumberRequest {
+  repo: RepoRef;
+  number: U64;
 }
 export interface ListChangesRequest {
   repo: RepoRef;
@@ -488,6 +571,8 @@ export interface Event {
   revokedToken?: string;
   /** The post.* kinds. */
   post?: Post;
+  subject?: SubjectRefJson;
+  payloadJson?: string;
   /** Derived from Event.subject and Event.payload_json for kinds without a typed body. */
   note?: EventNote;
 }
@@ -1150,9 +1235,36 @@ export interface PostViewer {
   canApprove: boolean;
   canWithdraw: boolean;
 }
+export type PostAttachmentKind =
+  | "POST_ATTACHMENT_KIND_UNSPECIFIED"
+  | "POST_ATTACHMENT_KIND_CHANGE_REQUEST"
+  | "POST_ATTACHMENT_KIND_RELEASE"
+  | "POST_ATTACHMENT_KIND_ISSUE"
+  | "POST_ATTACHMENT_KIND_AGENT_RUN"
+  | "POST_ATTACHMENT_KIND_SWARM";
+/**
+ * Something in the post's repo that the post is about. A writer sends `kind` and `id` (or, for a
+ * change request or an issue, `number`); reads carry the card: number, title, state and, for a
+ * release, its tag. When the attachment is gone only `kind` and `id` are left.
+ */
+export interface PostAttachment {
+  kind: PostAttachmentKind;
+  id?: string;
+  number?: U64;
+  title?: string;
+  /** Lower case: open, landed, closed; published, prerelease; an agent run's state. */
+  state?: string;
+  tagName?: string;
+}
+/** The long-form part of a post. */
+export interface PostArticle {
+  title: string;
+  bodyMarkdown: string;
+}
 export interface Post {
   id: string;
   repo?: PostRepo;
+  /** Empty for a post of its own: no change request carries it. */
   changeId: string;
   changeNumber: U64;
   changeTitle: string;
@@ -1169,6 +1281,11 @@ export interface Post {
   viewer?: PostViewer;
   version: U64;
   withdrawnReason: string;
+  /** Markdown; absent when the post has no body. */
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  /** In order; a post on a change request lists that change request first. */
+  attachments?: PostAttachment[];
 }
 /** Set when the post is in the feed because someone the caller follows reposted it. */
 export interface FeedItem {
@@ -1196,12 +1313,27 @@ export interface PostAdoption {
   author?: Principal;
   createdAt?: Timestamp;
 }
+/** Writes a post of its own in a repo: no change request carries it. */
+export interface CreatePostRequest {
+  repo: RepoRef;
+  /** The summary; may be empty beside a body, an article or media. */
+  text?: string;
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  /** Media uploaded with `BeginPostMediaUpload` without a change request. */
+  mediaIds?: string[];
+  attachments?: PostAttachment[];
+}
 export interface SetChangePostRequest {
   repo: RepoRef;
   changeId: string;
   text: string;
   mediaIds?: string[];
   expectedVersion?: U64;
+  /** Replaced with the text: leaving these out removes them. */
+  bodyMarkdown?: string;
+  article?: PostArticle;
+  attachments?: PostAttachment[];
 }
 export interface ClearChangePostRequest {
   repo: RepoRef;
@@ -1214,6 +1346,7 @@ export interface GetChangePostRequest {
 }
 export interface BeginPostMediaUploadRequest {
   repo: RepoRef;
+  /** Empty for a post of its own (`CreatePost`). */
   changeId: string;
   kind: PostMediaKind;
   contentType: string;
@@ -1280,6 +1413,347 @@ export interface ListPostAdoptionsResponse {
   page?: PageResponse;
 }
 
+// ---------------------------------------------------------------- agents.proto: runs
+export type AgentRunBudget = AgentRunBudgetJson;
+export type AgentRun = AgentRunJson;
+export type AgentRunEvent = AgentRunEventJson;
+export type GetAgentRunRequest = { id: string };
+export type ListAgentRunsRequest = ListAgentRunsRequestJson;
+export type ListAgentRunsResponse = { runs: AgentRun[]; page?: PageResponse };
+export type ListAgentRunEventsRequest = ListAgentRunEventsRequestJson & { runId: string };
+export type ListAgentRunEventsResponse = { events: AgentRunEvent[]; page?: PageResponse };
+export type SendAgentRunMessageRequest = SendAgentRunMessageRequestJson & { runId: string; body: string };
+export type CancelAgentRunRequest = CancelAgentRunRequestJson & { id: string };
+export type RetryAgentRunRequest = RetryAgentRunRequestJson & { id: string };
+
+// ---------------------------------------------------------------- swarms.proto
+
+export type SwarmState = SwarmStateJson;
+export type SwarmTaskState = SwarmTaskStateJson;
+export type SwarmAttemptOutcome = SwarmAttemptOutcomeJson;
+export type SwarmJoinState = SwarmJoinStateJson;
+
+export interface SwarmHandBack {
+  done: string[];
+  deviations: string[];
+  concerns: string[];
+  followUps: string[];
+}
+export interface SwarmAttempt {
+  runId: string;
+  agent?: Principal;
+  startedAt?: Timestamp;
+  finishedAt?: Timestamp;
+  outcome: SwarmAttemptOutcome;
+  reason: string;
+  handBack?: SwarmHandBack;
+}
+export interface SwarmTask {
+  id: string;
+  title: string;
+  paths: Bytes[];
+  state: SwarmTaskState;
+  runId: string;
+  attempts: SwarmAttempt[];
+}
+export interface SwarmJoin {
+  id: string;
+  requester?: Principal;
+  agent?: Principal;
+  budget?: AgentRunBudget;
+  state: SwarmJoinState;
+  runId: string;
+  reason: string;
+  requestedAt?: Timestamp;
+  decidedAt?: Timestamp;
+}
+export interface Swarm {
+  id: string;
+  repo?: RepoRef;
+  name: string;
+  goal: string;
+  issue: string;
+  branch: string;
+  leadRunId: string;
+  lead?: Principal;
+  owner?: Principal;
+  state: SwarmState;
+  status: string;
+  memberRunIds: string[];
+  tasks: SwarmTask[];
+  joins: SwarmJoin[];
+  budget?: AgentRunBudget;
+  cost?: Cost;
+  changeRequestIds: string[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+export interface RepoWorkItem {
+  swarm?: Swarm;
+  run?: AgentRun;
+  activityAt?: Timestamp;
+  changeRequestIds: string[];
+}
+export interface SwarmRef {
+  repo: RepoRef;
+  id: string;
+}
+export interface CreateSwarmRequest {
+  repo: RepoRef;
+  name: string;
+  goal: string;
+  issue?: string;
+  branch: string;
+  leadRunId: string;
+}
+export interface ListRepoWorkRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListRepoWorkResponse {
+  items: RepoWorkItem[];
+  page?: PageResponse;
+}
+export interface SetSwarmStateRequest {
+  swarm: SwarmRef;
+  state: SwarmState;
+}
+export interface SetSwarmStatusRequest {
+  swarm: SwarmRef;
+  status: string;
+}
+export interface AddSwarmTaskRequest {
+  swarm: SwarmRef;
+  title: string;
+  paths?: Bytes[];
+}
+export interface StartSwarmTaskRequest {
+  swarm: SwarmRef;
+  taskId: string;
+  runId: string;
+}
+export interface FinishSwarmTaskRequest {
+  swarm: SwarmRef;
+  taskId: string;
+  runId: string;
+  outcome: SwarmAttemptOutcome;
+  reason: string;
+  handBack: SwarmHandBack;
+  /** The 1-based position of this attempt within the task. */
+  attemptNumber: number;
+}
+export interface SendSwarmMessageRequest {
+  swarm: SwarmRef;
+  body: string;
+}
+export interface RequestSwarmJoinRequest {
+  swarm: SwarmRef;
+  agentPrincipalId: string;
+  budget: AgentRunBudget;
+}
+export interface DecideSwarmJoinRequest {
+  swarm: SwarmRef;
+  joinId: string;
+  accept: boolean;
+  reason?: string;
+}
+
+// ---------------------------------------------------------------- safety.proto
+
+export type SafetyWorkKind = SafetyWorkKindJson;
+export type SafetyVerdict = SafetyVerdictJson;
+export type SafetySignalKind = SafetySignalKindJson;
+export type SafetySeverity = SafetySeverityJson;
+export type SafetyFindingState = SafetyFindingStateJson;
+export type SafetyConcernCategory = SafetyConcernCategoryJson;
+
+export interface SafetyRef {
+  repo: RepoRef;
+  kind: SafetyWorkKind;
+  id: string;
+}
+export interface SafetyAsk {
+  text: string;
+  source?: SubjectRefJson;
+}
+export interface SafetyDone {
+  paths: string[];
+  commands: string[];
+  networkDestinations: string[];
+  mergedChangeRequestIds: string[];
+}
+export interface SafetyEvidence {
+  observation: string;
+  subjects?: SubjectRefJson[];
+  paths?: string[];
+}
+export interface SafetyFindingReport {
+  kind: SafetySignalKind;
+  severity: SafetySeverity;
+  evidence: SafetyEvidence;
+}
+export interface SafetyFinding {
+  id: string;
+  report?: SafetyFindingReport;
+  state: SafetyFindingState;
+  reportedBy?: Principal;
+  createdAt?: Timestamp;
+  resolvedBy?: Principal;
+  resolutionReason: string;
+  resolvedAt?: Timestamp;
+}
+export interface SafetyVerdictOverride {
+  verdict: SafetyVerdict;
+  person?: Principal;
+  note: string;
+  time?: Timestamp;
+}
+export interface SafetyRecord {
+  work?: SafetyRef;
+  asked: SafetyAsk[];
+  done?: SafetyDone;
+  verdict: SafetyVerdict;
+  override?: SafetyVerdictOverride;
+  findings: SafetyFinding[];
+  agents: Principal[];
+  answerable?: Principal;
+  updatedAt?: Timestamp;
+  reviews: SafetyReview[];
+}
+export interface ListSafetyRecordsRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListSafetyRecordsResponse {
+  records: SafetyRecord[];
+  page?: PageResponse;
+}
+export interface ReportFindingRequest {
+  work: SafetyRef;
+  report: SafetyFindingReport;
+  reviewId?: string;
+}
+export interface ResolveFindingRequest {
+  work: SafetyRef;
+  findingId: string;
+  state: SafetyFindingState;
+  reason: string;
+}
+export interface SetVerdictRequest {
+  work: SafetyRef;
+  verdict: SafetyVerdict;
+  note: string;
+}
+export interface SafetyReview {
+  id: string;
+  requestedBy?: Principal;
+  reviewer?: Principal;
+  requestedAt?: Timestamp;
+  model: string;
+  proposedVerdict: SafetyVerdict;
+  note: string;
+  findingIds: string[];
+  submittedAt?: Timestamp;
+}
+export interface RequestSafetyReviewRequest {
+  work: SafetyRef;
+  reviewerId: string;
+}
+export interface SubmitSafetyReviewRequest {
+  work: SafetyRef;
+  reviewId: string;
+  model: string;
+  proposedVerdict: SafetyVerdict;
+  note?: string;
+  findings?: SafetyFindingReport[];
+}
+export interface RaiseConcernRequest {
+  repo: RepoRef;
+  runId: string;
+  category: SafetyConcernCategory;
+  text: string;
+}
+export interface SafetyConcern {
+  id: string;
+  runId: string;
+  category: SafetyConcernCategory;
+  text: string;
+  raisedBy?: Principal;
+}
+export interface SafetyTripwire {
+  findingId: string;
+  kind: SafetySignalKind;
+  reason: string;
+  stoppedRunIds: string[];
+  pausedSwarm: boolean;
+}
+export interface SafetyAttention {
+  id: string;
+  work?: SafetyRef;
+  answerable?: Principal;
+  tripwire?: SafetyTripwire;
+  concern?: SafetyConcern;
+  createdAt?: Timestamp;
+  acknowledgedAt?: Timestamp;
+}
+export interface ListSafetyAttentionRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListSafetyAttentionResponse {
+  items: SafetyAttention[];
+  page?: PageResponse;
+}
+export interface AcknowledgeSafetyAttentionRequest {
+  repo: RepoRef;
+  id: string;
+}
+export interface SetSafetyStopRequest {
+  org: string;
+  reason: string;
+}
+export interface SafetyStop {
+  org: string;
+  frozen: boolean;
+  updatedAt?: Timestamp;
+  stoppedRunIds: string[];
+  pausedSwarmIds: string[];
+  stoppedRunCount: number;
+  pausedSwarmCount: number;
+}
+export interface SafetyPeriod {
+  start: Timestamp;
+  end: Timestamp;
+}
+export interface SpotCheckRequest {
+  repo: RepoRef;
+  period: SafetyPeriod;
+  seed: string;
+  limit?: number;
+}
+export interface SpotCheckResponse {
+  records: SafetyRecord[];
+}
+export interface GetSafetySummaryRequest {
+  org: string;
+  period: SafetyPeriod;
+}
+export interface SafetySignalCount {
+  kind: SafetySignalKind;
+  count: U64;
+}
+export interface SafetyWorkCount {
+  id: string;
+  kind: SafetyWorkKind;
+  signals: SafetySignalCount[];
+}
+export interface SafetySummary {
+  signals: SafetySignalCount[];
+  work: SafetyWorkCount[];
+  tripwires: SafetyAttention[];
+  medianWaitMs?: U64;
+}
+
 // ================================================================ VIEWS
 //
 // View models the screens use for areas where the UI composes several bee.v1 calls, or where
@@ -1320,6 +1794,10 @@ export interface ListAgentsRequest {
 export interface ListAgentsResponse {
   agents: AgentSummary[];
 }
+// The organisation screen shows these existing owner-wide limits separately from agent usage.
+export type AgentOwnerBudget = AgentOwnerBudgetJson;
+export type GetAgentBudgetRequest = GetAgentBudgetRequestJson;
+export type SetAgentBudgetRequest = SetAgentBudgetRequestJson;
 export interface GetAgentRequest {
   /** ListAgentPrincipals is per org; there is no single-agent summary RPC. */
   org: string;
@@ -1539,7 +2017,7 @@ export interface EnqueueRequest {
 }
 
 /** WorkflowService runs (WorkflowRun), jobs (WorkflowJob) and logs (TailWorkflowJobLogs). */
-export type RunStatus = "queued" | "running" | "passed" | "failed" | "cancelled";
+export type RunStatus = "waiting" | "protection" | "queued" | "running" | "passed" | "failed" | "cancelled" | "skipped" | "neutral" | "stale" | "completed";
 export interface RunStep {
   name: string;
   status: RunStatus;
@@ -1556,6 +2034,7 @@ export interface RunJob {
 }
 /** CheckService.ListCheckAnnotations of each job's check run. */
 export interface Annotation {
+  jobId?: string;
   path: string;
   line: number;
   level: "failure" | "warning" | "notice";
@@ -1571,14 +2050,16 @@ export interface Run {
   trigger: string;
   ref: string;
   head?: ObjectId;
-  /** Resolved from WorkflowRun.change_request_numbers through GetChangeByNumber. */
   changeRequestId: string;
+  changeRequestNumber?: U64;
   actor?: Principal;
+  triggeringActor?: Principal;
   status: RunStatus;
   jobs: RunJob[];
   /** Filled by GetRun only; lists leave it empty. */
   annotations: Annotation[];
   attempt: number;
+  createdAt?: Timestamp;
   startedAt?: Timestamp;
   finishedAt?: Timestamp;
 }
@@ -1601,6 +2082,44 @@ export interface RerunRequest {
   repo: RepoRef;
   id: string;
   failedOnly: boolean;
+}
+// The CI workflow management and deployment views use these projections of the existing RPCs.
+export interface ListWorkflowsRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface WorkflowRequest {
+  repo: RepoRef;
+  workflow: string;
+}
+export interface WorkflowDefinition {
+  id: string;
+  name: string;
+  path: string;
+  state?: WorkflowStateJson;
+}
+export interface ListWorkflowsResponse {
+  workflows: WorkflowDefinition[];
+  page?: PageResponse;
+}
+export interface WorkflowBadge {
+  message: string;
+  svg: string;
+}
+export interface Deployment {
+  id: string;
+  environment: string;
+  ref: string;
+  commit?: ObjectId;
+  state?: DeploymentStateJson;
+}
+export interface ListDeploymentsRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListDeploymentsResponse {
+  deployments: Deployment[];
+  page?: PageResponse;
 }
 export interface StreamLogsRequest {
   repo: RepoRef;
@@ -1808,8 +2327,27 @@ export interface DismissAlertRequest {
 export interface Policy {
   path: string;
   source: string;
+  normalizedJson: string;
   epoch: string;
   atChangeset?: ObjectId;
+}
+/** Resolved instructions with decoded repository paths. */
+export interface AgentInstructionFile {
+  path: string;
+  source: AgentInstructionSourceJson;
+  name: string;
+  appliesTo: string[];
+  content: string;
+  includes: string[];
+}
+export interface ResolveAgentInstructionsRequest {
+  repo: RepoRef;
+  revision?: string;
+}
+export interface ResolveAgentInstructionsResponse {
+  files: AgentInstructionFile[];
+  combined: string;
+  changeset?: ObjectId;
 }
 export interface GetPolicyRequest {
   repo: RepoRef;
@@ -1836,6 +2374,7 @@ export interface EvaluatePolicyRequest {
 export interface PolicyEvaluation {
   valid: boolean;
   errors: PolicyError[];
+  normalizedJson?: string;
   /** ValidatePolicyResponse.rule_summaries */
   rules: string[];
   /** ValidatePolicyResponse.replay */
@@ -1849,6 +2388,8 @@ export interface AuditEntry {
   actor?: Principal;
   /** Display names along AuditEntry.delegation_chain, after the actor. */
   onBehalfOf: string[];
+  /** Human root recorded by the audit entry, when its principal can be resolved. */
+  answerable?: Principal;
   action: string;
   /** AuditEntry.target_display; falls back to the target kind and id. */
   target: string;
@@ -1868,13 +2409,19 @@ export interface ListAuditRequest {
   actorId?: string;
   action?: string;
   repo?: string;
-  /** AuditLogFilter has no result filter yet; the mapping filters the page it gets. */
+  /** Also applied to the returned page for servers that ignore AuditLogFilter.denied_only. */
   deniedOnly?: boolean;
+  /** The wire filter has no allowed-only field. Applied to the returned page. */
+  allowedOnly?: boolean;
   page?: PageRequest;
 }
 export interface ListAuditResponse {
   entries: AuditEntry[];
   chainVerified: boolean;
+  /** Record uses the verifier's bounds, even when the query matches no entries. */
+  verifiedToSeq: U64;
+  firstBrokenSeq: U64;
+  verificationFailure: string;
   page?: PageResponse;
 }
 
@@ -1928,6 +2475,14 @@ export interface ListTeamsRequest {
 }
 export interface ListTeamsResponse {
   teams: Team[];
+}
+export interface ListRepoTeamsRequest {
+  repo: RepoRef;
+  page?: PageRequest;
+}
+export interface ListRepoTeamsResponse {
+  grants: { teamId: string; role: string; inherited: boolean; viaTeamId: string }[];
+  page?: PageResponse;
 }
 /** AppService.ListApps (apps the org owns) and ListAppInstallations (apps installed on it). */
 export interface ListAppsRequest {

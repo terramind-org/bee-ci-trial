@@ -16,11 +16,11 @@ async function railNumber(): Promise<number> {
   const el = await InboxCount();
   if (!el) return 0;
   const text = JSON.stringify(el);
-  const m = /(\d+) need you|1 needs you/.exec(text);
-  return m ? Number(m[1] ?? 1) : NaN;
+  const m = /, (\d+) waiting/.exec(text);
+  return m ? Number(m[1]) : NaN;
 }
 
-describe("the rail's Inbox count", () => {
+describe("the rail's Needs you count", () => {
   let tick = 0;
   beforeEach(() => {
     tick = 0;
@@ -28,7 +28,7 @@ describe("the rail's Inbox count", () => {
     current.client = createClient(fixtureRpc(current.store, "mara-token-0001"));
   });
 
-  it("is the number the Inbox page reads from the same snapshot", async () => {
+  it("is the number the home page reads from the same snapshot", async () => {
     const scan = await loadNeeds();
     expect(needCount(scan)).toBeGreaterThan(0);
     expect(await railNumber()).toBe(needCount(scan));

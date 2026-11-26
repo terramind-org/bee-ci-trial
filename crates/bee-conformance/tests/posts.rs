@@ -10,6 +10,10 @@
 //! 6. Withdrawing the post removes it from the feed and its media.
 //! 7. A repo made private: its post answers signed-out `GetPost` with `NOT_FOUND`, and the
 //!    media URL handed out while it was public is refused, though it has not expired.
+//!
+//! And a post of its own (`CreatePost`, no change request): a person writes one with a
+//! Markdown body, an article and a change request attached; it publishes at once, reaches a
+//! follower's feed with its card, and a signed-out reader gets it on the public repo.
 
 use crate::scale_support;
 
@@ -236,6 +240,7 @@ async fn an_agents_post_publishes_after_a_person_approves_it() {
             text: "Builds are 3x faster #ci".into(),
             media_ids: vec![media.id.clone()],
             expected_version: 0,
+            ..Default::default()
         }))
         .await
         .expect("set post")
@@ -417,6 +422,7 @@ async fn an_agents_post_publishes_after_a_person_approves_it() {
             text: "Keys rotated".into(),
             media_ids: vec![sm.id],
             expected_version: 0,
+            ..Default::default()
         }))
         .await
         .expect("set");
@@ -455,4 +461,92 @@ async fn an_agents_post_publishes_after_a_person_approves_it() {
         http("GET", &mine.media[0].url, &[], Vec::new()).await.0,
         200
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_post_of_its_own_reaches_followers_with_its_cards() {
+    let (s, _dir) = start_fresh(|_| {}, None).await;
+    create_repo(&s, "news", v1::Visibility::Public).await;
+    let (_, writer) = agent(&s, "own-post-writer", NEWS).await;
+    let (_, follower) = agent(&s, "own-post-follower", NEWS).await;
+    let dev = Client::new(s.client.channel().clone(), s.client.token(), NEWS);
+    let posts = |c: &Client| PostServiceClient::new(c.channel().clone());
+    UserServiceClient::new(follower.channel().clone())
+        .follow_repo(follower.req(v1::FollowRepoRequest { repo: rref(NEWS) }))
+        .await
+        .expect("an agent follows a repo");
+    // Something to attach: an open change request of the repo.
+    let cr = open_with_post(&writer, 7101, "Trim the images", "Images are smaller").await;
+    let create = |attachments: Vec<v1::PostAttachment>| v1::CreatePostRequest {
+        repo: rref(NEWS),
+        text: "What we shipped this week".into(),
+        body_markdown: "## Images\r\n\r\nHalf the bytes.\n".into(),
+        article: Some(v1::PostArticle {
+            title: "A week of small wins".into(),
+            body_markdown: "# Monday\n\nWe trimmed the images.\n".into(),
+        }),
+        attachments,
+        ..Default::default()
+    };
+    // Something that is not in the repo cannot be attached, and nothing is written.
+    let r = posts(&dev)
+        .create_post(dev.req(create(vec![v1::PostAttachment {
+            kind: v1::PostAttachmentKind::Issue as i32,
+            number: 999_999,
+            ..Default::default()
+        }])))
+        .await
+        .expect_err("an issue the repo does not have");
+    assert_eq!(reason(r), "INVALID_ARGUMENT");
+    // The dev user writes the post: no change request carries it, it is published at once.
+    let post = posts(&dev)
+        .create_post(dev.req(create(vec![v1::PostAttachment {
+            kind: v1::PostAttachmentKind::ChangeRequest as i32,
+            number: cr.number,
+            ..Default::default()
+        }])))
+        .await
+        .expect("create post")
+        .into_inner();
+    assert_eq!(post.state(), v1::PostState::Published);
+    assert!(post.change_id.is_empty());
+    assert_eq!(post.author.as_ref().unwrap().id, s.user());
+    assert_eq!(post.body_markdown, "## Images\n\nHalf the bytes.\n");
+    assert_eq!(post.article.as_ref().unwrap().title, "A week of small wins");
+    assert_eq!(post.attachments.len(), 1);
+    let card = &post.attachments[0];
+    assert_eq!(card.kind(), v1::PostAttachmentKind::ChangeRequest);
+    assert_eq!(
+        (
+            card.id.as_str(),
+            card.number,
+            card.title.as_str(),
+            card.state.as_str()
+        ),
+        (cr.id.as_str(), cr.number, "Trim the images", "open")
+    );
+    // It is in the follower's feed, and a signed-out reader gets it on the public repo.
+    let feed = PostServiceClient::new(follower.channel().clone())
+        .list_following_feed(follower.req(v1::ListFollowingFeedRequest {
+            page: Some(v1::PageRequest {
+                page_size: 10,
+                page_token: String::new(),
+            }),
+            after: String::new(),
+        }))
+        .await
+        .expect("feed")
+        .into_inner();
+    assert_eq!(feed.items.len(), 1);
+    assert_eq!(feed.items[0].post.as_ref().unwrap().id, post.id);
+    let public = get_post_signed_out(&dev, &post.id)
+        .await
+        .expect("anonymous GetPost");
+    assert_eq!(public.article, post.article);
+    assert_eq!(public.attachments, post.attachments);
+    // The change request's own post is unchanged by all this: a draft with its change attached.
+    let draft = cr.post.clone().expect("the change carries its post");
+    assert_eq!(draft.state(), v1::PostState::Draft);
+    assert_eq!(draft.attachments.len(), 1);
+    assert_eq!(draft.attachments[0].id, cr.id);
 }

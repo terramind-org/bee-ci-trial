@@ -1,4 +1,4 @@
-import { PostListSkeleton } from "@/components/post-list";
+import { PostListSkeleton } from "@/components/posts/post-list";
 import { Line, Skel } from "@/components/skeletons";
 import { PageHeader } from "@/components/ui";
 
@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui";
 export default function Loading() {
   return (
     <Skel>
-      <div className="max-w-[640px]">
+      <div className="mx-auto w-full max-w-[640px]">
         <PageHeader eyebrow="Updates" title={<Line w={360} lh={34} bar={16} />} />
         <PostListSkeleton count={1} />
       </div>

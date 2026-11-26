@@ -108,6 +108,9 @@ pub struct Step {
     /// Calls as this bearer token (a template) instead of the dev user's.
     #[serde(default)]
     pub token: Option<String>,
+    /// Stops collecting a streaming setup call after this many items.
+    #[serde(default)]
+    pub max_items: Option<u64>,
     /// Saves the response (or the commit's result) under this variable name.
     #[serde(default)]
     pub save: Option<String>,

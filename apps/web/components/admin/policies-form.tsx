@@ -53,7 +53,7 @@ const TOGGLES = [
   ["membersCanInviteOutsideCollaborators", "Members can invite outside collaborators"],
   ["membersCanCreateTeams", "Members can create teams"],
   ["membersCanInstallApps", "Members can install apps"],
-  ["agentsCanLandWithoutHumanApproval", "Agents can land without a human approval"],
+  ["agentsCanLandWithoutHumanApproval", "Agents can merge without a person's approval"],
 ] as const;
 
 const lines = (v: string) => v.split("\n").map((s) => s.trim()).filter(Boolean);

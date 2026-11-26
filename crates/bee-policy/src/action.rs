@@ -34,6 +34,8 @@ pub enum Action {
     /// Open issues and comment on issues (and edit or close one's own). Every built-in role
     /// has it; a token without it cannot write to issues.
     IssuesWrite,
+    /// Ask to join a swarm, or be admitted under repository policy.
+    SwarmJoin,
 }
 
 /// Which path permission an action needs.
@@ -49,7 +51,7 @@ pub enum PathMode {
 
 impl Action {
     /// Every action, in canonical order.
-    pub const ALL: [Action; 13] = [
+    pub const ALL: [Action; 14] = [
         Action::Read,
         Action::Triage,
         Action::Review,
@@ -63,6 +65,7 @@ impl Action {
         Action::ManagePolicy,
         Action::ManageSettings,
         Action::IssuesWrite,
+        Action::SwarmJoin,
     ];
 
     /// The policy-file name of the action.
@@ -81,6 +84,7 @@ impl Action {
             Action::ManagePolicy => "manage_policy",
             Action::ManageSettings => "manage_settings",
             Action::IssuesWrite => "issues_write",
+            Action::SwarmJoin => "swarm_join",
         }
     }
 
@@ -112,12 +116,22 @@ pub const BUILTIN_ROLES: [&str; 5] = ["read", "triage", "write", "maintain", "ad
 pub fn builtin_role_actions(name: &str) -> Option<BTreeSet<Action>> {
     use Action::*;
     let list: &[Action] = match name {
-        "read" => &[Read, IssuesWrite],
-        "triage" => &[Read, IssuesWrite, Triage],
-        "write" => &[Read, IssuesWrite, Triage, Review, Commit, Lease, Land],
+        "read" => &[Read, IssuesWrite, SwarmJoin],
+        "triage" => &[Read, IssuesWrite, SwarmJoin, Triage],
+        "write" => &[
+            Read,
+            IssuesWrite,
+            SwarmJoin,
+            Triage,
+            Review,
+            Commit,
+            Lease,
+            Land,
+        ],
         "maintain" => &[
             Read,
             IssuesWrite,
+            SwarmJoin,
             Triage,
             Review,
             Commit,

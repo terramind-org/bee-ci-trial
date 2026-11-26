@@ -16,7 +16,7 @@ describe("team", () => {
     expect(t.members.map((m) => m.principal?.display)).toEqual(["triage", "Mara Okafor", "Lin Chen"]);
     const [agent, mara, lin] = t.members;
     expect(agent?.roles).toEqual(["author", "brief", "ran a session"]);
-    expect(agent?.rolesText).toBe("Wrote the change and the brief and ran a session");
+    expect(agent?.rolesText).toBe("Wrote the code and the brief and ran a session");
     expect(agent?.models).toEqual(["claude-opus-5-5", "claude-sonnet-5-5"]);
     expect(agent?.sessions).toBe(2);
     expect(agent?.costMicros).toBe(1_200_000);
@@ -32,7 +32,7 @@ describe("team", () => {
   it("keeps a session whose agent the page did not load, by id", () => {
     const t = teamOf({ change: change({ author: MARA }), sessions: [{ session: "s", runId: "", agentPrincipalId: "p-other", model: "m", runtime: "", promptDigest: "", chain: [], changesets: [], changeRequestIds: [], createdAt: "2026-10-27T10:00:00Z" }] });
     expect(t.members[0]).toMatchObject({ id: "p-other", agent: true, principal: undefined, roles: ["ran a session"] });
-    expect(t.members[1]?.rolesText).toBe("Wrote the change");
+    expect(t.members[1]?.rolesText).toBe("Wrote the code");
   });
 
   it("names runtimes in words", () => {

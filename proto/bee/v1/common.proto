@@ -417,6 +417,8 @@ enum SubjectKind {
   SUBJECT_KIND_AGENT_RUN = 19;
   SUBJECT_KIND_ADVISORY = 20;
   SUBJECT_KIND_POST = 21;
+  SUBJECT_KIND_SWARM = 22;
+  SUBJECT_KIND_SAFETY_RECORD = 23;
 }
 
 // Names any forge object generically, for reactions, notifications, moderation, search hits

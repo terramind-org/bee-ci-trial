@@ -77,11 +77,11 @@ function Group({ g, repo }: { g: CheckGroup; repo: string }) {
   );
 }
 
-export function HumanChecks({ checks, repo }: { checks: CheckRun[]; repo: string }) {
+export function HumanChecks({ checks, repo, summary = true }: { checks: CheckRun[]; repo: string; /** False where the page already said the summary sentence above. */ summary?: boolean }) {
   const groups = groupChecks(checks);
   return (
     <div className="flex flex-col gap-3" data-human-checks>
-      <p className="text-lg text-ink">{checksSentence(checks)}</p>
+      {summary ? <p className="text-lg text-ink">{checksSentence(checks)}</p> : null}
       {groups.map((g) => (
         <Group key={g.state} g={g} repo={repo} />
       ))}

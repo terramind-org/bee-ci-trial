@@ -1,3 +1,4 @@
+# Move to .github/workflows/gcp.yml to activate.
 name: Validate GCP Terraform
 
 on:

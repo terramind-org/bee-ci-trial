@@ -158,3 +158,14 @@ checks SPEC against code, and flips the new coverage rows to OK.
 1. `scripts/check.sh` and `scripts/check-web-e2e.sh` pass for both editions; Lighthouse
    performance is at least 0.90 on the Brief tab of the seeded `fix` and `ui` changes.
 2. `AS-CR-04` passes by hand against `bee-server --dev` and the web app.
+
+## Beehive agent-first redesign
+
+The Agents tab reads repository work through `SwarmService`. Scope is PRODUCT §4.19 and
+the contract is SPEC §11.10.
+
+| Task | Owns | Depends on |
+|---|---|---|
+| swarms-server | `proto/bee/v1/swarms.proto`, `crates/bee-forge/src/swarms/`, run lifecycle integration, policy action and service registration, swarm forge and conformance tests and fixtures, swarm web API operations and fixture, generated bindings and schemas, SPEC and agent contract docs, coverage | posts-green |
+| agents-tab | Repository Agents screens and agent-facing facts | swarms-server |
+| safety-server | `proto/bee/v1/safety.proto`, forge safety module, focused run/swarm and merge hooks, service and tool registration, conformance, web operations and fixture, and binding safety docs | swarms-server |

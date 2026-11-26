@@ -191,14 +191,14 @@ Disagreements and bugs the suite found, and what became of them:
 
 <!-- BEGIN GENERATED: three-form conformance matrix -->
 
-RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. Fixtures: 1140 (1090 expect success, 50 expect a documented error).
+RPCs in the descriptor: 1166. Served: 1166; on the UNIMPLEMENTED allow-list: 0. Fixtures: 1166 (1114 expect success, 52 expect a documented error).
 
 | Form | Passing | Of |
 |---|---:|---:|
-| API (HTTP/JSON; gRPC sampled) | 1140 | 1140 |
-| CLI (`bee <noun> <verb> --json`) | 1140 | 1140 |
-| MCP (`/mcp` tools/call; stdio sampled) | 1140 | 1140 |
-| All three | 1140 | 1140 |
+| API (HTTP/JSON; gRPC sampled) | 1166 | 1166 |
+| CLI (`bee <noun> <verb> --json`) | 1166 | 1166 |
+| MCP (`/mcp` tools/call; stdio sampled) | 1166 | 1166 |
+| All three | 1166 | 1166 |
 
 ### By service
 
@@ -233,17 +233,19 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | PackageService | 24 | 23 | 24 | 24 | 24 |
 | PagesService | 19 | 17 | 19 | 19 | 19 |
 | PolicyService | 25 | 25 | 25 | 25 | 25 |
-| PostService | 15 | 15 | 15 | 15 | 15 |
+| PostService | 16 | 16 | 16 | 16 | 16 |
 | ProjectService | 50 | 50 | 50 | 50 | 50 |
 | QueryService | 13 | 13 | 13 | 13 | 13 |
 | RefService | 6 | 6 | 6 | 6 | 6 |
 | ReleaseService | 23 | 22 | 23 | 23 | 23 |
 | RepoService | 43 | 43 | 43 | 43 | 43 |
 | RunnerService | 28 | 28 | 28 | 28 | 28 |
+| SafetyService | 14 | 13 | 14 | 14 | 14 |
 | SearchService | 26 | 25 | 26 | 26 | 26 |
 | SecretService | 17 | 17 | 17 | 17 | 17 |
 | SecurityService | 63 | 62 | 63 | 63 | 63 |
 | SponsorService | 14 | 13 | 14 | 14 | 14 |
+| SwarmService | 11 | 10 | 11 | 11 | 11 |
 | TeamService | 22 | 22 | 22 | 22 | 22 |
 | UserService | 58 | 51 | 58 | 58 | 58 |
 | WikiService | 14 | 14 | 14 | 14 | 14 |
@@ -915,6 +917,7 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | PostService | ApprovePost | ok | pass | pass | pass |
 | PostService | BeginPostMediaUpload | ok | pass | pass | pass |
 | PostService | ClearChangePost | ok | pass | pass | pass |
+| PostService | CreatePost | ok | pass | pass | pass |
 | PostService | FinalizePostMedia | ok | pass | pass | pass |
 | PostService | GetChangePost | ok | pass | pass | pass |
 | PostService | GetPost | ok | pass | pass | pass |
@@ -1090,6 +1093,20 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | RunnerService | SetRunnerLabels | ok | pass | pass | pass |
 | RunnerService | UpdateRunnerGroup | ok | pass | pass | pass |
 | RunnerService | UpdateRunnerJobStep | ok | pass | pass | pass |
+| SafetyService | AcknowledgeSafetyAttention | ok | pass | pass | pass |
+| SafetyService | GetSafetyRecord | ok | pass | pass | pass |
+| SafetyService | GetSafetySummary | ok | pass | pass | pass |
+| SafetyService | ListSafetyAttention | ok | pass | pass | pass |
+| SafetyService | ListSafetyRecords | ok | pass | pass | pass |
+| SafetyService | RaiseConcern | `PERMISSION_DENIED` | pass | pass | pass |
+| SafetyService | ReportFinding | ok | pass | pass | pass |
+| SafetyService | RequestSafetyReview | ok | pass | pass | pass |
+| SafetyService | ResolveFinding | ok | pass | pass | pass |
+| SafetyService | ResumeEverything | ok | pass | pass | pass |
+| SafetyService | SetVerdict | ok | pass | pass | pass |
+| SafetyService | SpotCheck | ok | pass | pass | pass |
+| SafetyService | StopEverything | ok | pass | pass | pass |
+| SafetyService | SubmitSafetyReview | ok | pass | pass | pass |
 | SearchService | CreateSavedSearch | ok | pass | pass | pass |
 | SearchService | DeleteSavedSearch | ok | pass | pass | pass |
 | SearchService | GetDocumentSymbols | ok | pass | pass | pass |
@@ -1210,6 +1227,17 @@ RPCs in the descriptor: 1140. Served: 1140; on the UNIMPLEMENTED allow-list: 0. 
 | SponsorService | ListSponsorships | ok | pass | pass | pass |
 | SponsorService | UpdateSponsorProfile | ok | pass | pass | pass |
 | SponsorService | UpdateSponsorTier | ok | pass | pass | pass |
+| SwarmService | AddSwarmTask | ok | pass | pass | pass |
+| SwarmService | CreateSwarm | ok | pass | pass | pass |
+| SwarmService | DecideSwarmJoin | ok | pass | pass | pass |
+| SwarmService | FinishSwarmTask | ok | pass | pass | pass |
+| SwarmService | GetSwarm | ok | pass | pass | pass |
+| SwarmService | ListRepoWork | ok | pass | pass | pass |
+| SwarmService | RequestSwarmJoin | ok | pass | pass | pass |
+| SwarmService | SendSwarmMessage | ok | pass | pass | pass |
+| SwarmService | SetSwarmState | ok | pass | pass | pass |
+| SwarmService | SetSwarmStatus | `PERMISSION_DENIED` | pass | pass | pass |
+| SwarmService | StartSwarmTask | ok | pass | pass | pass |
 | TeamService | AddTeamMember | ok | pass | pass | pass |
 | TeamService | CancelTeamInvitation | ok | pass | pass | pass |
 | TeamService | CreateTeam | ok | pass | pass | pass |

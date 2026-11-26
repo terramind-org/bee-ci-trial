@@ -4,7 +4,10 @@
  * bee.v1 RPCs (often the same name, sometimes several calls). The typed client derives
  * from this table, and `ops/index.ts` must implement every entry.
  */
+import type { CreateOrgInvitationRequestJson, MemberJson, OrgInvitationJson, SetMemberRequestJson } from "../gen/bee/v1/forge_pb";
+import type { ListTeamMembersRequestJson, ListTeamMembersResponseJson } from "../gen/bee/v1/teams_pb";
 import type * as T from "./types";
+import type { VerifyAuditChainRequestJson, VerifyAuditChainResponseJson } from "../gen/bee/v1/audit_pb";
 
 export interface Methods {
   OrgService: {
@@ -12,18 +15,28 @@ export interface Methods {
     ListOrgs: [T.ListOrgsRequest, T.ListOrgsResponse];
     ListMembers: [T.ListMembersRequest, T.ListMembersResponse];
     CreateOrg: [T.CreateOrgRequest, T.Org];
+    // The organisation settings use these existing RPCs without reshaping their messages.
+    SetMember: [SetMemberRequestJson, MemberJson];
+    CreateOrgInvitation: [CreateOrgInvitationRequestJson, OrgInvitationJson];
   };
   RepoService: {
     GetRepo: [T.GetRepoRequest, T.Repo];
+    UpdateRepo: [T.UpdateRepoRequest, T.Repo];
+    ListCollaborators: [T.ListCollaboratorsRequest, T.ListCollaboratorsResponse];
+    ListDeployKeys: [T.ListDeployKeysRequest, T.ListDeployKeysResponse];
     ListRepos: [T.ListReposRequest, T.ListReposResponse];
     GetContext: [T.GetContextRequest, T.RepoContext];
     ListMyRepos: [T.ListMyReposRequest, T.ListMyReposResponse];
     GetRepoHome: [T.GetRepoHomeRequest, T.RepoHome];
     CreateRepo: [T.CreateRepoRequest, T.Repo];
+    ForkRepo: [T.ForkRepoRequest, T.Repo];
+    ListForks: [T.ListForksRequest, T.ListForksResponse];
+    SyncFork: [T.SyncForkRequest, T.SyncForkResponse];
   };
   ChangeService: {
     OpenChange: [T.OpenChangeRequest, T.ChangeRequest];
     GetChange: [T.GetChangeRequest, T.ChangeRequest];
+    GetChangeByNumber: [T.GetChangeByNumberRequest, T.ChangeRequest];
     ListChanges: [T.ListChangesRequest, T.ListChangesResponse];
     CloseChange: [T.CloseChangeRequest, T.ChangeRequest];
     SubmitReview: [T.SubmitReviewRequest, T.Review];
@@ -73,6 +86,7 @@ export interface Methods {
     ReadPath: [T.ReadPathRequest, T.ReadPathChunk];
     ListTree: [T.ListTreeRequest, T.ListTreeResponse];
     Log: [T.LogRequest, T.LogResponse];
+    IsAncestor: [T.IsAncestorRequest, T.IsAncestorResponse];
     Blame: [T.BlameRequest, T.BlameResponse];
     Diff: [T.DiffRequest, T.DiffItem];
     CompareRevisions: [T.CompareRevisionsRequest, T.CompareRevisionsResponse];
@@ -99,7 +113,10 @@ export interface Methods {
     GetFidelityReport: [T.GetFidelityReportRequest, T.FidelityReport];
   };
   AgentService: {
+    ResolveAgentInstructions: [T.ResolveAgentInstructionsRequest, T.ResolveAgentInstructionsResponse];
     ListAgents: [T.ListAgentsRequest, T.ListAgentsResponse];
+    GetAgentBudget: [T.GetAgentBudgetRequest, T.AgentOwnerBudget];
+    SetAgentBudget: [T.SetAgentBudgetRequest, T.AgentOwnerBudget];
     GetAgent: [T.GetAgentRequest, T.AgentSummary];
     ListTokens: [T.ListTokensRequest, T.ListTokensResponse];
     ListProvenance: [T.ListProvenanceRequest, T.ListProvenanceResponse];
@@ -107,13 +124,28 @@ export interface Methods {
     SetAgentFeedTrigger: [T.SetAgentFeedTriggerRequest, T.AgentFeedTrigger];
     ListAgentFeedTriggers: [T.ListAgentFeedTriggersRequest, T.ListAgentFeedTriggersResponse];
     ListAdoptRuns: [T.ListAdoptRunsRequest, T.ListAdoptRunsResponse];
+    GetAgentRun: [T.GetAgentRunRequest, T.AgentRun];
+    ListAgentRuns: [T.ListAgentRunsRequest, T.ListAgentRunsResponse];
+    ListAgentRunEvents: [T.ListAgentRunEventsRequest, T.ListAgentRunEventsResponse];
+    SendAgentRunMessage: [T.SendAgentRunMessageRequest, T.AgentRunEvent];
+    CancelAgentRun: [T.CancelAgentRunRequest, T.AgentRun];
+    RetryAgentRun: [T.RetryAgentRunRequest, T.AgentRun];
     GetSessionsForChange: [T.GetSessionsForChangeRequest, T.GetSessionsForChangeResponse];
   };
   WorkflowService: {
     ListRuns: [T.ListRunsRequest, T.ListRunsResponse];
     GetRun: [T.GetRunRequest, T.Run];
     Rerun: [T.RerunRequest, T.Run];
+    // CI management maps directly to the workflow and deployment services.
+    CancelRun: [T.GetRunRequest, Record<string, never>];
+    ListWorkflows: [T.ListWorkflowsRequest, T.ListWorkflowsResponse];
+    EnableWorkflow: [T.WorkflowRequest, T.WorkflowDefinition];
+    DisableWorkflow: [T.WorkflowRequest, T.WorkflowDefinition];
+    GetWorkflowBadge: [T.WorkflowRequest, T.WorkflowBadge];
     StreamLogs: [T.StreamLogsRequest, T.LogLine];
+  };
+  DeploymentService: {
+    ListDeployments: [T.ListDeploymentsRequest, T.ListDeploymentsResponse];
   };
   IssueService: {
     ListIssues: [T.ListIssuesRequest, T.ListIssuesResponse];
@@ -143,6 +175,8 @@ export interface Methods {
   };
   AuditService: {
     ListAudit: [T.ListAuditRequest, T.ListAuditResponse];
+    // Record exposes the existing verifier independently of the filtered query.
+    VerifyAuditChain: [VerifyAuditChainRequestJson, VerifyAuditChainResponseJson];
   };
   PackageService: {
     ListPackages: [T.ListPackagesRequest, T.ListPackagesResponse];
@@ -162,6 +196,7 @@ export interface Methods {
   };
   UserService: {
     GetProfile: [T.GetProfileRequest, T.Profile];
+    GetViewer: [Record<string, never>, Pick<T.Profile, "login">];
     StarRepo: [T.StarRepoRequest, T.StarRepoResponse];
     UnstarRepo: [T.UnstarRepoRequest, T.UnstarRepoResponse];
     ListStarred: [T.ListStarredRequest, T.ListStarredResponse];
@@ -178,7 +213,37 @@ export interface Methods {
     ListAchievements: [T.ListAchievementsRequest, T.ListAchievementsResponse];
     ListHomeFeed: [T.ListHomeFeedRequest, T.ListHomeFeedResponse];
   };
+  SwarmService: {
+    CreateSwarm: [T.CreateSwarmRequest, T.Swarm];
+    GetSwarm: [T.SwarmRef, T.Swarm];
+    ListRepoWork: [T.ListRepoWorkRequest, T.ListRepoWorkResponse];
+    SetSwarmState: [T.SetSwarmStateRequest, T.Swarm];
+    SetSwarmStatus: [T.SetSwarmStatusRequest, T.Swarm];
+    AddSwarmTask: [T.AddSwarmTaskRequest, T.SwarmTask];
+    StartSwarmTask: [T.StartSwarmTaskRequest, T.SwarmTask];
+    FinishSwarmTask: [T.FinishSwarmTaskRequest, T.SwarmTask];
+    SendSwarmMessage: [T.SendSwarmMessageRequest, T.AgentRunEvent];
+    RequestSwarmJoin: [T.RequestSwarmJoinRequest, T.SwarmJoin];
+    DecideSwarmJoin: [T.DecideSwarmJoinRequest, T.SwarmJoin];
+  };
+  SafetyService: {
+    GetSafetyRecord: [T.SafetyRef, T.SafetyRecord];
+    ListSafetyRecords: [T.ListSafetyRecordsRequest, T.ListSafetyRecordsResponse];
+    ReportFinding: [T.ReportFindingRequest, T.SafetyFinding];
+    ResolveFinding: [T.ResolveFindingRequest, T.SafetyFinding];
+    SetVerdict: [T.SetVerdictRequest, T.SafetyRecord];
+    RequestSafetyReview: [T.RequestSafetyReviewRequest, T.SafetyReview];
+    SubmitSafetyReview: [T.SubmitSafetyReviewRequest, T.SafetyReview];
+    RaiseConcern: [T.RaiseConcernRequest, T.SafetyConcern];
+    ListSafetyAttention: [T.ListSafetyAttentionRequest, T.ListSafetyAttentionResponse];
+    AcknowledgeSafetyAttention: [T.AcknowledgeSafetyAttentionRequest, T.SafetyAttention];
+    StopEverything: [T.SetSafetyStopRequest, T.SafetyStop];
+    ResumeEverything: [T.SetSafetyStopRequest, T.SafetyStop];
+    SpotCheck: [T.SpotCheckRequest, T.SpotCheckResponse];
+    GetSafetySummary: [T.GetSafetySummaryRequest, T.SafetySummary];
+  };
   PostService: {
+    CreatePost: [T.CreatePostRequest, T.Post];
     SetChangePost: [T.SetChangePostRequest, T.Post];
     ClearChangePost: [T.ClearChangePostRequest, T.ClearChangePostResponse];
     GetChangePost: [T.GetChangePostRequest, T.Post];
@@ -236,6 +301,8 @@ export interface Methods {
   };
   TeamService: {
     ListTeams: [T.ListTeamsRequest, T.ListTeamsResponse];
+    ListRepoTeams: [T.ListRepoTeamsRequest, T.ListRepoTeamsResponse];
+    ListTeamMembers: [ListTeamMembersRequestJson, ListTeamMembersResponseJson];
   };
   AppService: {
     ListApps: [T.ListAppsRequest, T.ListAppsResponse];

@@ -4,14 +4,26 @@ import { AuthService } from "../../gen/bee/v1/auth_pb";
 import type { PrincipalJson } from "../../gen/bee/v1/common_pb";
 import { ChangeService, LeaseService, OrgService, RepoService } from "../../gen/bee/v1/forge_pb";
 import { QueryService } from "../../gen/bee/v1/vcs_pb";
-import { objectIdText, parseObjectId } from "../ids";
+import { objectIdText, parseObjectId, pathText } from "../ids";
 import type { Rpc } from "../rpc";
 import { BeeError, type CallOptions } from "../transport";
 import type * as T from "../types";
-import { list, mapLimit, notFound, num, pageOf, str, wire, type PartialOps } from "./shared";
+import { list, mapLimit, notFound, num, pageOf, pass, str, wire, type PartialOps } from "./shared";
 
 const DAY = 86_400_000;
 const ACTIVE_WINDOW = 6 * 3_600_000;
+
+/** The organization directory and its tokens must retain every page the wire offers. */
+async function allRows<T>(read: (page: T.PageRequest) => Promise<{ rows?: T[]; next?: string }>): Promise<T[]> {
+  const rows: T[] = [];
+  let pageToken = "";
+  do {
+    const result = await read({ pageSize: 200, pageToken });
+    rows.push(...list(result.rows));
+    pageToken = str(result.next);
+  } while (pageToken);
+  return rows;
+}
 
 /** Owners are principals too; resolve each id once. Unknown ids become undefined. */
 export async function principals(rpc: Rpc, ids: string[], opts?: CallOptions): Promise<Map<string, T.Principal>> {
@@ -67,7 +79,11 @@ async function defaultRef(rpc: Rpc, repo: T.RepoRef, opts?: CallOptions): Promis
  * provenance), its open change requests and the leases it holds.
  */
 async function unregisteredAgents(rpc: Rpc, org: string, repo: T.RepoRef | undefined, known: Set<string>, principalIds: string[], opts?: CallOptions, now = Date.now()): Promise<T.AgentSummary[]> {
-  const members = list((await rpc.call(OrgService.method.listMembers, { org, page: { pageSize: 200 } }, opts)).members)
+  const allMembers = await allRows(async (page) => {
+    const response = await rpc.call(OrgService.method.listMembers, { org, page }, opts);
+    return { rows: response.members, next: response.page?.nextPageToken };
+  });
+  const members = allMembers
     .map((m) => m.principal as T.Principal | undefined)
     .filter((p): p is T.Principal => !!p && p.kind === "PRINCIPAL_KIND_AGENT" && !known.has(p.id) && (!principalIds.length || principalIds.includes(p.id)));
   if (!members.length) return [];
@@ -105,9 +121,12 @@ async function unregisteredAgents(rpc: Rpc, org: string, repo: T.RepoRef | undef
 
 async function listAgents(rpc: Rpc, org: string, repo: T.RepoRef | undefined, principalIds: string[] = [], opts?: CallOptions): Promise<T.AgentSummary[]> {
   const windowStart = new Date(Date.now() - 7 * DAY).toISOString();
-  const res = await rpc.call(AgentService.method.listAgentPrincipals, { org, windowStart, principalIds, page: { pageSize: 200 } }, opts);
+  const allAgents = await allRows(async (page) => {
+    const response = await rpc.call(AgentService.method.listAgentPrincipals, { org, windowStart, principalIds, page }, opts);
+    return { rows: response.agents, next: response.page?.nextPageToken };
+  });
   const idOf = (a: AgentPrincipalSummaryJson) => str((a.principal as PrincipalJson | undefined)?.id);
-  const agents = list(res.agents).filter((a) => !principalIds.length || principalIds.includes(idOf(a)));
+  const agents = allAgents.filter((a) => !principalIds.length || principalIds.includes(idOf(a)));
   const owners = await principals(rpc, agents.map((a) => str((a.principal as PrincipalJson | undefined)?.ownerId)), opts);
   const registered = agents.map((a) => agentView(a, owners.get(str((a.principal as PrincipalJson | undefined)?.ownerId))));
   const rest = await unregisteredAgents(rpc, org, repo, new Set(agents.map(idOf)), principalIds, opts);
@@ -197,8 +216,38 @@ async function listProvenance(rpc: Rpc, r: T.ListProvenanceRequest, opts?: CallO
   return { records, page: pageOf(res.page) };
 }
 
+function instructionsRequest(r: T.ResolveAgentInstructionsRequest) {
+  return { repo: r.repo, ...(r.revision ? { revision: { expr: r.revision } } : {}) };
+}
+
 export const agentOps = {
   AgentService: {
+    ResolveAgentInstructions: {
+      wire: (r) => wire(AgentService.method.resolveAgentInstructions, instructionsRequest(r)),
+      run: async (rpc, r, opts) => {
+        const res = await rpc.call(AgentService.method.resolveAgentInstructions, instructionsRequest(r), opts);
+        return {
+          files: list(res.files).map((f): T.AgentInstructionFile => ({
+            path: pathText(str(f.path)),
+            source: f.source ?? "AGENT_INSTRUCTION_SOURCE_UNSPECIFIED",
+            name: str(f.name),
+            appliesTo: list(f.appliesTo),
+            content: str(f.content),
+            includes: list(f.includes).map(pathText),
+          })),
+          combined: str(res.combined),
+          changeset: res.changeset as T.ObjectId | undefined,
+        };
+      },
+    },
+    GetAgentBudget: pass(AgentService.method.getAgentBudget),
+    SetAgentBudget: pass(AgentService.method.setAgentBudget),
+    GetAgentRun: pass(AgentService.method.getAgentRun),
+    ListAgentRuns: pass(AgentService.method.listAgentRuns),
+    ListAgentRunEvents: pass(AgentService.method.listAgentRunEvents),
+    SendAgentRunMessage: pass(AgentService.method.sendAgentRunMessage),
+    CancelAgentRun: pass(AgentService.method.cancelAgentRun),
+    RetryAgentRun: pass(AgentService.method.retryAgentRun),
     ListAgents: {
       wire: (r) => wire(AgentService.method.listAgentPrincipals, { org: r.org }),
       run: async (rpc, r, opts) => ({ agents: await listAgents(rpc, r.org, r.repo, [], opts) }),
@@ -214,13 +263,25 @@ export const agentOps = {
     ListTokens: {
       wire: (r) => wire(AuthService.method.listTokens, { principalId: r.principalId, includeRevoked: true }),
       run: async (rpc, r, opts) => {
-        const res = await rpc.call(AuthService.method.listTokens, { principalId: r.principalId, includeRevoked: true, page: { pageSize: 200 } }, opts);
+        const tokens = await allRows(async (page) => {
+          const response = await rpc.call(AuthService.method.listTokens, { principalId: r.principalId, includeRevoked: true, page }, opts);
+          return { rows: response.tokens, next: response.page?.nextPageToken };
+        });
         return {
-          tokens: list(res.tokens).map((t): T.TokenInfo => ({
+          tokens: tokens.map((t): T.TokenInfo => ({
             tokenId: str(t.tokenId),
             parentTokenId: str(t.parentTokenId),
             principalId: str(t.principalId),
-            scope: t.scope as T.TokenScope,
+            scope: {
+              repos: list(t.scope?.repos),
+              readPaths: list(t.scope?.readPaths),
+              writePaths: list(t.scope?.writePaths),
+              refs: list(t.scope?.refs),
+              actions: list(t.scope?.actions),
+              session: str(t.scope?.session),
+              expiresAt: t.scope?.expiresAt,
+              budget: t.scope?.budget as T.Budget | undefined,
+            },
             used: t.used as T.Budget | undefined,
             createdAt: t.createdAt,
             revoked: !!t.revoked,

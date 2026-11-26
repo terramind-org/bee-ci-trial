@@ -1,138 +1,100 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { PageFacts, type FactGroup } from "@/components/bee/page-facts";
+import { principalLabel } from "@/components/domain";
 import { LiveRefresh } from "@/components/live-refresh";
-import { PrincipalName, RunStatusBadge, StatusIcon } from "@/components/domain";
-import { Icon } from "@/components/icons";
-import { LogViewer, RerunButtons } from "@/components/log-viewer";
+import { RunMenu } from "@/components/runs/run-menu";
+import { Kv, Mark, Sect } from "@/components/parts";
+import { RunActions } from "@/components/runs/run-actions";
+import { CommitLink, optionalCi, pullRequestLabel, runDuration, startedBy } from "@/components/runs/run-facts";
+import { AnnotationLine, JobLine, RunJobs, StepLine } from "@/components/runs/run-jobs";
+import { WhatHappened } from "@/components/runs/what-happened";
 import { Time } from "@/components/time";
-import { PageMenu } from "@/components/menu";
-import { WhatHappened } from "@/components/queue/what-happened";
-import { Badge, PageHeader, Panel, cx } from "@/components/ui";
-import { objectIdText } from "@/lib/api/ids";
-import { type RepoParams, scopeFromParams, serverClient } from "@/lib/api/server";
-import { between, duration } from "@/lib/format";
-import { runSummary } from "@/lib/runsummary";
+import { CiHeader } from "@/components/runs/ci-header";
+import { type RepoParams, scopeFromParams, serverClient, sessionToken } from "@/lib/api/server";
+import type { Op } from "@/lib/copyas";
+import { param, guard, type SearchParams } from "@/lib/page";
+import { answerableFor, directoryOf } from "@/lib/pulls";
 import { repoHref } from "@/lib/routes";
-import { guard, param, type SearchParams } from "@/lib/page";
+import { runSummary } from "@/lib/runsummary";
+import { pageTools } from "@/lib/tools";
+import { requestMode } from "../../../../../request-mode";
 
-export const metadata: Metadata = { title: "Run" };
+export const metadata: Metadata = { title: "CI run" };
 
 export default async function RunPage({ params, searchParams }: { params: Promise<RepoParams & { id: string }>; searchParams: SearchParams }) {
   const { id } = await params;
-  const sp = await searchParams;
+  const selected = param(await searchParams, "job");
   return guard(async () => {
     const api = await serverClient();
-    const { ref, fullName } = await scopeFromParams(params);
-    const run = await api.workflow.getRun({ repo: ref, id });
-    const cr = run.changeRequestId ? await api.change.getChange({ repo: ref, id: run.changeRequestId }).catch(() => null) : null;
-    const job = run.jobs.find((j) => j.id === param(sp, "job")) ?? run.jobs.find((j) => j.status === "failed") ?? run.jobs.find((j) => j.status === "running") ?? run.jobs[0];
-    const getOp = { service: "WorkflowService" as const, method: "GetRun", request: { repo: ref, id }, label: "Show this run" };
+    const { ref, fullName, owner } = await scopeFromParams(params);
+    const request = { repo: ref, id };
+    const [{ mode }, session, run] = await Promise.all([requestMode(), sessionToken(), api.workflow.getRun(request)]);
+    const change = run.changeRequestId ? await optionalCi(api.change.getChange({ repo: ref, id: run.changeRequestId })) : undefined;
+    const agent = [run.actor, run.triggeringActor, change?.author].find((p) => p?.kind === "PRINCIPAL_KIND_AGENT");
+    const members = session && agent?.ownerId ? await optionalCi(api.org.listMembers({ org: owner })) : undefined;
+    const person = answerableFor(agent, directoryOf(members?.members.map((m) => m.principal) ?? []));
+    const getOp = { service: "WorkflowService" as const, method: "GetRun", request, label: "Show this run" };
     const summary = runSummary(run, Date.now());
+    const title = run.workflow + " #" + run.number;
+    const pull = pullRequestLabel(run, change);
+    const pullHref = run.changeRequestId && repoHref(fullName, "changes/" + run.changeRequestId);
+    const start = run.startedAt ?? run.createdAt;
+    const elapsed = runDuration(run);
+    const starter = startedBy(run);
+    const back = repoHref(fullName, "runs");
+    const active = !run.finishedAt && ["running", "queued", "waiting", "protection"].includes(run.status);
+    const facts: [string, ReactNode][] = [];
+    if (pull) facts.push(["Pull request", pullHref ? <Link className="link inline-flex min-h-6 items-center" href={pullHref}>{pull}</Link> : pull]);
+    if (run.ref) facts.push(["Branch", <code key="branch" className="mono">{run.ref}</code>]);
+    if (run.head) facts.push(["Commit", <CommitLink key="commit" repo={fullName} commit={run.head} />]);
+    if (agent) facts.push(["Agent", <Link key="agent" className="link inline-flex min-h-6 items-center" href={repoHref(fullName, "agents/" + agent.id)}>{principalLabel(agent)}</Link>]);
+    if (person) facts.push(["Answers for the agent", <Mark key="person">{principalLabel(person)}</Mark>]);
+    if (starter) facts.push(["Started by", starter]);
+    if (start) facts.push([run.startedAt ? "Started" : "Created", mode === "bee" ? <time dateTime={start}>{start}</time> : <Time iso={start} />]);
+    if (elapsed) facts.push(["Duration", elapsed]);
+    if (run.attempt > 1) facts.push(["Attempt", "attempt " + run.attempt]);
+
+    if (mode === "bee") {
+      const groups: FactGroup[] = [
+        { title: "What happened", lines: [summary.sentence, ...(summary.detail ? [summary.detail] : [])] },
+        { title: "Jobs", lines: run.jobs.map((job) => <JobLine key={job.id} job={job} />), empty: "No jobs have been reported for this run." },
+        ...run.jobs.map((job): FactGroup => ({
+          title: "Job · " + job.name + (run.jobs.filter((j) => j.name === job.name).length > 1 ? " · " + job.id : ""),
+          facts: [{ label: "Job ID", value: <code>{job.id}</code> }, job.runner ? { label: "Runner", value: job.runner } : null],
+          lines: [
+            ...job.steps.map((step, i) => <StepLine key={i} step={step} />),
+            ...run.annotations.filter((a) => a.jobId === job.id).map((a, i) => <AnnotationLine key={"annotation-" + i} annotation={a} repo={fullName} />),
+          ],
+        })),
+        { title: "Run details", facts: facts.map(([label, value]) => ({ label, value })) },
+        { title: "Related pages", lines: [<Link key="ci" href={back} className="link">CI</Link>] },
+      ];
+      const orphaned = run.annotations.filter((a) => !run.jobs.some((job) => job.id === a.jobId));
+      if (orphaned.length) groups.splice(-2, 0, { title: "Annotations", lines: orphaned.map((a, i) => <AnnotationLine key={i} annotation={a} repo={fullName} />) });
+      return <PageFacts page="run" title={title} groups={groups} tools={pageTools("run")} />;
+    }
+
+    const alternatives: { key: string; op: Op; label: string }[] = run.jobs.map((job) => ({
+      key: job.id,
+      op: { service: "WorkflowService", method: "StreamLogs", request: { repo: ref, runId: id, jobId: job.id }, label: "Stream this log" },
+      label: "Copy as · " + job.name + " log",
+    }));
+    if (session && !active) alternatives.push({
+      key: "rerun",
+      op: { service: "WorkflowService", method: "Rerun", request: { ...request, failedOnly: run.jobs.some((job) => job.status === "failed") }, label: "Re-run this workflow" },
+      label: "Copy as · re-run",
+    });
     return (
       <>
-        <LiveRefresh repo={fullName} ids={[id]} kinds={["workflow_run.*", "workflow_job.*"]} />
-        <PageHeader
-          eyebrow={
-            <span className="flex items-center gap-2">
-              <Link href={repoHref(fullName, "runs")} className="hover:text-ink">
-                Runs
-              </Link>
-              <Icon name="chevronRight" size={12} />
-              <span>
-                {run.workflow} #{run.number}
-              </span>
-            </span>
-          }
-          title={
-            <span className="flex flex-wrap items-center gap-3">
-              {run.workflow} <span className="num text-ink-3">#{run.number}</span>
-              <RunStatusBadge status={run.status} />
-            </span>
-          }
-          meta={
-            <>
-              {cr ? (
-                <Link href={repoHref(fullName, "changes/" + cr.id)} className="link">
-                  {cr.title}
-                </Link>
-              ) : (
-                <span>post-land on main</span>
-              )}
-              <span>{run.ref}</span>
-              <span className="num text-ink-3">{objectIdText(run.head, true)}</span>
-              <PrincipalName principal={run.actor} showRuntime={false} />
-              <span>
-                started <Time iso={run.startedAt} />
-              </span>
-              {run.finishedAt ? <span>took {duration(between(run.startedAt, run.finishedAt))}</span> : null}
-              {run.attempt > 1 ? <Badge tone="outline">attempt {run.attempt}</Badge> : null}
-            </>
-          }
-          actions={
-            <>
-              <RerunButtons repo={fullName} runId={id} hasFailed={run.jobs.some((j) => j.status === "failed")} running={run.status === "running"} />
-              <PageMenu op={getOp} />
-            </>
-          }
-        />
-        <WhatHappened summary={summary} />
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <nav aria-label="Jobs" className="flex flex-col gap-5">
-            <Panel title="Jobs" id="jobs-title">
-              <ul className="divide-y divide-line">
-                {run.jobs.map((j) => (
-                  <li key={j.id}>
-                    <Link
-                      href={repoHref(fullName, "runs/" + id + "?job=" + j.id)}
-                      aria-current={j.id === job?.id ? "page" : undefined}
-                      className={cx("-mx-3 flex items-center gap-2.5 rounded-md px-3 py-3 hover:bg-hover", j.id === job?.id && "bg-hover")}
-                    >
-                      <StatusIcon status={j.status} />
-                      <span className="flex-1 text-base font-medium">{j.name}</span>
-                      <span className="num text-sm text-ink-3">{j.finishedAt ? duration(between(j.startedAt, j.finishedAt)) : j.status}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-            {run.annotations.length ? (
-              <Panel title="Annotations" id="ann-title">
-                <ul className="divide-y divide-line">
-                  {run.annotations.map((a, i) => (
-                    <li key={i} className="py-3 text-base">
-                      <p className="flex items-center gap-2">
-                        <Badge tone={a.level === "failure" ? "bad" : a.level === "warning" ? "warn" : "neutral"}>{a.level}</Badge>
-                        <span className="font-medium">{a.title}</span>
-                      </p>
-                      <Link href={repoHref(fullName, "code?path=" + encodeURIComponent(a.path) + "#L" + a.line)} className="num mt-1 block text-sm text-accent-ink hover:underline">
-                        {a.path}:{a.line}
-                      </Link>
-                      <p className="mt-1 whitespace-pre-wrap text-ink-2">{a.message}</p>
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            ) : null}
-          </nav>
-          {job ? (
-            <section aria-label={"Job " + job.name} className="flex min-w-0 flex-col gap-5">
-              <Panel title={"Steps · " + job.name} id="steps-title" actions={<span className="text-sm text-ink-3">{job.runner}</span>}>
-                <ol className="divide-y divide-line">
-                  {job.steps.map((s, i) => (
-                    <li key={i} className="flex items-center gap-2.5 py-2.5 text-base">
-                      <StatusIcon status={s.status} />
-                      <span className="flex-1">{s.name}</span>
-                      <span className="num text-sm text-ink-3">{Number(s.durationMs) ? duration(Number(s.durationMs)) : s.status}</span>
-                    </li>
-                  ))}
-                </ol>
-              </Panel>
-              <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                <LogViewer key={job.id + ":" + run.attempt} repo={fullName} runId={id} jobId={job.id} running={job.status === "running"} />
-              </div>
-            </section>
-          ) : null}
+        <LiveRefresh repo={fullName} kinds={["workflow_run.*", "workflow_job.*", "run.*"]} />
+        <CiHeader title={title} back={back} actions={<RunMenu op={getOp} alternatives={alternatives} />} />
+        <div className="flex min-w-0 flex-col gap-10">
+          <WhatHappened summary={summary} />
+          {session && <RunActions repo={fullName} runId={id} hasFailed={run.jobs.some((j) => j.status === "failed")} active={active} />}
+          <RunJobs run={run} repo={fullName} selected={selected} />
+          {facts.length > 0 && <Sect id="ci-run-details" title="Run details"><Kv rows={facts} /></Sect>}
         </div>
       </>
     );

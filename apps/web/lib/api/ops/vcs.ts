@@ -11,6 +11,7 @@ export const vcsOps = {
     ResolveRef: pass(ObjectService.method.resolveRef),
   },
   QueryService: {
+    IsAncestor: pass(QueryService.method.isAncestor),
     GetChangesets: pass(QueryService.method.getChangesets),
     ReadPath: passStream(QueryService.method.readPath),
     ListTree: pass(QueryService.method.listTree),

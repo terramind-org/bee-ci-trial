@@ -1,206 +1,195 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PageMenu } from "@/components/menu";
-import { PrincipalName } from "@/components/domain";
-import { loadSection } from "@/components/home/section";
+import { requestMode } from "@/app/request-mode";
+import { PageFacts, type FactGroup } from "@/components/bee/page-facts";
+import { EmptyState } from "@/components/kit";
 import { PRODUCT_LABEL } from "@/components/marketing/pricing";
-import { Time } from "@/components/time";
-import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui";
+import { PageMenu } from "@/components/menu";
+import { billingPrice } from "@/components/org/billing-format";
+import { ChangePlan } from "@/components/org/change-plan";
+import { Kv, Quiet, Row, Rows, Sect, Sep, State } from "@/components/parts";
+import { PageHeader } from "@/components/ui";
 import { edition, serverClient } from "@/lib/api/server";
 import { BeeError } from "@/lib/api/transport";
 import type { AccountPlan, BillingPlan } from "@/lib/api/types";
+import { absoluteTime, plural } from "@/lib/format";
 import { guard } from "@/lib/page";
-import { plural, usd } from "@/lib/format";
+import { toolFor } from "@/lib/tools";
 import { SettingsTabs } from "../tabs";
-import { ChangePlan } from "./change-plan";
 
 export const metadata: Metadata = { title: "Billing" };
 export const dynamic = "force-dynamic";
 
-const num = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 1 });
+const GET_PLAN = "BillingService/GetAccountPlan";
+const LIST_PLANS = "BillingService/ListBillingPlans";
+const QUERY_USAGE = "BillingService/QueryUsage";
+const LIST_SEATS = "BillingService/ListSeats";
+const CHANGE_PLAN = "BillingService/ChangePlan";
 
-/** `/orgs/{org}/settings/billing`: plan, seats, this cycle's usage and changing plan. Hosted edition only. */
+const planTools = [
+  toolFor(GET_PLAN, "Read the current plan and billing cycle"),
+  toolFor(LIST_PLANS, "List available plans and per-seat prices"),
+];
+
+const num = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+const formatError = (err: BeeError) => err.reason + ": " + err.message;
+
+function periodOf(cycle: AccountPlan["cycle"]): string {
+  if (cycle === "BILLING_CYCLE_MONTHLY") return "Monthly";
+  if (cycle === "BILLING_CYCLE_YEARLY") return "Yearly";
+  return "Not set";
+}
+
+async function billingSection<T>(read: Promise<T>) {
+  try {
+    return { data: await read };
+  } catch (err) {
+    if (err instanceof BeeError) return { error: formatError(err) };
+    throw err;
+  }
+}
+
 export default async function BillingPage({ params }: { params: Promise<{ org: string }> }) {
   if ((await edition()) !== "cloud") notFound();
-  const org = decodeURIComponent((await params).org);
-  const op = { service: "BillingService", method: "GetAccountPlan", request: { org }, label: "Show the plan" } as const;
   return guard(async () => {
-    const api = await serverClient();
+    const [api, { org: encodedOrg }, { mode }] = await Promise.all([serverClient(), params, requestMode()]);
+    const org = decodeURIComponent(encodedOrg);
+    const op = { service: "BillingService", method: "GetAccountPlan", request: { org }, label: "Show the plan" } as const;
+
     let account: AccountPlan;
     let plans: BillingPlan[];
     try {
-      [account, plans] = await Promise.all([api.billing.getAccountPlan({ org }), api.billing.listBillingPlans({ scope: { org } }).then((r) => r.plans)]);
+      [account, { plans }] = await Promise.all([api.billing.getAccountPlan({ org }), api.billing.listBillingPlans({ scope: { org } })]);
     } catch (err) {
-      if (err instanceof BeeError && err.code === "unimplemented") {
-        return (
-          <>
-            <PageHeader title="Settings" lede={`Plan, seats and usage for ${org}.`} />
-            <SettingsTabs org={org} active="billing" />
-            <div data-testid="billing-unavailable">
-              <EmptyState title="Billing is not available on this server" icon="releases">
-                This server does not offer billing (<span className="mono">{err.reason}</span>). {err.message}
-              </EmptyState>
-            </div>
-          </>
-        );
+      if (!(err instanceof BeeError) || err.code !== "unimplemented") throw err;
+      const empty = "Billing is not available on this server.";
+      if (mode === "bee") {
+        return <PageFacts page="org-billing" title={org + " · billing"}
+          groups={[{ title: "billing", lines: [empty, formatError(err)] }]} tools={planTools} />;
       }
-      throw err;
+      return <>
+        <PageHeader title="Billing" eyebrow={org} />
+        <SettingsTabs org={org} active="billing" />
+        <div data-testid="billing-unavailable"><EmptyState title={empty}>{formatError(err)}</EmptyState></div>
+      </>;
     }
+
+    const [usage, seats] = await Promise.all([
+      billingSection(api.billing.queryUsage({ org, startAt: account.cycleStartedAt, endAt: account.nextBillingAt, groupBy: ["BILLING_USAGE_GROUPING_PRODUCT"] })),
+      billingSection(api.billing.listSeats({ org })),
+    ]);
+    const selfServe = plans.filter((plan) => plan.selfServe);
+    const canChange = !account.billingDisabled && selfServe.length > 0;
+    const planFacts: FactGroup = {
+      title: "current plan",
+      facts: [
+        { label: "Plan", value: account.plan?.name ?? "None" },
+        { label: "Billing cycle", value: periodOf(account.cycle) },
+        { label: "Seats", value: <span className="num">{account.seatsConsumed} in use of {account.seatsPurchased} purchased</span> },
+        account.cycleStartedAt ? { label: "Cycle started", value: <time dateTime={account.cycleStartedAt}>{absoluteTime(account.cycleStartedAt)}</time> } : null,
+        { label: "Next bill", value: account.nextBillingAt ? <time dateTime={account.nextBillingAt}>{absoluteTime(account.nextBillingAt)}</time> : "None scheduled" },
+      ],
+    };
+    const pending = plans.find((plan) => plan.id === account.pendingPlanId)?.name ?? account.pendingPlanId;
+    const pendingChange = pending ? "At the end of this cycle the account moves to " + pending + " with " + plural(account.pendingSeats, "seat") + "." : "";
+    const disabled = "Billing is off for this account.";
+    const noUsage = "No usage has been metered this cycle.";
+    const noSeats = "No seats are in use.";
+    const seatLines = (seats.data?.seats ?? []).map((seat) => ({
+      id: seat.principal?.id ?? seat.org,
+      name: seat.principal?.display || seat.principal?.id,
+      outside: seat.outsideCollaborator,
+      activeAt: seat.lastActivityAt,
+    })).filter((seat) => seat.name);
+    const usageLines = (usage.data?.lineItems ?? []).map((line) => ({
+      id: JSON.stringify([line.product, line.sku, line.date]),
+      name: PRODUCT_LABEL[line.product] ?? line.product,
+      quantity: num(line.quantity) + " " + line.unit,
+      charged: billingPrice(line.netMicroUsd),
+    }));
+    const totalCharge = usage.data && "Total charged " + billingPrice(usage.data.totalNetMicroUsd) + ".";
+    const usageThrough = usage.data?.dataCompleteUntil;
+    const usageNote = usageThrough ? "Usage is complete through " + absoluteTime(usageThrough) + "." : "";
+    const planOptions = selfServe.map(({ id, name, seatMonthlyPriceMicroUsd, seatYearlyPriceMicroUsd }) => ({ id, name, seatMonthlyPriceMicroUsd, seatYearlyPriceMicroUsd }));
+
+    if (mode === "bee") {
+      return <PageFacts
+        page="org-billing"
+        title={org + " · billing"}
+        groups={[
+          { ...planFacts, lines: [account.billingDisabled ? disabled : "", pendingChange].filter(Boolean) },
+          ...(canChange ? [{
+            title: "available plans",
+            lines: planOptions.map((plan) => plan.name + " · " + billingPrice(plan.seatMonthlyPriceMicroUsd) + " per seat per month · " + billingPrice(plan.seatYearlyPriceMicroUsd) + " per seat per year"),
+          }] : []),
+          {
+            title: "usage this cycle",
+            lines: usage.error ? [usage.error] : [
+              ...usageLines.map((line) => [line.name, line.quantity, line.charged + " charged"].join(" · ")),
+              ...(!usageLines.length ? [noUsage] : []),
+              ...[totalCharge, usageNote].filter(Boolean),
+            ],
+          },
+          {
+            title: "seats",
+            facts: seats.data ? [{ label: "In use", value: seats.data.totalConsumed }] : undefined,
+            lines: seats.error ? [seats.error] : seatLines.length ? seatLines.map((seat) => [seat.name, seat.outside && "outside collaborator", seat.activeAt && "last active " + absoluteTime(seat.activeAt)].filter(Boolean).join(" · ")) : [noSeats],
+          },
+        ]}
+        tools={[
+          ...planTools,
+          toolFor(QUERY_USAGE, "Read metered usage and charges"),
+          toolFor(LIST_SEATS, "List people consuming seats"),
+          ...(canChange ? [toolFor(CHANGE_PLAN, "Change the plan, billing cycle or seats")] : []),
+        ]}
+      />;
+    }
+
     return (
       <>
-        <PageHeader title="Settings" lede={<>Plan, seats and usage for {org}.</>} actions={<PageMenu op={op} />} />
+        <PageHeader title="Billing" eyebrow={org} actions={<PageMenu op={op} />} />
         <SettingsTabs org={org} active="billing" />
-        <div className="flex flex-col gap-10">
-          <PlanPanel account={account} />
-          {account.billingDisabled ? null : (
-            <Panel title="Change plan" id="change-plan">
-              <ChangePlan
-                org={org}
-                plans={plans.filter((p) => p.selfServe).map((p) => ({ id: p.id, name: p.name, monthlyMicroUsd: Number(p.seatMonthlyPriceMicroUsd), yearlyMicroUsd: Number(p.seatYearlyPriceMicroUsd) }))}
-                currentPlan={account.plan?.id ?? ""}
-                currentCycle={account.cycle}
-                currentSeats={account.seatsPurchased}
-              />
-            </Panel>
-          )}
-          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10">
-            {await usageSection(org, account)}
-            {await seatsSection(org)}
-          </div>
+        <div className="flex max-w-5xl flex-col gap-10">
+          <Sect title="Current plan" id="current-plan-title">
+            <div data-testid="current-plan"><Kv rows={(planFacts.facts ?? []).map((fact) => fact ? [fact.label, fact.value] : null)} /></div>
+            {account.billingDisabled ? <Quiet className="mt-3"><State shape="closed">{disabled}</State></Quiet> : null}
+            {pendingChange ? <p className="mt-3 text-base text-ink-2" data-testid="pending-change"><State shape="waiting">{pendingChange}</State></p> : null}
+          </Sect>
+          {canChange ? (
+            <Sect title="Change plan" id="change-plan">
+              <ChangePlan org={org} plans={planOptions} currentPlan={account.plan?.id ?? ""} currentCycle={account.cycle} currentSeats={account.seatsPurchased} />
+            </Sect>
+          ) : null}
+          <Sect title="Usage this cycle" id="usage">
+            {usage.error ? <Quiet><State shape="failed">{usage.error}</State></Quiet> : <>
+              {usageLines.length ? (
+                <Rows label="Metered usage since the cycle started, by product" testId="usage-table" className="border-t-0">
+                  {usageLines.map((line) => <Row key={line.id} meta={<span className="num">{line.quantity}</span>} action={<span className="num text-base">{line.charged} charged</span>}>{line.name}</Row>)}
+                </Rows>
+              ) : <Quiet>{noUsage}</Quiet>}
+              {totalCharge ? <p className="num mt-3 text-base font-medium">{totalCharge}</p> : null}
+              {usageNote ? <Quiet className="mt-1">{usageNote}</Quiet> : null}
+            </>}
+          </Sect>
+          <Sect title="Seats" id="seats">
+            {seats.error ? <Quiet><State shape="failed">{seats.error}</State></Quiet> : <>
+              {seats.data ? <Quiet className="num">{seats.data.totalConsumed} in use</Quiet> : null}
+              {seatLines.length ? (
+                <Rows testId="seats" className="mt-3">
+                  {seatLines.map((seat) => {
+                    const activity = seat.activeAt && <>Last active <time dateTime={seat.activeAt}>{absoluteTime(seat.activeAt)}</time></>;
+                    return <Row key={seat.id} meta={(seat.outside || activity) && <>
+                      {seat.outside ? <State shape="open">Outside collaborator</State> : null}
+                      {seat.outside && activity ? <Sep /> : null}
+                      {activity}
+                    </>}>{seat.name}</Row>;
+                  })}
+                </Rows>
+              ) : <Quiet>{noSeats}</Quiet>}
+            </>}
+          </Sect>
         </div>
       </>
     );
   });
-}
-
-function PlanPanel({ account }: { account: AccountPlan }) {
-  const plan = account.plan;
-  return (
-    <Panel title="Current plan" id="current-plan">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-3 text-base sm:grid-cols-[auto_1fr_auto_1fr]" data-testid="current-plan">
-        <dt className="text-ink-3">Plan</dt>
-        <dd className="font-medium">{plan?.name ?? "None"}</dd>
-        <dt className="text-ink-3">Billing cycle</dt>
-        <dd>{account.cycle === "BILLING_CYCLE_YEARLY" ? "Yearly" : account.cycle === "BILLING_CYCLE_MONTHLY" ? "Monthly" : "Not set"}</dd>
-        <dt className="text-ink-3">Seats</dt>
-        <dd className="num">
-          {account.seatsConsumed} in use of {account.seatsPurchased} purchased
-        </dd>
-        <dt className="text-ink-3">Next bill</dt>
-        <dd>{account.nextBillingAt ? <Time iso={account.nextBillingAt} /> : "None scheduled"}</dd>
-      </dl>
-      {account.billingDisabled ? <p className="border-t border-line py-3 text-base text-ink-2">Billing is off for this account: nothing is charged.</p> : null}
-      {account.pendingPlanId ? (
-        <p className="border-t border-line py-3 text-base text-ink-2" data-testid="pending-change">
-          At the end of this cycle the account moves to <span className="font-medium text-ink">{account.pendingPlanId}</span> with {plural(account.pendingSeats, "seat")}.
-        </p>
-      ) : null}
-    </Panel>
-  );
-}
-
-async function usageSection(org: string, account: AccountPlan) {
-  return loadSection(
-    "Usage",
-    async () => {
-      const req = { org, startAt: account.cycleStartedAt, endAt: account.nextBillingAt, groupBy: ["BILLING_USAGE_GROUPING_PRODUCT" as const] };
-      return { req, res: await (await serverClient()).billing.queryUsage(req) };
-    },
-    ({ res }) => {
-      const rows = res.lineItems.filter((l) => l.product !== "BILLING_PRODUCT_SEATS");
-      const max = Math.max(1, ...rows.map((l) => Number(l.netMicroUsd)));
-      return (
-        <Panel title="Usage this cycle" id="usage">
-          {rows.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-base" data-testid="usage-table">
-                <caption className="sr-only">Metered usage since the cycle started, by product</caption>
-                <thead>
-                  <tr className="border-b border-line text-left text-sm text-ink-3">
-                    <th scope="col" className="py-3 font-medium">
-                      Product
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right font-medium">
-                      Used
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right font-medium">
-                      Charged
-                    </th>
-                    <th scope="col" className="w-24 py-3 font-medium">
-                      <span className="sr-only">Share of the charge</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {rows.map((l) => (
-                    <tr key={l.product + l.sku + l.date}>
-                      <th scope="row" className="py-3 text-left font-normal">
-                        {PRODUCT_LABEL[l.product] ?? l.product}
-                      </th>
-                      <td className="num px-2 py-2 text-right text-ink-2">
-                        {num(l.quantity)} {l.unit}
-                      </td>
-                      <td className="num px-2 py-2 text-right">{usd(l.netMicroUsd)}</td>
-                      <td className="py-3">
-                        <span className="block h-1.5 rounded-full bg-sunken" aria-hidden="true">
-                          <span className="block h-full rounded-full bg-ink-3" style={{ width: Math.max(2, Math.round((Number(l.netMicroUsd) / max) * 100)) + "%" }} />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-line">
-                    <th scope="row" className="py-3 text-left font-medium">
-                      Total
-                    </th>
-                    <td />
-                    <td className="num px-2 py-2 text-right font-medium">{usd(res.totalNetMicroUsd)}</td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          ) : (
-            <p className=" py-8 text-center text-base text-ink-3">No usage has been metered this cycle.</p>
-          )}
-          {res.dataCompleteUntil ? (
-            <p className="border-t border-line py-3 text-sm text-ink-3">
-              Complete until <Time iso={res.dataCompleteUntil} />; later usage may still arrive.
-            </p>
-          ) : null}
-        </Panel>
-      );
-    },
-  );
-}
-
-async function seatsSection(org: string) {
-  return loadSection(
-    "Seats",
-    async () => ({ req: { org }, res: await (await serverClient()).billing.listSeats({ org }) }),
-    ({ res }) => (
-      <Panel
-        title="Seats"
-        id="seats"
-        actions={<span className="num text-base text-ink-3">{res.totalConsumed} in use</span>}
-      >
-        {res.seats.length ? (
-          <ul className="divide-y divide-line" data-testid="seats">
-            {res.seats.map((s) => (
-              <li key={s.principal?.id ?? s.org} className="flex min-h-11 items-center gap-2.5 py-3 text-base">
-                <span className="min-w-0 flex-1">
-                  <PrincipalName principal={s.principal} />
-                </span>
-                {s.outsideCollaborator ? <Badge tone="outline">outside collaborator</Badge> : null}
-                {s.lastActivityAt ? <Time iso={s.lastActivityAt} className="num shrink-0 text-sm text-ink-3" /> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className=" py-8 text-center text-base text-ink-3">No seats are in use.</p>
-        )}
-      </Panel>
-    ),
-  );
 }

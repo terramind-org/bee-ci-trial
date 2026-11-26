@@ -620,7 +620,7 @@ export class BriefsWorld {
       ],
       asks: [{ question: "Sign out other devices when a role changes?", options: ["Only this session", "All sessions of that person"] }],
       risks: [{ text: "People with several tabs open are signed out of the old ones.", mitigation: "Only a role change triggers it; ordinary requests keep the session." }],
-      rollback: "Revert this change request; sessions keep their ids as before.",
+      rollback: "Revert this pull request; sessions keep their ids as before.",
       tryItUrl: "https://preview.acme.example/api/pr-rotate",
       writtenForRevision: 3,
       author: s.p("triage"),
@@ -643,7 +643,7 @@ export class BriefsWorld {
       3,
       ago(100),
       "triage",
-      { kind: "EVIDENCE_KIND_SCREENSHOT", title: "The page after the change", caption: "The change request page for this change, captured at 1440 by 900.", hero: true, order: 0 },
+      { kind: "EVIDENCE_KIND_SCREENSHOT", title: "The page after the change", caption: "The pull request page for this change, captured at 1440 by 900.", hero: true, order: 0 },
       [{ role: MAIN, ...shot("inbox-change"), alt: MEDIA_ALT["inbox-change"] }],
     );
     put(
@@ -726,7 +726,7 @@ export class BriefsWorld {
       ],
       asks: [{ question: "Show the device name or only \"This device\" on the current row?", options: ["Device name", "Only \"This device\""] }],
       risks: [{ text: "People who keep several browsers signed in can now sign them out by accident.", mitigation: "Signing out asks for no confirmation, but it only ends that one session." }],
-      rollback: "Revert this change request; the list goes back to plain rows.",
+      rollback: "Revert this pull request; the list goes back to plain rows.",
       tryItUrl: "https://preview.acme.example/web/settings/sessions",
       writtenForRevision: 2,
       author: s.p("triage"),

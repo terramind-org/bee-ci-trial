@@ -11,7 +11,7 @@ process.env.E2E_ADAPTER = "fixture";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: /(public-browse|feed|adopt)\.spec\.ts$/,
+  testMatch: /(public-browse|feed|adopt|bees|safety)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   timeout: 180_000,

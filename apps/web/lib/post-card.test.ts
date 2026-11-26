@@ -5,8 +5,9 @@ import { createClient } from "@/lib/api/client";
 import { FixtureStore, fixtureRpc } from "./api/fixture";
 import type { Post, PostMedia, Principal } from "@/lib/api/types";
 import { followerCount, FOLLOWER_COUNT_CAP } from "@/app/(repo)/[owner]/[repo]/follow";
-import { PostCard } from "@/components/post-card";
-import { describePost, mediaLayout, postTitle, runtimeName, tokenize, viaLine } from "@/components/post-text";
+import { renderMarkdown } from "@/components/markdown";
+import { PostCard } from "@/components/posts/post-card";
+import { describePost, mediaLayout, postTitle, runtimeName, tokenize, viaLine } from "@/components/posts/post-text";
 
 const human: Principal = { id: "p_mara", kind: "PRINCIPAL_KIND_HUMAN", display: "mara", ownerId: "", runtime: "", externalIds: [] };
 const agent: Principal = { id: "p_kit", kind: "PRINCIPAL_KIND_AGENT", display: "kit", ownerId: "p_mara", runtime: "claude-code", externalIds: [] };
@@ -96,13 +97,21 @@ describe("post card", () => {
   it("names the merged change and offers Like and Repost with counts and pressed state", () => {
     const html = render(post());
     expect(html).toContain("Merged");
-    expect(html).toContain("<em>Add the tool registry</em>");
-    expect(html).toContain("<span class=\"num\"> · #31</span>");
+    expect(html).toContain("#31 Add the tool registry");
+    expect(html).toContain('data-state="merged"');
+    expect(html).toContain(">1 pull request<");
     expect(html).toContain('href="/lattice/engine/changes/cr1"');
     expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>.*?Like<\/span><span[^>]*>12</);
     expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>.*?Repost<\/span><span[^>]*>3</);
-    expect(html).toContain('aria-label="5 comments on the change request"');
-    expect(html).toContain('aria-label="More actions for this post"');
+    expect(html).toContain('aria-label="5 comments on the pull request"');
+    expect(html).toContain(">Adopt in my repository<");
+    expect(html).toContain(">Share link<");
+  });
+
+  it("renders a loose table line and starts nested Markdown at the next heading level", () => {
+    expect(renderMarkdown("## An article\n\n| this is ordinary text", "lattice/engine", undefined, 1)).toBe(
+      "<h2>An article</h2>\n<p>| this is ordinary text</p>",
+    );
   });
 
   it("sends a signed-out reader to sign in instead of liking", () => {

@@ -4,27 +4,31 @@
  */
 import { AgentService } from "../../gen/bee/v1/agents_pb";
 import { AuditService } from "../../gen/bee/v1/audit_pb";
+import type { RepoRefJson } from "../../gen/bee/v1/common_pb";
+import { DeploymentService } from "../../gen/bee/v1/deployments_pb";
 import { IssueService } from "../../gen/bee/v1/issues_pb";
 import { PolicyService } from "../../gen/bee/v1/policy_pb";
 import { ProjectService, type ProjectItemJson } from "../../gen/bee/v1/projects_pb";
 import { ReleaseService } from "../../gen/bee/v1/releases_pb";
 import { SecurityService } from "../../gen/bee/v1/security_pb";
-import { WorkflowService } from "../../gen/bee/v1/workflows_pb";
+import { WorkflowService, type WorkflowJson } from "../../gen/bee/v1/workflows_pb";
 import { bytesToBase64, pathBytes } from "../ids";
 import { runStatus } from "../ops/work";
 import { BeeError } from "../transport";
 import type * as T from "../types";
 import { alertNumber, auditEntry, codeAlert, dependencyAlert, issueJson, logBytes, releaseJson, secretAlert, secretParts, workflowJob, workflowRun } from "./convert";
-import { describeRules, parsePolicy } from "./policy";
+import { describeRules, normalizedPolicy, parsePolicy, POLICY_PATH } from "./policy";
 import { defineService, type Ctx, type ServiceDef } from "./router";
 import { sessionsFor } from "./briefs";
+import { agentBudgetImpl } from "./agent-budgets";
+import { agentRunImpl } from "./agent-runs";
 import { feedTriggerImpl } from "./posts";
 import { ulid } from "./seed";
+import { instructionImpl } from "./settings";
 import type { FixtureStore, IssueRow } from "./store";
 import { invalid, page, waitLoop } from "./util";
 
 const WEEK = 7 * 86_400_000;
-const POLICY_PATH = ".bee/policy.toml";
 
 // ---------------------------------------------------------------- agents
 
@@ -38,7 +42,10 @@ function commitsBy(s: FixtureStore, h: string) {
 }
 
 const agents = defineService(AgentService, {
+  ...instructionImpl,
   ...feedTriggerImpl,
+  ...agentBudgetImpl,
+  ...agentRunImpl,
   getSessionsForChange: (s, req) => sessionsFor(s, req as Parameters<typeof sessionsFor>[1]),
   // The fixture always reports a 7-day window ending at its own clock.
   listAgentPrincipals: (s, req) => {
@@ -109,7 +116,64 @@ function runOf(s: FixtureStore, id: string | undefined): T.Run {
   return run;
 }
 
+// The fixture repository declares one workflow, in its checked-in demo tree.
+const CI_PATH = ".github/workflows/ci.yml";
+
+function fixtureWorkflow(s: FixtureStore, ref: RepoRefJson | undefined): WorkflowJson | undefined {
+  const repo = s.repo(ref);
+  const tip = repo.refs.get(repo.repo.defaultRef)?.target;
+  if (!tip?.files.has(CI_PATH)) return undefined;
+  return {
+    id: "wf_ci",
+    repo: { id: repo.repo.id },
+    name: "ci",
+    path: CI_PATH,
+    state: s.disabledCi.has(repo.repo.id) ? "WORKFLOW_STATE_DISABLED_MANUALLY" : "WORKFLOW_STATE_ACTIVE",
+  };
+}
+
+function namedWorkflow(s: FixtureStore, repo: RepoRefJson | undefined, name: string | undefined): WorkflowJson {
+  const workflow = fixtureWorkflow(s, repo);
+  if (!workflow || ![workflow.id, workflow.path, "ci.yml"].includes(name)) {
+    throw new BeeError("not_found", { reason: "NOT_FOUND", message: "Workflow not found." });
+  }
+  return workflow;
+}
+
 const workflows = defineService(WorkflowService, {
+  listWorkflows: (s, req) => {
+    const workflow = fixtureWorkflow(s, req.repo);
+    const pg = page(workflow ? [workflow] : [], req.page);
+    return { workflows: pg.items, page: { nextPageToken: pg.next } };
+  },
+  enableWorkflow: (s, req) => {
+    const workflow = namedWorkflow(s, req.repo, req.workflow);
+    s.disabledCi.delete(s.repo(req.repo).repo.id);
+    return { ...workflow, state: "WORKFLOW_STATE_ACTIVE" };
+  },
+  disableWorkflow: (s, req) => {
+    const workflow = namedWorkflow(s, req.repo, req.workflow);
+    s.disabledCi.add(s.repo(req.repo).repo.id);
+    return { ...workflow, state: "WORKFLOW_STATE_DISABLED_MANUALLY" };
+  },
+  getWorkflowBadge: (s, req) => {
+    const workflow = namedWorkflow(s, req.repo, req.workflow);
+    const repo = s.repo(req.repo);
+    const last = s.runs.filter((r) => r.repoId === repo.repo.id && r.ref === (req.branch || repo.repo.defaultRef) && r.finishedAt)
+      .sort((a, b) => Date.parse(b.finishedAt!) - Date.parse(a.finishedAt!))[0];
+    const message = last?.status === "passed" ? "passing" : last?.status === "failed" ? "failing" : last?.status === "cancelled" ? "cancelled" : "no status";
+    return {
+      label: workflow.name,
+      message,
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20"><rect width="120" height="20" fill="#333"/><text x="8" y="14" fill="white" font-size="12">ci: ' + message + '</text></svg>',
+    };
+  },
+  cancelWorkflowRun: (s, req, ctx) => {
+    const run = runOf(s, req.runId);
+    if (run.repoId !== s.repo(req.repo).repo.id) throw new BeeError("not_found", { reason: "RUN_NOT_FOUND", message: "Run not found." });
+    s.cancelRun(run, s.caller(ctx.token));
+    return {};
+  },
   listWorkflowRuns: (s, req) => {
     s.refreshLive();
     const repo = s.repo(req.repo);
@@ -159,6 +223,23 @@ const workflows = defineService(WorkflowService, {
       }
     },
   }),
+});
+
+// A deployment of the first main commit in the fixture API repository.
+const deployments = defineService(DeploymentService, {
+  listDeployments: (s, req) => {
+    const repo = s.repo(req.repo);
+    const commit = repo.name === "api" ? repo.main[0] : undefined;
+    const entries = commit ? [{
+      id: ulid(commit.time, "deployment:api:staging"),
+      environment: "staging",
+      ref: "main",
+      changeset: commit.id,
+      state: "DEPLOYMENT_STATE_SUCCESS" as const,
+    }] : [];
+    const pg = page(entries, req.page);
+    return { deployments: pg.items, page: { nextPageToken: pg.next } };
+  },
 });
 
 // ---------------------------------------------------------------- issues
@@ -537,14 +618,14 @@ function replayPolicy(s: FixtureStore, ref: { id?: string; fullName?: string } |
 const policy = defineService(PolicyService, {
   getEffectivePolicy: (s, req) => {
     const repo = s.repo(req.repo);
-    const tip = s.tip(repo);
-    const source = tip.files.get(POLICY_PATH) ?? "";
+    const tip = repo.refs.get(repo.repo.defaultRef)?.target;
+    const source = tip?.files.get(POLICY_PATH) ?? "";
     return {
       repo: { fullName: repo.repo.fullName },
       ref: repo.repo.defaultRef,
       epoch: s.policyEpoch(source),
-      normalizedJson: JSON.stringify(parsePolicy(source).rules),
-      sources: source ? [{ kind: "POLICY_SOURCE_KIND_REPO_FILE" as const, path: POLICY_PATH, changeset: tip.id }] : [],
+      normalizedJson: normalizedPolicy(parsePolicy(source).rules),
+      sources: source && tip ? [{ kind: "POLICY_SOURCE_KIND_REPO_FILE" as const, path: POLICY_PATH, changeset: tip.id }] : [],
     };
   },
   validatePolicy: (s, req) => {
@@ -554,7 +635,7 @@ const policy = defineService(PolicyService, {
     return {
       valid: parsed.errors.length === 0,
       issues: parsed.errors.map((e) => ({ severity: "POLICY_ISSUE_SEVERITY_ERROR" as const, file: POLICY_PATH, line: e.line, message: e.message })),
-      normalizedJson: parsed.errors.length ? "" : JSON.stringify(parsed.rules),
+      normalizedJson: parsed.errors.length ? "" : normalizedPolicy(parsed.rules),
       resultingEpoch: parsed.errors.length ? "" : s.policyEpoch(toml),
       ruleSummaries: replay ? describeRules(parsed.rules) : [],
       replay: replay ?? [],
@@ -590,4 +671,4 @@ const audit = defineService(AuditService, {
   },
 });
 
-export const VIEW_SERVICES: ServiceDef[] = [agents, workflows, issues, projects, releases, security, policy, audit];
+export const VIEW_SERVICES: ServiceDef[] = [agents, workflows, deployments, issues, projects, releases, security, policy, audit];

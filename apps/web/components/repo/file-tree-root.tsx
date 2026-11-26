@@ -7,10 +7,10 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Time } from "@/components/time";
 import { pathText } from "@/lib/api/ids";
-import type { Lease, TreeEntry } from "@/lib/api/types";
+import type { Lease, RepoWorkItem, TreeEntry } from "@/lib/api/types";
 import { bytes } from "@/lib/format";
 import { repoHref } from "@/lib/routes";
-import { Presence, editingSentence, holders, leaseTouches } from "./presence";
+import { Presence, leaseTouches } from "./presence";
 
 /** Directories before files, then by name, so the order is the same on every load. */
 export function orderTree(entries: TreeEntry[]): TreeEntry[] {
@@ -31,6 +31,7 @@ export function FileTreeRoot({
   entries,
   lasts = {},
   leases = [],
+  work = [],
   hrefFor,
   limit = ROOT_ROWS,
   empty = "The root of this repository is empty.",
@@ -40,6 +41,7 @@ export function FileTreeRoot({
   entries: TreeEntry[];
   lasts?: Record<string, LastChange | undefined>;
   leases?: Lease[];
+  work?: RepoWorkItem[];
   /** Where a path links; the home links straight into the code browser. */
   hrefFor?: (path: string) => string;
   limit?: number;
@@ -70,7 +72,7 @@ export function FileTreeRoot({
                 {last?.title}
               </span>
               <span className="inline-flex items-center justify-end gap-4 text-sm whitespace-nowrap text-ink-3">
-                <Presence people={holders(editing)} sentence={editingSentence(editing, name)} size={28} />
+                <Presence repo={fullName} work={work} leases={editing} under={name} />
                 {e.restricted ? <span title="You cannot read this path">restricted</span> : !dir ? <span className="num">{bytes(e.size)}</span> : null}
                 {last?.at ? <Time iso={last.at} className="hidden w-20 text-right sm:inline" /> : null}
               </span>
@@ -79,7 +81,7 @@ export function FileTreeRoot({
         })}
       </ul>
       {ordered.length > limit ? (
-        <Link href={repoHref(fullName, "code")} className="mt-1 inline-flex min-h-9 items-center text-base text-accent-ink hover:underline">
+        <Link href={repoHref(fullName, "code")} className="link mt-2 inline-flex min-h-6 items-center text-base">
           Show all {ordered.length} entries
         </Link>
       ) : null}

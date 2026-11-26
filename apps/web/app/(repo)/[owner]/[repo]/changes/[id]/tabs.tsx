@@ -14,7 +14,7 @@ export function ChangeTabs({ repo, id, counts }: { repo: string; id: string; cou
   const count = { brief: undefined, code: counts.files, checks: counts.checks, agents: undefined };
   return (
     <TabLinks
-      label="Change request"
+      label="Pull request"
       items={CHANGE_TABS.map((t) => ({ href: changeHref(repo, id, t.tab), label: t.label, active: t.tab === active, count: count[t.tab] }))}
     />
   );

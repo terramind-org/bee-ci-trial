@@ -111,6 +111,7 @@ function matchRepo(s: FixtureStore, r: RepoState, q: Qualifier): boolean {
         case "archived":
           return r.archived;
         case "fork":
+          return !!view.forkParentId;
         case "template":
         case "mirror":
         case "sponsorable":

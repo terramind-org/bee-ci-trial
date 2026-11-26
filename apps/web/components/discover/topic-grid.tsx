@@ -9,7 +9,7 @@ export function TopicGrid({ topics, className }: { topics: Topic[]; className?: 
     <ul className={cx("grid gap-x-10 gap-y-6 sm:grid-cols-2", className)} aria-label="Topics">
       {topics.map((t) => (
         <li key={t.name} className="flex min-w-0 flex-col">
-          <Link href={"/topics/" + encodeURIComponent(t.name)} className="min-w-0 truncate text-lg font-medium text-ink hover:underline" data-nav-item>
+          <Link href={"/topics/" + encodeURIComponent(t.name)} className="link inline-flex min-h-6 min-w-0 items-center break-all text-lg font-medium text-ink" data-nav-item>
             {t.displayName || t.name}
           </Link>
           {t.shortDescription ? <p className="line-clamp-2 text-base text-ink-2">{t.shortDescription}</p> : null}

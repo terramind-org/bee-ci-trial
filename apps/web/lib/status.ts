@@ -1,7 +1,7 @@
 /**
- * The status sentence (docs/spec/web-ui.md §3): one line that says where a change request stands
- * and why, e.g. "Ready to land: 2 approvals, all 14 checks pass". The Brief tab shows it under the
- * outcome and the review queue shows it on every row. A pure function of what the page loaded.
+ * The status sentence (docs/spec/web-ui.md §3): one line that says where a pull request stands
+ * and why, e.g. "Ready to merge: 2 approvals, all 14 checks pass". The Brief tab shows it under the
+ * outcome and the pull-request list shows it on every row. A pure function of what the page loaded.
  */
 import type { ChangeRequest, CheckRun, LandingEvaluation, QueueEntry, Review } from "./api/types";
 import { checksClause, countWord, listing, tallyChecks } from "./checkwords";
@@ -12,7 +12,7 @@ export type StatusTone = "ok" | "warn" | "bad" | "neutral" | "accent";
 export interface Status {
   kind: StatusKind;
   tone: StatusTone;
-  /** "Ready to land". */
+  /** "Ready to merge". */
   headline: string;
   /** "2 approvals, all 14 checks pass"; may be empty. */
   detail: string;
@@ -126,7 +126,7 @@ export function statusOf({ change, landing, checks, reviews, queue }: StatusInpu
     return make("checking", "neutral", "Checks running", [waiting]);
   }
 
-  if (landing?.allowed) return make("ready", "ok", "Ready to land", [approvalText, checksText]);
+  if (landing?.allowed) return make("ready", "ok", "Ready to merge", [approvalText, checksText]);
 
   const approvalsMissing = missing.filter((m) => parseApproval(m));
   const rules = missing.filter((m) => !parseApproval(m) && !m.startsWith("check:"));

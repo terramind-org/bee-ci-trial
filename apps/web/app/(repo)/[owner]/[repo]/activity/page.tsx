@@ -96,7 +96,7 @@ export default async function ActivityPage({ params, searchParams }: { params: P
             <div data-key="queue">
               <Panel title="Merge queue · main" id="queue-title">
                 {queue.entries.length === 0 ? (
-                  <p className="text-base text-ink-2">The queue is empty. Changes line up here once policy allows them.</p>
+                  <p className="text-base text-ink-2">The queue is empty. Pull requests line up here once the rules allow them.</p>
                 ) : (
                   <FlipList as="ol" className="flex flex-col gap-3">
                     {queue.entries.map((q) => (

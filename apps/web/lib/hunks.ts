@@ -18,7 +18,7 @@ export interface PickedHunk {
   hunk: DiffHunk;
   added: number;
   removed: number;
-  /** Why it was picked, in words: "Touches a path the policy marks sensitive." */
+  /** Why it was picked, in words: "Touches a path the rules mark sensitive." */
   reason: string;
   /** The brief highlight that names this path, when one does. */
   highlight?: string;
@@ -57,7 +57,7 @@ export function worthALook(items: DiffItem[], { max = 3, maxLines = 40, highligh
         hunk: cut ? { ...hunk, lines: hunk.lines.slice(0, maxLines) } : hunk,
         added,
         removed,
-        reason: cls === "sensitive" ? "Touches a path the policy marks sensitive." : "Changes how the program behaves.",
+        reason: cls === "sensitive" ? "Touches a path the rules mark sensitive." : "Changes how the program behaves.",
         highlight,
         truncated: cut,
         size: added + removed,

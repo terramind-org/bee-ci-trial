@@ -49,6 +49,8 @@ pub const DEFAULT_SERVICES: &[&str] = &[
     "EventService",
     "ChangeService",
     "IssueService",
+    "SwarmService",
+    "SafetyService",
 ];
 
 /// One case of the suite: a summary on success, the failures otherwise.

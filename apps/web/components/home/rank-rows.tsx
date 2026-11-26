@@ -7,7 +7,7 @@ import { ownerHref } from "@/lib/routes";
 import { Panel } from "@/components/ui";
 
 export function RankRows({ entries, unit }: { entries: LeaderboardEntry[]; unit: string }) {
-  if (!entries.length) return <p className="px-3.5 py-6 text-center text-sm text-ink-3">Nothing landed in this window yet.</p>;
+  if (!entries.length) return <p className="px-3.5 py-6 text-center text-sm text-ink-3">Nothing merged in this window yet.</p>;
   return (
     <ol className="divide-y divide-line">
       {entries.map((e, i) => {
@@ -44,7 +44,7 @@ export function TopAgents({ entries, limit }: { entries: LeaderboardEntry[]; lim
         </Link>
       }
     >
-      <RankRows entries={entries.slice(0, limit)} unit="lands" />
+      <RankRows entries={entries.slice(0, limit)} unit="merges" />
     </Panel>
   );
 }

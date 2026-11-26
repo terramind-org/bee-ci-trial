@@ -66,6 +66,19 @@ export function runSummary(run: Run, now?: number): RunSummary {
       const warn = failed.length ? names(failed) + " already failed." : "";
       return { status: run.status, tone: failed.length ? "bad" : "neutral", sentence: "Running" + (t ? " for " + t : "") + ": " + head, detail: [warn, annText].filter(Boolean).join(" ") };
     }
+    // Keep approval holds distinct from jobs queued for a runner on the CI detail page.
+    case "waiting":
+      return { status: run.status, tone: "neutral", sentence: "Waiting on a person.", detail: annText };
+    case "protection":
+      return { status: run.status, tone: "neutral", sentence: "Waiting for deployment protection.", detail: annText };
+    case "skipped":
+      return { status: run.status, tone: "neutral", sentence: "Skipped.", detail: annText };
+    case "neutral":
+      return { status: run.status, tone: "neutral", sentence: "Completed with a neutral result.", detail: annText };
+    case "stale":
+      return { status: run.status, tone: "neutral", sentence: "Marked stale.", detail: annText };
+    case "completed":
+      return { status: run.status, tone: "neutral", sentence: "Completed without a reported result.", detail: annText };
     default:
       return { status: run.status, tone: "neutral", sentence: "Queued: " + (total ? jobs(total) + " waiting for a runner" : "waiting for a runner"), detail: "" };
   }

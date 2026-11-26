@@ -1,48 +1,48 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageFacts } from "@/components/bee/page-facts";
 import { BrandMark } from "@/components/domain";
 import { SignIn } from "@/components/sign-in";
 import { FIXTURE_REPO } from "@/lib/api/config";
 import { adapterKind, apiUrl, edition } from "@/lib/api/server";
 import { requestOrigin } from "@/lib/prompt-endpoint";
 import { repoHref } from "@/lib/routes";
+import { toolFor } from "@/lib/tools";
+import { requestMode } from "../request-mode";
 
 export const metadata: Metadata = { title: "Sign in" };
-// The adapter (fixture or http) is a runtime choice, so this page cannot be prerendered.
 export const dynamic = "force-dynamic";
 
 export default async function SignInPage() {
   const fixture = adapterKind() === "fixture";
-  const cloud = (await edition()) === "cloud";
-  // A self-hosted instance is named by the host people reach it on.
-  const instance = new URL(await requestOrigin()).host;
+  const [ed, origin, { mode }] = await Promise.all([edition(), requestOrigin(), requestMode()]);
+  const instance = new URL(origin).host;
+  const title = ed === "cloud" ? "Create your account, or sign in" : "Sign in to " + instance;
   return (
-    <main id="main" className="mx-auto grid min-h-dvh max-w-5xl items-center gap-10 px-5 py-10 md:grid-cols-[1fr_420px]">
-      <div>
-        <div className="mb-6">
-          <BrandMark size={40} />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{cloud ? "Create your account, or sign in" : "Sign in to " + instance}</h1>
-        <p className="mt-4 max-w-md text-md text-ink-2">
-          {cloud ? "Beehive creates your account the first time you sign in, then takes you to set up your first repository. " : ""}
-          Thousands of agents land on one branch without colliding. Every change says who wrote it, on whose behalf, with which model, and what policy allowed it.
+    <main id="main" className="mx-auto min-h-dvh w-full max-w-[540px] px-5 pt-12 pb-16 sm:px-8 sm:pt-[10vh]">
+      <Link href="/" className="mb-8 inline-flex min-h-6 items-center gap-2 text-base font-medium text-ink">
+        <BrandMark size={16} />
+        Beehive
+      </Link>
+      {mode === "bee" ? (
+        <PageFacts page="sign-in" title={title}
+          tools={[toolFor("AuthService/Login", "Sign in with GitHub"), toolFor("AuthService/WhoAmI", "Check a token and read its identity")]}
+          groups={[{ title: "instance", facts: [{ label: "host", value: instance }, { label: "edition", value: ed }] }]} />
+      ) : (
+        <h1 className="display mb-8 break-words text-ink">{title}</h1>
+      )}
+      <div className={mode === "bee" ? "mt-8" : undefined}><SignIn edition={ed} /></div>
+      {fixture ? (
+        <p className="rule mt-8 pt-4 text-sm text-ink-2">
+          This is a demo. Enter a demo token of at least eight characters to sign in as Mara Okafor, or{" "}
+          <Link href={repoHref(FIXTURE_REPO, "activity")} className="link inline-flex min-h-6 items-center">open the demo repository</Link>.
         </p>
-        {fixture ? (
-          <p className="rule mt-8 max-w-md pt-4 text-base text-ink-2">
-            This server is running on demo data. Any token of eight or more characters signs you in as Mara Okafor, or{" "}
-            <Link href={repoHref(FIXTURE_REPO, "activity")} className="link">
-              skip straight in
-            </Link>
-            .
-          </p>
-        ) : (
-          <p className="rule mt-8 max-w-md pt-4 text-base text-ink-2">
-            Running <code className="mono">bee-server --dev</code>? Paste the root token it prints on start (also in <code className="mono">&lt;data dir&gt;/credentials</code>). Server:{" "}
-            <code className="mono">{apiUrl()}</code>
-          </p>
-        )}
-      </div>
-      <SignIn edition={cloud ? "cloud" : "enterprise"} />
+      ) : (
+        <p className="rule mt-8 pt-4 text-sm text-ink-2">
+          Running <code>bee-server --dev</code>? Use the root token it prints on start. Server:{" "}
+          <code className="break-all">{apiUrl()}</code>
+        </p>
+      )}
     </main>
   );
 }

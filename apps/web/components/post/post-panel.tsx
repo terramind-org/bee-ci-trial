@@ -20,16 +20,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { browserClient } from "@/lib/api/browser";
 import type { ChangeRequest, Post, Principal } from "@/lib/api/types";
 import type { Op } from "@/lib/copyas";
 import { panelMode, stateLine, withRepo, type PanelViewer, type StateTone } from "@/lib/post-compose";
 import { CopyAsDialog } from "../copy-as";
 import { Icon } from "../icons";
+import { ConfirmButton } from "../kit/confirm";
+import { Modal } from "../kit/dialog";
 import { Menu, MenuButton, MenuLink } from "../menu";
-import { PostCard } from "../post-card";
-import { postHref } from "../post-text";
+import { PostCard } from "@/components/posts/post-card";
+import { postHref } from "@/components/posts/post-text";
 import { useToast } from "../toast";
 import { Button, Textarea, buttonClass, cx } from "../ui";
 import { PostComposer } from "./post-composer";
@@ -115,8 +116,12 @@ function ApproveButton({ repo, post, onDone }: { repo: string; post: Post; onDon
   const toast = useToast();
   const landed = post.state === "POST_STATE_PENDING_APPROVAL";
   return (
-    <Button
-      variant="primary"
+    <ConfirmButton
+      agentConfirm={landed ? "Approves this post and publishes it to everyone who follows " + repo : "Approves this post; it publishes to followers of " + repo + " when the pull request merges"}
+      consequence="approving"
+      // While the pull request is open its own decision is the screen's solid button; once it
+      // has merged, approving the post is what is left to do.
+      variant={landed ? "primary" : "secondary"}
       icon="check"
       disabled={pending}
       aria-busy={pending || undefined}
@@ -124,7 +129,7 @@ function ApproveButton({ repo, post, onDone }: { repo: string; post: Post; onDon
         start(async () => {
           try {
             const next = await browserClient().post.approvePost({ repo: { fullName: repo }, postId: post.id });
-            toast.push({ tone: "ok", title: landed ? "Approved and published" : "Approved", detail: landed ? undefined : "It publishes when this change merges." });
+            toast.push({ tone: "ok", title: landed ? "Approved and published" : "Approved", detail: landed ? undefined : "It publishes when this pull request merges." });
             onDone(next);
           } catch (err) {
             const r = refusalOf(err);
@@ -134,9 +139,11 @@ function ApproveButton({ repo, post, onDone }: { repo: string; post: Post; onDon
       }
     >
       Approve post
-    </Button>
+    </ConfirmButton>
   );
 }
+
+const WITHDRAW_SENTENCE = "Withdraws this post from every feed and deletes its media; this cannot be undone";
 
 function WithdrawButton({ repo, post, onDone }: { repo: string; post: Post; onDone: (p: Post) => void }) {
   const [open, setOpen] = useState(false);
@@ -157,31 +164,30 @@ function WithdrawButton({ repo, post, onDone }: { repo: string; post: Post; onDo
       }
     });
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger className={buttonClass("danger")}>Withdraw post</Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 data-[state=open]:animate-enter" />
-        <Dialog.Content className="fixed top-[16vh] left-1/2 z-50 w-[min(520px,calc(100vw-24px))] -translate-x-1/2 rounded-lg border border-line bg-popover p-5 shadow-overlay data-[state=open]:animate-enter">
-          <Dialog.Title className="text-md font-semibold">Withdraw this post?</Dialog.Title>
-          <Dialog.Description className="mt-1 text-base text-ink-2">It leaves every feed and its media is deleted. The link stays, and says the post was withdrawn. This cannot be undone.</Dialog.Description>
-          <label htmlFor="withdraw-reason" className="mt-4 block text-base font-medium">
-            Reason <span className="font-normal text-ink-3">(optional, shown on the link)</span>
-          </label>
-          <Textarea id="withdraw-reason" className="mt-1.5" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-          {error ? (
-            <p role="alert" className="mt-3 text-sm text-bad">
-              <span className="mono">{error.reason}</span> · {error.message}
-            </p>
-          ) : null}
-          <div className="mt-5 flex justify-end gap-2">
-            <Dialog.Close className={buttonClass("ghost")}>Keep it</Dialog.Close>
-            <Button variant="danger" onClick={withdraw} disabled={pending} aria-busy={pending || undefined}>
-              Withdraw
-            </Button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <>
+      <ConfirmButton agentConfirm={WITHDRAW_SENTENCE} consequence="destructive" onClick={() => setOpen(true)}>
+        Withdraw post
+      </ConfirmButton>
+      <Modal open={open} onOpenChange={setOpen} title="Withdraw this post?" description="It leaves every feed and its media is deleted. The link stays, and says the post was withdrawn. This cannot be undone." hideClose className="top-[16vh] w-[min(520px,calc(100vw-24px))]">
+        <label htmlFor="withdraw-reason" className="mt-4 block text-base font-medium">
+          Reason <span className="font-normal text-ink-3">(optional, shown on the link)</span>
+        </label>
+        <Textarea id="withdraw-reason" className="mt-1.5" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+        {error ? (
+          <p role="alert" className="mt-3 text-sm text-bad">
+            <span className="mono">{error.reason}</span> · {error.message}
+          </p>
+        ) : null}
+        <div className="mt-5 flex justify-end gap-2.5">
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Keep it
+          </Button>
+          <ConfirmButton agentConfirm={WITHDRAW_SENTENCE} consequence="destructive" onClick={withdraw} disabled={pending} aria-busy={pending || undefined}>
+            Withdraw
+          </ConfirmButton>
+        </div>
+      </Modal>
+    </>
   );
 }
 

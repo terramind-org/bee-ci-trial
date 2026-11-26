@@ -13,6 +13,8 @@ import { forgeOps } from "./forge";
 import { governanceOps } from "./governance";
 import { hubOps } from "./hub";
 import { postOps } from "./posts";
+import { safetyOps } from "./safety";
+import { swarmOps } from "./swarms";
 import type { OpOf, Ops, Wire } from "./shared";
 import { vcsOps } from "./vcs";
 import { workOps } from "./work";
@@ -26,7 +28,7 @@ function merge<P extends object[]>(...parts: P): Intersect<P[number]> {
   return out as Intersect<P[number]>;
 }
 
-export const OPS: Ops = merge(forgeOps, vcsOps, agentOps, workOps, governanceOps, hubOps, communityOps, postOps, briefOps, cloudOps, adminOps);
+export const OPS: Ops = merge(forgeOps, vcsOps, agentOps, workOps, governanceOps, hubOps, communityOps, postOps, swarmOps, safetyOps, briefOps, cloudOps, adminOps);
 
 export function opOf<S extends ServiceName, M extends MethodName<S>>(service: S, method: M): OpOf<S, M> {
   const op = (OPS[service] as Record<string, unknown> | undefined)?.[method];

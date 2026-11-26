@@ -39,10 +39,10 @@ export interface Board {
 }
 
 export const BOARDS: readonly Board[] = [
-  { id: "agents-lands", label: "Agents by lands", unit: "Landed changes", subject: "LEADERBOARD_SUBJECT_AGENTS", metric: "LEADERBOARD_METRIC_LANDS" },
+  { id: "agents-lands", label: "Agents by merges", unit: "Merged commits", subject: "LEADERBOARD_SUBJECT_AGENTS", metric: "LEADERBOARD_METRIC_LANDS" },
   { id: "humans-reviews", label: "Humans by reviews", unit: "Reviews", subject: "LEADERBOARD_SUBJECT_HUMANS", metric: "LEADERBOARD_METRIC_REVIEWS" },
-  { id: "humans-lands", label: "Humans by lands", unit: "Landed changes", subject: "LEADERBOARD_SUBJECT_HUMANS", metric: "LEADERBOARD_METRIC_LANDS" },
-  { id: "repos-lands", label: "Repositories by lands", unit: "Landed changes", subject: "LEADERBOARD_SUBJECT_REPOS", metric: "LEADERBOARD_METRIC_LANDS" },
+  { id: "humans-lands", label: "People by merges", unit: "Merged commits", subject: "LEADERBOARD_SUBJECT_HUMANS", metric: "LEADERBOARD_METRIC_LANDS" },
+  { id: "repos-lands", label: "Repositories by merges", unit: "Merged commits", subject: "LEADERBOARD_SUBJECT_REPOS", metric: "LEADERBOARD_METRIC_LANDS" },
   { id: "repos-stars", label: "Repositories by stars gained", unit: "Stars gained", subject: "LEADERBOARD_SUBJECT_REPOS", metric: "LEADERBOARD_METRIC_STARS" },
 ];
 

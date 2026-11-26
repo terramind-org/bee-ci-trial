@@ -634,6 +634,7 @@ impl ForgeWiring {
         let queue = Arc::new(Mutex::new(BTreeSet::new()));
         let queue_wake = Arc::new(Notify::new());
         forge.events.add_listener(Arc::new(QueueListener::new(
+            changes.clone(),
             queue.clone(),
             queue_wake.clone(),
         )));
@@ -755,6 +756,8 @@ impl ForgeWiring {
         );
         let api = AgentApi::new(self.agents.clone());
         registry.add(api.agent_server()).add(api.workspace_server());
+        registry.add(bee_forge::swarms::service::SwarmApi::new(self.agents.clone()).server());
+        registry.add(bee_forge::safety::service::SafetyApi::new(self.agents.clone()).server());
         let base = ForgeServices::new(self.forge.clone());
         registry
             .add(base.package_service())
@@ -1372,6 +1375,23 @@ impl ForgeLink {
 
 #[async_trait]
 impl ForgeInputs for ForgeLink {
+    async fn fence_agent_landing(
+        &self,
+        repo: &RepoCtx,
+    ) -> ApiResult<Option<bee_forge::safety::control::LandFence>> {
+        let Some(wiring) = self.get() else {
+            return Ok(None);
+        };
+        bee_forge::safety::control::fence_landing(
+            &wiring.forge.db,
+            &landing::quick_cx(),
+            &repo.org.id.0.to_text(),
+        )
+        .await
+        .map(Some)
+        .map_err(forge_to_api)
+    }
+
     async fn require_landing_queue_entry(
         &self,
         repo: &RepoCtx,
@@ -1380,6 +1400,61 @@ impl ForgeInputs for ForgeLink {
         change_request_id: &str,
     ) -> ApiResult<()> {
         ForgeLink::require_landing_queue_entry(self, repo, ref_name, head, change_request_id).await
+    }
+
+    async fn note_safety_land(
+        &self,
+        caller: &Caller,
+        repo: &RepoCtx,
+        effect: &str,
+        reason: Option<ErrorReason>,
+    ) {
+        let Some(wiring) = self.get() else { return };
+        let cx = landing::caller_cx(caller).with_deadline(landing::quick_cx().deadline);
+        let Some(repo) = wiring.forge_repo(&cx, &repo.id_text()).await else {
+            return;
+        };
+        if let Err(error) = bee_forge::safety::record_landing_attempt(
+            &wiring.forge,
+            &cx,
+            &repo,
+            &caller.token,
+            effect,
+            reason,
+        )
+        .await
+        {
+            logging::log(
+                Level::Warn,
+                "forge",
+                "recording the run's landing attempt failed",
+                &[("reason", error.reason_name().into())],
+            );
+        }
+    }
+
+    async fn note_safety_changeset(&self, caller: &Caller, repo: &RepoCtx, id: &ObjectId) {
+        let Some(wiring) = self.get() else { return };
+        let cx = landing::caller_cx(caller).with_deadline(landing::quick_cx().deadline);
+        let Some(repo) = wiring.forge_repo(&cx, &repo.id_text()).await else {
+            return;
+        };
+        if let Err(error) = bee_forge::safety::record_changeset(
+            &wiring.forge,
+            &cx,
+            &repo,
+            &caller.token,
+            &crate::convert::id_to(id),
+        )
+        .await
+        {
+            logging::log(
+                Level::Warn,
+                "forge",
+                "recording the run's changeset failed",
+                &[("reason", error.reason_name().into())],
+            );
+        }
     }
 
     async fn admin_audit(
@@ -1415,13 +1490,15 @@ impl ForgeInputs for ForgeLink {
 
     async fn landed(
         &self,
+        caller: &Caller,
         repo: &RepoCtx,
         ref_name: &str,
         resp: &v1::LandResponse,
         change_request_id: &str,
     ) {
         if let Some(w) = self.get() {
-            w.landed(repo, ref_name, resp, change_request_id).await;
+            w.landed(caller, repo, ref_name, resp, change_request_id)
+                .await;
         }
     }
 

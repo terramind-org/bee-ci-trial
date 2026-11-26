@@ -8,10 +8,10 @@ export default function Loading() {
         <HeaderSkeleton title="Pricing" meta="Pay per seat, plus usage beyond what a plan includes." />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, i) => (
-            <div key={i} className="h-[520px] animate-pulse rounded-lg border border-line bg-surface" />
+            <div key={i} className="h-[520px] rounded-lg border border-line bg-surface" />
           ))}
         </div>
-        <div className="h-[104px] animate-pulse rounded-lg border border-line bg-surface" />
+        <div className="h-[104px] rounded-lg border border-line bg-surface" />
       </div>
     </Skel>
   );

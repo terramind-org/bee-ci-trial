@@ -19,7 +19,7 @@ const CHECKS = /^(check\.|check_suite\.|run\.|workflow_)/;
 const BOOKKEEPING = (e: Event) => /^(workflow_usage\.|check_suite\.|workflow_job\.(queued|in_progress))/.test(e.kind) || (e.kind === "check.updated" && (e.check?.status === "CHECK_STATUS_QUEUED" || e.check?.status === "CHECK_STATUS_RUNNING"));
 const FILTERS: { id: Filter; label: string; kinds: (e: Event) => boolean }[] = [
   { id: "all", label: "Everything", kinds: (e) => !BOOKKEEPING(e) },
-  { id: "landing", label: "Landing", kinds: (e) => /^(cr\.|merge_queue\.|ref\.updated)/.test(e.kind) },
+  { id: "landing", label: "Merging", kinds: (e) => /^(cr\.|merge_queue\.|ref\.updated)/.test(e.kind) },
   { id: "review", label: "Review", kinds: (e) => /^(review\.|review_thread\.|thread\.|cr_comment\.)/.test(e.kind) },
   { id: "leases", label: "Leases", kinds: (e) => e.kind.startsWith("lease.") },
   { id: "checks", label: "Checks and runs", kinds: (e) => CHECKS.test(e.kind) },
@@ -221,7 +221,7 @@ export function LiveFeed({ repo, directory }: { repo: string; directory: Princip
                       <p className="mb-1 flex items-center gap-2 text-base text-ink-3">
                         <Icon name="changes" size={16} />
                         <Link href={repoHref(linkRepo, "changes/" + g.changeId)} className="font-medium text-ink hover:underline">
-                          {titles.get(g.changeId) ?? "A change request"}
+                          {titles.get(g.changeId) ?? "A pull request"}
                         </Link>
                       </p>
                     ) : null}
@@ -281,7 +281,7 @@ function crLink(id: string, titles: Map<string, string>, repo: string, grouped: 
   if (grouped) return <>it</>;
   return (
     <Link href={repoHref(repo, "changes/" + id)} className="font-medium text-ink hover:underline">
-      {titles.get(id) ?? "a change request"}
+      {titles.get(id) ?? "a pull request"}
     </Link>
   );
 }

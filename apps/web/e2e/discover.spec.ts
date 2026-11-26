@@ -129,7 +129,9 @@ test.describe("leaderboards", () => {
 
   test("a board offers Copy as for its ListLeaderboard request", async ({ page }) => {
     await page.goto("/leaderboards?board=humans-reviews");
-    await page.getByRole("button", { name: "Copy as" }).click();
+    // The redesigned board exposes Copy as through its page menu.
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Copy as CLI, HTTP or MCP" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByLabel("CLI command")).toContainText("leaderboard");
     await dialog.getByRole("tab", { name: "HTTP" }).click();

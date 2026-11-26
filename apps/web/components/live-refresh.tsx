@@ -11,7 +11,7 @@ import { refreshDelay } from "@/lib/presence";
  * the repo; once the retained events have replayed, every event that concerns `ids` (or any event
  * of `kinds` when no ids are given) re-renders the page from the server.
  */
-export function LiveRefresh({ repo, kinds, ids = [] }: { repo: string; kinds: string[]; ids?: string[] }) {
+export function LiveRefresh({ repo, kinds, ids = [], onNewEvent }: { repo: string; kinds: string[]; ids?: string[]; onNewEvent?: (event: Event) => void }) {
   // When this client mounted, less a margin for clock skew between the bee server and here.
   const [since] = useState(() => Date.now() - 5000);
   const router = useRouter();
@@ -31,7 +31,14 @@ export function LiveRefresh({ repo, kinds, ids = [] }: { repo: string; kinds: st
     let firstPending = 0;
     (async () => {
       try {
-        for await (const e of browserClient().event.subscribe({ repo: { fullName: repo }, fromSeq: "0", kinds: kindKey.split(",") }, { signal: ctl.signal })) {
+        const api = browserClient().event;
+        const scope = { repo: { fullName: repo } };
+        const options = { signal: ctl.signal };
+        // An event picture needs an exact history boundary. The refresh below can still use its
+        // existing recent-event replay to reconcile server data read before this stream opened.
+        const after = onNewEvent ? await api.getEventLogInfo(scope, options).then((info) => BigInt(info.latestSeq), () => null) : null;
+        for await (const e of api.subscribe({ ...scope, fromSeq: "0", kinds: kindKey.split(",") }, options)) {
+          if (after !== null && onNewEvent && BigInt(e.seq) > after && concerns(e)) onNewEvent(e);
           // History replays first; an event stamped after the page was rendered is live even mid-replay.
           if (!live && !(e.time && Date.parse(e.time) >= since)) {
             // Still replaying history: wait for the stream to go quiet before reacting.
@@ -59,6 +66,6 @@ export function LiveRefresh({ repo, kinds, ids = [] }: { repo: string; kinds: st
       clearTimeout(quiet);
       if (pending) clearTimeout(pending);
     };
-  }, [repo, key, kindKey, router, since]);
+  }, [repo, key, kindKey, router, since, onNewEvent]);
   return null;
 }

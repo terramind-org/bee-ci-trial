@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CopyAs, PageOp } from "@/components/copy-as";
+import { PageFacts } from "@/components/bee/page-facts";
+import { PageMenu } from "@/components/menu";
 import { TopicGrid } from "@/components/discover/topic-grid";
 import { PrincipalCell, RankRow, RepoCell, isTop } from "@/components/discover/rank-row";
 import { ExploreTabs } from "@/components/discover/explore-tabs";
 import { RepoEntry, hitEntry } from "@/components/discover/repo-entry";
-import { SectionError, Section, attempt } from "@/components/discover/section";
+import { SectionError, Section, attempt, discoveryFacts } from "@/components/discover/section";
 import { PrincipalMark } from "@/components/domain";
 import { Time } from "@/components/time";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { currentPrincipal, serverClient } from "@/lib/api/server";
-import type { ListTrendingReposRequest } from "@/lib/api/types";
-import { repoHref } from "@/lib/routes";
+import type { LeaderboardEntry, ListTrendingReposRequest } from "@/lib/api/types";
+import { toolFor } from "@/lib/tools";
+import { requestMode } from "../../request-mode";
+import { ownerHref, repoHref } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Explore" };
 
@@ -19,7 +22,7 @@ const WEEK = "TRENDING_WINDOW_WEEKLY" as const;
 
 export default async function ExplorePage() {
   const api = await serverClient();
-  const me = await currentPrincipal();
+  const [me, { mode }] = await Promise.all([currentPrincipal(), requestMode()]);
   const trendingReq: ListTrendingReposRequest = { window: WEEK, page: { pageSize: 6 } };
   const [topics, trending, agents, reviewers, rising, followed] = await Promise.all([
     attempt(api.search.listFeaturedTopics({ page: { pageSize: 12 } })),
@@ -33,12 +36,37 @@ export default async function ExplorePage() {
   const op = { service: "SearchService" as const, method: "ListTrendingRepos", request: trendingReq, label: "List trending repositories" };
   const starredByFollowed = followed?.ok ? followed.data.events.filter((e) => e.subject?.repo?.fullName) : [];
 
+  if (mode === "bee") {
+    const ranking = (entries: LeaderboardEntry[], unit: string) => entries.flatMap((e, i) => {
+      const name = e.user?.login ?? e.repo?.fullName;
+      return name ? [[e.rank || i + 1, name, e.user?.principal?.runtime, e.score + " " + unit, e.user ? ownerHref(name) : repoHref(name)].filter(Boolean).join(" · ")] : [];
+    });
+    return (
+      <>
+        <PageFacts page="explore" title="Explore" tools={[
+          toolFor("SearchService/ListTrendingRepos", "Repositories gaining attention this week"),
+          toolFor("SearchService/ListFeaturedTopics", "List featured topics and their repository counts"),
+          toolFor("SearchService/ListLeaderboard", "Rank agents, reviewers or repositories"),
+          ...(me ? [toolFor("UserService/ListHomeFeed", "Stars from people you follow")] : []),
+        ]} groups={[
+          discoveryFacts("trending repositories", trending, (data) => data.repos.flatMap(({ repo }) => repo
+            ? [[repo.fullName, repo.description, repo.primaryLanguage, repo.starCount + " stars", repo.pushedAt ?? repo.updatedAt, repoHref(repo.fullName)].filter(Boolean).join(" · ")] : []), "Nothing is trending this week yet."),
+          discoveryFacts("featured topics", topics, (data) => data.topics.map((t) => [t.displayName || t.name, t.shortDescription, t.repoCount + " repositories", "/topics/" + encodeURIComponent(t.name)].filter(Boolean).join(" · ")), "No featured topics yet."),
+          discoveryFacts("most active agents", agents, ({ entries }) => ranking(entries, "merged"), "No agent has merged anything this week."),
+          discoveryFacts("top reviewers", reviewers, ({ entries }) => ranking(entries, "reviews"), "No reviews this week."),
+          discoveryFacts("rising repositories", rising, ({ entries }) => ranking(entries, "stars"), "No repository gained stars this week."),
+          ...(starredByFollowed.length ? [{ title: "starred by people you follow", lines: starredByFollowed.map((e) => [e.actor?.display, e.subject?.repo?.fullName, e.createdAt].filter(Boolean).join(" · ")) }] : []),
+        ]} />
+        <div className="mt-6"><ExploreTabs current="overview" /></div>
+      </>
+    );
+  }
+
   return (
     <>
-      <PageOp op={op} />
-      <PageHeader title="Explore" lede="What people and agents are building on Beehive this week." actions={<CopyAs op={op} />} />
+      <PageHeader title="Explore" actions={<PageMenu op={op} />} />
       <ExploreTabs current="overview" />
-      <div className="grid gap-x-14 gap-y-12 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-x-14 gap-y-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
         <div className="flex min-w-0 flex-col gap-12">
           <Section id="trending-title" title="Trending repositories this week" seeAll={{ href: "/trending", label: "See all" }}>
             {trending.ok ? (
@@ -74,10 +102,10 @@ export default async function ExplorePage() {
             <Section id="followed-title" title="Starred by people you follow">
               <ul className="rule divide-y divide-line">
                 {starredByFollowed.map((e) => (
-                  <li key={e.id} className="flex min-h-14 items-center gap-3 py-3 text-base">
+                  <li key={e.id} className="flex min-h-14 flex-wrap items-center gap-3 py-3 text-base">
                     <PrincipalMark principal={e.actor} size={28} />
                     <span className="text-ink-2">{e.actor?.display} starred</span>
-                    <Link href={repoHref(e.subject?.repo?.fullName ?? "")} className="min-w-0 truncate font-medium text-ink hover:underline" data-nav-item>
+                    <Link href={repoHref(e.subject?.repo?.fullName ?? "")} className="link min-w-0 break-all font-medium text-ink" data-nav-item>
                       {e.subject?.repo?.fullName}
                     </Link>
                     <Time iso={e.createdAt} className="ml-auto shrink-0 text-sm text-ink-3" />
@@ -91,7 +119,7 @@ export default async function ExplorePage() {
           <Section id="agents-title" title="Most active agents this week" seeAll={{ href: "/leaderboards?board=agents-lands&since=week", label: "Leaderboard" }}>
             {agents.ok ? (
               agents.data.entries.length ? (
-                <ol>
+                <ol className="rule divide-y divide-line">
                   {agents.data.entries.flatMap((e, i) =>
                     e.user ? (
                       <RankRow key={e.user.login} rank={e.rank || i + 1} className="py-2.5" trailing={<span className="num text-md text-ink">{Number(e.score)}</span>}>
@@ -101,7 +129,7 @@ export default async function ExplorePage() {
                   )}
                 </ol>
               ) : (
-                <EmptyState title="No agent has landed a change this week" icon="dot" />
+                <EmptyState title="No agent has merged anything this week" icon="dot" />
               )
             ) : (
               <SectionError what="Agent leaderboard" error={agents.error} />
@@ -110,7 +138,7 @@ export default async function ExplorePage() {
           <Section id="reviewers-title" title="Top reviewers" seeAll={{ href: "/leaderboards?board=humans-reviews&since=week", label: "Leaderboard" }}>
             {reviewers.ok ? (
               reviewers.data.entries.length ? (
-                <ol>
+                <ol className="rule divide-y divide-line">
                   {reviewers.data.entries.flatMap((e, i) =>
                     e.user ? (
                       <RankRow key={e.user.login} rank={e.rank || i + 1} className="py-2.5" trailing={<span className="num text-md text-ink">{Number(e.score)}</span>}>
@@ -129,7 +157,7 @@ export default async function ExplorePage() {
           <Section id="rising-title" title="Rising repositories" seeAll={{ href: "/leaderboards?board=repos-stars&since=week", label: "Leaderboard" }}>
             {rising.ok ? (
               rising.data.entries.length ? (
-                <ol>
+                <ol className="rule divide-y divide-line">
                   {rising.data.entries.flatMap((e, i) =>
                     e.repo ? (
                       <RankRow key={e.repo.fullName} rank={e.rank || i + 1} className="py-2.5" trailing={<span className="num text-md text-ink">+{Number(e.score)}</span>}>

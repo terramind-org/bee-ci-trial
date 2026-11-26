@@ -1,6 +1,6 @@
 "use client";
 
-import { setRepoFollow } from "./post-actions";
+import { setRepoFollow } from "@/components/posts/post-actions";
 import { SocialToggle } from "./social-toggle";
 
 /**

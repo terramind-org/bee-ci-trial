@@ -1,0 +1,214 @@
+// Coordination and outcomes for agent work in one Beehive repository.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/agents.proto";
+import "bee/v1/common.proto";
+
+service SwarmService {
+  // Create a planning swarm from an active lead run in this repository. The lead's human owner
+  // supplies the goal and shared branch.
+  rpc CreateSwarm(CreateSwarmRequest) returns (Swarm);
+  // Read a swarm, its tasks and attempts. Budget, cost and join requests are scoped to authorized
+  // viewers.
+  rpc GetSwarm(SwarmRef) returns (Swarm);
+  // List swarms and independent agent runs, newest activity first, with linked pull request IDs.
+  rpc ListRepoWork(ListRepoWorkRequest) returns (ListRepoWorkResponse);
+  // Start, pause, resume, stop or finish a swarm as its owner or a repository admin. Stopping
+  // cancels its live runs.
+  rpc SetSwarmState(SetSwarmStateRequest) returns (Swarm);
+  // Write the plain-text status line using the lead run's issued credential.
+  rpc SetSwarmStatus(SetSwarmStatusRequest) returns (Swarm);
+  // Add an open task and its repository-relative path claims as the swarm lead or owner.
+  rpc AddSwarmTask(AddSwarmTaskRequest) returns (SwarmTask);
+  // Begin an attempt by an active member of a working swarm. Concurrent task claims cannot overlap.
+  rpc StartSwarmTask(StartSwarmTaskRequest) returns (SwarmTask);
+  // End the current attempt with an outcome, reason and structured hand-back. Use the 1-based
+  // attempt number returned in the task history.
+  rpc FinishSwarmTask(FinishSwarmTaskRequest) returns (SwarmTask);
+  // Send a person's steering message to the lead run only.
+  rpc SendSwarmMessage(SendSwarmMessageRequest) returns (AgentRunEvent);
+  // Offer an agent you control and a positive spending limit. A signed-in reader can ask to join a
+  // public repository's swarm.
+  rpc RequestSwarmJoin(RequestSwarmJoinRequest) returns (SwarmJoin);
+  // Accept or decline a pending join as the lead or owner. Beehive records any refusal by
+  // repository policy and queues accepted runs.
+  rpc DecideSwarmJoin(DecideSwarmJoinRequest) returns (SwarmJoin);
+}
+
+enum SwarmState {
+  SWARM_STATE_UNSPECIFIED = 0;
+  SWARM_STATE_PLANNING = 1;
+  SWARM_STATE_WORKING = 2;
+  SWARM_STATE_PAUSED = 3;
+  SWARM_STATE_STOPPED = 4;
+  SWARM_STATE_FINISHED = 5;
+}
+
+enum SwarmTaskState {
+  SWARM_TASK_STATE_UNSPECIFIED = 0;
+  SWARM_TASK_STATE_OPEN = 1;
+  SWARM_TASK_STATE_WORKING = 2;
+  SWARM_TASK_STATE_FINISHED = 3;
+  SWARM_TASK_STATE_EMPTY = 4;
+}
+
+enum SwarmAttemptOutcome {
+  SWARM_ATTEMPT_OUTCOME_UNSPECIFIED = 0; // in progress
+  SWARM_ATTEMPT_OUTCOME_FINISHED = 1;
+  SWARM_ATTEMPT_OUTCOME_EMPTY = 2;
+  SWARM_ATTEMPT_OUTCOME_REFUSED = 3;
+}
+
+enum SwarmJoinState {
+  SWARM_JOIN_STATE_UNSPECIFIED = 0;
+  SWARM_JOIN_STATE_PENDING = 1;
+  SWARM_JOIN_STATE_ACCEPTED = 2;
+  SWARM_JOIN_STATE_DECLINED = 3;
+  SWARM_JOIN_STATE_REFUSED = 4;
+}
+
+message SwarmHandBack {
+  repeated string done = 1;
+  repeated string deviations = 2;
+  repeated string concerns = 3;
+  repeated string follow_ups = 4;
+}
+
+message SwarmAttempt {
+  string run_id = 1;
+  Principal agent = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp finished_at = 4;
+  SwarmAttemptOutcome outcome = 5;
+  string reason = 6;
+  SwarmHandBack hand_back = 7;
+}
+
+message SwarmTask {
+  string id = 1;
+  string title = 2;
+  repeated bytes paths = 3;
+  SwarmTaskState state = 4;
+  string run_id = 5; // only while working
+  repeated SwarmAttempt attempts = 6;
+}
+
+message SwarmJoin {
+  string id = 1;
+  Principal requester = 2;
+  Principal agent = 3;
+  AgentRunBudget budget = 4;
+  SwarmJoinState state = 5;
+  string run_id = 6;
+  string reason = 7;
+  google.protobuf.Timestamp requested_at = 8;
+  google.protobuf.Timestamp decided_at = 9;
+}
+
+message Swarm {
+  string id = 1;
+  RepoRef repo = 2;
+  string name = 3;
+  string goal = 4;
+  string issue = 5;
+  string branch = 6;
+  string lead_run_id = 7;
+  Principal owner = 8;
+  SwarmState state = 9;
+  string status = 10;
+  repeated string member_run_ids = 11;
+  repeated SwarmTask tasks = 12;
+  repeated SwarmJoin joins = 13;
+  AgentRunBudget budget = 14;
+  Cost cost = 15;
+  repeated string change_request_ids = 16;
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+  Principal lead = 19;
+}
+
+message RepoWorkItem {
+  oneof work {
+    Swarm swarm = 1;
+    AgentRun run = 2;
+  }
+  google.protobuf.Timestamp activity_at = 3;
+  repeated string change_request_ids = 4;
+}
+
+message SwarmRef {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message CreateSwarmRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  string goal = 3;
+  string issue = 4;
+  string branch = 5;
+  string lead_run_id = 6;
+}
+
+message ListRepoWorkRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+message ListRepoWorkResponse {
+  repeated RepoWorkItem items = 1;
+  PageResponse page = 2;
+}
+
+message SetSwarmStateRequest {
+  SwarmRef swarm = 1;
+  SwarmState state = 2;
+}
+
+message SetSwarmStatusRequest {
+  SwarmRef swarm = 1;
+  string status = 2;
+}
+
+message AddSwarmTaskRequest {
+  SwarmRef swarm = 1;
+  string title = 2;
+  repeated bytes paths = 3;
+}
+
+message StartSwarmTaskRequest {
+  SwarmRef swarm = 1;
+  string task_id = 2;
+  string run_id = 3;
+}
+
+message FinishSwarmTaskRequest {
+  SwarmRef swarm = 1;
+  string task_id = 2;
+  string run_id = 3;
+  SwarmAttemptOutcome outcome = 4;
+  string reason = 5;
+  SwarmHandBack hand_back = 6;
+  uint32 attempt_number = 7; // 1-based position in task.attempts
+}
+
+message SendSwarmMessageRequest {
+  SwarmRef swarm = 1;
+  string body = 2;
+}
+
+message RequestSwarmJoinRequest {
+  SwarmRef swarm = 1;
+  string agent_principal_id = 2;
+  AgentRunBudget budget = 3;
+}
+
+message DecideSwarmJoinRequest {
+  SwarmRef swarm = 1;
+  string join_id = 2;
+  bool accept = 3;
+  string reason = 4;
+}

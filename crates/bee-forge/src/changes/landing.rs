@@ -289,10 +289,13 @@ impl Changes {
         let cr = rec.cr();
         let mut missing: Vec<String> = d.decision.missing.iter().map(|r| r.id.clone()).collect();
         // The reason LandChange would fail with now: state, draft, parent, then policy.
+        let frozen = crate::safety::control::landing_frozen(&self.db, cx, &repo.org_id).await?;
         let reason = if cr.state != ChangeState::Open as i32 || d.parent_open.is_some() {
             bee_proto::errors::reason_name(ErrorReason::InvalidState)
         } else if d.draft {
             bee_proto::errors::reason_name(ErrorReason::Draft)
+        } else if frozen {
+            bee_proto::errors::reason_name(ErrorReason::PolicyDenied)
         } else {
             d.decision
                 .reason
@@ -307,6 +310,9 @@ impl Changes {
         }
         if let Some(n) = d.parent_open {
             missing.push(format!("parent:#{n}"));
+        }
+        if frozen {
+            missing.push(crate::safety::control::FROZEN.into());
         }
         let allowed = missing.is_empty() && d.decision.allowed;
         Ok(LandingEvaluation {
@@ -483,6 +489,9 @@ impl Changes {
         if repo.archived {
             return Err(ForgeError::archived(&repo.full_name));
         }
+        // Native publication rechecks under the organization lock; the forge check also
+        // covers its standalone lander and avoids creating an intent for a refused merge.
+        crate::safety::control::require_landing(&self.db, cx, &repo.org_id).await?;
         let mut tx = self.db.begin(SURFACE, cx).await?;
         lock_change_request(&mut tx, &repo.id, id).await?;
         let (mut rec, row) = Self::load(&mut tx, &repo.id, id).await?;
@@ -543,6 +552,7 @@ impl Changes {
             message,
             change_request_id: cr.id.clone(),
             chain: cx.chain.clone(),
+            actor_kind: cx.actor_kind,
             change_id: None,
         };
         let resp = match self.lander.land(repo, &intent).await {
@@ -883,14 +893,27 @@ impl Changes {
 
     /// The context of a stored land intent (auto-merge or merge queue): the chain that
     /// asked, with the first principal's kind from the directory.
-    async fn intent_cx(&self, chain: &[String], fallback: &str, why: &str) -> Cx {
+    async fn intent_cx(
+        &self,
+        chain: &[String],
+        principal: Option<&bee_proto::v1::Principal>,
+        why: &str,
+    ) -> Cx {
         let chain: Vec<String> = if chain.is_empty() {
-            vec![fallback.to_string()]
+            vec![principal.map(|p| p.id.clone()).unwrap_or_default()]
         } else {
             chain.to_vec()
         };
         let actor = self.principal(&chain[0]).await;
-        let kind = PrincipalKind::try_from(actor.kind).unwrap_or(PrincipalKind::Human);
+        let kind = PrincipalKind::try_from(actor.kind).unwrap_or(PrincipalKind::Unspecified);
+        let kind = if kind == PrincipalKind::Unspecified {
+            principal
+                .filter(|p| p.id == chain[0])
+                .map(|p| p.kind())
+                .unwrap_or_default()
+        } else {
+            kind
+        };
         let mut cx = Cx::new(chain[0].clone(), kind).with_chain(chain);
         cx.decision = why.to_string();
         cx
@@ -915,8 +938,15 @@ impl Changes {
             .map(|p| p.id.clone())
             .unwrap_or_default();
         let cx = self
-            .intent_cx(&rec.land_chain, &by, &format!("auto-merge enabled by {by}"))
+            .intent_cx(
+                &rec.land_chain,
+                am.enabled_by.as_ref(),
+                &format!("auto-merge enabled by {by}"),
+            )
             .await;
+        if crate::safety::control::landing_frozen(&self.db, &cx, &repo.org_id).await? {
+            return Ok(None);
+        }
         if self.queue_required(&cx, repo, &cr.target_ref).await? {
             if cr.merge_queue_entry.is_none()
                 && self
@@ -1127,6 +1157,24 @@ impl Changes {
             .unwrap_or(entry))
     }
 
+    /// Target refs with pending queue entries, used to wake held queues on safety resume.
+    pub async fn queued_targets(&self, cx: &Cx, repo: &str) -> Result<BTreeSet<String>> {
+        let mut tx = self.db.begin(SURFACE, cx).await?;
+        let mut cursor = None;
+        let mut targets = BTreeSet::new();
+        loop {
+            let rows = tx
+                .scan(&QUEUE, &Scan::scope(repo, 128).after(cursor))
+                .await?;
+            cursor = rows.last().map(Cursor::after);
+            let done = rows.len() < 128;
+            targets.extend(rows.into_iter().filter_map(|row| row.k1));
+            if done {
+                return Ok(targets);
+            }
+        }
+    }
+
     /// Removes the CR from the merge queue.
     pub async fn dequeue(&self, cx: &Cx, repo: &Repo, id: &str) -> Result<()> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
@@ -1285,7 +1333,7 @@ impl Changes {
         Ok(self
             .intent_cx(
                 &rec.land_chain,
-                &by,
+                entry.enqueued_by.as_ref(),
                 &format!("merge queue, enqueued by {by}"),
             )
             .await)
@@ -1313,10 +1361,11 @@ impl Changes {
         let cx = self
             .intent_cx(
                 &rec.land_chain,
-                &by,
+                entry.enqueued_by.as_ref(),
                 &format!("merge queue, enqueued by {by}"),
             )
             .await;
+        crate::safety::control::require_landing(&self.db, &cx, &repo.org_id).await?;
         self.set_queue_state(&cx, repo, id, MergeQueueState::Landing, None, "")
             .await?;
         match self
@@ -1334,6 +1383,14 @@ impl Changes {
             .await
         {
             Ok(r) => Ok(r),
+            Err(e) if e.subcode == crate::safety::control::FROZEN => {
+                // A freeze can win after preflight. Retain the entry and its speculative
+                // check state so a resume can pick it up again.
+                let _ = self
+                    .set_queue_state(&cx, repo, id, entry.state(), None, "")
+                    .await;
+                Err(e)
+            }
             Err(e) => {
                 let _ = self
                     .set_queue_state(
@@ -1375,6 +1432,9 @@ impl Changes {
         let id = first.change_request_id.clone();
         let (rec, _) = self.record(cx, repo, &id).await?;
         let qcx = self.queue_cx(&rec).await?;
+        if crate::safety::control::landing_frozen(&self.db, &qcx, &repo.org_id).await? {
+            return Ok(QueueStep::Waiting);
+        }
         let combined = self
             .orgs
             .repo_settings(cx, &repo.id)
@@ -1496,6 +1556,7 @@ impl Changes {
     ) -> Result<QueueStep> {
         match Box::pin(self.land_queued_at(repo, id, combined)).await {
             Ok((cr, _)) => Ok(QueueStep::Landed(Box::new(cr))),
+            Err(e) if e.subcode == crate::safety::control::FROZEN => Ok(QueueStep::Waiting),
             // The entry was ejected with the reason.
             Err(e) if !e.retryable() => Ok(QueueStep::Ejected(
                 id.to_string(),
@@ -2129,8 +2190,32 @@ impl AutoMergeTrigger {
         AutoMergeTrigger { changes }
     }
 
+    async fn pending_in_repo(&self, repo: &str) -> Result<Vec<String>> {
+        let cx = Cx::system();
+        let mut tx = self.changes.db.begin(SURFACE, &cx).await?;
+        let mut cursor = None;
+        let mut ids = Vec::new();
+        loop {
+            let rows = tx
+                .scan_msgs::<CrRecord>(&CRS, &Scan::scope(repo, 128).after(cursor))
+                .await?;
+            cursor = rows.last().map(|(_, row)| Cursor::after(row));
+            let done = rows.len() < 128;
+            ids.extend(rows.into_iter().filter_map(|(rec, _)| {
+                let cr = rec.cr();
+                (cr.state() == ChangeState::Open && cr.auto_merge.is_some()).then(|| cr.id.clone())
+            }));
+            if done {
+                return Ok(ids);
+            }
+        }
+    }
+
     async fn ids(&self, ev: &Event) -> Vec<String> {
         match (ev.kind.as_str(), &ev.body) {
+            ("safety.resumed", _) if !ev.repo_id.is_empty() => {
+                self.pending_in_repo(&ev.repo_id).await.unwrap_or_default()
+            }
             ("check.updated", Some(event::Body::Check(run))) => {
                 let hex = run.changeset.as_ref().map(hex_of).unwrap_or_default();
                 self.changes

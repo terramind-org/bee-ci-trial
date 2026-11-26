@@ -2,6 +2,7 @@
 import type { ChangeState, CheckStatus, Principal, RunStatus } from "@/lib/api/types";
 import { classInfo, type Risk } from "@/lib/diffclass";
 import { isImporterPrincipal } from "@/lib/infra";
+import { LoadingBee } from "./bees/pieces";
 import { Avatar, toAvatar } from "./avatar";
 import { Icon } from "./icons";
 import { RepoLink } from "./repo-link";
@@ -16,15 +17,9 @@ export function principalLabel(p: Principal): string {
   return p.display || p.id;
 }
 
-/** The Beehive mark: a lattice on Nucleus cobalt. */
+/** The Beehive mark: the yellow dot, with the thin ring that keeps it visible on paper. */
 export function BrandMark({ size = 28 }: { size?: number }) {
-  return (
-    <span className="grid shrink-0 place-items-center rounded-md bg-accent" style={{ width: size, height: size }} aria-hidden="true">
-      <svg width={Math.round(size * 0.54)} height={Math.round(size * 0.54)} viewBox="0 0 22 22" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
-        <path d="M5 3v16M11 3v16M17 3v16M3 7.5l16 7M3 14.5l16-7" />
-      </svg>
-    </span>
-  );
+  return <span className="dot" style={{ width: size * 0.6, height: size * 0.6 }} aria-hidden="true" />;
 }
 
 /** A principal's calm generated avatar (components/avatar.tsx); lists use 28px or more. */
@@ -60,7 +55,7 @@ export function PrincipalName({ principal, owner, showRuntime = true, link = tru
 /** Marks history that came in through an import, next to its author. */
 export function ImportedBadge() {
   return (
-    <Badge tone="outline" title="Imported history: the original git commit headers are kept with this changeset">
+    <Badge tone="outline" title="Imported history: the original git commit headers are kept with this commit">
       imported
     </Badge>
   );
@@ -95,14 +90,14 @@ export function DiffClassBadge({ cls, compact = false }: { cls: string; compact?
 
 export type ChangeGlyphState = "landed" | "closed" | "queued" | "ready" | "failing" | "blocked";
 
-/** The ring at the start of a change row: one shape per landing state, Nucleus status colours. */
+/** The ring at the start of a change row: one shape per landing state; the tint only reinforces it. */
 export function ChangeGlyph({ state }: { state: ChangeGlyphState }) {
-  const label = { landed: "Landed", closed: "Closed", queued: "In the merge queue", ready: "Ready to land", failing: "Checks failing", blocked: "Blocked by policy" }[state];
+  const label = { landed: "Merged", closed: "Closed", queued: "In the merge queue", ready: "Ready to merge", failing: "Checks failing", blocked: "Blocked by the rules" }[state];
   return (
     <span role="img" aria-label={label} title={label} className="relative inline-grid size-3.5 shrink-0 place-items-center">
       {state === "landed" ? <span className="size-3.5 rounded-full bg-ink-3/45" /> : null}
       {state === "closed" ? <span className="size-3.5 rounded-full border-[1.5px] border-dashed border-ink-3/70" /> : null}
-      {state === "queued" ? <span className="size-3.5 animate-spin rounded-full border-[1.5px] border-live border-r-transparent [animation-duration:1.1s]" /> : null}
+      {state === "queued" ? <LoadingBee decorative /> : null}
       {state === "ready" ? (
         <span className="grid size-3.5 place-items-center rounded-full border-[1.5px] border-ok">
           <span className="size-1.5 rounded-full bg-ok" />
@@ -122,7 +117,7 @@ export function CrStateBadge({ state }: { state: ChangeState }) {
   if (state === "CHANGE_STATE_LANDED")
     return (
       <Badge tone="ok">
-        <Icon name="check" size={12} /> Landed
+        <Icon name="check" size={12} /> Merged
       </Badge>
     );
   if (state === "CHANGE_STATE_CLOSED") return <Badge tone="outline">Closed</Badge>;

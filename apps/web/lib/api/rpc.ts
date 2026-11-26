@@ -77,6 +77,7 @@ export function toBeeError(err: unknown, signal?: AbortSignal): BeeError {
   const detail = found ? (toJson(ErrorDetailSchema, found, WRITE) as unknown as ErrorDetail) : undefined;
   return new BeeError(code, {
     reason: detail?.reason || DEFAULT_REASON[code] || code.toUpperCase(),
+    subcode: detail?.subcode || undefined,
     message: detail?.message || ce.rawMessage || "request failed",
     retryable: detail?.retryable ?? (code === "unavailable" || code === "resource_exhausted" || code === "deadline_exceeded"),
     leaseConflict: detail?.leaseConflict,

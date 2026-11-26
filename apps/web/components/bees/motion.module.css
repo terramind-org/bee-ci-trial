@@ -1,0 +1,111 @@
+.picture {
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+  pointer-events: none;
+  vertical-align: middle;
+}
+
+.loading,
+.inlineLoading,
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+}
+
+.loading,
+.quiet {
+  font-size: var(--text-xs);
+}
+
+.loadingPicture {
+  margin-inline: 8px;
+}
+
+.inlineLoading .loadingPicture {
+  margin-inline: 0;
+}
+
+.cap {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+}
+
+/* One iteration; the underlying artwork is always the resting pose. */
+@media (prefers-reduced-motion: no-preference) {
+  .picture[data-play][data-motion="loading"] {
+    animation: loading 1600ms ease-in-out;
+  }
+
+  .picture[data-play][data-motion="capping"] {
+    animation: cap 600ms var(--ease-out);
+  }
+
+  .picture[data-play][data-motion="claiming"] {
+    animation: waggle 420ms var(--ease-out);
+  }
+
+  .picture[data-play][data-motion="landing"] .flight {
+    animation: land 700ms var(--ease-out);
+  }
+
+  .picture[data-play][data-motion="refusal"] .flight {
+    animation: turn-back 580ms ease-in-out;
+  }
+
+  .picture[data-play][data-motion="pause"] .flight {
+    animation: rise 720ms var(--ease-out);
+  }
+
+  .picture[data-play][data-motion="arrival"] {
+    animation: arrive 640ms var(--ease-out);
+  }
+}
+
+@keyframes loading {
+  0%, 50%, 100% { transform: translate(0, 0); }
+  12.5% { transform: translate(8px, -4px); }
+  25% { transform: translate(12px, 0); }
+  37.5% { transform: translate(8px, 4px); }
+  62.5% { transform: translate(-8px, -4px); }
+  75% { transform: translate(-12px, 0); }
+  87.5% { transform: translate(-8px, 4px); }
+}
+
+@keyframes cap {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0); }
+}
+
+@keyframes waggle {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-23deg); }
+  40%, 80% { transform: rotate(23deg); }
+}
+
+@keyframes land {
+  from { transform: translate(-27px, -4px); }
+  42% { transform: translate(-13px, -11px); }
+  to { transform: translate(0, 0); }
+}
+
+@keyframes turn-back {
+  0%, 100% { transform: translate(0, 0); }
+  48% { transform: translate(11px, -2px); }
+  63% { transform: translate(6px, -6px); }
+}
+
+@keyframes rise {
+  from { transform: translateY(5px); opacity: .4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes arrive {
+  from { transform: translate(-18px, -8px); opacity: .4; }
+  45% { transform: translate(-8px, -5px); }
+  to { transform: translate(0, 0); opacity: 1; }
+}

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible, pressUntil } from "./helpers";
+import { api, expectAccessible, pressUntil, seed } from "./helpers";
+import { Visibility } from "../lib/gen/bee/v1/forge_pb";
+import { commit, repoRef, tip } from "./seed/lib";
 import { BUSIEST_TOPIC, EXPECTED, LOGINS, PRIVATE_REPO, PUBLIC_REPOS, STARS } from "./seed/discovery";
 
 const AGENTKIT = "lattice/agentkit";
@@ -34,6 +36,17 @@ test.describe("Repositories", () => {
     await expect(page.getByRole("link", { name: "lattice/mergekit", exact: true })).toHaveCount(0);
   });
 
+  test("states repository visibility and exposes the same row in agent mode", async ({ page }) => {
+    await page.goto("/repositories?tab=public&q=agentkit");
+    const row = page.locator('[data-repository="lattice/agentkit"]');
+    await expect(row.locator('[data-state="open"]')).toHaveText("Public");
+    await expect(row.locator("time")).toBeVisible();
+    await page.goto("/repositories?tab=public&q=agentkit&mode=bee");
+    const facts = page.locator('[data-bee-page="repositories"]');
+    await expect(facts).toContainText("lattice/agentkit · Public");
+    await expect(facts.locator('[data-tool="search_search_repos"]')).toBeVisible();
+  });
+
   test("sorts by stars and by name", async ({ page }) => {
     // Other specs create public repos on the same server (cloud onboarding), so check the order
     // of the seeded repos among whatever else is listed.
@@ -55,6 +68,7 @@ test.describe("Repositories", () => {
     const tabs = page.getByRole("navigation", { name: "Repository lists" });
     await expect(tabs.getByRole("link")).toHaveText(["Yours", "Your orgs", "Starred", "Public"]);
     await expect(page.getByRole("link", { name: "New repository" })).toHaveAttribute("href", "/new");
+    await expect(page.getByRole("link", { name: "Import from GitHub" })).toHaveAttribute("href", "/import");
     await tabs.getByRole("link", { name: "Starred" }).click();
     await expect(page).toHaveURL(/tab=starred/);
     await page.goto("/repositories?tab=public");
@@ -133,6 +147,48 @@ test.describe("Repo home", () => {
     await hydrated(/^Starred lattice\/benchkit/);
     await starred.click();
     await expect(page.getByRole("button", { name: /^Star lattice\/benchkit/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("creates an organization fork and syncs it after upstream advances", async ({ page }) => {
+    const root = api();
+    const key = Date.now().toString(36);
+    const upstream = await root.repo.createRepo({ org: seed.org, name: "upstream-" + key, visibility: Visibility.PUBLIC, autoInit: true });
+    const fullName = upstream.fullName;
+    const fork = seed.org + "/fork-" + key;
+    await page.goto("/" + fullName);
+    // The separator is decorative, so the accessible name is Fork followed by its count.
+    await page.getByRole("button", { name: /^Fork \d+$/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Fork repository" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Destination owner")).toContainText("My account");
+    await dialog.getByLabel("Destination owner").selectOption(seed.org);
+    await dialog.getByLabel("Repository name").fill("fork-" + key);
+    const create = dialog.getByRole("button", { name: "Create fork" });
+    await expect(create).toHaveAttribute("data-agent-confirm", /Creates a fork/);
+    await create.click();
+    await expect(page).toHaveURL("/" + fork);
+    await expect(page.getByText("Forked from")).toContainText(fullName);
+    await expect(page.getByRole("button", { name: "Sync fork" })).toHaveCount(0);
+
+    const branch = upstream.defaultRef;
+    const head = await commit(root, fullName, await tip(root, fullName, branch), {
+      author: "Dev <dev@bee.local>", message: "Advance upstream", files: { "sync-test.txt": "Upstream update\n" },
+    }, "sync-upstream-" + key);
+    const merged = await root.write.land({ repo: repoRef(fullName), ref: branch, head });
+    expect(merged.ref?.target).toBeDefined();
+
+    await page.reload();
+    const sync = page.getByRole("button", { name: "Sync fork" });
+    await expect(sync).toHaveAttribute("data-agent-confirm", /Updates the default branch/);
+    await sync.click();
+    await expect(page.getByText("Fork synced", { exact: true })).toBeVisible();
+    await expect(sync).toHaveCount(0);
+    await expect.poll(async () => (await tip(root, fork, branch))?.raw).toEqual(merged.ref?.target?.raw);
+
+    await page.goto("/" + fullName + "/insights");
+    await page.getByRole("navigation", { name: "Repository insights" }).getByRole("link", { name: "Forks" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Forks" })).toBeVisible();
+    await expect(page.getByRole("link", { name: fork, exact: true })).toHaveAttribute("href", "/" + fork);
   });
 
   test("axe passes", async ({ page }) => {

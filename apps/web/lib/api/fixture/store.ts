@@ -9,12 +9,15 @@ import { classifyChange, highestClass } from "../../diffclass";
 import { objectIdText, pathBytes, pathText, textToBase64 } from "../ids";
 import { BeeError } from "../transport";
 import type * as T from "../types";
-import { describeRules, evaluateLand, ownersFor, parsePolicy, type LandRules } from "./policy";
+import { describeRules, evaluateLand, ownersFor, parsePolicy, POLICY_PATH, type LandRules } from "./policy";
 import { changeId, digestHex, objectId, ulid } from "./seed";
 import { ACME_ORG_PROFILE, COMMUNITY_ISSUES, COMMUNITY_REPOS, FOLLOWS, LATTICE_ORG, STARS } from "./community-world";
 import { CRS, DOC_TOPICS, HISTORY, LEASES, PRINCIPALS, REPOS, type CrSeed } from "./world";
 import { languageStats, type LanguageSummary } from "./languages";
 import { PostsWorld } from "./posts";
+import { SafetyWorld } from "./safety";
+import { SwarmWorld } from "./swarms";
+import { seedAgentRuns } from "./agent-runs";
 import { BriefsWorld } from "./briefs";
 import { fnv1a, prng } from "./seed";
 
@@ -93,6 +96,7 @@ export interface CrState {
   title: string;
   body: string;
   createdAt: number;
+  landedAt?: number;
   state: T.ChangeState;
   dependsOn: string;
   changeId: T.ChangeId;
@@ -176,6 +180,9 @@ export class FixtureStore {
   follows: FollowRow[] = [];
   /** Posts, repo follows, likes, reposts, adoptions and the agents' feed triggers. */
   posts = new PostsWorld();
+  swarms = new SwarmWorld();
+  safety = new SafetyWorld();
+  readonly agentRunEvents = new Map<string, T.AgentRunEvent[]>();
   /** Briefs, evidence and the conversation comments of change requests. */
   briefs = new BriefsWorld();
   principals = new Map<string, T.Principal>(); // by handle
@@ -192,6 +199,9 @@ export class FixtureStore {
   leases: T.Lease[] = [];
   queue = new Map<string, QueueState[]>(); // by repo name
   runs: T.Run[] = [];
+  // CI management persists workflow state in the fixture just as the service does.
+  disabledCi = new Set<string>();
+  private cancelledLogLengths = new Map<string, number>();
   logs = new Map<string, LogRow[]>(); // by run id
   live: LiveJob[] = [];
   pendingChecks: string[] = []; // head idTexts whose checks are running
@@ -217,6 +227,22 @@ export class FixtureStore {
     this.importMs = opts.importMs ?? 8000;
     this.org = { id: ulid(this.anchor - 400 * 86_400_000, "org:acme"), name: ORG, display: "Acme Robotics", createdAt: this.iso(this.ago(400 * 1440)) };
     this.build();
+    // A separate manual run awaiting approval, alongside the existing check-backed runs.
+    const source = this.runs.find((r) => r.changeRequestId === this.crByKey("tax").id);
+    if (source) {
+      this.runs.push({
+        ...source,
+        id: ulid(this.anchor, "run:waiting"),
+        number: Math.max(...this.runs.filter((r) => r.repoId === source.repoId).map((r) => r.number)) + 1,
+        status: "waiting",
+        trigger: "workflow_dispatch",
+        createdAt: this.iso(this.anchor),
+        startedAt: undefined,
+        finishedAt: undefined,
+        jobs: [],
+        annotations: [],
+      });
+    }
     if (opts.live) this.start(opts.tickMs ?? 4000);
   }
 
@@ -368,7 +394,7 @@ export class FixtureStore {
     return "pe_" + digestHex("epoch:" + source, 6);
   }
   rules(repo: RepoState): LandRules {
-    const src = repo.main.length ? this.tip(repo).files.get(".bee/policy.toml") : undefined;
+    const src = repo.main.length ? this.tip(repo).files.get(POLICY_PATH) : undefined;
     return parsePolicy(src ?? "").rules;
   }
 
@@ -464,6 +490,9 @@ export class FixtureStore {
     this.buildAudit();
     this.buildImports();
     this.posts.seed(this);
+    this.swarms.seed(this);
+    seedAgentRuns(this);
+    this.safety.seed(this);
     this.briefs.seed(this);
   }
 
@@ -499,6 +528,7 @@ export class FixtureStore {
         openChanges: "0",
         licenseSpdx: o.license,
         primaryLanguage: "",
+        version: "1",
       },
       main: [],
       refs: new Map(),
@@ -701,6 +731,7 @@ export class FixtureStore {
     }
     if (s.state === "CHANGE_STATE_LANDED" && s.landedAs !== undefined) {
       const landed = repo.main[s.landedAs] as Commit;
+      c.landedAt = landed.time + 1;
       push(landed.time + 1, this.ev(repo, "cr.landed", s.author, landed.time + 1, { change: this.crView(c) }));
     }
     if (s.queued) {
@@ -970,7 +1001,7 @@ export class FixtureStore {
       [20_000, "mara", "token.mint", "tok_" + digestHex("token:deps-root", 8), "", true, ""],
       [12_000, "lin", "token.mint", "tok_" + digestHex("token:docs-root", 8), "", true, ""],
       [9_000, "mara", "token.revoke", "tok_" + digestHex("token:triage-old", 8), "", true, ""],
-      [8_000, "mara", "policy.update", ".bee/policy.toml (land.main.approvals)", "api", true, "land.main: sensitive needs 2 humans"],
+      [8_000, "mara", "policy.update", POLICY_PATH + " (land.main.approvals)", "api", true, "land.main: sensitive needs 2 humans"],
       [7_000, "dev", "token.mint", "tok_" + digestHex("token:billing-root", 8), "", true, ""],
       [6_000, "mara", "token.mint", "tok_" + digestHex("token:triage-root", 8), "", true, ""],
       [5_760, "deps", "change.land", "Bump hono from 4.5.11 to 4.6.3", "api", true, "land.main: dependency, owner approved"],
@@ -1057,6 +1088,7 @@ export class FixtureStore {
       revisions: c.revisions.map((r) => ({ n: r.n, head: r.head.id, base: r.base.id, diffClass: r.diffClass, createdAt: this.iso(r.createdAt) })),
       dependsOn: c.dependsOn,
       createdAt: this.iso(c.createdAt),
+      ...(c.landedAt === undefined ? {} : { landedAt: this.iso(c.landedAt) }),
       number: String(c.number),
       ...(post ? { post } : {}),
       ...(inspiredBy ? { inspiredBy } : {}),
@@ -1119,6 +1151,10 @@ export class FixtureStore {
 
   land(c: CrState, actor: string): T.LandResponse {
     const repo = this.repos.get(c.repo) as RepoState;
+    // The demo enforces the same organization freeze on direct and queued agent merges.
+    if (this.agentMergeFrozen(repo, actor)) {
+      throw new BeeError("failed_precondition", { reason: "POLICY_DENIED", subcode: "safety_merge_frozen", message: "Agent merges are frozen for this organization" });
+    }
     const evaluation = this.evaluate(c);
     if (!evaluation.allowed) {
       this.appendAudit(actor, "change.land", c.title, repo.name, false, "land.main: " + evaluation.missing.join("; "));
@@ -1146,6 +1182,7 @@ export class FixtureStore {
     };
     repo.refs.set("main", { target: commit, version, log: [...ref.log, entry] });
     c.state = "CHANGE_STATE_LANDED";
+    c.landedAt = this.now();
     this.posts.onLanded(this, c.id);
     this.queue.set(repo.name, (this.queue.get(repo.name) ?? []).filter((q) => q.crId !== c.id));
     const released = this.leases.filter((l) => l.changeId && l.changeId.raw === c.changeId.raw);
@@ -1196,13 +1233,19 @@ export class FixtureStore {
     // The new head is relative to the same base; rebuild the snapshot on the base for classification.
     const rev = this.makeRev(n, head, cur.base, this.now(), true);
     c.revisions.push(rev);
-    const checks = ["test", "lint", "e2e"].map((name) => this.makeCheck(repo, head, name, "CHECK_STATUS_RUNNING", this.now()));
-    this.checks.set(head.idText, checks);
-    this.pendingChecks.push(head.idText);
-    this.buildRun(repo, c, rev, checks);
+    this.triggerChecks(repo, c, rev);
     repo.refs.set(c.ws, { target: head, version: n, log: [] });
     this.emit(repo, "cr.revised", actor, { change: this.crView(c) });
     return rev;
+  }
+
+  /** A disabled workflow cannot start checks for a new revision. */
+  private triggerChecks(repo: RepoState, change: CrState, rev: RevState): void {
+    if (this.disabledCi.has(repo.repo.id)) return;
+    const checks = ["test", "lint", "e2e"].map((name) => this.makeCheck(repo, rev.head, name, "CHECK_STATUS_RUNNING", this.now()));
+    this.checks.set(rev.head.idText, checks);
+    this.pendingChecks.push(rev.head.idText);
+    this.buildRun(repo, change, rev, checks);
   }
 
   // ------------------------------------------------------------------ live simulation
@@ -1271,6 +1314,37 @@ export class FixtureStore {
     }
   }
 
+  /** Cancel outstanding fixture jobs and stop revealing further log lines. */
+  cancelRun(run: T.Run, actor: string): void {
+    if (!["running", "queued", "waiting", "protection"].includes(run.status)) {
+      throw new BeeError("failed_precondition", { reason: "INVALID_STATE", message: "The run already completed." });
+    }
+    const repo = this.repo({ id: run.repoId });
+    const finishedAt = this.iso(this.now());
+    for (const job of run.jobs) {
+      if (["running", "queued", "waiting", "protection"].includes(job.status)) {
+        this.cancelledLogLengths.set(job.id, this.jobLines(run, job.id).length);
+      }
+    }
+    this.live = this.live.filter((l) => l.runId !== run.id);
+    for (const job of run.jobs) {
+      if (!["running", "queued", "waiting", "protection"].includes(job.status)) continue;
+      job.status = "cancelled";
+      job.finishedAt = finishedAt;
+      job.steps = job.steps.map((step) => ["passed", "failed"].includes(step.status) ? step : { ...step, status: "cancelled" });
+      const check = [...this.checks.values()].flat().find((c) => c.url.includes(job.id));
+      if (check) {
+        check.status = "CHECK_STATUS_SKIPPED";
+        check.finishedAt = finishedAt;
+        check.summary = "Cancelled";
+        this.emit(repo, "check.updated", "ci", { check });
+      }
+    }
+    run.status = "cancelled";
+    run.finishedAt = finishedAt;
+    this.emit(repo, "run.completed", actor, { note: { title: "Run #" + run.number + " cancelled", target: "run:" + run.id } });
+  }
+
   /** Reruns a run's jobs (or only its failed ones). Outcomes are a function of the inputs, so a
    * failing job fails again: rerunning does not paper over a real failure. */
   rerun(run: T.Run, failedOnly: boolean, actor: string): T.Run {
@@ -1283,6 +1357,7 @@ export class FixtureStore {
     run.finishedAt = undefined;
     for (const j of targets) {
       const outcome: T.RunStatus = j.status === "failed" ? "failed" : "passed";
+      this.cancelledLogLengths.delete(j.id);
       j.status = "running";
       j.steps = stepsFor(j.name, "running");
       j.startedAt = this.iso(now);
@@ -1307,11 +1382,16 @@ export class FixtureStore {
   jobLines(run: T.Run, jobId: string): LogRow[] {
     const all = (this.logs.get(run.id) ?? []).filter((l) => l.jobId === jobId);
     const lj = this.live.find((l) => l.runId === run.id && l.jobId === jobId);
-    return lj ? all.slice(0, this.visibleLines(lj)) : all;
+    const limit = lj ? this.visibleLines(lj) : this.cancelledLogLengths.get(jobId);
+    return limit === undefined ? all : all.slice(0, limit);
   }
 
   visibleLines(lj: LiveJob, now = this.now()): number {
     return lj.initial + Math.max(0, Math.floor((now - lj.startedAt) / this.logMs));
+  }
+
+  private agentMergeFrozen(repo: RepoState, actor: string): boolean {
+    return this.safety.frozen.has(repo.owner) && this.kindOf(actor) !== "human";
   }
 
   private advanceQueue(): void {
@@ -1324,14 +1404,17 @@ export class FixtureStore {
         list.shift();
         continue;
       }
+      if (this.agentMergeFrozen(repo, c.author)) continue;
       if (front.state === "waiting") front.state = "testing";
       else if (front.state === "testing") front.state = "landing";
       else {
         try {
           this.land(c, c.author);
-        } catch {
+        } catch (e) {
           list.shift();
-          this.emit(repo, "cr.dequeued", "ci", { change: this.crView(c) });
+          // Real queue workers put the reason in the departure event, separate from the CR.
+          const payloadJson = e instanceof BeeError ? JSON.stringify({ eject_reason: e.reason }) : undefined;
+          this.emit(repo, "merge_queue.left", "ci", { change: this.crView(c), payloadJson });
         }
       }
     }
@@ -1387,13 +1470,10 @@ export class FixtureStore {
         head.changeId = c.changeId;
         c.revisions.push(this.makeRev(1, head, base, this.now(), true));
         this.crs.push(c);
-        const checks = ["test", "lint", "e2e"].map((name) => this.makeCheck(repo, head, name, "CHECK_STATUS_RUNNING", this.now()));
-        this.checks.set(head.idText, checks);
-        this.buildRun(repo, c, this.current(c), checks);
+        this.triggerChecks(repo, c, this.current(c));
         this.live = this.live.filter((l) => !this.runs.find((r) => r.id === l.runId && r.head?.raw === head.id.raw));
         repo.refs.set(c.ws, { target: head, version: 1, log: [] });
         this.emit(repo, "cr.opened", "docs", { change: this.crView(c) });
-        this.pendingChecks.push(head.idText);
         break;
       }
       case 4: {
@@ -1454,7 +1534,14 @@ export class FixtureStore {
     if (ref) return ref.target;
     const hexPart = e.replace(/^c1_/, "");
     if (/^[0-9a-f]{6,64}$/.test(hexPart)) {
-      const matches = [...this.commits.values()].filter((c) => c.repo === repo.name && c.idText.slice(3).startsWith(hexPart));
+      // A fork owns references to its upstream objects, whose ids and original repo stay intact.
+      const reachable = new Set<Commit>();
+      if (repo.repo.forkParentId) {
+        for (const ref of repo.refs.values()) {
+          for (let c: Commit | null = ref.target; c && !reachable.has(c); c = c.parent) reachable.add(c);
+        }
+      }
+      const matches = [...this.commits.values()].filter((c) => (c.repo === repo.name || reachable.has(c)) && c.idText.slice(3).startsWith(hexPart));
       if (matches.length === 1) return matches[0] as Commit;
       if (matches.length > 1) throw new BeeError("invalid_argument", { reason: "AMBIGUOUS_REVISION", message: "prefix " + hexPart + " matches " + matches.length + " changesets" });
     }

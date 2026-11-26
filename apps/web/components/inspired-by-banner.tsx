@@ -7,7 +7,7 @@ import { serverClient } from "@/lib/api/server";
 import { BeeError } from "@/lib/api/transport";
 import type { Post, PostRef } from "@/lib/api/types";
 import { InspiredBy, type InspiredPost } from "./inspired-by";
-import { mediaHref } from "./post-text";
+import { mediaHref } from "@/components/posts/post-text";
 
 /** What the banner needs of a post, or null when the reader cannot read it. */
 export const loadInspiredPost = cache(async (ref: PostRef): Promise<{ repo: string; post: InspiredPost } | null> => {

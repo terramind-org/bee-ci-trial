@@ -74,6 +74,7 @@ export class BeeError extends Error {
     const message = typeof b.message === "string" && b.message ? b.message : `request failed (${fallbackStatus})`;
     return new BeeError(code, {
       reason: detail?.reason ?? code.toUpperCase(),
+      subcode: detail?.subcode || undefined,
       message: detail?.message ?? message,
       retryable: detail?.retryable ?? (code === "unavailable" || code === "resource_exhausted"),
       leaseConflict: detail?.leaseConflict,

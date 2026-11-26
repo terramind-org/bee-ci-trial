@@ -5,13 +5,14 @@ bundles, component watchers with the anomaly feed, automatic agent review, and c
 workspaces. Contract: PRODUCT §4.19 (and §4.15 "assigning an issue to an agent starts that
 agent's work"), SPEC §9.1–§9.2 (principals, delegated budgeted tokens), §10.4 (provenance),
 §11.5 (leases). Conventions: `docs/spec/forge-core.md`. Serves `AgentService` (54 RPCs) and
-`WorkspaceService` (25 RPCs).
+`WorkspaceService` (25 RPCs). Swarms use the same run engine and have their own
+`SwarmService` (§10).
 
 ## 1. Layout
 
 | path | owns |
 |---|---|
-| `agents/mod.rs` | `MODULE` (surfaces `agents` and `workspaces`, migrations `agents/0001`, `agents/0002`, `agents/0003` feed triggers), event kinds, `Agents`, `AgentsConfig`, `AgentPorts`, workers |
+| `agents/mod.rs` | `MODULE` (surfaces `agents` and `workspaces`, migrations through `agents/0004`), event kinds, `Agents`, `AgentsConfig`, `AgentPorts`, workers |
 | `agents/model.rs` | crate-private records |
 | `agents/ports.rs` | `AgentRunner`, `RunTokenIssuer` (+ `KeyRingIssuer`), `AgentBlobs` (+ `MemoryBlobs`), `AgentRepo` (+ impl for `HistoryVcs`), `WorkspaceProvider` |
 | `agents/registry.rs` | runtimes, agent definitions, owner budgets, principal summaries, dashboards, work items, activity stream |
@@ -24,6 +25,7 @@ agent's work"), SPEC §9.1–§9.2 (principals, delegated budgeted tokens), §10
 | `agents/devcontainer.rs`, `cron.rs` | `devcontainer.json` (JSONC) parser; five-field cron |
 | `agents/local.rs`, `fake.rs` | `LocalProvider` (working-copy directories), `FakeRunner` (deterministic runner) |
 | `agents/service.rs` | the two tonic services (`AgentApi`) |
+| `swarms/` | `SwarmService`, admission, tasks, membership, and repository work (SPEC §11.10) |
 
 Wiring (like `Changes` and `Enterprise`): the server builds `Agents::new(forge, changes, ports,
 config)`, calls `attach()` (event listener + agent gate), `register(routes)` and
@@ -131,6 +133,8 @@ An agent follows repos and evaluates the upgrades they post (`docs/spec/forge-co
   `check_interval_seconds` (the server's `forge.agent_debounce_ms`, default 60 s), capped at
   ten windows after the first post, at most 20 posts per run. A post is taken once per agent and
   repo (`forge_agent_feed_seen`), so a redelivered event starts nothing.
+  A post of its own (no change request) fires like any other: the run's prompt takes the diff
+  summary of the first change request attached to it, or says that the post has none.
 - **The run.** When the window passes the trigger fires (`agent_feed_trigger.fired`, audit
   `agent.feed_trigger_fire`): once the day's run cap or budget is spent it is skipped (the event
   says why) and starts nothing; otherwise it counts a run and starts one `ADOPT_EVALUATE` run in
@@ -225,3 +229,63 @@ Closed (2026-10-19): agent definitions (`RegisterAgent`, `GetAgent`, `ListAgents
 (`GetSessionsForChange`), the activity stream (`ListAgentActivity`, events of unreadable repos
 dropped), `AgentRun.transcript_ref` / `log_ref` / `trigger` / `trigger_ref`, and
 `CreateComponentWatcherRequest.agent_principal_id`.
+
+## 10. Swarms
+
+**Record.** The lead's owner creates a swarm in planning from an existing active run whose
+`base_ref` is the requested branch. The branch and any issue number must resolve in the same
+repository. There is one accountable person, taken from the run at creation. A run has at most
+one membership, including after its swarm ends. The user interface names the lead “Queen · lead”.
+Only the lead's issued run credential or a descendant may set the status line. A person with
+`commit` on the branch can send a message, and it goes into the lead's existing steering channel.
+
+**Tasks.** The lead and its owner arrange work. The assigned member run, lead or owner can
+record an attempt. It identifies the member run and agent, carries start and end server
+timestamps, and ends with one of finished, empty, or refused. Finishing takes a one-line
+reason and a hand-back with done, deviations, concerns, and follow-ups. `FinishSwarmTask` also
+requires the current 1-based attempt number. A delayed retry cannot finish a later attempt.
+An empty or refused task can be tried again. Claimed paths compare by whole path components.
+An attempt starts only while the swarm is working and the run is active. It needs an
+unassigned run and paths that do not overlap another active task's claims in the swarm.
+Path leases remain available to protect the corresponding Bee writes. A hand-back has an
+8 KiB encoded limit. The 512 KiB swarm record limit reserves space to close each active
+attempt and pending join.
+
+**Joins.** A signed-in repository reader can offer an agent they control and a positive USD
+budget, even without membership in a public repository. The requester's token must allow
+`swarm_join` on the shared branch. The lead or its owner may decline or accept. Acceptance
+checks the same effective policy as the rest of the forge at the default branch, for
+`swarm_join` across the approver and applicant chains. The action is repository-wide and
+is included in the built-in Read role. An entrant must have an
+enabled agent definition in the repository's organization. Its run is charged to the agent's
+owner under the ordinary limits. The grant is limited to the repository, branch and worker's
+workspace ref. Admission does not give the worker a repository role or exempt its actions
+from policy. A policy refusal returns the persisted join with state `REFUSED` and the reason.
+
+**State.** The accountable person or a repository admin changes swarm state. A pause prevents
+queued members from starting and holds new attempts. A run already in flight can finish its
+attempt. Resuming releases the queue. Stopping atomically cancels live members through the
+run cancellation path, ends active attempts, and closes pending joins. Workers admitted
+while planning queue until the swarm moves to working. Finishing requires
+every member run to be terminal and every task to have ended. Stopped and finished records are
+terminal.
+
+**Reads.** `GetSwarm` and `ListRepoWork` need repository Read. Budget and cost are derived
+from member runs. Budget fields are added with saturation, with 0 (unlimited) prevailing if any
+member has an unlimited field. Views carry swarm budget and cost for the lead, owner, and repo
+admins. Join applicants can see their own offers, and the lead and owner can see all offers.
+`ListRepoWork` combines swarms and independent runs and orders them by newest activity with the
+record id as a tiebreaker. Each swarm row represents all its members. A page can end early
+to stay within the response size limit. Outcome fields are sorted unique pull request ids
+resolved from terminal runs' durable pull request numbers, session links, and pull requests
+opened with a verified run credential. CLI and MCP use the descriptors of
+`proto/bee/v1/swarms.proto`.
+
+**Storage and events.** Migration `agents/0004` adds `forge_swarms` and `forge_swarm_runs`
+on the agent surface for SQLite and Postgres. The first holds the swarm record. The second
+indexes run membership by repository and run id. Migration `changes/0006` indexes pull
+requests by run id. `OpenChange` stores that link in the same transaction as the pull request
+after matching the caller's issued token ancestry to the run. Admission and cancellation
+update the run queue and swarm on the same surface. Swarm mutations append `swarm.*` events
+with the swarm subject and corresponding audit entries. Steering retains the existing `agent_run.message`
+event. Agent runs retain their own session and forge events while in a swarm.

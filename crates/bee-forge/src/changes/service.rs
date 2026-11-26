@@ -336,9 +336,11 @@ impl ChangeService for ChangeServices {
             };
             let inspired = inspired_by.is_some();
             let head_ref = r.head_ref.clone();
+            let run = crate::swarms::outcomes::verified_run(&self.base.forge().db, &caller, &repo)
+                .await?;
             let cr = self
                 .changes
-                .open(
+                .open_attributed(
                     &cx,
                     &repo,
                     NewChange {
@@ -362,6 +364,7 @@ impl ChangeService for ChangeServices {
                         inspired_by,
                         brief: r.brief.clone(),
                     },
+                    run.as_deref(),
                 )
                 .await?;
             if let Some(f) = &fork {
@@ -1059,18 +1062,34 @@ impl ChangeService for ChangeServices {
         let r = req.into_inner();
         let out = async {
             let repo = self.base.repo(&caller, &r.repo).await?;
-            let cx = self.land_cx(&caller, &repo, &r.id, "cr.land").await?;
-            let (change, land) = self
-                .changes
-                .land(
-                    &cx,
-                    &repo,
-                    &r.id,
-                    LandMethod::try_from(r.method).unwrap_or(LandMethod::Unspecified),
-                    &r.message,
-                    r.expected_revision,
-                )
-                .await?;
+            let attempt = async {
+                let cx = self.land_cx(&caller, &repo, &r.id, "cr.land").await?;
+                self.changes
+                    .land(
+                        &cx,
+                        &repo,
+                        &r.id,
+                        LandMethod::try_from(r.method).unwrap_or(LandMethod::Unspecified),
+                        &r.message,
+                        r.expected_revision,
+                    )
+                    .await
+            }
+            .await;
+            // A safety evidence write cannot change the outcome of a committed merge.
+            if let Err(error) = crate::safety::record_landing_attempt(
+                self.forge(),
+                &caller.cx,
+                &repo,
+                &caller.token,
+                &format!("pull request {}", r.id),
+                attempt.as_ref().err().map(|error| error.reason),
+            )
+            .await
+            {
+                eprintln!("Recording a safety landing attempt failed: {error}");
+            }
+            let (change, land) = attempt?;
             Ok(LandChangeResponse {
                 change: Some(change),
                 land: Some(land),

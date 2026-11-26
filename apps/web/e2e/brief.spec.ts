@@ -1,34 +1,48 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { agentToken, expectAccessible, repoPath, seed } from "./helpers";
 
-/** The change request page's tabs against the seeded briefs (e2e/seed/briefs.ts). */
+/** The pull request page's tabs against the seeded briefs (e2e/seed/briefs.ts). */
 const ui = () => repoPath("changes/" + seed.changes.ui.id);
 const fix = () => repoPath("changes/" + seed.changes.fix.id);
 
-test.describe("Change request brief", () => {
-  test("brief tab answers outcome, status and needs you first", async ({ page }) => {
+/** Evidence is one click away on the overview: open it before reading the gallery. */
+async function showEvidence(page: Page) {
+  await page.getByTestId("show-evidence").locator("summary").click();
+  await expect(page.locator("[data-evidence-gallery]")).toBeVisible();
+}
+
+test.describe("Pull request overview", () => {
+  test("the overview answers in order: why you, checks, files changed, commits, who did it", async ({ page }) => {
     await page.goto(ui());
     await expect(page.getByRole("heading", { level: 1, name: seed.changes.ui.title })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Change request" }).getByRole("link", { name: "Brief" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Pull request", exact: true }).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+    // Above the tabs: who wants to merge what into where, who answers for it, and the decisions.
+    await expect(page.getByTestId("merge-line").last()).toContainText(/wants to merge .*into main/);
+    await expect(page.getByTestId("pull-decisions")).toBeVisible();
     const brief = page.locator("[data-brief]");
     await expect(brief.locator("[data-outcome]")).toHaveText(seed.briefs.ui.outcome);
     await expect(brief.locator("[data-status]")).toBeVisible();
-    // The five questions, in order: what, needs you, does it work, is it safe, who did it; then what changed and the conversation.
+    // What it is, then the plan's order, then the post and the conversation.
     const order = await brief.locator("[data-brief-section]").evaluateAll((els) => els.map((e) => e.getAttribute("data-brief-section")));
-    expect(order).toEqual(["what", "needs", "works", "safe", "who", "changed", "conversation"]);
-    const needs = page.getByRole("region", { name: "Needs you" });
-    await expect(needs).toContainText(seed.briefs.ui.ask.question);
-    for (const option of seed.briefs.ui.ask.options) await expect(needs.getByRole("button", { name: option })).toBeVisible();
-    const safe = page.getByRole("region", { name: "Is it safe?" });
-    await expect(safe).toContainText(seed.briefs.ui.risk);
-    await expect(safe).toContainText(seed.briefs.ui.rollback);
-    await expect(page.getByRole("region", { name: "Who did it" })).toContainText(seed.agents.claude.display);
-    // The Post panel sits under "Who did it", once.
-    await expect(page.getByRole("region", { name: "Who did it" }).getByText("Post", { exact: true }).first()).toBeVisible();
+    expect(order).toEqual(["what", "why", "checks", "files", "commits", "who", "post", "conversation"]);
+    const why = page.getByRole("region", { name: "Why you" });
+    await expect(why.getByTestId("why-you")).toBeVisible();
+    await expect(why).toContainText(seed.briefs.ui.ask.question);
+    for (const option of seed.briefs.ui.ask.options) await expect(why.getByRole("button", { name: option })).toBeVisible();
+    // Risks and the rollback are one click away, under Files changed.
+    const files = page.getByRole("region", { name: "Files changed" });
+    await files.getByTestId("show-risks").locator("summary").click();
+    await expect(files).toContainText(seed.briefs.ui.risk);
+    await expect(files).toContainText(seed.briefs.ui.rollback);
+    const who = page.getByRole("region", { name: "Who did it" });
+    await expect(who).toContainText(seed.agents.claude.display);
+    // The post has its own place under the description, once.
+    await expect(page.getByTestId("post-panel")).toHaveCount(1);
   });
 
   test("before and after slider works with the keyboard", async ({ page }) => {
     await page.goto(ui());
+    await showEvidence(page);
     const slider = page.getByRole("slider", { name: /Compare before and after/ });
     await expect(slider).toHaveAttribute("aria-valuenow", "50");
     await slider.focus();
@@ -48,6 +62,7 @@ test.describe("Change request brief", () => {
 
   test("video loads on demand with captions", async ({ page }) => {
     await page.goto(ui());
+    await showEvidence(page);
     const gallery = page.locator("[data-evidence-gallery]");
     await expect(gallery.locator("video")).toHaveCount(0);
     await gallery.getByRole("button", { name: new RegExp("Play video: " + seed.briefs.ui.videoTitle + ".*with captions") }).click();
@@ -61,6 +76,7 @@ test.describe("Change request brief", () => {
 
   test("sources are labelled and stale evidence is flagged", async ({ page }) => {
     await page.goto(ui());
+    await showEvidence(page);
     const stale = page.locator("figure[data-nav-item]").filter({ hasText: seed.briefs.ui.staleTitle });
     await expect(stale.locator("[data-stale]")).toContainText("Stale: from r1");
     await expect(stale).toContainText("From the agent");
@@ -69,6 +85,7 @@ test.describe("Change request brief", () => {
 
     // CI evidence links to its check run on the Checks tab, which carries the anchor.
     await page.goto(fix());
+    await showEvidence(page);
     const ci = page.locator("figure[data-nav-item]").filter({ hasText: seed.briefs.fix.reportTitle }).locator("[data-source=ci]");
     await expect(ci).toContainText("Verified by CI");
     await ci.click();
@@ -100,16 +117,16 @@ test.describe("Change request brief", () => {
     await anon.dispose();
   });
 
-  test("?rev and ?since open the Code tab, and the tabs keep their own views", async ({ page, request }) => {
+  test("?rev and ?since open Files changed, and the tabs keep their own views", async ({ page, request }) => {
     const res = await request.get(fix() + "?rev=1&since=", { maxRedirects: 0 });
     expect(res.status()).toBe(307);
     expect(res.headers()["location"]).toContain("/changes/" + seed.changes.fix.id + "/code?rev=1");
     await page.goto(fix() + "?rev=2&since=1");
     await expect(page).toHaveURL(/\/code\?rev=2&since=1$/);
-    await expect(page.getByRole("navigation", { name: "Change request" }).getByRole("link", { name: "Code" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Pull request", exact: true }).getByRole("link", { name: "Files changed" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { name: "r2 since r1" })).toBeVisible();
 
-    await page.getByRole("navigation", { name: "Change request" }).getByRole("link", { name: "For agents" }).click();
+    await page.getByRole("navigation", { name: "Pull request", exact: true }).getByRole("link", { name: "For agents" }).click();
     await expect(page).toHaveURL(/\/agents$/);
     const actions = page.locator("[data-actions]");
     await expect(actions.getByRole("button", { name: /Copy as CLI, HTTP or MCP: Read the change request/ })).toBeVisible();
@@ -118,7 +135,7 @@ test.describe("Change request brief", () => {
   });
 
   for (const tab of ["", "/code", "/checks", "/agents"]) {
-    test("axe: the " + (tab.slice(1) || "brief") + " tab of the ui change", async ({ page }) => {
+    test("axe: the " + (tab.slice(1) || "overview") + " tab of the ui pull request", async ({ page }) => {
       await page.goto(ui() + tab);
       await expect(page.locator("main")).toBeVisible();
       await page.waitForTimeout(400);

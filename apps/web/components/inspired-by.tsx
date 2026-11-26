@@ -9,7 +9,7 @@ import { LightbulbIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { PostRef } from "@/lib/api/types";
 import { repoHref } from "@/lib/routes";
-import { describePost } from "./post-text";
+import { describePost } from "@/components/posts/post-text";
 
 /** The part of the source post the banner shows. */
 export interface InspiredPost {

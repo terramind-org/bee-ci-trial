@@ -30,7 +30,7 @@ function landEntry(fullName: string, c: Changeset): AtomEntry | null {
   return {
     kind: "land",
     id: fullName + "/" + id,
-    title: (first.trim() || "Landed change") + " · " + fullName,
+    title: (first.trim() || "Merged commit") + " · " + fullName,
     updated: time,
     path: repoHref(fullName, "activity"),
     summary: rest.join("\n").trim() || undefined,
@@ -139,7 +139,7 @@ export async function ownerFeed(origin: string, owner: string): Promise<AtomFeed
     path: ownerHref(profile.login) + "/feed.atom",
     pagePath: ownerHref(profile.login),
     title: (profile.name || profile.login) + " · Beehive",
-    subtitle: profile.kind === "org" ? "Recent lands on public repositories" : "Recent lands by " + profile.login,
+    subtitle: profile.kind === "org" ? "Recent merges on public repositories" : "Recent merges by " + profile.login,
     entries: lands.flat(),
   };
 }

@@ -1,11 +1,11 @@
-import { HeaderSkeleton, PanelSkeleton, Skel, TabsSkeleton } from "@/components/skeletons";
+import { HeaderSkeleton, PanelSkeleton, Skel } from "@/components/skeletons";
 
 export default function Loading() {
   return (
     <Skel>
-      <HeaderSkeleton title="Settings" metaWidth={440} />
-      <TabsSkeleton labels={["General", "Members", "Teams", "Apps", "Audit log"]} counts={false} active={-1} />
-      <PanelSkeleton rows={8} rowHeight={52} />
+      <HeaderSkeleton title="Organization settings" eyebrow metaWidth={180} />
+      <PanelSkeleton title="Organization" rows={3} rowHeight={48} />
+      <PanelSkeleton title="Repositories" rows={4} rowHeight={58} />
     </Skel>
   );
 }

@@ -35,9 +35,9 @@ export function RepoEntry({ fullName, description, language, stars, updatedAt, w
     <article className={cx("flex items-start gap-4 py-5", className)} aria-label={fullName}>
       <OwnerMark fullName={fullName} size={36} />
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <RepoName fullName={fullName} className="text-lg" />
-          {visibility && visibility !== "VISIBILITY_PUBLIC" ? <span className="shrink-0 text-sm text-ink-3">{VISIBILITY_WORD[visibility]}</span> : null}
+          {visibility && visibility !== "VISIBILITY_UNSPECIFIED" ? <span className="shrink-0 text-sm text-ink-3">{VISIBILITY_WORD[visibility]}</span> : null}
         </div>
         {description ? <p className="mt-1 line-clamp-2 max-w-2xl text-md text-ink-2">{description}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink-3">

@@ -2,12 +2,13 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { pathBytes } from "../../lib/api/ids";
-import type { LanguageStat, Lease, Repo, SearchRepoHit, TreeEntry } from "../../lib/api/types";
+import type { Changeset, LanguageStat, Lease, Principal, Repo, SearchRepoHit, TreeEntry } from "../../lib/api/types";
 import { archiveRefusal } from "./archive-download";
 import { cloneTabs } from "./clone-panel";
+import { CommitRows, commitLine, commitView } from "./commits";
 import { FileTreeRoot, ROOT_ROWS, orderTree } from "./file-tree-root";
 import { LanguageBar, percentText } from "./language-bar";
-import { RepoNote } from "./note";
+import { RepoNote, editingLines } from "./note";
 import { editingSentence, holders, leaseTouches } from "./presence";
 import { hitOfRepo, listHref, ownerQuery, parseListParams, refine, searchQuery, visibilityOf } from "./query";
 
@@ -44,10 +45,13 @@ describe("archive refusals", () => {
 });
 
 describe("language bar", () => {
-  it("prints every share and uses the server's colour", () => {
+  it("prints every share, in ink and greys rather than the server's colours", () => {
     const html = renderToStaticMarkup(h(LanguageBar, { languages: langs }));
     expect(html).toContain("Languages: Rust 90%, Shell 10%");
-    expect(html).toContain("#dea584");
+    expect(html).not.toContain("#dea584");
+    expect(html).toContain("background:var(--ink)");
+    expect(html).toContain("background:var(--ink-2)");
+    expect(html).not.toMatch(/#[0-9a-f]{6}/i);
     expect(percentText(0.04)).toBe("<0.1%");
   });
   it("renders nothing without languages", () => {
@@ -58,19 +62,48 @@ describe("language bar", () => {
 describe("repo note", () => {
   const holder = { id: "p1", kind: "PRINCIPAL_KIND_AGENT" as const, display: "triage", ownerId: "", runtime: "claude-code", externalIds: [] };
   const lease = { id: "l1", holder, paths: [pathBytes("src/auth")], mode: "LEASE_MODE_EXCLUSIVE", note: "Rotating session ids" } as unknown as Lease;
-  it("folds topics, license, languages and who is editing into one note", () => {
+  it("puts who is editing and what the repository is in two quiet sections, with no side column", () => {
     const html = renderToStaticMarkup(h(RepoNote, { repo, languages: langs, leases: [lease], leasesVisible: true, agents: [], signedIn: true }));
     expect(html).toContain('href="/topics/billing"');
     expect(html).toContain("MIT");
     expect(html).toContain("Languages: Rust 90%, Shell 10%");
     expect(html).toContain("triage is editing src/auth (Rotating session ids).");
     expect(html).not.toContain("rounded-lg border");
+    expect(html).not.toContain("<aside");
+    expect(html.match(/<h2 /g)).toHaveLength(2);
+    // Stars and forks are in the header; the note does not repeat them.
+    expect(html).not.toContain("Stars");
+  });
+  it("names an active agent that holds no lease, with its open pull requests", () => {
+    const agent = { principal: { ...holder, id: "p2", display: "deps-bot" }, openChanges: 1, activeLeases: 0 };
+    expect(editingLines([lease], [agent, { principal: holder, openChanges: 2, activeLeases: 1 }])).toEqual(["triage is editing src/auth (Rotating session ids).", "deps-bot is active, with 1 open pull request."]);
   });
   it("says so when nobody is editing, and asks anonymous visitors to sign in", () => {
     const quiet = renderToStaticMarkup(h(RepoNote, { repo, languages: [], leases: [], leasesVisible: true, agents: [], signedIn: false }));
     expect(quiet).toContain("Nobody is editing right now.");
     const hidden = renderToStaticMarkup(h(RepoNote, { repo, languages: [], leases: [], leasesVisible: false, agents: [], signedIn: false }));
     expect(hidden).toContain("Sign in to see who is editing here.");
+  });
+});
+
+describe("commits", () => {
+  const dev: Principal = { id: "dev", kind: "PRINCIPAL_KIND_HUMAN", display: "Dev Patel", ownerId: "", runtime: "", externalIds: [] };
+  const byAgent = { parents: [], meta: { author: "deps-bot", committer: "deps-bot", creator: "deps", message: "Bump hono from 4.5.11 to 4.6.3\n\nbody", committerTime: { time: "2026-10-20T00:00:00Z" }, provenance: { principalChain: ["deps", "dev"], runtime: "codex/0.48", model: "gpt-5-codex-mini", session: "s", promptDigest: "", checksRun: [] } } } as unknown as Changeset;
+  const byPerson = { parents: [], meta: { author: "Mara Okafor", committer: "Mara Okafor", creator: "mara", message: "Tighten token audience check" } } as unknown as Changeset;
+  it("names the agent and the person behind it, or the person alone", () => {
+    const view = commitView(byAgent, new Map([[dev.id, dev]]));
+    expect(view).toMatchObject({ title: "Bump hono from 4.5.11 to 4.6.3", author: "deps-bot", agent: true, person: "Dev Patel", runtime: "Codex", model: "gpt-5-codex-mini" });
+    expect(commitView(byPerson)).toMatchObject({ agent: false, person: "Mara Okafor", author: "Mara Okafor" });
+    // Without the organisation's members the person is left out, not printed as an id.
+    expect(commitView(byAgent).person).toBeUndefined();
+    expect(commitLine({ ...view, short: "2ac4689357" })).toBe("2ac4689357 · Bump hono from 4.5.11 to 4.6.3 · deps-bot for Dev Patel · gpt-5-codex-mini · 2026-10-20T00:00:00Z");
+  });
+  it("puts the mark beside the person on every row", () => {
+    const html = renderToStaticMarkup(h(CommitRows, { commits: [{ ...commitView(byAgent, new Map([[dev.id, dev]])), id: "a", short: "2ac4689357" }, { ...commitView(byPerson), id: "b", short: "f84b2734ad" }] }));
+    expect(html.match(/class="dot"/g)).toHaveLength(2);
+    expect(html).toMatch(/class="dot"[^>]*><\/span><span>Dev Patel/);
+    expect(html).toMatch(/class="dot"[^>]*><\/span><span>Mara Okafor/);
+    expect(html).toContain("2ac4689357");
   });
 });
 

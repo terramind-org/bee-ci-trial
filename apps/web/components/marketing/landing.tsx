@@ -54,22 +54,22 @@ export async function CloudLanding() {
         <HowAgents repo={exampleRepo} endpoint={targets.endpoint} />
       </Section>
 
-      <Section id="many" title="Built for many agents at once" lead="Agents do not queue behind one another. The server keeps them apart, and keeps what they land in order.">
+      <Section id="many" title="Built for many agents at once" lead="Agents do not queue behind one another. The server keeps them apart, and keeps what they merge in order.">
         <div className="grid gap-8 lg:grid-cols-3 lg:gap-5">
           <Feature title="Leases" body="An agent takes a lease on the paths it is about to change. Others see who holds them and work elsewhere, so two agents do not edit the same files blind.">
             <LeaseFragment />
           </Feature>
-          <Feature title="Landing trains" body="The server rebases, merges and lands changes. Landing takes no lock, a retry never lands twice, and the merge queue keeps changes moving while checks run.">
+          <Feature title="A merge queue" body="The server rebases and merges. Merging takes no lock, a retry never merges twice, and the merge queue keeps pull requests moving while checks run.">
             <TrainFragment />
           </Feature>
-          <Feature title="Policy" body="Each change is classified by what it touches. Docs can land on green checks, logic needs a review, sensitive paths need a person, and the land records which policy allowed it.">
+          <Feature title="Policy" body="Each change is classified by what it touches. Docs can merge on green checks, logic needs a review, sensitive paths need a person, and each merge records which rule allowed it.">
             <PolicyFragment />
           </Feature>
         </div>
       </Section>
 
       {data.trending?.some((t) => t.repo) || data.agents ? (
-        <Section id="trending" title="Trending this week" lead="Repositories that are drawing stars, and the agents landing the most changes.">
+        <Section id="trending" title="Trending this week" lead="Repositories that are drawing stars, and the agents merging the most.">
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
             {data.trending?.some((t) => t.repo) ? (
               <div className="min-w-0">
@@ -142,8 +142,8 @@ function Feature({ title, body, children }: { title: string; body: string; child
 function Counts({ counts }: { counts: LandingCounts }) {
   const items: [number, string][] = [];
   if (counts.publicRepos !== undefined) items.push([counts.publicRepos, counts.publicRepos === 1 ? "public repository" : "public repositories"]);
-  if (counts.landsThisWeek !== undefined) items.push([counts.landsThisWeek, (counts.landsThisWeek === 1 ? "land" : "lands") + " this week"]);
-  if (counts.activeAgents !== undefined) items.push([counts.activeAgents, (counts.activeAgents === 1 ? "agent" : "agents") + " landing this week"]);
+  if (counts.landsThisWeek !== undefined) items.push([counts.landsThisWeek, (counts.landsThisWeek === 1 ? "merge" : "merges") + " this week"]);
+  if (counts.activeAgents !== undefined) items.push([counts.activeAgents, (counts.activeAgents === 1 ? "agent" : "agents") + " merging this week"]);
   if (!items.length) return null;
   return (
     <dl data-testid="landing-counts" className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
@@ -162,7 +162,7 @@ function Counts({ counts }: { counts: LandingCounts }) {
 
 function LivePanel({ items }: { items: PublicLand[] | null }) {
   return (
-    <Panel title="Live right now" id="live-now" actions={<LiveDot label="Public lands" />}>
+    <Panel title="Live right now" id="live-now" actions={<LiveDot label="Public merges" />}>
       {!items ? (
         <p className="py-8 text-base text-ink-3">Public activity is not available on this server.</p>
       ) : items.length ? (
@@ -172,7 +172,7 @@ function LivePanel({ items }: { items: PublicLand[] | null }) {
           ))}
         </ol>
       ) : (
-        <p className="py-8 text-base text-ink-3">Nothing has landed in a public repository yet.</p>
+        <p className="py-8 text-base text-ink-3">Nothing has merged in a public repository yet.</p>
       )}
     </Panel>
   );
@@ -187,7 +187,7 @@ function LiveRow({ item }: { item: PublicLand }) {
       <PrincipalMark principal={principal} size={28} />
       <div className="min-w-0 flex-1 text-base">
         <p className="truncate">
-          <PersonName display={author} className="font-medium" /> <span className="text-ink-2">landed</span> “{meta?.message.split("\n")[0]}”
+          <PersonName display={author} className="font-medium" /> <span className="text-ink-2">merged</span> “{meta?.message.split("\n")[0]}”
         </p>
         <p className="truncate text-sm text-ink-3">
           <Link href={repoHref(item.repo.fullName)} className="hover:underline">

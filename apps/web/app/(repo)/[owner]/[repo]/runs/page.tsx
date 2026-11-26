@@ -1,75 +1,126 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { CopyAs, PageOp } from "@/components/copy-as";
+import { PageFacts, type FactGroup } from "@/components/bee/page-facts";
+import { Button, ButtonLink, Field, Input, Select } from "@/components/kit";
 import { LiveRefresh } from "@/components/live-refresh";
-import { PrincipalName, RunStatusBadge, StatusIcon } from "@/components/domain";
-import { FilterList } from "@/components/filter-list";
-import { Time } from "@/components/time";
-import { EmptyState, PageHeader, TabLinks } from "@/components/ui";
-import { objectIdText } from "@/lib/api/ids";
-import { type RepoParams, scopeFromParams, serverClient } from "@/lib/api/server";
-import type { RunStatus } from "@/lib/api/types";
-import { between, duration } from "@/lib/format";
-import { repoHref } from "@/lib/routes";
+import { PageMenu } from "@/components/menu";
+import { Quiet, Row, Rows, Sep } from "@/components/parts";
+import { optionalCi } from "@/components/runs/run-facts";
+import { deploymentParts, groupRuns, passingLabel, RunLine, RunList, runMatches } from "@/components/runs/run-list";
+import { CiHeader } from "@/components/runs/ci-header";
+import { mapLimit } from "@/lib/api/ops/shared";
+import { type RepoParams, scopeFromParams, serverClient, sessionToken } from "@/lib/api/server";
+import type { ListRunsRequest, RunStatus } from "@/lib/api/types";
 import { guard, param, type SearchParams } from "@/lib/page";
+import { repoHref } from "@/lib/routes";
+import { pageTools } from "@/lib/tools";
+import { requestMode } from "../../../../request-mode";
 
-export const metadata: Metadata = { title: "Runs" };
-
-const TABS: (RunStatus | "")[] = ["", "running", "failed", "passed"];
+export const metadata: Metadata = { title: "CI" };
 
 export default async function RunsPage({ params, searchParams }: { params: Promise<RepoParams>; searchParams: SearchParams }) {
   const sp = await searchParams;
-  const status = (TABS.includes(param(sp, "status") as RunStatus) ? param(sp, "status") : "") as RunStatus | "";
+  const rawStatus = param(sp, "status");
+  const status = rawStatus === "failed" || rawStatus === "passed" || rawStatus === "running" ? rawStatus : undefined;
+  const token = param(sp, "page");
+  const query = param(sp, "q").trim();
   return guard(async () => {
     const api = await serverClient();
     const { ref, fullName } = await scopeFromParams(params);
-    const req = { repo: ref, status, page: { pageSize: 100 } };
-    const [list, all, changes] = await Promise.all([api.workflow.listRuns(req), api.workflow.listRuns({ repo: ref, page: { pageSize: 200 } }), api.change.listChanges({ repo: ref })]);
-    const titles = new Map(changes.changes.map((c) => [c.id, c.title]));
-    const items = list.runs.map((r) => ({
-      key: r.id,
-      text: [r.workflow, r.number, r.status, r.ref, titles.get(r.changeRequestId), r.actor?.display, r.trigger].join(" "),
-      node: (
-        <Link href={repoHref(fullName, "runs/" + r.id)} data-nav-item className="flex flex-col gap-1.5 px-3.5 py-2.5 hover:bg-hover focus-visible:bg-hover md:flex-row md:items-center md:gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <RunStatusBadge status={r.status} />
-            <div className="min-w-0">
-              <p className="truncate font-medium text-ink">
-                {r.workflow} <span className="num text-ink-3">#{r.number}</span> · {titles.get(r.changeRequestId) ?? (r.trigger === "land" ? "post-land on main" : r.ref)}
-              </p>
-              <p className="flex flex-wrap items-center gap-x-3 text-sm text-ink-2">
-                <span className="mono text-xs">{r.ref}</span>
-                <span className="mono text-xs text-ink-3">{objectIdText(r.head, true)}</span>
-                <span>{r.trigger.replace("_", " ")}</span>
-                {r.attempt > 1 ? <span>attempt {r.attempt}</span> : null}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-ink-2">
-            <span className="inline-flex gap-0.5" aria-label={r.jobs.map((j) => j.name + " " + j.status).join(", ")}>
-              {r.jobs.map((j) => (
-                <StatusIcon key={j.id} status={j.status} />
-              ))}
-            </span>
-            <PrincipalName principal={r.actor} showRuntime={false} link={false} />
-            <span className="num w-16 text-right">{r.finishedAt ? duration(between(r.startedAt, r.finishedAt)) : "running"}</span>
-            <Time iso={r.startedAt} className="w-16 text-right text-ink-3" />
-          </div>
-        </Link>
-      ),
-    }));
-    const n = (s: RunStatus) => all.runs.filter((r) => r.status === s).length;
+    const req: ListRunsRequest = { repo: ref, status, page: { pageSize: 100, pageToken: token || undefined } };
+    const [{ mode }, session, list, changes, deployments] = await Promise.all([
+      requestMode(),
+      sessionToken(),
+      api.workflow.listRuns(req),
+      api.change.listChanges({ repo: ref, page: { pageSize: 100 } }),
+      optionalCi(api.deployment.listDeployments({ repo: ref, page: { pageSize: 25 } })),
+    ]);
+
+    const byId = new Map(changes.changes.map((c) => [c.id, c]));
+    const missing = [...new Set(list.runs.map((r) => r.changeRequestId).filter((id) => id && !byId.has(id)))];
+    for (const change of await mapLimit(missing, 8, (id) => optionalCi(api.change.getChange({ repo: ref, id })))) {
+      if (change) byId.set(change.id, change);
+    }
+    const runs = query ? list.runs.filter((r) => runMatches(r, byId.get(r.changeRequestId), query)) : list.runs;
+    const now = Date.now();
+    const scoped = Boolean(query || status || token || list.page?.nextPageToken);
+    const empty = query || status ? "No runs match these filters." : "No runs yet.";
+    const path = repoHref(fullName, "runs");
+    const workflows = session ? path + "/workflows" : undefined;
+    const pageURL = (page: string, filter?: RunStatus) => {
+      const next = new URLSearchParams();
+      if (query) next.set("q", query);
+      if (filter) next.set("status", filter);
+      if (page) next.set("page", page);
+      return path + (next.size ? "?" + next.toString() : "");
+    };
+    const next = list.page?.nextPageToken;
+    const deploymentRows = deployments?.deployments ?? [];
+
+    if (mode === "bee") {
+      const { groups, passed, recent, cancelled, other } = groupRuns(runs, now);
+      const lines = (items: typeof runs) => items.map((run) => (
+        <RunLine key={run.id} repo={fullName} run={run} change={byId.get(run.changeRequestId)} agent />
+      ));
+      const facts: FactGroup[] = groups.filter((g) => g.runs.length).map((g) => ({ title: g.title, lines: lines(g.runs) }));
+      if (runs.length) facts.push({ title: passingLabel(recent.length, passed.length, scoped), collapsed: true, lines: lines(passed), empty: "No passing runs in these results." });
+      else facts.push({ title: "Runs", empty });
+      if (cancelled.length) facts.push({ title: "Cancelled", lines: lines(cancelled) });
+      if (other.length) facts.push({ title: "Other completed runs", lines: lines(other) });
+      if (deploymentRows.length) facts.push({ title: "Deployments", lines: deploymentRows.map((d) => {
+        const { target, state } = deploymentParts(d);
+        return <span key={d.id}>{d.environment}{target && <> · <code>{target}</code></>} · {state}</span>;
+      }) });
+      if (workflows || next || token || status || query) facts.push({ title: "Related pages", lines: [
+        ...(workflows ? [<a key="workflows" className="link" href={workflows}>Workflows</a>] : []),
+        ...(next ? [<a key="next" className="link" href={pageURL(next, status)}>Older runs</a>] : []),
+        ...(token || status || query ? [<a key="latest" className="link" href={path}>Latest runs</a>] : []),
+      ] });
+      return <PageFacts page="ci" title="CI" groups={facts} tools={pageTools("ci")} />;
+    }
+
     return (
       <>
-        <PageOp op={{ service: "WorkflowService", method: "ListRuns", request: req, label: "List runs" }} />
-        <LiveRefresh repo={fullName} kinds={["workflow_run.*"]} />
-        <PageHeader title="Runs" meta={<span>Workflow runs, their jobs and the checks they report.</span>} actions={<CopyAs op={{ service: "WorkflowService", method: "ListRuns", request: req, label: "List runs" }} />} />
-        <TabLinks
-          label="Run status"
-          items={TABS.map((t) => ({ href: repoHref(fullName, t ? "runs?status=" + t : "runs"), label: t ? t[0]?.toUpperCase() + t.slice(1) : "All", active: status === t, count: t ? n(t) : all.runs.length }))}
-        />
-        <div className="rounded-lg border border-line bg-surface">
-          <FilterList items={items} label="Filter runs" placeholder="Filter by workflow, change, ref or actor…" empty={<EmptyState title="No runs" icon="runs">Runs start when a change request opens or a change lands.</EmptyState>} />
+        <LiveRefresh repo={fullName} kinds={["workflow_run.*", "workflow_job.*", "deployment.*", "run.*"]} />
+        <CiHeader title="CI" actions={<>
+          {workflows && <ButtonLink href={workflows} size="sm">Workflows</ButtonLink>}
+          <PageMenu op={{ service: "WorkflowService", method: "ListRuns", request: req, label: "List runs" }} />
+        </>} />
+        <div className="flex flex-col gap-8">
+          <details className="max-w-2xl" open={Boolean(query || status)}>
+            <summary className="link min-h-6 cursor-pointer text-sm text-ink-2">Find a run</summary>
+            <form action={path} role="search" aria-label="Find a run" className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+              <Field label="Workflow, branch, pull request or actor" htmlFor="run-search">
+                <Input id="run-search" name="q" defaultValue={query} />
+              </Field>
+              <Field label="Status" htmlFor="run-status">
+                <Select id="run-status" name="status" defaultValue={status ?? ""}>
+                  <option value="">All runs</option>
+                  <option value="failed">Failed</option>
+                  <option value="running">Running</option>
+                  <option value="passed">Passed</option>
+                </Select>
+              </Field>
+              <Button type="submit">Apply filters</Button>
+            </form>
+          </details>
+          {runs.length ? <RunList repo={fullName} runs={runs} changes={byId} now={now} scoped={scoped} /> : <Quiet>{empty}</Quiet>}
+          {(next || token || status || query) && (
+            <nav aria-label="Run pages" className="flex flex-wrap gap-2">
+              {next && <ButtonLink href={pageURL(next, status)} size="sm">Older runs</ButtonLink>}
+              {(token || status || query) && <ButtonLink href={path} size="sm" variant="ghost">Latest runs</ButtonLink>}
+            </nav>
+          )}
+          {deploymentRows.length > 0 && (
+            <section aria-labelledby="ci-deployments">
+              <h2 id="ci-deployments" className="mb-2 text-sm font-medium text-ink-2">Deployments</h2>
+              <Rows>
+                {deploymentRows.map((d) => {
+                  const { target, state } = deploymentParts(d);
+                  return <Row key={d.id} meta={<>{state}{target && <><Sep /> <span className="mono">{target}</span></>}</>}>{d.environment}</Row>;
+                })}
+              </Rows>
+            </section>
+          )}
         </div>
       </>
     );

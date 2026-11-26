@@ -68,6 +68,9 @@ pub struct CrRecord {
     /// The change request head authorized by the current landing intent.
     #[prost(message, optional, tag = "18")]
     pub landing_head: Option<ObjectId>,
+    /// Verified run that opened the change. Its evidence events need no extra lookup.
+    #[prost(string, tag = "19")]
+    pub(crate) safety_run_id: String,
 }
 
 impl CrRecord {

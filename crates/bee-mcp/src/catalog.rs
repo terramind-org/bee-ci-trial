@@ -176,8 +176,8 @@ pub const TOOLSETS: &[Toolset] = &[
     },
     Toolset {
         name: "agents",
-        description: "Agent registry, runs, memory, workspaces and the model gateway.",
-        services: &["Agent", "Workspace", "Model"],
+        description: "Agent registry, runs, swarms, memory, workspaces and the model gateway.",
+        services: &["Agent", "Swarm", "Safety", "Workspace", "Model"],
         methods: &[],
     },
     Toolset {
@@ -538,13 +538,17 @@ fn has_prefix_word(name: &str, prefix: &str) -> bool {
 }
 
 fn is_read_only(method: &str) -> bool {
-    READ_EXACT.contains(&method) || READ_PREFIXES.iter().any(|p| has_prefix_word(method, p))
+    method != "ResolveFinding"
+        && (READ_EXACT.contains(&method)
+            || READ_PREFIXES.iter().any(|p| has_prefix_word(method, p)))
 }
 
 fn is_destructive(method: &str) -> bool {
-    DESTRUCTIVE_PREFIXES
-        .iter()
-        .any(|p| has_prefix_word(method, p))
+    // SetSwarmState includes stopping the swarm and cancelling its member runs.
+    matches!(method, "SetSwarmState" | "StopEverything" | "RaiseConcern")
+        || DESTRUCTIVE_PREFIXES
+            .iter()
+            .any(|p| has_prefix_word(method, p))
 }
 
 fn kind_name(kind: MethodKind) -> &'static str {
