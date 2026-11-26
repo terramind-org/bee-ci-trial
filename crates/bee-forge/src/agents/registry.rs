@@ -11,6 +11,7 @@
 //! - An **owner budget** ([`OwnerBudget`]) caps what one owner's agents spend per UTC month;
 //!   runs refuse to start (`BUDGET_EXHAUSTED`) once it is spent.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::{BTreeMap, BTreeSet};
 
 use bee_proto::v1::{
@@ -893,7 +894,7 @@ impl Agents {
         ))
         .await?;
         tx.audit(
-            AuditDraft::new("agent.update", org_id)
+            AuditDraft::new(audit_actions::AGENT_UPDATE, org_id)
                 .target_id(agent_id)
                 .before(&before)
                 .after(&def_json(&out)),
@@ -916,7 +917,7 @@ impl Agents {
             &mut tx,
             org_id,
             "agent.deleted",
-            "agent.delete",
+            audit_actions::AGENT_DELETE,
             agent_id,
             &json,
         )
@@ -1003,7 +1004,7 @@ impl Agents {
             &mut tx,
             org_id,
             "agent.budget_updated",
-            "agent.budget_set",
+            audit_actions::AGENT_BUDGET,
             owner_id,
             &json,
         )

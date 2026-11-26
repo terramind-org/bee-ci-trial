@@ -23,7 +23,7 @@ use tokio_postgres::{Client, NoTls, Statement};
 use super::{Col, Dialect, Exec, SqlBackend, SqlConfig, SqlTx, Val, migrate_surface};
 use crate::error::{ForgeError, Result};
 use crate::ids::Clock;
-use crate::store::{ForgeTx, Migration, MigrationReport, Surface, within};
+use crate::store::{ForgeTx, Migration, MigrationReport, PublicationLock, Surface, within};
 
 /// Advisory lock key serializing concurrent migration runs.
 const MIGRATION_LOCK: i64 = 0x4245_4548_4956; // "BEEHIV"
@@ -160,6 +160,41 @@ impl PgBackend {
             surface,
             deadline,
         }))
+    }
+
+    pub(crate) async fn publication_lock(
+        &self,
+        org: &str,
+        shared: bool,
+        deadline: Instant,
+    ) -> Result<PublicationLock> {
+        let (_, schema) = self.url_schema()?;
+        let hash = blake3::derive_key(
+            "bee forge safety publication lock v1",
+            format!("{schema}/{org}").as_bytes(),
+        );
+        let mut key = [0; 8];
+        key.copy_from_slice(&hash[..8]);
+        let key = i64::from_le_bytes(key);
+        let lock = if shared {
+            "pg_advisory_xact_lock_shared"
+        } else {
+            "pg_advisory_xact_lock"
+        };
+        // These connections hold advisory locks only. In particular, an in-flight
+        // publication must never consume an agents-store connection through its CAS.
+        let mut exec = self
+            .checkout(Surface("safety_publication"), deadline)
+            .await?;
+        let ms = deadline
+            .saturating_duration_since(Instant::now())
+            .as_millis()
+            .max(1);
+        exec.open = true;
+        within(deadline, exec.batch(&format!(
+            "BEGIN READ ONLY; SET LOCAL statement_timeout = {ms}; SELECT {lock}('{key}'::bigint)"
+        ))).await?;
+        Ok(Box::new(exec))
     }
 
     pub(crate) async fn migrate(&self, migrations: &[&Migration]) -> Result<MigrationReport> {

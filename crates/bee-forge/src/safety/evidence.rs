@@ -7,6 +7,7 @@ use bee_auth::VerifiedToken;
 use bee_proto::v1::*;
 
 use super::detectors::{self, Attempt, LEASH_ACTIONS, finding};
+use super::store::key as store_key;
 use crate::agents::model::{RunRec, SessionRec};
 use crate::agents::registry::repo_ref_id;
 use crate::agents::{Agents, RUNS, SESSIONS, SURFACE, pad};
@@ -40,6 +41,8 @@ struct LandAttempt {
     reason: i32,
     #[prost(uint64, tag = "4")]
     time_ms: u64,
+    #[prost(message, optional, tag = "5")]
+    denial: Option<PolicyDenial>,
 }
 
 fn attempt_scope(repo: &Repo, run_id: &str) -> String {
@@ -108,7 +111,7 @@ pub async fn record_landing_attempt(
     repo: &Repo,
     token: &VerifiedToken,
     effect: &str,
-    reason: Option<ErrorReason>,
+    error: Option<&ForgeError>,
 ) -> Result<()> {
     let Some(run_id) = swarms::outcomes::verified_run_token(&forge.db, cx, token, repo).await?
     else {
@@ -118,6 +121,7 @@ pub async fn record_landing_attempt(
     let scope = attempt_scope(repo, &run_id);
     let sequence = tx.add_n1(&LAND_ATTEMPTS, &scope, "counter", 1).await?;
     let effect = effect.to_owned();
+    let reason = error.map(|error| error.reason);
     let audit_id = tx
         .audit_id(
             AuditDraft::new("safety.landing_attempt", &repo.org_id)
@@ -132,10 +136,40 @@ pub async fn record_landing_attempt(
         effect,
         reason: reason.unwrap_or_default() as i32,
         time_ms: tx.now_ms(),
+        denial: error.and_then(detectors::refusal),
     });
     tx.insert(&LAND_ATTEMPTS, &row).await?;
     tx.emit_event(evidence_event(&repo.id, &repo.org_id, &run_id))
         .await?;
+    tx.commit().await
+}
+
+/// Mirror a successful native governing mutation into the durable forge audit outbox.
+pub async fn record_native_leash(
+    agents: &Agents,
+    cx: &Cx,
+    action: &str,
+    target: &str,
+    detail: &serde_json::Value,
+) -> Result<()> {
+    if cx.run_session.is_empty() || !detectors::leash_audit_action(action) {
+        return Ok(());
+    }
+    let run = match agents.run_rec(cx, &cx.run_session).await {
+        Ok(run) => run,
+        Err(error) if error.reason == ErrorReason::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    if run.token_id.is_empty() || !cx.token_blocks.contains(&run.token_id) {
+        return Ok(());
+    }
+    let mut tx = agents.db.begin(SURFACE, cx).await?;
+    tx.audit(
+        AuditDraft::new(action, &run.org_id)
+            .target_id(target)
+            .after(&detail.to_string()),
+    )
+    .await?;
     tx.commit().await
 }
 
@@ -363,17 +397,27 @@ impl Build {
         time_ms: u64,
     ) {
         self.time_ms = self.time_ms.max(time_ms);
-        self.record.findings.push(finding(
-            kind,
-            severity,
-            observation,
-            subjects,
-            paths,
-            time_ms,
-        ));
+        let mut finding = finding(kind, severity, observation, subjects, paths, time_ms);
+        let work = self.record.work.as_ref().expect("Build::new sets the work");
+        finding.id = format!(
+            "{}-{}",
+            finding.id,
+            blake3::hash(store_key(work).as_bytes()).to_hex()
+        );
+        self.record.findings.push(finding);
+    }
+
+    fn identify_signal(&mut self, identity: &str) {
+        let Some(finding) = self.record.findings.last_mut() else {
+            return;
+        };
+        let suffix = blake3::hash(identity.as_bytes());
+        finding.id = format!("{}-{suffix}", finding.id);
     }
 
     fn finish(mut self, unfinished: bool, agent_merge_times: Vec<u64>) -> Snapshot {
+        // Audit observations arrive oldest first. Keep the latest evidence for each subject.
+        self.record.findings.reverse();
         self.record.findings.sort_by(|a, b| a.id.cmp(&b.id));
         self.record.findings.dedup_by(|a, b| a.id == b.id);
         self.record.verdict = detectors::verdict(&self.record.findings, unfinished) as i32;
@@ -416,6 +460,7 @@ async fn attempts(agents: &Agents, cx: &Cx, repo: &Repo, run_id: &str) -> Result
                 id: attempt.audit_id,
                 effect: attempt.effect,
                 time_ms: attempt.time_ms,
+                denial: attempt.denial,
             });
         }
         if done {
@@ -443,6 +488,22 @@ async fn audit_page(
         }
         cursor = next;
     }
+}
+
+fn human_approved(reviews: &[Review], revision: u32, merged_at: u64) -> bool {
+    reviews.iter().any(|review| {
+        review.revision == revision
+            && review.verdict() == Verdict::Approve
+            && !review.dismissed
+            && review
+                .created_at
+                .as_ref()
+                .is_some_and(|at| ts_ms(at) <= merged_at)
+            && review
+                .reviewer
+                .as_ref()
+                .is_some_and(|person| person.kind() == PrincipalKind::Human)
+    })
 }
 
 async fn agent_merges(
@@ -480,24 +541,8 @@ async fn agent_merges(
         let Some(&(revision, time)) = candidates.get(&target.id) else {
             continue;
         };
-        let human_approved = agents
-            .changes
-            .raw_reviews(cx, &target.id)
-            .await?
-            .into_iter()
-            .any(|review| {
-                review.revision <= revision
-                    && review.verdict() == Verdict::Approve
-                    && review
-                        .created_at
-                        .as_ref()
-                        .is_some_and(|at| ts_ms(at) <= time)
-                    && review
-                        .reviewer
-                        .as_ref()
-                        .is_some_and(|person| person.kind() == PrincipalKind::Human)
-            });
-        if !human_approved {
+        let reviews = agents.changes.raw_reviews(cx, &target.id).await?;
+        if !human_approved(&reviews, revision, time) {
             times.insert(time);
         }
     }
@@ -612,23 +657,34 @@ async fn gather_checks(
         )
         .flat_map(|rule| rule.required_checks.iter().cloned())
         .collect();
-    let observed = if required.is_empty() {
-        Vec::new()
-    } else {
-        agents
-            .forge
-            .checks
-            .check_results(cx, &repo.id, &hex_of(head))
-            .await?
-    };
+    let hex = hex_of(head);
+    let observed = agents
+        .forge
+        .checks
+        .check_results(cx, &repo.id, &hex)
+        .await?;
+    let suites = agents
+        .forge
+        .checks
+        .list_suites(cx, &repo.id, Some(&hex), "")
+        .await?;
+    let completed = !suites.is_empty()
+        && suites.iter().all(|suite| {
+            !matches!(
+                suite.status(),
+                CheckStatus::Unspecified | CheckStatus::Queued | CheckStatus::Running
+            )
+        });
     let workflows = if let Some(facts) = agents.changes.land_facts() {
         facts
-            .required_workflows(repo, std::slice::from_ref(head))
+            .safety_workflows(repo, std::slice::from_ref(head))
             .await?
     } else {
         Vec::new()
     };
-    Ok(detectors::missing_checks(&required, &observed, &workflows))
+    Ok(detectors::missing_checks(
+        &required, &observed, &workflows, completed,
+    ))
 }
 
 struct DiffEvidence<'a> {
@@ -674,16 +730,39 @@ async fn gather_diff(
             time_ms,
         );
     }
-    let leash = detectors::leash_paths(paths, &run.rec.instructions_path);
-    if !leash.is_empty() {
-        build.signal(
-            SafetySignalKind::OwnLeash,
+    let (outside_leash, scoped_leash): (Vec<_>, Vec<_>) =
+        detectors::leash_paths(paths, &run.rec.instructions_path)
+            .into_iter()
+            .partition(|path| {
+                !run.claims.is_empty() && !detectors::claimed_path(path, &run.claims)
+            });
+    for (severity, observation, paths) in [
+        (
             SafetySeverity::Severe,
+            "Changed policy or instructions outside the recorded scope",
+            outside_leash,
+        ),
+        (
+            SafetySeverity::Warning,
             "Changed repository policy or agent instructions",
-            subjects.clone(),
-            leash,
-            time_ms,
-        );
+            scoped_leash,
+        ),
+    ] {
+        if !paths.is_empty() {
+            build.signal(
+                SafetySignalKind::OwnLeash,
+                severity,
+                observation,
+                subjects.clone(),
+                paths,
+                time_ms,
+            );
+            build.identify_signal(if severity == SafetySeverity::Severe {
+                "outside"
+            } else {
+                "within-or-unknown"
+            });
+        }
     }
 
     let diff = match base {
@@ -759,26 +838,27 @@ async fn gather_run(
         }
     }
     let land_attempts = attempts(agents, cx, repo, &run.run.id).await?;
-    for (first, second) in detectors::repeated_after_refusal(&land_attempts) {
+    for (first, second, requirement) in detectors::repeated_after_refusal(&land_attempts) {
         build.signal(
             SafetySignalKind::AroundRefusal,
             SafetySeverity::Warning,
             format!(
-                "Attempted {} again after policy refused it (audit {} and {})",
-                first.effect, first.id, second.id
+                "Attempted {} again while {requirement} was unmet (audit {} and {})",
+                detectors::native_effect(&first.effect),
+                first.id,
+                second.id
             ),
             vec![run_subject.clone()],
             Vec::new(),
             second.time_ms,
         );
+        build.identify_signal(&format!(
+            "{} {requirement}",
+            detectors::native_effect(&first.effect)
+        ));
     }
     if !run.rec.token_id.is_empty() {
         let filter = AuditLogFilter {
-            actor_id: run
-                .run
-                .agent
-                .as_ref()
-                .map_or_else(String::new, |agent| agent.id.clone()),
             action_prefixes: LEASH_ACTIONS
                 .iter()
                 .map(|action| (*action).into())
@@ -789,10 +869,14 @@ async fn gather_run(
         for entry in audit_page(&agents.forge, cx, repo, &filter).await? {
             if detectors::leash_action(&entry, &run.rec.token_id) {
                 let mut subjects = vec![run_subject.clone()];
-                if let Some(target) = entry
-                    .target
-                    .filter(|t| t.repo.is_none() || t.repo == repo_ref_id(&repo.id))
+                if entry
+                    .repo
+                    .as_ref()
+                    .is_some_and(|reference| Some(reference) != repo_ref_id(&repo.id).as_ref())
                 {
+                    continue;
+                }
+                if let Some(target) = entry.target {
                     subjects.push(target);
                 }
                 build.signal(
@@ -806,6 +890,7 @@ async fn gather_run(
                     Vec::new(),
                     entry.time.as_ref().map_or(creation_ms, ts_ms),
                 );
+                build.identify_signal(&entry.action);
             }
         }
     }
@@ -850,12 +935,14 @@ async fn gather_run(
         let older_paths;
         let paths = if cr.revisions.last() == Some(revision) {
             for object in &record.stack {
+                build.scan_heads.insert(object.raw.clone(), origin.clone());
                 changesets.remove(&object.raw);
             }
             &record.paths
         } else if let Some(base) = base {
             let (stack, _, paths, _) = agents.changes.analyze(repo, head, base).await?;
             for object in &stack.members {
+                build.scan_heads.insert(object.raw.clone(), origin.clone());
                 changesets.remove(&object.raw);
             }
             older_paths = paths;
@@ -956,10 +1043,76 @@ async fn gather_run(
                     Vec::new(),
                     run.finished_at_ms.max(creation_ms),
                 );
+                build.identify_signal(&format!("{target_ref}:{}", hex_of(&head)));
             }
         }
     }
     Ok(())
+}
+
+// Seeing a fingerprint for the first time can mean the revision was scanned first.
+// Require a comparable clean scan on every parent before attributing introduction.
+async fn scan_baseline(
+    agents: &Agents,
+    cx: &Cx,
+    repo: &Repo,
+    first: &CodeScanningAnalysis,
+) -> Result<bool> {
+    use crate::security::{ANALYSES, SURFACE as SECURITY};
+    let Some(changeset) = &first.changeset else {
+        return Ok(false);
+    };
+    let commit = match agents.changes.vcs().commit(repo, changeset).await {
+        Ok(commit) => commit,
+        Err(error)
+            if matches!(
+                error.reason,
+                ErrorReason::NotFound | ErrorReason::MissingObject | ErrorReason::Redacted
+            ) =>
+        {
+            return Ok(false);
+        }
+        Err(error) => return Err(error),
+    };
+    let mut pending: BTreeSet<_> = commit.parents.into_iter().map(|id| id.raw).collect();
+    if pending.is_empty() {
+        return Ok(true);
+    }
+    let Some(at) = first.created_at.as_ref().map(ts_ms) else {
+        return Ok(false);
+    };
+    let mut tx = agents.db.begin(SECURITY, cx).await?;
+    let mut after = None;
+    loop {
+        let analyses = tx
+            .scan_msgs::<CodeScanningAnalysis>(
+                &ANALYSES,
+                &Scan::scope(&repo.id, 128)
+                    .key(crate::store::Key::K1(first.r#ref.clone()))
+                    .after(after),
+            )
+            .await?;
+        after = analyses.last().map(|(_, row)| Cursor::after(row));
+        let done = analyses.len() < 128;
+        for (analysis, _) in analyses {
+            if analysis.tool_name == first.tool_name
+                && analysis.tool_version == first.tool_version
+                && analysis.category == first.category
+                && analysis.error.is_empty()
+                && analysis.results_count == 0
+                && analysis
+                    .created_at
+                    .as_ref()
+                    .is_some_and(|time| ts_ms(time) <= at)
+                && let Some(id) = analysis.changeset
+            {
+                pending.remove(&id.raw);
+            }
+        }
+        if done || pending.is_empty() {
+            return Ok(pending.is_empty());
+        }
+    }
 }
 
 async fn gather_scan_alerts(
@@ -968,7 +1121,7 @@ async fn gather_scan_alerts(
     repo: &Repo,
     build: &mut Build,
 ) -> Result<()> {
-    use crate::security::{CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY, num_id};
+    use crate::security::{ANALYSES, CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY, num_id};
     if build.scan_heads.is_empty()
         || !agents
             .forge
@@ -981,6 +1134,7 @@ async fn gather_scan_alerts(
     }
     let head_ids: BTreeSet<_> = build.scan_heads.keys().cloned().collect();
     let mut tx = agents.db.begin(SECURITY, cx).await?;
+    let mut observations = Vec::new();
     let mut cursor = None;
     loop {
         let alerts = tx
@@ -990,12 +1144,17 @@ async fn gather_scan_alerts(
         let done = alerts.len() < 128;
         for (record, _) in alerts {
             let Some(alert) = record.alert else { continue };
+            let first = record.first_changeset;
+            let first_analysis_id = record.first_analysis_id;
+            if first.as_ref().is_some_and(|id| !head_ids.contains(&id.raw)) {
+                continue;
+            }
             if alert.state() != CodeScanningAlertState::Open {
                 continue;
             }
             let scope = format!("{}:{}", repo.id, num_id(alert.number));
             let mut after = None;
-            loop {
+            'instances: loop {
                 let instances = tx
                     .scan_msgs::<InstanceRec>(
                         &CODE_INSTANCES,
@@ -1011,38 +1170,32 @@ async fn gather_scan_alerts(
                     if !detectors::scan_matches(&alert, &instance, &head_ids) {
                         continue;
                     }
-                    let Some(origin) = instance
-                        .changeset
+                    let Some(origin) = first
                         .as_ref()
+                        .or(instance.changeset.as_ref())
                         .and_then(|id| build.scan_heads.get(&id.raw))
                         .cloned()
                     else {
                         continue;
                     };
-                    let alert_subject =
-                        subject(repo, SubjectKind::SecurityAlert, alert.number.to_string());
+                    let analysis = match first.as_ref() {
+                        Some(first) if !first_analysis_id.is_empty() => tx
+                            .get_msg::<CodeScanningAnalysis>(
+                                &ANALYSES,
+                                &repo.id,
+                                &first_analysis_id,
+                            )
+                            .await?
+                            .map(|(analysis, _)| analysis)
+                            .filter(|analysis| analysis.changeset.as_ref() == Some(first)),
+                        _ => None,
+                    };
                     let paths = instance
                         .location
                         .map(|location| vec![String::from_utf8_lossy(&location.path).into_owned()])
                         .unwrap_or_default();
-                    let time_ms = build.at(&alert.updated_at);
-                    let severity = match alert.rule.as_ref().map(|rule| rule.security_severity()) {
-                        Some(SecuritySeverity::Critical | SecuritySeverity::High) => {
-                            SafetySeverity::Severe
-                        }
-                        _ => SafetySeverity::Warning,
-                    };
-                    build.signal(
-                        SafetySignalKind::HarmToCode,
-                        severity,
-                        format!(
-                            "Code scanning alert #{} is open on an attributed revision",
-                            alert.number
-                        ),
-                        vec![origin, alert_subject],
-                        paths,
-                        time_ms,
-                    );
+                    observations.push((origin, alert, paths, analysis));
+                    break 'instances;
                 }
                 if last {
                     break;
@@ -1050,9 +1203,54 @@ async fn gather_scan_alerts(
             }
         }
         if done {
-            return Ok(());
+            break;
         }
     }
+    drop(tx);
+    let mut baselines = BTreeMap::new();
+    for (origin, alert, paths, analysis) in observations {
+        let mut introduced = false;
+        if let Some(analysis) = analysis {
+            introduced = if let Some(verified) = baselines.get(&analysis.id) {
+                *verified
+            } else {
+                let verified = scan_baseline(agents, cx, repo, &analysis).await?;
+                baselines.insert(analysis.id, verified);
+                verified
+            };
+        }
+        let severity = match (
+            introduced,
+            alert.rule.as_ref().map(|rule| rule.security_severity()),
+        ) {
+            (false, _) => SafetySeverity::Note,
+            (true, Some(SecuritySeverity::Critical | SecuritySeverity::High)) => {
+                SafetySeverity::Severe
+            }
+            (true, _) => SafetySeverity::Warning,
+        };
+        let time_ms = build.at(&alert.updated_at);
+        build.signal(
+            SafetySignalKind::HarmToCode,
+            severity,
+            format!(
+                "Code scanning alert #{} {}",
+                alert.number,
+                if introduced {
+                    "appeared after clean parent scans"
+                } else {
+                    "is open on an attributed revision; when it was introduced is unknown"
+                }
+            ),
+            vec![
+                origin,
+                subject(repo, SubjectKind::SecurityAlert, alert.number.to_string()),
+            ],
+            paths,
+            time_ms,
+        );
+    }
+    Ok(())
 }
 
 pub(super) async fn collect(
@@ -1131,4 +1329,28 @@ pub(super) async fn collect(
     gather_scan_alerts(agents, cx, repo, &mut build).await?;
     let agent_merge_times = agent_merges(agents, cx, repo, &build.merge_candidates).await?;
     Ok(build.finish(unfinished, agent_merge_times))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safety_human_approval_belongs_to_the_landed_revision() {
+        let mut review = Review {
+            reviewer: Some(Principal {
+                kind: PrincipalKind::Human as i32,
+                ..Default::default()
+            }),
+            verdict: Verdict::Approve as i32,
+            revision: 1,
+            created_at: Some(ts(10)),
+            ..Default::default()
+        };
+        assert!(human_approved(std::slice::from_ref(&review), 1, 20));
+        assert!(!human_approved(std::slice::from_ref(&review), 2, 20));
+        assert!(!human_approved(std::slice::from_ref(&review), 1, 9));
+        review.dismissed = true;
+        assert!(!human_approved(&[review], 1, 20));
+    }
 }

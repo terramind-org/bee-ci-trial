@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use bee_core::{ObjectId, ObjectKind, RefName};
-use bee_policy::{Action, Policy, RefAction};
+use bee_forge::safety::control::LandFence;
+use bee_policy::{Action, Policy, PrincipalKind, RefAction};
 use bee_proto::v1::{self, ErrorReason, ref_service_server::RefService};
 use bee_store::{Expected, ReadFrom, RefStep, RefUpdate};
 use serde_json::json;
@@ -22,6 +23,7 @@ use crate::state::{AppState, RepoCtx, RequestMeta};
 /// The ref service.
 pub struct Refs {
     state: Arc<AppState>,
+    git_fence: Option<Arc<LandFence>>,
 }
 
 /// Most ref-log entries RenameRef carries to the new name.
@@ -44,6 +46,24 @@ pub async fn renamed_to(state: &AppState, repo: &RepoCtx, name: &str) -> ApiResu
 }
 
 impl Refs {
+    async fn publication_fence(
+        &self,
+        caller: &Caller,
+        repo: &RepoCtx,
+    ) -> ApiResult<Option<Arc<LandFence>>> {
+        if let Some(fence) = &self.git_fence {
+            return Ok(Some(fence.clone()));
+        }
+        self.state
+            .hub
+            .fence_ref_publication(
+                &self.state,
+                repo,
+                caller.token.principal.kind != PrincipalKind::Human,
+            )
+            .await
+    }
+
     async fn refuse_if_queue_or_policy_protected(
         &self,
         repo: &RepoCtx,
@@ -67,7 +87,16 @@ impl Refs {
 
     /// A service over `state`.
     pub fn new(state: Arc<AppState>) -> Refs {
-        Refs { state }
+        Refs {
+            state,
+            git_fence: None,
+        }
+    }
+
+    /// An internal receive-pack permit for this session's atomic ref writes and rollbacks.
+    pub(crate) fn with_git_fence(mut self, fence: Option<Arc<LandFence>>) -> Self {
+        self.git_fence = fence;
+        self
     }
 }
 
@@ -133,15 +162,16 @@ impl Refs {
         old: Option<ObjectId>,
         target: Option<ObjectId>,
         reason: &str,
+        fence: Option<Arc<LandFence>>,
     ) -> ApiResult<u64> {
         let s = &self.state;
         let version_after = match expected {
             Expected::Version(v) => v + 1,
             Expected::Absent => 0,
         };
-        let out = s
-            .writer
-            .update_ref(RefUpdate {
+        let out = crate::forge::publish_ref(
+            s,
+            RefUpdate {
                 repo: repo.repo.id,
                 name: name.clone(),
                 expected,
@@ -164,18 +194,20 @@ impl Refs {
                     }),
                     s.now_ms(),
                 )],
-            })
-            .await
-            .map_err(|e| {
-                let mut a: ApiError = e.into();
-                if let Some(v1::error_detail::Payload::VersionMismatch(v)) = &mut a.detail.payload {
-                    v.r#ref = name.as_str().to_string();
-                    if let Expected::Version(x) = expected {
-                        v.expected_version = x;
-                    }
+            },
+            fence,
+        )
+        .await
+        .map_err(|e| {
+            let mut a = e;
+            if let Some(v1::error_detail::Payload::VersionMismatch(v)) = &mut a.detail.payload {
+                v.r#ref = name.as_str().to_string();
+                if let Expected::Version(x) = expected {
+                    v.expected_version = x;
                 }
-                a
-            })?;
+            }
+            a
+        })?;
         s.metrics
             .events
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -255,6 +287,7 @@ impl Refs {
             .await?;
         let target = id_from(req.target.as_ref(), "target")?;
         self.target_exists(&repo, &target).await?;
+        let fence = self.publication_fence(caller, &repo).await?;
         let version = match s.meta.get_ref(repo.repo.id, &name).await? {
             Some(r) if r.target.is_some() => {
                 self.refuse_if_queue_or_policy_protected(&repo, &name)
@@ -275,6 +308,7 @@ impl Refs {
                     None,
                     Some(target),
                     &req.reason,
+                    fence,
                 )
                 .await?
             }
@@ -288,6 +322,7 @@ impl Refs {
                     None,
                     Some(target),
                     &req.reason,
+                    fence,
                 )
                 .await?
             }
@@ -347,6 +382,7 @@ impl Refs {
         } else {
             req.expected_version
         };
+        let fence = self.publication_fence(caller, &repo).await?;
         let version = self
             .cas(
                 caller,
@@ -357,6 +393,7 @@ impl Refs {
                 old,
                 Some(target),
                 &req.reason,
+                fence,
             )
             .await?;
         Ok((repo, policy, ref_to(name.as_str(), Some(&target), version)))
@@ -387,6 +424,7 @@ impl Refs {
         } else {
             req.expected_version
         };
+        let fence = self.publication_fence(caller, &repo).await?;
         self.cas(
             caller,
             meta,
@@ -396,6 +434,7 @@ impl Refs {
             current.target,
             None,
             &req.reason,
+            fence,
         )
         .await?;
         Ok((repo, policy, v1::DeleteRefResponse {}))
@@ -485,9 +524,10 @@ impl Refs {
         } else {
             req.reason.clone()
         };
-        let version = s
-            .writer
-            .update_ref(RefUpdate {
+        let fence = self.publication_fence(caller, &repo).await?;
+        let version = crate::forge::publish_ref(
+            s,
+            RefUpdate {
                 repo: repo.repo.id,
                 name: new_name.clone(),
                 expected: expected_new,
@@ -507,10 +547,11 @@ impl Refs {
                     }),
                     s.now_ms(),
                 )],
-            })
-            .await
-            .map_err(ApiError::from)?
-            .new_version;
+            },
+            fence.clone(),
+        )
+        .await?
+        .new_version;
         s.audit(
             caller,
             meta,
@@ -531,6 +572,7 @@ impl Refs {
                 target,
                 None,
                 &format!("renamed to {}", new_name.as_str()),
+                fence.clone(),
             )
             .await
         {
@@ -544,10 +586,12 @@ impl Refs {
                     target,
                     None,
                     "rename rolled back",
+                    fence.clone(),
                 )
                 .await;
             return Err(e);
         }
+        drop(fence);
         // The old name now redirects to the new one (reads of the old name resolve the new
         // ref while no ref of that name exists); the new name is live, so it redirects no more.
         s.kv.apply(vec![

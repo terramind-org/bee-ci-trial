@@ -1083,7 +1083,7 @@ impl ChangeService for ChangeServices {
                 &repo,
                 &caller.token,
                 &format!("pull request {}", r.id),
-                attempt.as_ref().err().map(|error| error.reason),
+                attempt.as_ref().err(), // Keep the rule and unmet requirements for Safety.
             )
             .await
             {

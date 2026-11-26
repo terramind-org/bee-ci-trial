@@ -88,6 +88,12 @@ impl Summary {
             if !period.contains(created) {
                 continue;
             }
+            if let Some(resolved) = finding.resolved_at.as_ref().map(ts_ms) {
+                self.waits.push(resolved.saturating_sub(created));
+            }
+            if finding.state() == SafetyFindingState::Dismissed {
+                continue;
+            }
             let Some(report) = finding.report else {
                 continue;
             };
@@ -99,9 +105,6 @@ impl Summary {
                     .or_default()
                     .entry(report.kind)
                     .or_default() += 1;
-            }
-            if let Some(resolved) = finding.resolved_at.as_ref().map(ts_ms) {
-                self.waits.push(resolved.saturating_sub(created));
             }
         }
     }
@@ -179,9 +182,10 @@ impl SafetyApi {
             }
             after = token;
         }
+        let access = self.evidence_access(caller, &repo).await;
         let mut records = Vec::with_capacity(best.len());
         for work in best.into_values() {
-            records.push(self.refresh(&repo, &cx, work).await?.0);
+            records.push(access.record(self.refresh(&repo, &cx, work).await?.0));
         }
         Ok(SpotCheckResponse { records })
     }
@@ -242,7 +246,8 @@ impl SafetyApi {
                         .await?;
                     cursor = records.last().map(|(_, row)| Cursor::after(row));
                     let done = records.len() < 128;
-                    for (record, _) in records {
+                    for (mut record, _) in records {
+                        store::load_findings(&mut tx, &repo, &mut record).await?;
                         summary.record(&period, record);
                     }
                     if done {

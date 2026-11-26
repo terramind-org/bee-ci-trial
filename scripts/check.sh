@@ -7,7 +7,7 @@ PY="${PYTHON:-}"
 for c in python3 /usr/bin/python3; do [ -n "$PY" ] && break; "$c" -c "" 2>/dev/null && PY="$c"; done
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --no-fail-fast
+cargo test --workspace
 "$PY" scripts/check-layers.py
 "$PY" scripts/sync-pins.py --check
 "$PY" scripts/check-coverage.py

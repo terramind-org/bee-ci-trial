@@ -692,6 +692,12 @@ impl Releases {
             max_len("body", &body, MAX_BODY)?;
         }
         let home = Home::of_repo(repo);
+        // A release can create its tag directly through the VCS port.
+        let tag_fence = if !n.draft && existing.is_none() {
+            crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?
+        } else {
+            None
+        };
         let mut discussion_id = String::new();
         if !n.draft && !n.discussion_category.is_empty() {
             let title = if n.name.is_empty() {
@@ -715,6 +721,7 @@ impl Releases {
                 .create(&repo.id, &n.tag_name, &target, None)
                 .await?;
         }
+        drop(tag_fence);
         let mut tx = self.db.begin(SURFACE, cx).await?;
         let now = tx.now_ms();
         let id = tx.new_id()?;
@@ -929,6 +936,8 @@ impl Releases {
                     .clone()
                     .or(cur.target.clone())
                     .ok_or_else(|| ForgeError::internal("release has no target"))?;
+                let _fence =
+                    crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?;
                 tag_info = Some(self.tags.create(&repo.id, &tag, &target, None).await?);
             }
         }
@@ -1096,6 +1105,11 @@ impl Releases {
             )
             .with_subcode("immutable_release"));
         }
+        let tag_fence = if delete_tag && !r.draft {
+            crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?
+        } else {
+            None
+        };
         for a in tx
             .scan(
                 &ASSETS,
@@ -1130,6 +1144,7 @@ impl Releases {
                 Err(e) => return Err(e),
             }
         }
+        drop(tag_fence);
         Ok(())
     }
 
@@ -1988,10 +2003,12 @@ impl Releases {
                 "a signature needs an annotated tag; give a message",
             ));
         }
+        let fence = crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?;
         let t = self
             .tags
             .create(&repo.id, name, &target, annotation)
             .await?;
+        drop(fence);
         self.record_tag(cx, repo, "tag.created", "tag.create", name)
             .await?;
         Ok(Self::tag_view(t, ""))
@@ -2015,7 +2032,9 @@ impl Releases {
                 .with_subcode("tag_in_use"));
             }
         }
+        let fence = crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?;
         self.tags.delete(&repo.id, name, expected_version).await?;
+        drop(fence);
         self.record_tag(cx, repo, "tag.deleted", "tag.delete", name)
             .await
     }

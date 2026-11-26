@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use tokio::time::Instant;
 
-use super::{ForgeStore, ForgeTx, Migration, MigrationReport, Surface};
+use super::{ForgeStore, ForgeTx, Migration, MigrationReport, PublicationLock, Surface};
 use crate::error::{ForgeError, Result};
 
 /// A forge store whose database is down.
@@ -77,6 +77,18 @@ impl SwitchableStore {
 
 #[async_trait]
 impl ForgeStore for SwitchableStore {
+    async fn publication_lock(
+        &self,
+        org: &str,
+        shared: bool,
+        deadline: Instant,
+    ) -> Result<PublicationLock> {
+        if self.is_down(crate::agents::SURFACE) {
+            return Err(ForgeError::unavailable("agents surface is down"));
+        }
+        self.inner.publication_lock(org, shared, deadline).await
+    }
+
     fn backend(&self) -> &'static str {
         self.inner.backend()
     }

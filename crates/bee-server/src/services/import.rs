@@ -4,17 +4,17 @@
 //! exports and other forges answer `UNIMPLEMENTED`.
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 use bee_core::{ObjectId, Ulid};
 use bee_derived::Registry;
 use bee_history::{EagerRows, History};
-use bee_import::{DerivedHook, ImportOptions, ImportReport, ImportTarget};
+use bee_import::{DerivedHook, ImportOptions, ImportReport, ImportTarget, RefPublisher};
 use bee_object::Changeset;
-use bee_policy::{Action, Policy};
+use bee_policy::{Action, Policy, PrincipalKind};
 use bee_proto::v1::{self, ErrorReason, import_service_server::ImportService};
-use bee_store::{DerivedRow, OrgRow, RepoId, RepoRow};
+use bee_store::{DerivedRow, OrgRow, RefUpdate, RefUpdated, RepoId, RepoRow};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -23,11 +23,52 @@ use crate::errors::{ApiError, ApiResult};
 use crate::kv::Kv;
 use crate::services::Rpc;
 use crate::services::object::finish;
-use crate::state::{AppState, RequestMeta};
+use crate::state::{AppState, RepoCtx, RequestMeta};
 use crate::util::timestamp_ms;
 
 /// Namespace of import records.
 pub const NS_IMPORT: &str = "import";
+
+/// Checks safety at each ref CAS for an import rather than holding a permit through the
+/// object walk, remote fetch, and derived-data writes.
+pub(crate) struct ImportPublisher {
+    state: Weak<AppState>,
+    repo: RepoCtx,
+}
+
+impl ImportPublisher {
+    pub(crate) fn new(state: &Arc<AppState>, repo: RepoCtx) -> Arc<Self> {
+        Arc::new(Self {
+            state: Arc::downgrade(state),
+            repo,
+        })
+    }
+
+    async fn publish_ref(&self, update: RefUpdate) -> ApiResult<RefUpdated> {
+        let state = self
+            .state
+            .upgrade()
+            .ok_or_else(crate::forge::safety_unavailable)?;
+        let fence = state
+            .hub
+            .fence_ref_publication(&state, &self.repo, true)
+            .await?;
+        crate::forge::publish_ref(&state, update, fence).await
+    }
+}
+
+#[async_trait]
+impl RefPublisher for ImportPublisher {
+    async fn publish(&self, update: RefUpdate) -> bee_core::Result<RefUpdated> {
+        self.publish_ref(update).await.map_err(|e| {
+            let detail = *e.detail;
+            let reason =
+                bee_core::Reason::parse(&detail.reason).unwrap_or(bee_core::Reason::Internal);
+            bee_core::BeeError::new(reason, detail.message)
+                .with_payload(bee_core::error::SUBCODE_KEY, detail.subcode)
+        })
+    }
+}
 
 /// Eager derived rows for imported changesets (graph, path history and any registered
 /// eager type), the same rows CreateChangeset writes.
@@ -129,6 +170,29 @@ pub struct Imports {
 }
 
 impl Imports {
+    async fn provisioning_fence(
+        &self,
+        caller: &Caller,
+        org: &OrgRow,
+    ) -> ApiResult<Option<bee_forge::safety::control::LandFence>> {
+        if caller.token.principal.kind == PrincipalKind::Human || !self.state.cfg.forge.enabled {
+            return Ok(None);
+        }
+        let wiring = self
+            .state
+            .hub
+            .get()
+            .ok_or_else(crate::forge::safety_unavailable)?;
+        bee_forge::safety::control::fence_landing(
+            &wiring.forge.db,
+            &crate::forge::landing::quick_cx(),
+            &org.id.0.to_text(),
+        )
+        .await
+        .map(Some)
+        .map_err(crate::forge::forge_to_api)
+    }
+
     /// A service over `state`.
     pub fn new(state: Arc<AppState>) -> Imports {
         Imports { state }
@@ -275,7 +339,9 @@ impl Imports {
                 ));
             }
         }
+        let fence = self.provisioning_fence(caller, &org).await?;
         let repo = self.target_repo(caller, &org, &repo_name).await?;
+        drop(fence);
         let id = Ulid::to_text(&crate::util::new_ulid(s.now_ms())?);
         let record = ImportRecord {
             id: id.clone(),
@@ -308,11 +374,21 @@ impl Imports {
         let creator = importer_principal(&s, &org, caller.id()).await?;
         let kv = s.kv.clone();
         let st = s.clone();
+        let publisher = (caller.token.principal.kind != PrincipalKind::Human).then(|| {
+            ImportPublisher::new(
+                &st,
+                RepoCtx {
+                    org: org.clone(),
+                    repo: repo.clone(),
+                    full_name: format!("{}/{}", org.name, repo.name),
+                },
+            ) as Arc<dyn RefPublisher>
+        });
         tokio::spawn(async move {
             let mut rec = record;
             rec.state = v1::ImportState::Git as i32;
             let _ = save(kv.as_ref(), &rec).await;
-            let result = run(&st, &org, &repo, source, &creator, dry_run).await;
+            let result = run(&st, &org, &repo, source, &creator, dry_run, publisher).await;
             rec.finished_ms = st.now_ms();
             match result {
                 Ok(report) => {
@@ -355,6 +431,9 @@ impl Imports {
     ) -> ApiResult<v1::Import> {
         let s = self.state.clone();
         let Some(w) = s.hub.get().cloned() else {
+            if s.cfg.forge.enabled && caller.token.principal.kind != PrincipalKind::Human {
+                return Err(crate::forge::safety_unavailable());
+            }
             return Err(ApiError::unimplemented(
                 "GitHub imports need the forge, which is not running on this server",
             ));
@@ -384,7 +463,9 @@ impl Imports {
         self.org_admin(caller, &org).await?;
         let credential =
             crate::forge::import::credential(&s, &req.github_token, &req.github_installation_id)?;
+        let fence = self.provisioning_fence(caller, &org).await?;
         let repo = self.target_repo(caller, &org, name).await?;
+        drop(fence);
         let id = Ulid::to_text(&crate::util::new_ulid(s.now_ms())?);
         let entry = w
             .github_importer(
@@ -541,6 +622,7 @@ async fn run(
     source: Source,
     creator: &str,
     dry_run: bool,
+    publisher: Option<Arc<dyn RefPublisher>>,
 ) -> ApiResult<ImportReport> {
     let target = ImportTarget {
         writer: s.writer.clone(),
@@ -549,6 +631,7 @@ async fn run(
     };
     let mut opts = ImportOptions::new(creator);
     opts.at_ms = s.now_ms();
+    opts.ref_publisher = publisher;
     opts.derived = Some(Arc::new(EagerHook {
         registry: s.registry.clone(),
     }));

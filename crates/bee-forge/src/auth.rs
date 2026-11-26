@@ -59,6 +59,7 @@ pub struct Caller {
 impl Caller {
     /// Constructs a caller for a host that has already verified this bearer credential.
     pub fn from_verified(token: VerifiedToken, credential: impl Into<String>, cx: Cx) -> Caller {
+        let cx = cx.with_verified_token(&token);
         Caller {
             token,
             credential: credential.into(),
@@ -182,8 +183,8 @@ impl Authenticator {
         let kind = proto_kind(token.principal.kind);
         let mut cx = Cx::new(token.principal.id.clone(), kind)
             .with_chain(token.chain().into_iter().map(|p| p.id).collect())
-            .with_deadline(Instant::now() + deadline);
-        cx.token_id = token.token_id.0.clone();
+            .with_deadline(Instant::now() + deadline)
+            .with_verified_token(&token);
         cx.request_id = request_id;
         cx.ip = ip;
         cx.user_agent = get("user-agent");
@@ -214,10 +215,9 @@ impl Authenticator {
             let keys = self.keys.read().unwrap_or_else(|p| p.into_inner());
             Verifier::new(&keys, self.revocations.as_ref()).verify(&caller.credential, now)?
         };
-        let mut cx = caller.cx.clone();
+        let mut cx = caller.cx.clone().with_verified_token(&token);
         cx.deadline = Instant::now() + DEFAULT_DEADLINE;
         cx.actor_id = token.principal.id.clone();
-        cx.token_id = token.token_id.0.clone();
         cx.chain = token.chain().into_iter().map(|p| p.id).collect();
         Ok(Caller {
             token,
@@ -558,9 +558,8 @@ mod tests {
         let token = Verifier::new(&ring.verifying_keys(), revocations.as_ref())
             .verify(&minted.text, 1_000)
             .unwrap();
-        let mut cx = Cx::new("u1", PrincipalKind::Human)
+        let cx = Cx::new("u1", PrincipalKind::Human)
             .with_deadline(Instant::now() - Duration::from_millis(1));
-        cx.token_id = token.token_id.0.clone();
         let caller = Caller::from_verified(token, minted.text, cx);
 
         assert!(caller.cx.check_deadline().is_err());

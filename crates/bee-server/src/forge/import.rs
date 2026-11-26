@@ -158,6 +158,10 @@ impl ForgeWiring {
             derived: Some(Arc::new(crate::services::import::EagerHook::new(
                 state.registry.clone(),
             ))),
+            ref_publisher: Some(crate::services::import::ImportPublisher::new(
+                &state,
+                ctx.clone(),
+            )),
         });
         let sink = HubSink::new(
             self.forge.clone(),

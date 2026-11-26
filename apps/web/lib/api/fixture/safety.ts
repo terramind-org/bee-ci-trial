@@ -258,20 +258,8 @@ export class SafetyWorld {
       toolName: "exec_command", toolPayload: JSON.stringify({ command: "bun test", exit_code: 0 }),
     }]);
     histogramRun.lastEventSeq = "1";
-    const supportRun: AgentRun = {
-      id: ulid(s.ago(1_560), "safety:redacted-summary"), repo: repoRef(repo),
-      task: { kind: "AGENT_TASK_KIND_FREEFORM", prompt: "Prepare a redacted incident summary from the health route access logs." },
-      agent: publicPrincipal(s.p("billing")), startedBy: mara, baseRef: health.branch,
-      state: CANCELLED, failureReason: "CANCELLED", createdAt: at(1_560), startedAt: at(1_558), finishedAt: at(1_549),
-    };
-    const concernRun: AgentRun = {
-      id: ulid(s.ago(1_558), "safety:live-session"), repo: repoRef(repo),
-      task: { kind: "AGENT_TASK_KIND_FREEFORM", prompt: "Check which health route diagnostics are available to a signed-in customer." },
-      agent: publicPrincipal(s.p("docs")), startedBy: mara, baseRef: health.branch,
-      state: CANCELLED, failureReason: "CANCELLED", createdAt: at(1_558), startedAt: at(1_556), finishedAt: at(1_552),
-    };
-    s.swarms.runs.push(supportRun, concernRun);
-    health.memberRunIds.push(supportRun.id!, concernRun.id!);
+    const supportRun = s.swarms.run(repo, health.memberRunIds[2]);
+    const concernRun = s.swarms.run(repo, health.memberRunIds[3]);
 
     const record = (kind: SafetyRef["kind"], id: string) => this.record(s, repo, { repo: repoRef(repo), kind, id });
     const add = (row: RecordRow, name: string, ago: number, report: SafetyFindingReport, by?: Principal) => {
@@ -310,7 +298,7 @@ export class SafetyWorld {
       row.verdict = deriveVerdict(row);
     }
 
-    const report = add(supportRecord, "incident-risk", 1_549, {
+    const report = add(supportRecord, "incident-risk", 1_400, {
       kind: HARM, severity: SEVERE,
       evidence: {
         observation: "An independent reviewer found customer identifiers in a summary proposed for a shared incident channel.",
@@ -318,22 +306,22 @@ export class SafetyWorld {
       },
     }, publicPrincipal(s.p("reviewer")));
     supportRecord.reviews.push({
-      id: ulid(s.ago(1_554), "safety:incident-review"), requestedBy: mara, reviewer: publicPrincipal(s.p("reviewer")),
-      requestedAt: at(1_554), model: s.agentMeta.get("reviewer")?.model ?? "independent-review",
-      proposedVerdict: LOOK, note: "Redact the draft before it is shared.", findingIds: [report.id], submittedAt: at(1_549),
+      id: ulid(s.ago(1_405), "safety:incident-review"), requestedBy: mara, reviewer: publicPrincipal(s.p("reviewer")),
+      requestedAt: at(1_405), model: s.agentMeta.get("reviewer")?.model ?? "independent-review",
+      proposedVerdict: LOOK, note: "Redact the draft before it is shared.", findingIds: [report.id], submittedAt: at(1_400),
     });
     this.attention.push(
       {
-        id: ulid(s.ago(1_552), "safety:session-concern"), work: healthRecord.work, answerable: mara, createdAt: at(1_552),
+        id: ulid(s.ago(1_402), "safety:session-concern"), work: healthRecord.work, answerable: mara, createdAt: at(1_402),
         concern: {
-          id: ulid(s.ago(1_552), "safety:session-concern"), runId: concernRun.id!, raisedBy: publicPrincipal(s.p("docs")),
+          id: ulid(s.ago(1_402), "safety:session-concern"), runId: concernRun.id!, raisedBy: publicPrincipal(s.p("docs")),
           category: "SAFETY_CONCERN_CATEGORY_RULE_CONFLICT",
           text: "I was asked to verify the health route with a live customer session. Can an operator supply a redacted session instead?",
         },
       },
       {
-        id: ulid(s.ago(1_549), "safety:incident-attention"), work: supportRecord.work, answerable: mara, createdAt: at(1_549),
-        tripwire: { findingId: report.id, kind: HARM, reason: report.report!.evidence.observation, stoppedRunIds: [supportRun.id!], pausedSwarm: false },
+        id: ulid(s.ago(1_400), "safety:incident-attention"), work: supportRecord.work, answerable: mara, createdAt: at(1_400),
+        tripwire: { findingId: report.id, kind: HARM, reason: report.report!.evidence.observation, stoppedRunIds: [supportRun.id!], pausedSwarm: true },
       },
     );
     this.attention.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "") || b.id.localeCompare(a.id));

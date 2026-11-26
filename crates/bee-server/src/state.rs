@@ -96,22 +96,25 @@ const HISTORY_ROWS_REPOS: usize = 256;
 /// that require approvals or checks deny, as they must).
 #[async_trait]
 pub trait ForgeInputs: Send + Sync {
-    /// Locks the organization safety flag through a non-human ref publication.
-    async fn fence_agent_landing(
-        &self,
-        _repo: &RepoCtx,
-    ) -> ApiResult<Option<bee_forge::safety::control::LandFence>> {
-        Ok(None)
-    }
-
     /// Records the result of a native land for its verified run, if it has one.
     async fn note_safety_land(
         &self,
         _caller: &crate::auth::Caller,
         _repo: &RepoCtx,
         _effect: &str,
-        _reason: Option<bee_proto::v1::ErrorReason>,
+        _error: Option<&ApiError>, // Safety needs the typed denial, including the freeze rule.
     ) {
+    }
+
+    /// Copies a successful native governing change to Beehive's durable audit outbox.
+    async fn note_safety_leash(
+        &self,
+        _caller: &crate::auth::Caller,
+        _action: &str,
+        _target: &str,
+        _detail: &serde_json::Value,
+    ) -> ApiResult<()> {
+        Ok(())
     }
 
     /// Attributes a newly stored native changeset to its verified run, if it has one.
@@ -1269,7 +1272,8 @@ impl AppState {
         decision: &str,
         detail: serde_json::Value,
     ) -> ApiResult<u64> {
-        self.audit
+        let seq = self
+            .audit
             .record(AuditEntry {
                 at_ms: self.now_ms(),
                 chain: caller.chain_ids(),
@@ -1277,10 +1281,16 @@ impl AppState {
                 repo: repo.map(RepoCtx::id_text).unwrap_or_default(),
                 target: target.to_string(),
                 decision: decision.to_string(),
-                detail,
+                detail: detail.clone(),
                 request_id: meta.request_id.clone(),
                 ..AuditEntry::default()
             })
-            .await
+            .await?;
+        if bee_forge::safety::leash_audit_action(decision) {
+            self.forge
+                .note_safety_leash(caller, decision, target, &detail)
+                .await?;
+        }
+        Ok(seq)
     }
 }

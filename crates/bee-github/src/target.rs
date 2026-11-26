@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use bee_core::ObjectId;
 use bee_git::GitOid;
 use bee_import::report::{Category, ReportOptions};
-use bee_import::{DerivedHook, ImportOptions, ImportReport, ImportTarget};
+use bee_import::{DerivedHook, ImportOptions, ImportReport, ImportTarget, RefPublisher};
 
 use crate::error::Result;
 
@@ -61,6 +61,8 @@ pub struct StoreTarget {
     pub creator: String,
     /// Eager derived rows (the server's registry).
     pub derived: Option<Arc<dyn DerivedHook>>,
+    /// The hosted ref-publication boundary.
+    pub ref_publisher: Option<Arc<dyn RefPublisher>>,
 }
 
 #[async_trait]
@@ -87,6 +89,7 @@ impl GitTarget for StoreTarget {
         o.verify = opts.verify;
         o.at_ms = opts.at_ms;
         o.derived = self.derived.clone();
+        o.ref_publisher = self.ref_publisher.clone();
         let out = bee_import::import_repository(mirror, target, &o).await?;
         Ok(Some(out.report))
     }

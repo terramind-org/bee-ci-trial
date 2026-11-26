@@ -9,9 +9,11 @@ mod listener;
 pub mod service;
 mod store;
 
+pub use detectors::{audit_actions, leash_audit_action};
 pub(crate) use evidence::evidence_event;
-pub use evidence::{record_changeset, record_landing_attempt};
+pub use evidence::{record_changeset, record_landing_attempt, record_native_leash};
 pub(crate) use listener::SafetyListener;
+pub(crate) use store::unacknowledged_swarm_pause;
 
 use crate::agents::SURFACE;
 use crate::module::{EventKind, ForgeModule};
@@ -25,7 +27,7 @@ static RECORDS: TableDef = TableDef {
     indexes: &[Index::ScopeN1],
 };
 
-// Scoped to the repository. k1 is the only recipient who can see or acknowledge the item.
+// Scoped to the repository. k1 is the recipient. A missing k1 routes to repo administrators.
 static ATTENTION: TableDef = TableDef {
     name: "forge_safety_attention",
     surface: SURFACE,

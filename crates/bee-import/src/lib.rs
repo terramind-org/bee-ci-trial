@@ -48,8 +48,9 @@ pub mod report;
 pub mod source;
 
 pub use pipeline::{
-    DerivedHook, ImportOptions, ImportOutcome, ImportTarget, drop_reason, git_mapping_rows,
-    import_pack, import_refs, import_repository, lookup_bee_id, lookup_git_id, lookup_git_tag,
+    DerivedHook, ImportOptions, ImportOutcome, ImportTarget, RefPublisher, drop_reason,
+    git_mapping_rows, import_pack, import_refs, import_repository, lookup_bee_id, lookup_git_id,
+    lookup_git_tag,
 };
 pub use refs::{MappedRef, RefKind, RefMapping, bee_ref_name, map_ref_names};
 pub use report::{ImportReport, REPORT_SCHEMA};

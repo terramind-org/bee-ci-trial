@@ -59,6 +59,22 @@ read = ["@everyone"]
 write = ["@everyone"]
 "#;
 
+fn nonhuman_revision(cr: &ChangeRequest) -> bool {
+    // Initial revision authorship is recorded on the CR. Later revisions record their
+    // authenticated pusher, which may differ from both that author and the enabler.
+    [
+        cr.author.as_ref(),
+        cr.revisions.last().and_then(|r| r.pusher.as_ref()),
+    ]
+    .into_iter()
+    .any(|p| p.is_none_or(|p| p.kind() != PrincipalKind::Human))
+}
+
+fn queued_automatically(rec: &CrRecord) -> bool {
+    // A legacy entry has no proof of direct human authorization for this revision.
+    rec.queued_by_auto_merge.unwrap_or(true)
+}
+
 /// Most bytes of one agent instruction file returned by the context API.
 pub const MAX_INSTRUCTION_BYTES: usize = 64 * 1024;
 /// Window for merge-queue throughput.
@@ -540,6 +556,18 @@ impl Changes {
         };
         let cr = rec.cr();
         let target_ref = cr.target_ref.clone();
+        let automatic = auto_merge_expected.is_some() || (via_queue && queued_automatically(&rec));
+        let publication_cx = match self
+            .automatic_publication_cx(cx, repo, &rec, automatic)
+            .await
+        {
+            Ok(cx) => cx,
+            Err(e) => {
+                let _ = self.clear_landing_intent(cx, repo, id, &landing_id).await;
+                return Err(e);
+            }
+        };
+        let needs_fence = publication_cx.actor_kind != PrincipalKind::Human;
         let intent = LandIntent {
             ref_name: target_ref.clone(),
             // The merge queue lands exactly the combined result it tested.
@@ -553,9 +581,32 @@ impl Changes {
             change_request_id: cr.id.clone(),
             chain: cx.chain.clone(),
             actor_kind: cx.actor_kind,
+            require_safety_fence: needs_fence && cx.actor_kind == PrincipalKind::Human,
             change_id: None,
         };
-        let resp = match self.lander.land(repo, &intent).await {
+        let publication = if needs_fence && !self.lander.fences_publication() {
+            match crate::safety::control::fence_landing(&self.db, &publication_cx, &repo.org_id)
+                .await
+            {
+                Ok(fence) => {
+                    let lander = self.lander.clone();
+                    let repo = repo.clone();
+                    // Keep the fence alive across any underlying publication even if the
+                    // caller stops waiting for this automatic/standalone land.
+                    tokio::spawn(async move {
+                        let _fence = fence;
+                        lander.land(&repo, &intent).await
+                    })
+                    .await
+                    .map_err(|_| ForgeError::internal("ref publication task stopped"))
+                    .and_then(|result| result)
+                }
+                Err(e) => Err(e),
+            }
+        } else {
+            self.lander.land(repo, &intent).await
+        };
+        let resp = match publication {
             Ok(r) => r,
             Err(e) => {
                 let _ = self.clear_landing_intent(cx, repo, id, &landing_id).await;
@@ -919,6 +970,38 @@ impl Changes {
         cx
     }
 
+    async fn automatic_publication_cx(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        rec: &CrRecord,
+        automatic: bool,
+    ) -> Result<Cx> {
+        let mut publication = cx.clone();
+        if !automatic || cx.actor_kind != PrincipalKind::Human {
+            return Ok(publication);
+        }
+        // Only the safety decision changes. Authorization and audit still use the enabler.
+        if nonhuman_revision(rec.cr()) {
+            publication.actor_kind = PrincipalKind::Agent;
+            return Ok(publication);
+        }
+        let mut checked = BTreeSet::new();
+        for id in &rec.stack {
+            let creator = self.vcs.commit(repo, id).await?.creator;
+            if creator == cx.actor_id || !checked.insert(creator.clone()) {
+                continue;
+            }
+            // The creator is server-recorded. A free-form author line cannot establish
+            // human authorship and a missing creator is not evidence of a person.
+            if creator.is_empty() || self.principal(&creator).await.kind() != PrincipalKind::Human {
+                publication.actor_kind = PrincipalKind::Agent;
+                break;
+            }
+        }
+        Ok(publication)
+    }
+
     /// Lands the CR if auto-merge is enabled and policy now allows it (enqueues it instead
     /// when the target ref requires the merge queue, by repo setting or ruleset). Returns the
     /// landed CR.
@@ -944,9 +1027,11 @@ impl Changes {
                 &format!("auto-merge enabled by {by}"),
             )
             .await;
-        if crate::safety::control::landing_frozen(&self.db, &cx, &repo.org_id).await? {
+        let publication_cx = self.automatic_publication_cx(&cx, repo, &rec, true).await?;
+        if crate::safety::control::landing_frozen(&self.db, &publication_cx, &repo.org_id).await? {
             return Ok(None);
         }
+        let revision = current_rev(cr);
         if self.queue_required(&cx, repo, &cr.target_ref).await? {
             if cr.merge_queue_entry.is_none()
                 && self
@@ -954,7 +1039,15 @@ impl Changes {
                     .await
                     .is_ok()
             {
-                self.enqueue(&cx, repo, id, method_of(am.method), 0).await?;
+                self.enqueue_inner(
+                    &cx,
+                    repo,
+                    id,
+                    method_of(am.method),
+                    0,
+                    Some((&am, revision)),
+                )
+                .await?;
             }
             return Ok(None);
         }
@@ -972,7 +1065,7 @@ impl Changes {
                 id,
                 method_of(am.method),
                 &am.commit_message,
-                0,
+                revision,
                 false,
                 None,
                 Some(am.clone()),
@@ -980,7 +1073,12 @@ impl Changes {
             .await;
         match landed {
             Ok((cr, _)) => Ok(Some(cr)),
-            Err(e) if e.message == "auto-merge is no longer enabled" => Ok(None),
+            Err(e)
+                if e.message == "auto-merge is no longer enabled"
+                    || e.subcode == crate::safety::control::FROZEN =>
+            {
+                Ok(None)
+            }
             Err(e) => Err(e),
         }
     }
@@ -1029,6 +1127,19 @@ impl Changes {
         id: &str,
         method: LandMethod,
         priority: u32,
+    ) -> Result<MergeQueueEntry> {
+        self.enqueue_inner(cx, repo, id, method, priority, None)
+            .await
+    }
+
+    async fn enqueue_inner(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        id: &str,
+        method: LandMethod,
+        priority: u32,
+        automatic: Option<(&AutoMerge, u32)>,
     ) -> Result<MergeQueueEntry> {
         let (rec, _) = self.record(cx, repo, id).await?;
         require_open(rec.cr())?;
@@ -1080,7 +1191,25 @@ impl Changes {
         }
         let by = self.actor(cx).await;
         let mut tx = self.db.begin(SURFACE, cx).await?;
+        if automatic.is_some() {
+            lock_change_request(&mut tx, &repo.id, id).await?;
+        }
         let (mut rec, row) = Self::load(&mut tx, &repo.id, id).await?;
+        if let Some((expected, revision)) = automatic {
+            if rec.cr().auto_merge.as_ref() != Some(expected) {
+                return Err(ForgeError::invalid_state("auto-merge is no longer enabled"));
+            }
+            let current = current_rev(rec.cr());
+            if current != revision {
+                return Err(ForgeError::version_mismatch(
+                    u64::from(revision),
+                    u64::from(current),
+                ));
+            }
+            if let Some(entry) = &rec.cr().merge_queue_entry {
+                return Ok(entry.clone());
+            }
+        }
         if queue_limit != 0 {
             // The counter row is a per-ref lock on every store backend. Hold it while
             // counting and inserting so concurrent enqueues cannot both take the last slot.
@@ -1137,6 +1266,7 @@ impl Changes {
         )
         .await?;
         rec.cr_mut().merge_queue_entry = Some(entry.clone());
+        rec.queued_by_auto_merge = Some(automatic.is_some());
         rec.queue_method = method as i32;
         rec.land_chain = cx.chain.clone();
         let (rec, _) = Self::save(&mut tx, rec, &row).await?;
@@ -1365,7 +1495,10 @@ impl Changes {
                 &format!("merge queue, enqueued by {by}"),
             )
             .await;
-        crate::safety::control::require_landing(&self.db, &cx, &repo.org_id).await?;
+        let publication_cx = self
+            .automatic_publication_cx(&cx, repo, &rec, queued_automatically(&rec))
+            .await?;
+        crate::safety::control::require_landing(&self.db, &publication_cx, &repo.org_id).await?;
         self.set_queue_state(&cx, repo, id, MergeQueueState::Landing, None, "")
             .await?;
         match self
@@ -1375,7 +1508,7 @@ impl Changes {
                 id,
                 method_of(rec.queue_method),
                 "",
-                0,
+                current_rev(rec.cr()),
                 true,
                 combined,
                 None,
@@ -1432,7 +1565,10 @@ impl Changes {
         let id = first.change_request_id.clone();
         let (rec, _) = self.record(cx, repo, &id).await?;
         let qcx = self.queue_cx(&rec).await?;
-        if crate::safety::control::landing_frozen(&self.db, &qcx, &repo.org_id).await? {
+        let publication_cx = self
+            .automatic_publication_cx(&qcx, repo, &rec, queued_automatically(&rec))
+            .await?;
+        if crate::safety::control::landing_frozen(&self.db, &publication_cx, &repo.org_id).await? {
             return Ok(QueueStep::Waiting);
         }
         let combined = self

@@ -64,7 +64,7 @@ use bee_forge::store::sql::{SqlConfig, SqlStore};
 use bee_forge::work::{AllAgents, WorkHooks};
 use bee_forge::{Cx, Forge, ForgeError, TokenIssuer};
 use bee_proto::v1::{self, ErrorReason, Principal, PrincipalKind};
-use bee_store::RepoId;
+use bee_store::{RefUpdate, RefUpdated, RepoId};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
@@ -1253,7 +1253,8 @@ impl ForgeWiring {
 }
 
 /// The server's handle on the forge: unset until the forge opens (and forever when it is
-/// disabled). Every VCS-path hook goes through it and is a no-op while unset.
+/// disabled). VCS policy hooks go through it. Publication requiring safety fails closed
+/// while the configured forge is unset.
 #[derive(Default)]
 pub struct ForgeLink {
     wiring: OnceLock<Arc<ForgeWiring>>,
@@ -1273,6 +1274,32 @@ impl ForgeLink {
     /// The forge, once open.
     pub fn get(&self) -> Option<&Arc<ForgeWiring>> {
         self.wiring.get()
+    }
+
+    /// Fences non-human ref publication independently of injected forge policy inputs.
+    pub(crate) async fn fence_ref_publication(
+        &self,
+        state: &AppState,
+        repo: &RepoCtx,
+        nonhuman: bool,
+    ) -> ApiResult<Option<Arc<bee_forge::safety::control::LandFence>>> {
+        if !nonhuman || !state.cfg.forge.enabled {
+            return Ok(None);
+        }
+        let wiring = self.get().ok_or_else(safety_unavailable)?;
+        let cx = landing::quick_cx();
+        // The VCS object namespace of a fork or transferred repo can differ from its
+        // Beehive owner. Safety follows the current owner, without an outage cache.
+        let org = match wiring.forge.orgs.repo_any(&cx, &repo.id_text()).await {
+            Ok(row) if !row.org_id.is_empty() => row.org_id,
+            Ok(_) => repo.org.id.0.to_text(),
+            Err(e) if e.reason == ErrorReason::NotFound => repo.org.id.0.to_text(),
+            Err(e) => return Err(forge_to_api(e)),
+        };
+        bee_forge::safety::control::fence_landing(&wiring.forge.db, &cx, &org)
+            .await
+            .map(|fence| Some(Arc::new(fence)))
+            .map_err(forge_to_api)
     }
 
     /// Whether a ref must move through Land because ordinary policy protects it or because
@@ -1373,25 +1400,38 @@ impl ForgeLink {
     }
 }
 
+pub(crate) fn safety_unavailable() -> ApiError {
+    forge_to_api(
+        ForgeError::unavailable("Beehive is unavailable; ref publication is paused")
+            .with_subcode("safety_forge_unavailable"),
+    )
+}
+
+/// Keep the permit with the CAS even if the requesting future is cancelled while the
+/// storage backend is completing the update on another task or thread.
+pub(crate) async fn publish_ref(
+    state: &AppState,
+    update: RefUpdate,
+    fence: Option<Arc<bee_forge::safety::control::LandFence>>,
+) -> ApiResult<RefUpdated> {
+    let Some(fence) = fence else {
+        return state
+            .writer
+            .update_ref(update)
+            .await
+            .map_err(ApiError::from);
+    };
+    let writer = state.writer.clone();
+    tokio::spawn(async move {
+        let _fence = fence;
+        writer.update_ref(update).await.map_err(ApiError::from)
+    })
+    .await
+    .map_err(|_| ApiError::new(ErrorReason::Internal, "ref publication task stopped"))?
+}
+
 #[async_trait]
 impl ForgeInputs for ForgeLink {
-    async fn fence_agent_landing(
-        &self,
-        repo: &RepoCtx,
-    ) -> ApiResult<Option<bee_forge::safety::control::LandFence>> {
-        let Some(wiring) = self.get() else {
-            return Ok(None);
-        };
-        bee_forge::safety::control::fence_landing(
-            &wiring.forge.db,
-            &landing::quick_cx(),
-            &repo.org.id.0.to_text(),
-        )
-        .await
-        .map(Some)
-        .map_err(forge_to_api)
-    }
-
     async fn require_landing_queue_entry(
         &self,
         repo: &RepoCtx,
@@ -1407,20 +1447,21 @@ impl ForgeInputs for ForgeLink {
         caller: &Caller,
         repo: &RepoCtx,
         effect: &str,
-        reason: Option<ErrorReason>,
+        error: Option<&ApiError>,
     ) {
         let Some(wiring) = self.get() else { return };
         let cx = landing::caller_cx(caller).with_deadline(landing::quick_cx().deadline);
         let Some(repo) = wiring.forge_repo(&cx, &repo.id_text()).await else {
             return;
         };
+        let error = error.cloned().map(api_to_forge);
         if let Err(error) = bee_forge::safety::record_landing_attempt(
             &wiring.forge,
             &cx,
             &repo,
             &caller.token,
             effect,
-            reason,
+            error.as_ref(),
         )
         .await
         {
@@ -1431,6 +1472,27 @@ impl ForgeInputs for ForgeLink {
                 &[("reason", error.reason_name().into())],
             );
         }
+    }
+
+    async fn note_safety_leash(
+        &self,
+        caller: &Caller,
+        action: &str,
+        target: &str,
+        detail: &serde_json::Value,
+    ) -> ApiResult<()> {
+        let Some(wiring) = self.get() else {
+            return Ok(());
+        };
+        bee_forge::safety::record_native_leash(
+            &wiring.agents,
+            &landing::caller_cx(caller),
+            action,
+            target,
+            detail,
+        )
+        .await
+        .map_err(forge_to_api)
     }
 
     async fn note_safety_changeset(&self, caller: &Caller, repo: &RepoCtx, id: &ObjectId) {

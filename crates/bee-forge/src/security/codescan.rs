@@ -783,6 +783,8 @@ impl Security {
                 let rec = CodeAlertRec {
                     alert: Some(alert.clone()),
                     key: it.key.clone(),
+                    first_changeset: instance.changeset.clone(),
+                    first_analysis_id: analysis_id.into(),
                 };
                 tx.insert(
                     &CODE_ALERTS,

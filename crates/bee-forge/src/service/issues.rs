@@ -2140,6 +2140,9 @@ impl IssueService for ForgeServices {
             } else {
                 r.base_ref.clone()
             };
+            // This branch is provisioned directly by the VCS port.
+            let fence =
+                crate::safety::control::fence_nonhuman(&self.forge.db, &cx, &target.org_id).await?;
             let workspace = self
                 .forge
                 .work
@@ -2147,6 +2150,7 @@ impl IssueService for ForgeServices {
                 .branches
                 .create_branch(&target, &ref_name, &base, r.create_workspace)
                 .await?;
+            drop(fence);
             self.forge
                 .work
                 .record_branch(

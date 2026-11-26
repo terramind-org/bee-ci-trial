@@ -246,6 +246,14 @@ pub async fn execute(
             return Ok((unpack, out));
         }
     }
+    let _publication = if atomic && planned.len() > 1 {
+        match session.atomic_publication().await {
+            Ok(permit) => permit,
+            Err(e) => return Ok((unpack, vec![Outcome::Ng(e); req.commands.len()])),
+        }
+    } else {
+        None
+    };
     // Plain writes first, then lands (an atomic push rolls the plain writes back if the land
     // is refused).
     planned.sort_by_key(|p| p.protected);

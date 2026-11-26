@@ -451,6 +451,9 @@ pub trait ForgeTx: Send {
     async fn commit(self: Box<Self>) -> Result<()>;
 }
 
+/// A backend-owned, drop-released safety publication lock.
+pub type PublicationLock = Box<dyn Send + Sync>;
+
 /// A forge store backend.
 #[async_trait]
 pub trait ForgeStore: Send + Sync {
@@ -463,6 +466,19 @@ pub trait ForgeStore: Send + Sync {
 
     /// Opens a transaction on `surface`, waiting for a pool slot no later than `deadline`.
     async fn begin(&self, surface: Surface, deadline: Instant) -> Result<Box<dyn ForgeTx>>;
+
+    /// A shared publication permit or an exclusive stop/resume barrier for this organization.
+    /// This lock must be independent of any lock taken by ordinary agents-store writes.
+    async fn publication_lock(
+        &self,
+        _org: &str,
+        _shared: bool,
+        _deadline: Instant,
+    ) -> Result<PublicationLock> {
+        Err(ForgeError::unavailable(
+            "Beehive publication lock unavailable",
+        ))
+    }
 }
 
 /// The store plus the id generator and the outbox relay signal: what domain modules hold.

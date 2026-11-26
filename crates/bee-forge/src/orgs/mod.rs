@@ -24,6 +24,7 @@
 
 pub mod repos;
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
@@ -548,6 +549,7 @@ pub trait MirrorSyncer: Send + Sync {
     /// Syncs mirror `mirror_id` of `repo` now.
     async fn sync(
         &self,
+        cx: &Cx,
         repo: &bee_proto::v1::Repo,
         mirror_id: &str,
     ) -> Result<bee_proto::v1::RepoMirror>;
@@ -980,7 +982,7 @@ impl Orgs {
         let after = serde_json::to_string(&s).unwrap_or_default();
         Self::simple_event(&mut tx, "org.settings_updated", org_id, after.clone()).await?;
         tx.audit(
-            AuditDraft::new("org.settings_update", org_id)
+            AuditDraft::new(audit_actions::ORG_SETTINGS, org_id)
                 .target(SubjectKind::Org, org_id)
                 .before(&before)
                 .after(&after),
@@ -1083,7 +1085,8 @@ impl Orgs {
             )
             .await?;
             tx.audit(
-                AuditDraft::new("member.remove", org_id).target(SubjectKind::User, &principal.id),
+                AuditDraft::new(audit_actions::MEMBER_REMOVE, org_id)
+                    .target(SubjectKind::User, &principal.id),
             )
             .await?;
             None
@@ -1093,7 +1096,7 @@ impl Orgs {
                     m.role = role as i32;
                     tx.update(&MEMBERS, &row.clone().k1(org_role_name(role)).msg(&m))
                         .await?;
-                    (m, "member.role_changed", "member.role_change")
+                    (m, "member.role_changed", audit_actions::MEMBER_ROLE_CHANGE)
                 }
                 None => {
                     let m = Member {
@@ -1110,7 +1113,7 @@ impl Orgs {
                             .msg(&m),
                     )
                     .await?;
-                    (m, "member.added", "member.add")
+                    (m, "member.added", audit_actions::MEMBER_ADD)
                 }
             };
             let after =
@@ -1203,9 +1206,9 @@ impl Orgs {
         tx.audit(
             AuditDraft::new(
                 if add {
-                    "member.custom_role_assign"
+                    audit_actions::MEMBER_ROLE_ASSIGN
                 } else {
-                    "member.custom_role_revoke"
+                    audit_actions::MEMBER_ROLE_REVOKE
                 },
                 org_id,
             )

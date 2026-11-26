@@ -29,7 +29,7 @@ use tokio::time::Instant;
 
 use super::{
     ForgeStore, ForgeTx, Index, Key, Migration, MigrationOp, MigrationReport, Order, OutboxRecord,
-    Phase, Row, Scan, Surface, TableDef, check_surface, migrate, within,
+    Phase, PublicationLock, Row, Scan, Surface, TableDef, check_surface, migrate, within,
 };
 use crate::error::{ForgeError, Result};
 
@@ -835,6 +835,18 @@ impl SqlStore {
 
 #[async_trait]
 impl ForgeStore for SqlStore {
+    async fn publication_lock(
+        &self,
+        org: &str,
+        shared: bool,
+        deadline: Instant,
+    ) -> Result<PublicationLock> {
+        match &self.inner {
+            Inner::Sqlite(b) => b.publication_lock(org, shared, deadline).await,
+            Inner::Postgres(b) => b.publication_lock(org, shared, deadline).await,
+        }
+    }
+
     fn backend(&self) -> &'static str {
         match self.inner {
             Inner::Sqlite(_) => "sqlite",

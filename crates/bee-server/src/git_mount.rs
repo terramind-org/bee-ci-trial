@@ -195,6 +195,7 @@ impl ServerGit {
             md,
             meta,
             push_options: std::sync::Mutex::new(Vec::new()),
+            atomic_fence: std::sync::OnceLock::new(),
         }))
     }
 
@@ -326,12 +327,25 @@ pub(crate) fn lfs_url_key(state: &AppState) -> crate::errors::ApiResult<Vec<u8>>
 }
 
 fn git_error(e: ApiError) -> GitError {
-    GitError::named(e.detail.reason.clone(), e.detail.message.clone())
+    git_detail(e.detail.reason, e.detail.subcode, e.detail.message)
+}
+
+fn git_detail(reason: String, subcode: String, message: String) -> GitError {
+    // Stock Git can display only text, so carry the safety subcode in that text.
+    let message = if matches!(
+        subcode.as_str(),
+        "safety_merge_frozen" | "safety_forge_unavailable"
+    ) {
+        format!("{subcode}: {message}")
+    } else {
+        message
+    };
+    GitError::named(reason, message)
 }
 
 fn status_error(s: tonic::Status) -> GitError {
     match bee_proto::errors::detail_from_status(&s) {
-        Some(d) => GitError::named(d.reason, d.message),
+        Some(d) => git_detail(d.reason, d.subcode, d.message),
         None => GitError::named(
             bee_proto::errors::reason_name(bee_proto::errors::default_reason(s.code())),
             s.message().to_string(),
@@ -566,6 +580,8 @@ struct ServerSession {
     meta: RequestMeta,
     /// The push's `-o` options, as seen by the first ingested changeset (`bee.cr`).
     push_options: std::sync::Mutex<Vec<String>>,
+    /// The lifetime is owned by receive-pack, including its rollback path.
+    atomic_fence: std::sync::OnceLock<std::sync::Weak<bee_forge::safety::control::LandFence>>,
     /// The repo's redaction epoch when the session opened (pack cache generation).
     redaction_epoch: u64,
 }
@@ -754,6 +770,26 @@ impl RepoSession for ServerSession {
             .map_err(git_error)
     }
 
+    async fn atomic_publication(&self) -> GitResult<Option<Box<dyn Send + Sync>>> {
+        let fence = self
+            .state
+            .hub
+            .fence_ref_publication(
+                &self.state,
+                &self.repo,
+                self.caller.token.principal.kind != bee_policy::PrincipalKind::Human,
+            )
+            .await
+            .map_err(git_error)?;
+        let Some(fence) = fence else {
+            return Ok(None);
+        };
+        self.atomic_fence
+            .set(Arc::downgrade(&fence))
+            .map_err(|_| GitError::internal("Git publication already started"))?;
+        Ok(Some(Box::new(fence)))
+    }
+
     async fn land(&self, name: &RefName, head: &ObjectId) -> GitResult<RefState> {
         let writes = Writes::new(self.state.clone());
         let req = self.request(
@@ -915,7 +951,10 @@ impl ServerSession {
         target: Option<ObjectId>,
         force: bool,
     ) -> GitResult<RefState> {
-        let refs = Refs::new(self.state.clone());
+        // Receive-pack uses the same fenced ref CAS as native requests. Protected pushes
+        // use Land above, whose coalescer holds the same publication permit.
+        let refs = Refs::new(self.state.clone())
+            .with_git_fence(self.atomic_fence.get().and_then(std::sync::Weak::upgrade));
         let repo = repo_ref(&self.repo.full_name);
         let reason = "git push".to_string();
         match target {

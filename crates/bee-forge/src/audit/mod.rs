@@ -193,7 +193,14 @@ impl AuditDraft {
             serde_json::from_str(&self.after)
                 .unwrap_or(serde_json::Value::String(self.after.clone()))
         };
-        let after = serde_json::json!({ "policy_decision": cx.decision, "state": state });
+        let mut after = serde_json::json!({ "policy_decision": cx.decision, "state": state });
+        // This metadata comes from verified credentials, never from the caller's audit payload.
+        if crate::safety::leash_audit_action(&self.action) && !cx.run_session.is_empty() {
+            after["run_credential"] = serde_json::json!({
+                "run": cx.run_session,
+                "blocks": cx.token_blocks,
+            });
+        }
         let repo = (!self.repo_id.is_empty()).then(|| RepoRef {
             repo: Some(repo_ref::Repo::Id(self.repo_id.clone())),
         });

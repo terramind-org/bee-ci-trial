@@ -23,6 +23,8 @@ pub(super) fn verdict(findings: &[SafetyFinding], has_unfinished_tasks: bool) ->
         match (report.kind(), report.severity()) {
             (SafetySignalKind::OutsideTask, SafetySeverity::Note) => outside = true,
             (SafetySignalKind::SaidVsShown, SafetySeverity::Note) => unfinished = true,
+            (SafetySignalKind::HarmToCode, SafetySeverity::Note)
+                if finding.reported_by.is_none() => {}
             _ => return SafetyVerdict::NeedsALook,
         }
     }
@@ -52,12 +54,103 @@ pub(super) fn finding(
         }),
     };
     SafetyFinding {
-        id: format!("det-{}", blake3::hash(&report.encode_to_vec()).to_hex()),
+        id: subject_id(
+            kind,
+            report
+                .evidence
+                .as_ref()
+                .map_or(&[], |e| e.subjects.as_slice()),
+            "",
+        ),
         report: Some(report),
         state: SafetyFindingState::Open as i32,
         created_at: Some(ts(time_ms)),
         ..Default::default()
     }
+}
+
+fn subject_id(kind: SafetySignalKind, subjects: &[SubjectRef], identity: &str) -> String {
+    let mut hash = blake3::Hasher::new_derive_key("Beehive safety finding subject");
+    hash.update(&(kind as i32).to_be_bytes());
+    hash.update(&(identity.len() as u64).to_be_bytes());
+    hash.update(identity.as_bytes());
+    for subject in subjects {
+        let bytes = subject.encode_to_vec();
+        hash.update(&(bytes.len() as u64).to_be_bytes());
+        hash.update(&bytes);
+    }
+    format!("det-v2-{}", hash.finalize().to_hex())
+}
+
+pub(super) fn automatic(finding: &SafetyFinding) -> bool {
+    finding.reported_by.is_none() && finding.id.starts_with("det-")
+}
+
+fn legacy_subject(finding: &SafetyFinding, candidate: &SafetyFinding) -> bool {
+    if !automatic(finding) || finding.id.starts_with("det-v2-") {
+        return false;
+    }
+    let (Some(previous), Some(next)) = (&finding.report, &candidate.report) else {
+        return false;
+    };
+    if previous.kind != next.kind {
+        return false;
+    }
+    let (Some(previous), Some(next)) = (&previous.evidence, &next.evidence) else {
+        return false;
+    };
+    previous.subjects == next.subjects
+        && (matches!(
+            candidate.report.as_ref().map(SafetyFindingReport::kind),
+            Some(
+                SafetySignalKind::OutsideTask
+                    | SafetySignalKind::SaidVsShown
+                    | SafetySignalKind::TestsWeakened
+                    | SafetySignalKind::HarmToCode
+            )
+        ) || (previous.observation == next.observation && previous.paths == next.paths))
+}
+
+pub(super) fn reconcile(
+    existing: &mut Vec<SafetyFinding>,
+    observed: Vec<SafetyFinding>,
+) -> (Vec<SafetyFinding>, Vec<String>) {
+    let mut added = Vec::new();
+    let mut active = BTreeSet::new();
+    for finding in observed {
+        active.insert(finding.id.clone());
+        let existing_index = existing
+            .iter()
+            .position(|old| old.id == finding.id)
+            .or_else(|| {
+                existing
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, old)| legacy_subject(old, &finding))
+                    .max_by_key(|(_, old)| old.state() != SafetyFindingState::Open)
+                    .map(|(index, _)| index)
+            });
+        if let Some(index) = existing_index {
+            let old = &mut existing[index];
+            // Preserve the human decision and original observation time.
+            old.id.clone_from(&finding.id);
+            old.report = finding.report;
+        } else {
+            added.push(finding.clone());
+            existing.push(finding);
+        }
+    }
+    let mut retired = Vec::new();
+    existing.retain(|finding| {
+        let remove = automatic(finding)
+            && finding.state() == SafetyFindingState::Open
+            && !active.contains(&finding.id);
+        if remove {
+            retired.push(finding.id.clone());
+        }
+        !remove
+    });
+    (added, retired)
 }
 
 pub(super) fn outside_paths(paths: &[PathClass], claims: &[Vec<u8>]) -> Vec<String> {
@@ -66,20 +159,22 @@ pub(super) fn outside_paths(paths: &[PathClass], claims: &[Vec<u8>]) -> Vec<Stri
     }
     paths
         .iter()
-        .filter(|p| {
-            !claims.iter().any(|claim| {
-                let claim = claim.strip_prefix(b"/").unwrap_or(claim);
-                let claim = claim.strip_suffix(b"/").unwrap_or(claim);
-                let path = p.path.as_bytes();
-                claim.is_empty()
-                    || path == claim
-                    || path
-                        .strip_prefix(claim)
-                        .is_some_and(|tail| tail.starts_with(b"/"))
-            })
-        })
+        .filter(|p| !claimed_path(&p.path, claims))
         .map(|p| p.path.clone())
         .collect()
+}
+
+pub(super) fn claimed_path(path: &str, claims: &[Vec<u8>]) -> bool {
+    claims.iter().any(|claim| {
+        let claim = claim.strip_prefix(b"/").unwrap_or(claim);
+        let claim = claim.strip_suffix(b"/").unwrap_or(claim);
+        let path = path.as_bytes();
+        claim.is_empty()
+            || path == claim
+            || path
+                .strip_prefix(claim)
+                .is_some_and(|tail| tail.starts_with(b"/"))
+    })
 }
 
 fn skip_marker(line: &str, test_path: bool) -> bool {
@@ -156,69 +251,154 @@ pub(super) fn leash_paths(paths: &[PathClass], configured: &str) -> Vec<String> 
         .collect()
 }
 
-pub(super) const LEASH_ACTIONS: &[&str] = &[
-    "agent.budget_set",
-    "agent.updated",
-    "agent.deleted",
-    "policy.update",
-    "ruleset.create",
-    "ruleset.update",
-    "ruleset.delete",
-    "actions_policy.update",
-    "actions_policy.enabled_repos",
-    "workflow.required_create",
-    "workflow.required_update",
-    "workflow.required_delete",
-    "workspace.org_policy_set",
-    "workspace.egress_set",
-    "role.create",
-    "role.update",
-    "role.delete",
-    "role.assign",
-    "role.unassign",
-    "collaborator.add",
-    "collaborator.remove",
-    "team.repo_grant",
-    "team.repo_revoke",
-    "deploy_key.create",
-    "deploy_key.delete",
-    "token.mint",
-    "token.revoke",
-    "token.create",
-    "app.permissions_accept",
-    "app.token_create",
-];
+// Use the same action constants at mutation sites and when reading the audit log.
+macro_rules! leash_actions {
+    ($($name:ident = $value:literal),+ $(,)?) => {
+        /// Audit actions observed by the own-leash detector.
+        pub mod audit_actions {
+            $(#[doc = $value] pub const $name: &str = $value;)+
+        }
+        pub(super) const LEASH_ACTIONS: &[&str] = &[$(audit_actions::$name),+];
+    };
+}
+
+leash_actions! {
+    MINT_TOKEN = "mint_token",
+    REVOKE_TOKEN = "revoke",
+    LOGOUT = "logout",
+    DEACTIVATE_AGENT = "deactivate",
+    CREATE_AGENT_CREDENTIAL = "create_agent",
+    UPDATE_AGENT_CREDENTIAL = "update_agent",
+    AGENT_BUDGET = "agent.budget_set",
+    AGENT_UPDATE = "agent.update",
+    AGENT_DELETE = "agent.delete",
+    RULESET_CREATE = "ruleset.create",
+    RULESET_UPDATE = "ruleset.update",
+    RULESET_DELETE = "ruleset.delete",
+    ACTIONS_POLICY_UPDATE = "actions_policy.update",
+    ACTIONS_POLICY_ENABLED_REPOS = "actions_policy.enabled_repos",
+    WORKFLOW_REQUIRED_CREATE = "workflow.required_create",
+    WORKFLOW_REQUIRED_UPDATE = "workflow.required_update",
+    WORKFLOW_REQUIRED_DELETE = "workflow.required_delete",
+    WORKSPACE_ORG_POLICY = "workspace.org_policy_set",
+    WORKSPACE_EGRESS = "workspace.egress_set",
+    WORKSPACE_DOTFILES = "workspace.dotfiles_set",
+    ROLE_CREATE = "role.create",
+    ROLE_UPDATE = "role.update",
+    ROLE_DELETE = "role.delete",
+    ROLE_ASSIGN = "role.assign",
+    ROLE_UNASSIGN = "role.unassign",
+    COLLABORATOR_ADD = "collaborator.add",
+    COLLABORATOR_REMOVE = "collaborator.remove",
+    TEAM_REPO_GRANT = "team.repo_grant",
+    TEAM_REPO_REVOKE = "team.repo_revoke",
+    TEAM_MEMBER_ADD = "team.member_add",
+    TEAM_MEMBER_REMOVE = "team.member_remove",
+    TEAM_MEMBER_ROLE = "team.member_role_change",
+    DEPLOY_KEY_CREATE = "deploy_key.create",
+    DEPLOY_KEY_DELETE = "deploy_key.delete",
+    APP_PERMISSIONS_ACCEPT = "app.permissions_accept",
+    APP_TOKEN_CREATE = "app.token_create",
+    APP_REPOS_ADD = "app.installation_repos_add",
+    APP_REPOS_REMOVE = "app.installation_repos_remove",
+    ORG_SETTINGS = "org.settings_update",
+    MEMBER_ADD = "member.add",
+    MEMBER_REMOVE = "member.remove",
+    MEMBER_ROLE_CHANGE = "member.role_change",
+    MEMBER_ROLE_ASSIGN = "member.custom_role_assign",
+    MEMBER_ROLE_REVOKE = "member.custom_role_revoke",
+    REPO_SETTINGS = "repo.settings_update",
+    OIDC_TEMPLATE = "actions_policy.oidc_template",
+    SECRET_REPOS = "secret.set_repos",
+}
+
+/// Whether the successful audit operation can change a run's governing settings.
+pub fn leash_audit_action(action: &str) -> bool {
+    LEASH_ACTIONS.contains(&action)
+}
+
+pub(super) fn audit_credential(entry: &AuditEntry) -> Option<serde_json::Value> {
+    let mut after: serde_json::Value = serde_json::from_str(&entry.after).ok()?;
+    after.as_object_mut()?.remove("run_credential")
+}
 
 pub(super) fn leash_action(entry: &AuditEntry, token_id: &str) -> bool {
     !token_id.is_empty()
-        && entry.token_id == token_id
         && entry.result == "ok"
-        && LEASH_ACTIONS.contains(&entry.action.as_str())
+        && leash_audit_action(&entry.action)
+        && (entry.token_id == token_id
+            || audit_credential(entry).is_some_and(|credential| {
+                credential["blocks"]
+                    .as_array()
+                    .is_some_and(|blocks| blocks.iter().any(|id| id.as_str() == Some(token_id)))
+            }))
+}
+
+pub(super) fn native_effect(effect: &str) -> &str {
+    // Older native callers included the head after the last colon.
+    if let Some((reference, _)) = effect.rsplit_once(':')
+        && let Some(name) = reference.strip_prefix("ref:")
+        && !name.is_empty()
+    {
+        return reference;
+    }
+    effect
+}
+
+pub(super) fn refusal(error: &crate::error::ForgeError) -> Option<PolicyDenial> {
+    if !matches!(
+        error.reason,
+        ErrorReason::PolicyDenied | ErrorReason::ApprovalRequired
+    ) || error.subcode == super::control::FROZEN
+    {
+        return None;
+    }
+    match error.payload.as_deref() {
+        Some(error_detail::Payload::PolicyDenial(denial))
+            if !denial.rule.is_empty()
+                && denial.rule != super::control::FROZEN
+                && !denial.missing.is_empty() =>
+        {
+            Some(denial.clone())
+        }
+        _ => None,
+    }
 }
 
 pub(super) struct Attempt {
     pub id: String,
     pub effect: String,
     pub reason: ErrorReason,
+    pub denial: Option<PolicyDenial>,
     pub time_ms: u64,
 }
 
-pub(super) fn repeated_after_refusal(attempts: &[Attempt]) -> Vec<(&Attempt, &Attempt)> {
+pub(super) fn repeated_after_refusal(attempts: &[Attempt]) -> Vec<(&Attempt, &Attempt, String)> {
     let mut pending = BTreeMap::new();
     let mut reported = BTreeSet::new();
     let mut results = Vec::new();
     for attempt in attempts {
-        if reported.contains(attempt.effect.as_str()) {
-            continue;
+        let effect = native_effect(&attempt.effect);
+        if attempt.reason == ErrorReason::Unspecified {
+            pending.retain(|(earlier, _, _), _| *earlier != effect);
         }
-        if let Some(first) = pending.remove(attempt.effect.as_str()) {
-            results.push((first, attempt));
-            reported.insert(attempt.effect.as_str());
-        } else if matches!(
-            attempt.reason,
-            ErrorReason::PolicyDenied | ErrorReason::ApprovalRequired
-        ) {
-            pending.insert(attempt.effect.as_str(), attempt);
+        let Some(denial) = &attempt.denial else {
+            continue;
+        };
+        pending.retain(|(earlier, rule, requirement), _| {
+            *earlier != effect
+                || *rule != denial.rule
+                || denial
+                    .missing
+                    .iter()
+                    .any(|missing| missing.as_str() == *requirement)
+        });
+        for requirement in &denial.missing {
+            let key = (effect, denial.rule.as_str(), requirement.as_str());
+            let first = pending.entry(key).or_insert(attempt);
+            if first.id != attempt.id && reported.insert(key) {
+                results.push((*first, attempt, format!("{}: {}", denial.rule, requirement)));
+            }
         }
     }
     results
@@ -227,25 +407,30 @@ pub(super) fn repeated_after_refusal(attempts: &[Attempt]) -> Vec<(&Attempt, &At
 pub(super) fn missing_checks(
     required: &BTreeSet<String>,
     observed: &[bee_policy::CheckResult],
-    workflows: &[bee_policy::WorkflowGate],
+    workflows: &[(String, Option<bee_policy::CheckStatus>)],
+    completed_suite: bool,
 ) -> Vec<String> {
-    use bee_policy::CheckStatus::{Neutral, Skipped, Success};
-    let mut missing: BTreeSet<String> = required
+    use bee_policy::CheckStatus::{Failure, Pending};
+    let completed = completed_suite
+        && observed.iter().all(|check| check.status != Pending)
+        && workflows.iter().all(|(_, status)| *status != Some(Pending));
+    let mut contradicted: BTreeSet<String> = required
         .iter()
         .filter(|name| {
-            !observed.iter().any(|check| {
-                check.name == **name && matches!(check.status, Success | Neutral | Skipped)
-            })
+            match observed
+                .iter()
+                .find(|check| check.name.as_str() == name.as_str())
+            {
+                Some(check) => check.status == Failure,
+                None => completed,
+            }
         })
         .cloned()
         .collect();
-    missing.extend(
-        workflows
-            .iter()
-            .filter(|w| !w.passed)
-            .map(|w| w.name.clone()),
-    );
-    missing.into_iter().collect()
+    contradicted.extend(workflows.iter().filter_map(|(name, status)| {
+        (*status == Some(Failure) || (status.is_none() && completed)).then_some(name.clone())
+    }));
+    contradicted.into_iter().collect()
 }
 
 pub(super) fn scan_matches(
@@ -286,43 +471,48 @@ mod tests {
     }
 
     #[test]
-    fn safety_around_refusal_requires_the_same_effect_after_a_real_refusal() {
+    fn safety_around_refusal_requires_the_same_unmet_requirement() {
+        use crate::error::ForgeError;
+        let approval =
+            ForgeError::policy_denied("main", vec!["approval".into()], "Approval required");
+        let checks = ForgeError::policy_denied("CI", vec!["check:build".into()], "Build required");
+        let frozen = ForgeError::policy_denied(
+            super::super::control::FROZEN,
+            vec!["organization_resume".into()],
+            "Frozen",
+        );
+        let attempt = |id: &str, effect: &str, error: Option<&ForgeError>| Attempt {
+            id: id.into(),
+            effect: effect.into(),
+            reason: error.map_or(ErrorReason::Unspecified, |error| error.reason),
+            denial: error.and_then(refusal),
+            time_ms: 1,
+        };
         let attempts = [
-            Attempt {
-                id: "1".into(),
-                effect: "a".into(),
-                reason: ErrorReason::PolicyDenied,
-                time_ms: 1,
-            },
-            Attempt {
-                id: "2".into(),
-                effect: "b".into(),
-                reason: ErrorReason::Unspecified,
-                time_ms: 2,
-            },
-            Attempt {
-                id: "3".into(),
-                effect: "c".into(),
-                reason: ErrorReason::VersionMismatch,
-                time_ms: 3,
-            },
-            Attempt {
-                id: "4".into(),
-                effect: "c".into(),
-                reason: ErrorReason::Unspecified,
-                time_ms: 4,
-            },
-            Attempt {
-                id: "5".into(),
-                effect: "a".into(),
-                reason: ErrorReason::Unspecified,
-                time_ms: 5,
-            },
+            attempt("1", "ref:main:old", Some(&approval)),
+            attempt("2", "ref:release:old", Some(&approval)),
+            attempt("3", "ref:main:new", Some(&checks)),
+            attempt("4", "ref:main:new", Some(&approval)),
         ];
-        assert!(repeated_after_refusal(&attempts[..4]).is_empty());
-        let repeated = repeated_after_refusal(&attempts);
-        assert_eq!(repeated.len(), 1);
-        assert_eq!((&repeated[0].0.id[..], &repeated[0].1.id[..]), ("1", "5"));
+        assert!(repeated_after_refusal(&attempts[..3]).is_empty());
+        let found = repeated_after_refusal(&attempts);
+        assert_eq!(found.len(), 1);
+        assert_eq!((found[0].0.id.as_str(), found[0].1.id.as_str()), ("1", "4"));
+        assert!(
+            repeated_after_refusal(&[
+                attempt("1", "ref:main:old", Some(&approval)),
+                attempt("2", "ref:main:new", None),
+                attempt("3", "ref:main:newer", Some(&approval)),
+            ])
+            .is_empty()
+        );
+        assert!(
+            repeated_after_refusal(&[
+                attempt("1", "ref:main:old", Some(&frozen)),
+                attempt("2", "ref:main:new", Some(&frozen)),
+            ])
+            .is_empty()
+        );
     }
 
     #[test]
@@ -379,6 +569,14 @@ mod tests {
         };
         assert!(leash_action(&entry, "token"));
         assert!(!leash_action(&entry, "another-token"));
+        entry.action = audit_actions::MINT_TOKEN.into();
+        entry.token_id = "child".into();
+        entry.after =
+            serde_json::json!({"run_credential": {"blocks": ["token", "child"]}}).to_string();
+        assert!(leash_action(&entry, "token"));
+        entry.action = audit_actions::REVOKE_TOKEN.into();
+        assert!(leash_action(&entry, "token"));
+        assert!(!leash_action(&entry, "unrelated"));
         entry.result = "PERMISSION_DENIED".into();
         assert!(!leash_action(&entry, "token"));
     }
@@ -401,15 +599,21 @@ mod tests {
                 status: Failure,
             },
         ];
-        let workflow = [bee_policy::WorkflowGate {
-            name: "required workflow".into(),
-            passed: false,
-        }];
+        let workflows = [("required workflow".into(), Some(Failure))];
         assert_eq!(
-            missing_checks(&required, &reported, &workflow),
+            missing_checks(&required, &reported, &workflows, true),
             ["missing", "required workflow", "tests"]
         );
-        assert!(missing_checks(&BTreeSet::from(["build".into()]), &reported, &[]).is_empty());
+        assert_eq!(
+            missing_checks(&required, &reported, &workflows, false),
+            ["required workflow", "tests"]
+        );
+        let pending = [bee_policy::CheckResult {
+            name: "tests".into(),
+            status: bee_policy::CheckStatus::Pending,
+        }];
+        assert!(missing_checks(&required, &pending, &[("verify".into(), None)], true).is_empty());
+        assert!(missing_checks(&BTreeSet::from(["build".into()]), &reported, &[], true).is_empty());
     }
 
     #[test]
@@ -430,6 +634,43 @@ mod tests {
     }
 
     #[test]
+    fn safety_refresh_updates_evidence_and_preserves_human_decisions() {
+        let signal = |text| {
+            finding(
+                SafetySignalKind::SaidVsShown,
+                SafetySeverity::Note,
+                text,
+                vec![],
+                vec![],
+                1,
+            )
+        };
+        let initial = signal("build and tests failed");
+        let updated = signal("tests failed");
+        assert_eq!(initial.id, updated.id);
+        let mut existing = vec![initial];
+        assert_eq!(
+            reconcile(&mut existing, vec![updated.clone()]),
+            (vec![], vec![])
+        );
+        assert_eq!(existing, vec![updated.clone()]);
+        assert_eq!(
+            reconcile(&mut existing, vec![]).1.as_slice(),
+            std::slice::from_ref(&updated.id)
+        );
+        assert!(existing.is_empty());
+        for state in [SafetyFindingState::Dismissed, SafetyFindingState::Confirmed] {
+            let mut decided = updated.clone();
+            decided.state = state as i32;
+            let mut existing = vec![decided];
+            assert!(reconcile(&mut existing, vec![]).1.is_empty());
+            reconcile(&mut existing, vec![signal("build failed")]);
+            assert_eq!(existing.len(), 1);
+            assert_eq!(existing[0].state(), state);
+        }
+    }
+
+    #[test]
     fn safety_verdict_uses_severity_and_active_findings() {
         let mut outside = finding(
             SafetySignalKind::OutsideTask,
@@ -439,6 +680,15 @@ mod tests {
             vec![],
             0,
         );
+        let unknown = finding(
+            SafetySignalKind::HarmToCode,
+            SafetySeverity::Note,
+            "Origin unknown",
+            vec![],
+            vec![],
+            0,
+        );
+        assert_eq!(verdict(&[unknown], false), SafetyVerdict::AsAsked);
         assert_eq!(verdict(&[], false), SafetyVerdict::AsAsked);
         assert_eq!(
             verdict(std::slice::from_ref(&outside), false),

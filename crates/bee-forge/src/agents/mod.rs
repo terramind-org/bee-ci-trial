@@ -460,10 +460,8 @@ impl Agents {
         self.forge
             .events
             .add_listener(Arc::new(triggers::AgentListener::new(self.clone())));
-        // Refresh the safety record after attributable work changes.
-        self.forge
-            .events
-            .add_listener(Arc::new(crate::safety::SafetyListener::new(self.clone())));
+        // Safety is acknowledged by the durable relay only after its refresh succeeds.
+        self.forge.relay.attach_safety(self);
         let mut hooks = self.forge.work.hooks();
         hooks.agents = Arc::new(triggers::RegistryGate::new(self.clone()));
         self.forge.work.set_hooks(hooks);

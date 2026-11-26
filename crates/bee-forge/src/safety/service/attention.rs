@@ -3,7 +3,39 @@ use crate::agents::runs::terminal;
 use crate::store::{Key, Scan};
 
 impl SafetyApi {
-    // Finding and attention item share the cancellation transaction.
+    pub(super) async fn automatic_tripwire(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        work: &SafetyRef,
+        record: &SafetyRecord,
+        finding: &SafetyFinding,
+    ) -> Result<()> {
+        let mut tx = self.agents.db.begin(SURFACE, cx).await?;
+        // Serialize the check with evidence refresh, decisions, and other relay workers.
+        let (current, _) = store::lock(&mut tx, repo, work).await?;
+        if !current.findings.iter().any(|item| {
+            item.id == finding.id
+                && item.state() == SafetyFindingState::Open
+                && item.report == finding.report
+        }) || tx
+            .get(&crate::safety::ATTENTION, &repo.id, &finding.id)
+            .await?
+            .is_some()
+        {
+            return Ok(());
+        }
+        let stopped = self
+            .on_finding(&mut tx, repo, work, record, finding)
+            .await?;
+        tx.commit().await?;
+        if let Some(stopped) = stopped {
+            stopped.finish(&self.agents).await;
+        }
+        Ok(())
+    }
+
+    // Attention and cancellation commit together. Manual findings use this transaction too.
     pub(super) async fn on_finding(
         &self,
         tx: &mut Tx,
@@ -16,17 +48,9 @@ impl SafetyApi {
             return Ok(None);
         };
         let kind = report.kind();
-        store::emit(
-            tx,
-            repo,
-            work,
-            "safety.finding_reported",
-            json!({
-                "finding_id": finding.id, "kind": kind.as_str_name(),
-                "severity": report.severity().as_str_name(),
-            }),
-        )
-        .await?;
+        if !detectors::automatic(finding) {
+            store::report_event(tx, repo, work, finding).await?;
+        }
         if report.severity() != SafetySeverity::Severe
             || !matches!(
                 kind,
@@ -42,6 +66,12 @@ impl SafetyApi {
             .evidence
             .as_ref()
             .map_or("", |e| e.observation.as_str());
+        // Attention is visible to the recipient even when the audit log is restricted.
+        let reason = if detectors::automatic(finding) && kind == SafetySignalKind::OwnLeash {
+            "Changed repository policy, agent instructions, or governing settings"
+        } else {
+            reason
+        };
         let stopped = control::interrupt_in_tx(
             &self.agents,
             tx,
@@ -52,7 +82,11 @@ impl SafetyApi {
         )
         .await?;
         let item = SafetyAttention {
-            id: tx.new_id()?,
+            id: if detectors::automatic(finding) {
+                finding.id.clone()
+            } else {
+                tx.new_id()?
+            },
             work: Some(work.clone()),
             answerable: record.answerable.clone(),
             created_at: Some(ts(tx.now_ms())),
@@ -175,6 +209,22 @@ impl SafetyApi {
         Ok(concern)
     }
 
+    async fn may_receive_fallback(&self, caller: &Caller, repo: &Repo) -> bool {
+        self.agents
+            .forge
+            .authz
+            .repo(
+                caller,
+                repo,
+                Action::ManageSettings,
+                &[],
+                None,
+                Some(RepoRole::Admin),
+            )
+            .await
+            .is_ok()
+    }
+
     pub(super) async fn list_attention(
         &self,
         caller: &Caller,
@@ -183,23 +233,21 @@ impl SafetyApi {
         require_person(caller)?;
         let (repo, cx) = self.repo(caller, &request.repo).await?;
         let (after, size) = page(&request.page);
+        let repo_admin = self.may_receive_fallback(caller, &repo).await;
         let mut tx = self.agents.db.begin(SURFACE, &cx).await?;
         let mut cursor = None;
         let mut items = Vec::new();
         let mut token = String::new();
         loop {
-            let rows = tx
-                .scan(
-                    &crate::safety::ATTENTION,
-                    &Scan::scope(&repo.id, 128)
-                        .key(Key::K1(cx.actor_id.clone()))
-                        .after(cursor),
-                )
-                .await?;
+            let mut scan = Scan::scope(&repo.id, 128).after(cursor);
+            if !repo_admin {
+                scan = scan.key(Key::K1(cx.actor_id.clone()));
+            }
+            let rows = tx.scan(&crate::safety::ATTENTION, &scan).await?;
             cursor = rows.last().map(crate::store::Cursor::after);
             let done = rows.len() < 128;
             for row in rows {
-                if row.id <= after {
+                if row.id <= after || !store::attention_recipient(&row, &cx.actor_id, repo_admin) {
                     continue;
                 }
                 let item: SafetyAttention = row.decode()?;
@@ -231,11 +279,12 @@ impl SafetyApi {
     ) -> Result<SafetyAttention> {
         require_person(caller)?;
         let (repo, cx) = self.repo(caller, &request.repo).await?;
+        let repo_admin = self.may_receive_fallback(caller, &repo).await;
         let mut tx = self.agents.db.begin(SURFACE, &cx).await?;
         let row = tx
             .get_for_update(&crate::safety::ATTENTION, &repo.id, &request.id)
             .await?
-            .filter(|row| row.k1.as_deref() == Some(cx.actor_id.as_str()))
+            .filter(|row| store::attention_recipient(row, &cx.actor_id, repo_admin))
             .ok_or_else(|| {
                 ForgeError::not_found("Safety attention item").with_subcode("safety_attention")
             })?;

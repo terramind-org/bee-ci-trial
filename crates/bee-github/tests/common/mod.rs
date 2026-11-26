@@ -831,6 +831,7 @@ pub async fn stores() -> Stores {
 impl Stores {
     pub fn target(&self) -> Arc<StoreTarget> {
         Arc::new(StoreTarget {
+            ref_publisher: None,
             main: ImportTarget {
                 writer: self.writer.clone(),
                 org: self.org,

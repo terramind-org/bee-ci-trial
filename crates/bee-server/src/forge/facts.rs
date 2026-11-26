@@ -189,6 +189,17 @@ impl LandFacts for ServerLandFacts {
             .await
     }
 
+    // The merge gate has a boolean; Safety needs pending, failure, and absence separately.
+    async fn safety_workflows(
+        &self,
+        repo: &Repo,
+        heads: &[v1::ObjectId],
+    ) -> FResult<Vec<(String, Option<bee_policy::CheckStatus>)>> {
+        let (_, w) = self.wiring()?;
+        w.ci.required_workflow_statuses(&Cx::system(), repo, &hexes(heads))
+            .await
+    }
+
     async fn code_alerts(
         &self,
         repo: &Repo,

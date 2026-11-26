@@ -1073,9 +1073,10 @@ impl Writes {
                 .session()
                 .is_some_and(|s| s.starts_with("run-"))
             && let Ok(name) = RefName::new(req.r#ref.clone())
-            && let Ok(head) = id_from(req.head.as_ref(), "head")
+            && id_from(req.head.as_ref(), "head").is_ok()
         {
-            Some(format!("ref:{}:{}", name.as_str(), head.to_text()))
+            // Safety follows the requested ref through amendments to the head.
+            Some(format!("ref:{}", name.as_str()))
         } else {
             None
         };
@@ -1089,7 +1090,7 @@ impl Writes {
                     &caller,
                     &repo,
                     &effect,
-                    result.as_ref().err().map(ApiError::reason),
+                    result.as_ref().err(), // Preserve the policy denial for Safety.
                 )
                 .await;
         }

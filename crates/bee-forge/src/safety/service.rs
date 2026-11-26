@@ -75,6 +75,54 @@ fn update_verdict(record: &mut SafetyRecord, unfinished: bool) {
     );
 }
 
+#[derive(Clone, Copy)]
+struct EvidenceAccess {
+    scan: bool,
+    audit: bool,
+}
+
+impl EvidenceAccess {
+    fn finding(self, finding: &mut SafetyFinding) {
+        let Some(report) = finding.report.as_mut() else {
+            return;
+        };
+        let kind = report.kind();
+        let Some(evidence) = report.evidence.as_mut() else {
+            return;
+        };
+        if kind == SafetySignalKind::HarmToCode && !self.scan {
+            evidence.observation = "Code scanning evidence is restricted".into();
+            evidence.subjects.clear();
+            evidence.paths.clear();
+            // High or critical alert severity itself requires code-scanning access.
+            report.severity = SafetySeverity::Unspecified as i32;
+        } else if kind == SafetySignalKind::OwnLeash
+            && !self.audit
+            && (evidence
+                .observation
+                .starts_with("Changed governing settings through ")
+                || evidence
+                    .subjects
+                    .iter()
+                    .any(|subject| subject.repo.is_none()))
+        {
+            evidence.observation = "Changed governing settings".into();
+            evidence
+                .subjects
+                .retain(|subject| subject.kind() == SubjectKind::AgentRun);
+            evidence.paths.clear();
+        }
+    }
+
+    fn record(self, record: SafetyRecord) -> SafetyRecord {
+        let mut record = store::present(record);
+        for finding in &mut record.findings {
+            self.finding(finding);
+        }
+        record
+    }
+}
+
 fn canonical(repo: &Repo, kind: SafetyWorkKind, id: String) -> SafetyRef {
     SafetyRef {
         repo: repo_ref_id(&repo.id),
@@ -147,6 +195,22 @@ impl SafetyApi {
             .await
     }
 
+    async fn evidence_access(&self, caller: &Caller, repo: &Repo) -> EvidenceAccess {
+        let authz = &self.agents.forge.authz;
+        let audit = authz
+            .org(caller, &repo.org_id, OrgPerm::ReadAudit)
+            .await
+            .is_ok();
+        let scan = match authz
+            .repo(caller, repo, Action::Commit, &[], None, None)
+            .await
+        {
+            Ok(_) => true,
+            Err(error) => audit && error.reason == ErrorReason::PermissionDenied,
+        };
+        EvidenceAccess { scan, audit }
+    }
+
     async fn may_decide(&self, caller: &Caller, repo: &Repo, record: &SafetyRecord) -> Result<Cx> {
         require_person(caller)?;
         if record
@@ -178,64 +242,113 @@ impl SafetyApi {
         cx: &Cx,
         work: SafetyRef,
     ) -> Result<(SafetyRecord, bool)> {
-        let snapshot = evidence::collect(&self.agents, cx, repo, work.clone()).await?;
-        let mut snapshot_record = snapshot.record;
+        // Evidence can shrink (rerun, remediation), so timestamps cannot order
+        // concurrent snapshots. Serialize collection and reconciliation for each work.
+        static REFRESH: std::sync::LazyLock<[tokio::sync::Mutex<()>; 64]> =
+            std::sync::LazyLock::new(|| std::array::from_fn(|_| tokio::sync::Mutex::new(())));
+        let hash = blake3::hash(format!("{}/{}", repo.id, store::key(&work)).as_bytes());
+        let _refresh = REFRESH[usize::from(hash.as_bytes()[0]) % REFRESH.len()]
+            .lock()
+            .await;
         let system = Cx::system().with_deadline(cx.deadline);
-        store::ensure(&self.agents, &system, repo, &work).await?;
-        let mut tx = self.agents.db.begin(SURFACE, &system).await?;
-        let (mut record, row) = store::lock(&mut tx, repo, &work).await?;
-        let new_record = record.work.is_none();
-        let mut interruptions = Vec::new();
-        let observed = snapshot_record.updated_at.as_ref().map_or(0, ts_ms);
-        let previous = record.updated_at.as_ref().map_or(0, ts_ms);
-        if new_record || observed >= previous {
-            let new_findings = std::mem::take(&mut snapshot_record.findings);
-            snapshot_record.findings = std::mem::take(&mut record.findings);
+        let (snapshot_record, unfinished, tripwires) = loop {
+            let revision = store::revision(&self.agents, &system, repo, &work).await?;
+            let snapshot = evidence::collect(&self.agents, &system, repo, work.clone()).await?;
+            let mut snapshot_record = snapshot.record;
+            if revision.is_none() {
+                store::ensure(&self.agents, &system, repo, &work).await?;
+            }
+            let mut tx = self.agents.db.begin(SURFACE, &system).await?;
+            let (mut record, row) = store::lock(&mut tx, repo, &work).await?;
+            if revision.map_or(record.work.is_some(), |version| row.version != version) {
+                // Another process or a human decision committed while evidence was read.
+                continue;
+            }
+            let new_record = record.work.is_none();
+            let observed = snapshot_record.updated_at.as_ref().map_or(0, ts_ms);
+            let previous = record.updated_at.as_ref().map_or(0, ts_ms);
+            if observed < previous {
+                snapshot_record.updated_at.clone_from(&record.updated_at);
+            }
+            let observed_findings = std::mem::take(&mut snapshot_record.findings);
+            snapshot_record.findings.clone_from(&record.findings);
             snapshot_record.reviews = std::mem::take(&mut record.reviews);
-            snapshot_record.r#override = record.r#override.take();
-            let mut changed = new_record
+            snapshot_record.r#override.clone_from(&record.r#override);
+            let (added, retired) =
+                detectors::reconcile(&mut snapshot_record.findings, observed_findings);
+            snapshot_record.findings.sort_by(|a, b| a.id.cmp(&b.id));
+            record.findings.sort_by(|a, b| a.id.cmp(&b.id));
+            update_verdict(&mut snapshot_record, snapshot.unfinished);
+            store::bound_evidence(&mut snapshot_record);
+            let tripwires = snapshot_record
+                .findings
+                .iter()
+                .filter(|finding| {
+                    detectors::automatic(finding)
+                        && finding.state() == SafetyFindingState::Open
+                        && finding.report.as_ref().is_some_and(|report| {
+                            report.kind() == SafetySignalKind::OwnLeash
+                                && report.severity() == SafetySeverity::Severe
+                        })
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            if new_record
                 || record.asked != snapshot_record.asked
                 || record.done != snapshot_record.done
                 || record.agents != snapshot_record.agents
                 || record.answerable != snapshot_record.answerable
-                || observed != previous;
-            for finding in new_findings {
-                if snapshot_record.findings.iter().any(|f| f.id == finding.id) {
-                    continue;
-                }
-                changed = true;
-                interruptions.extend(
-                    self.on_finding(&mut tx, repo, &work, &snapshot_record, &finding)
-                        .await?,
-                );
-                snapshot_record.findings.push(finding);
-            }
-            update_verdict(&mut snapshot_record, snapshot.unfinished);
-            if changed || record.verdict != snapshot_record.verdict {
+                || record.findings != snapshot_record.findings
+                || record.verdict != snapshot_record.verdict
+                || record.updated_at != snapshot_record.updated_at
+            {
                 store::save(&mut tx, row, &snapshot_record).await?;
                 store::emit(
                     &mut tx,
                     repo,
                     &work,
                     "safety.record_updated",
-                    json!({"kind": work.kind().as_str_name()}),
+                    json!({ "kind": work.kind().as_str_name() }),
                 )
                 .await?;
-                tx.commit().await?;
-                for interruption in interruptions {
-                    interruption.finish(&self.agents).await;
+                for id in retired {
+                    // Removal is audited. A human-confirmed or dismissed row stays intact.
+                    store::retire(&mut tx, repo, &work, &id).await?;
                 }
+                for finding in added {
+                    store::report_event(&mut tx, repo, &work, &finding).await?;
+                }
+                tx.commit().await?;
+            } else {
+                drop(tx);
             }
-            return Ok((snapshot_record, snapshot.unfinished));
+
+            break (snapshot_record, snapshot.unfinished, tripwires);
+        };
+        // Persist the evidence before invoking the tripwire. The outbox retries any
+        // unfinished intervention, and a committed attention row makes a retry idempotent.
+        let mut failure = None;
+        for finding in tripwires {
+            if let Err(error) = self
+                .automatic_tripwire(&system, repo, &work, &snapshot_record, &finding)
+                .await
+            {
+                eprintln!("Safety intervention failed for {}: {error}", finding.id);
+                failure.get_or_insert(error);
+            }
         }
-        Ok((record, snapshot.unfinished))
+        if let Some(error) = failure {
+            return Err(error);
+        }
+        Ok((snapshot_record, unfinished))
     }
 
     async fn get(&self, caller: &Caller, work: SafetyRef) -> Result<SafetyRecord> {
         let (repo, cx, work) = self.target(caller, Some(work)).await?;
+        let access = self.evidence_access(caller, &repo).await;
         self.refresh(&repo, &cx, work)
             .await
-            .map(|(record, _)| record)
+            .map(|(record, _)| access.record(record))
     }
 
     async fn list(
@@ -248,9 +361,10 @@ impl SafetyApi {
         // A record can weigh up to 384 KiB, including review history.
         let (refs, token) =
             evidence::list_refs(&self.agents, &cx, &repo, &after, size.min(7)).await?;
+        let access = self.evidence_access(caller, &repo).await;
         let mut records = Vec::with_capacity(refs.len());
         for work in refs {
-            records.push(self.refresh(&repo, &cx, work).await?.0);
+            records.push(access.record(self.refresh(&repo, &cx, work).await?.0));
         }
         Ok(ListSafetyRecordsResponse {
             records,
@@ -292,7 +406,7 @@ impl SafetyApi {
         )
         .await?;
         tx.commit().await?;
-        Ok(record)
+        Ok(self.evidence_access(caller, &repo).await.record(record))
     }
 
     async fn resolve_finding(
@@ -324,6 +438,7 @@ impl SafetyApi {
                 auth,
             )
             .await?;
+        let access = self.evidence_access(caller, &repo).await;
         cx.reason.clone_from(&request.reason);
         let mut tx = self.agents.db.begin(SURFACE, &cx).await?;
         let (mut record, row) = store::lock(&mut tx, &repo, &work).await?;
@@ -336,7 +451,9 @@ impl SafetyApi {
                     .as_ref()
                     .is_some_and(|p| p.id == cx.actor_id)
             {
-                return Ok(resolved.clone());
+                let mut response = resolved.clone();
+                access.finding(&mut response);
+                return Ok(response);
             }
             return Err(ForgeError::invalid(
                 "safety_finding_resolved",
@@ -348,7 +465,8 @@ impl SafetyApi {
         resolved.resolved_by = Some(caller.principal());
         resolved.resolved_at = Some(ts(tx.now_ms()));
         resolved.resolution_reason.clone_from(&request.reason);
-        let result = resolved.clone();
+        let mut result = resolved.clone();
+        access.finding(&mut result);
         update_verdict(&mut record, unfinished);
         store::save(&mut tx, row, &record).await?;
         store::emit(

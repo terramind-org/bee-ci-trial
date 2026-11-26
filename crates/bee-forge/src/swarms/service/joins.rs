@@ -15,6 +15,32 @@ fn kind(principal: &Principal) -> PolicyKind {
     }
 }
 
+fn decision_allowed(caller: &Caller, join: &SwarmJoin, accept: bool) -> Result<()> {
+    if [&join.requester, &join.agent]
+        .into_iter()
+        .flatten()
+        .any(|principal| principal.id == caller.cx.actor_id)
+    {
+        return Err(ForgeError::permission_denied(
+            "The requester and joining agent cannot decide their own join",
+        )
+        .with_subcode("swarm_join_self_decision"));
+    }
+    if accept
+        && caller.cx.actor_kind != PrincipalKind::Human
+        && !join
+            .requester
+            .as_ref()
+            .is_some_and(|principal| principal.kind() == PrincipalKind::Human)
+    {
+        return Err(ForgeError::permission_denied(
+            "A person must accept a join requested by a non-human principal",
+        )
+        .with_subcode("swarm_join_human_required"));
+    }
+    Ok(())
+}
+
 impl SwarmApi {
     pub(super) async fn request_join(
         &self,
@@ -124,24 +150,37 @@ impl SwarmApi {
             false,
         )
         .await?;
-        let auth = match lead_or_owner(caller, &record) {
-            Ok(()) => {
-                self.access(
-                    caller,
-                    &repo,
-                    Action::Commit,
-                    Some(&record.swarm.branch),
-                    None,
-                )
-                .await
-            }
-            Err(e) => Err(e),
+        let owner = is_owner(caller, &record.swarm);
+        let admin = caller.cx.actor_kind == PrincipalKind::Human && !owner;
+        let auth = if admin || owner || is_lead(caller, &record) {
+            self.access(
+                caller,
+                &repo,
+                if admin {
+                    Action::ManageSettings
+                } else {
+                    Action::Commit
+                },
+                Some(&record.swarm.branch),
+                admin.then_some(RepoRole::Admin),
+            )
+            .await
+        } else {
+            Err(deny(
+                "The swarm lead, its owner, or a repository admin must decide",
+            ))
         };
         let cx = self
             .audited(caller, &repo, "swarm.join_decided", auth)
             .await?;
         store::require_active(&record.swarm)?;
         let join = store::pending_join(&mut record, &req.join_id)?.clone();
+        if let Err(error) = decision_allowed(caller, &join, req.accept) {
+            return Err(self
+                .audited(caller, &repo, "swarm.join_decided", Err(error))
+                .await
+                .unwrap_err());
+        }
         if !req.accept {
             return self
                 .write_decision(

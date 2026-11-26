@@ -71,6 +71,9 @@ pub struct CrRecord {
     /// Verified run that opened the change. Its evidence events need no extra lookup.
     #[prost(string, tag = "19")]
     pub(crate) safety_run_id: String,
+    /// Whether the current queue entry came from auto-merge. Absent for legacy entries.
+    #[prost(bool, optional, tag = "20")]
+    pub(crate) queued_by_auto_merge: Option<bool>,
 }
 
 impl CrRecord {

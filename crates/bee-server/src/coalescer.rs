@@ -1096,8 +1096,9 @@ struct Accepted {
     target: ObjectId,
 }
 
-fn is_nonhuman(job: &LandJob) -> bool {
+fn requires_safety_fence(job: &LandJob) -> bool {
     job.caller.token.principal.kind != PrincipalKind::Human
+        || job.caller.token.session() == Some(crate::forge::landing::SAFETY_PUBLICATION_SESSION)
 }
 
 /// Processes queued lands for one ref; with `fence`, publication requires still owning the
@@ -1121,7 +1122,7 @@ async fn process_batch(
         .iter()
         .enumerate()
         .map(|(i, j)| {
-            let k = (j.head, j.expected_version, is_nonhuman(j));
+            let k = (j.head, j.expected_version, requires_safety_fence(j));
             match first_by_head.get(&k) {
                 Some(f) => Some(*f),
                 None => {
@@ -1164,7 +1165,7 @@ async fn process_batch(
         let mut events = Vec::new();
         for (i, job) in jobs.iter().enumerate() {
             if let Some(error) = nonhuman_error.as_ref()
-                && is_nonhuman(job)
+                && requires_safety_fence(job)
             {
                 results[i] = Some(Err(error.clone()));
                 continue;
@@ -1249,8 +1250,11 @@ async fn process_batch(
         }
         // Serialize a non-human publication with Stop Everything. If the stop won, replan
         // human jobs on their own so their outcome cannot depend on a blocked stack.
-        let safety = if accepted.iter().any(|a| is_nonhuman(&jobs[a.index])) {
-            match state.forge.fence_agent_landing(&repo).await {
+        let safety = if accepted
+            .iter()
+            .any(|a| requires_safety_fence(&jobs[a.index]))
+        {
+            match state.hub.fence_ref_publication(state, &repo, true).await {
                 Ok(fence) => fence,
                 Err(error) => {
                     nonhuman_error = Some(error);
@@ -1290,8 +1294,7 @@ async fn process_batch(
             at_ms: state.now_ms(),
             events,
         };
-        let publication = state.writer.update_ref(update).await;
-        drop(safety);
+        let publication = crate::forge::publish_ref(state, update, safety).await;
         match publication {
             Ok(updated) => {
                 state.metrics.batch(k);
@@ -1332,8 +1335,8 @@ async fn process_batch(
             }
             Err(e)
                 if matches!(
-                    e.reason,
-                    bee_core::Reason::VersionMismatch | bee_core::Reason::AlreadyLanded
+                    e.reason(),
+                    ErrorReason::VersionMismatch | ErrorReason::AlreadyLanded
                 ) =>
             {
                 state
@@ -1345,8 +1348,8 @@ async fn process_batch(
                     "land",
                     "ref CAS lost; retrying the batch",
                     &[
-                        ("reason", e.reason.as_str().into()),
-                        ("message", e.message.clone().into()),
+                        ("reason", e.detail.reason.clone().into()),
+                        ("message", e.detail.message.clone().into()),
                         ("attempt", attempt.into()),
                     ],
                 );
@@ -1368,10 +1371,7 @@ async fn process_batch(
                     .unwrap_or(0);
                 tokio::time::sleep(Duration::from_micros(r % cap_us.max(1))).await;
             }
-            Err(e) => {
-                let e: ApiError = e.into();
-                return Ok(publication_failed(results, e));
-            }
+            Err(e) => return Ok(publication_failed(results, e)),
         }
     }
 }

@@ -229,7 +229,10 @@ impl Wiki {
         } else {
             access
         };
+        // The wiki is a sibling VCS repository and init can create its first ref.
+        let fence = crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?;
         self.vcs.init(&VcsRepo::wiki_of(repo)).await?;
+        drop(fence);
         let mut tx = self.db.begin(SURFACE, cx).await?;
         let rec = WikiRec {
             enabled: true,
@@ -441,6 +444,7 @@ impl Wiki {
         message: String,
     ) -> Result<CommitInfo> {
         let time_ms = self.db.now_ms();
+        let _fence = crate::safety::control::fence_nonhuman(&self.db, cx, &repo.org_id).await?;
         self.vcs
             .commit(
                 vr,

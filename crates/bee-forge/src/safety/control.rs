@@ -1,5 +1,5 @@
 //! Safety interrupts reuse runner cancellation. The organization flag is serialized with
-//! run admission and publication, so already submitted agent merges obey the stop.
+//! run admission and with the final ref publication.
 
 use bee_proto::v1::{
     Event, Org, PrincipalKind, Repo, SafetyStop, SafetyWorkKind, SubjectKind, SubjectRef,
@@ -13,7 +13,7 @@ use crate::audit::AuditDraft;
 use crate::cx::Cx;
 use crate::error::{ForgeError, Result};
 use crate::ids::ts;
-use crate::store::{Cursor, Db, Row, Scan, TableDef, Tx};
+use crate::store::{Cursor, Db, PublicationLock, Row, Scan, TableDef, Tx};
 
 /// The policy flag lives with runs so their interruption commits with the stop.
 pub(super) static LAND_FREEZE: TableDef = TableDef {
@@ -58,13 +58,19 @@ pub(crate) async fn landing_frozen(db: &Db, cx: &Cx, org: &str) -> Result<bool> 
     if cx.actor_kind == PrincipalKind::Human {
         return Ok(false);
     }
+    read_flag(db, cx, org).await
+}
+
+async fn read_flag(db: &Db, cx: &Cx, org: &str) -> Result<bool> {
     let mut tx = db.begin(SURFACE, cx).await?;
-    Ok(tx
+    let frozen = tx
         .get(&LAND_FREEZE, org, FLAG)
         .await?
         .and_then(|row| row.n1)
         .unwrap_or_default()
-        != 0)
+        != 0;
+    tx.commit().await?;
+    Ok(frozen)
 }
 
 pub(crate) async fn require_landing(db: &Db, cx: &Cx, org: &str) -> Result<()> {
@@ -76,17 +82,27 @@ pub(crate) async fn require_landing(db: &Db, cx: &Cx, org: &str) -> Result<()> {
 
 /// A publication permit. Hold it until the native ref transaction has completed.
 pub struct LandFence {
-    _tx: Tx,
+    _lock: PublicationLock,
 }
 
-/// Takes the same durable organization lock as Stop Everything. Hold the returned fence
-/// through publication, with no nested agent-store operation while held.
+/// Acquire a shared, backend-wide organization lock, then read the durable flag in a short
+/// transaction. Stop and Resume take the exclusive lock before updating the flag. A Stop
+/// that has returned has therefore drained earlier publishers, and later publishers see
+/// the freeze. The permit holds no agents-store transaction, so unrelated writes proceed.
 pub async fn fence_landing(db: &Db, cx: &Cx, org: &str) -> Result<LandFence> {
-    let mut tx = db.begin(SURFACE, cx).await?;
-    if lock_flag(&mut tx, org).await? {
+    let lock = db.store().publication_lock(org, true, cx.deadline).await?;
+    if read_flag(db, cx, org).await? {
         return Err(freeze_error());
     }
-    Ok(LandFence { _tx: tx })
+    Ok(LandFence { _lock: lock })
+}
+
+/// Holds a publication permit for an authenticated agent or service.
+pub async fn fence_nonhuman(db: &Db, cx: &Cx, org: &str) -> Result<Option<LandFence>> {
+    if cx.actor_kind == PrincipalKind::Human {
+        return Ok(None);
+    }
+    fence_landing(db, cx, org).await.map(Some)
 }
 
 /// Runner effects that must happen only after the cancellation transaction commits.
@@ -219,6 +235,11 @@ pub(crate) async fn set_stop(
     frozen: bool,
     reason: &str,
 ) -> Result<SafetyStop> {
+    let publication = agents
+        .db
+        .store()
+        .publication_lock(&org.id, false, cx.deadline)
+        .await?;
     let mut tx = agents.db.begin(SURFACE, cx).await?;
     lock_flag(&mut tx, &org.id).await?;
     tx.put(&LAND_FREEZE, &Row::new(&org.id, FLAG).n1(i64::from(frozen)))
@@ -288,6 +309,7 @@ pub(crate) async fn set_stop(
     )
     .await?;
     tx.commit().await?;
+    drop(publication);
     interrupted.finish(agents).await;
     if !frozen {
         agents.wake.notify_one();

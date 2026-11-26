@@ -7,6 +7,7 @@
 //! in `org_enforced`. Runs check `allowed_actions` and `sha_pinning_required` against every
 //! `uses:` of the plan before any job starts (a violation is a `startup_failure`).
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::BTreeMap;
 
 use bee_proto::v1::{
@@ -394,7 +395,7 @@ impl Ci {
             tx.update(&POLICIES, &row).await?;
         }
         tx.audit(
-            AuditDraft::new("actions_policy.update", &org_id)
+            AuditDraft::new(audit_actions::ACTIONS_POLICY_UPDATE, &org_id)
                 .repo_id(&repo_id)
                 .target_id(&key)
                 .after(&json!({ "set": rec.set_fields }).to_string()),
@@ -445,7 +446,7 @@ impl Ci {
             tx.update(&POLICIES, &row).await?;
         }
         tx.audit(
-            AuditDraft::new("actions_policy.enabled_repos", org_id)
+            AuditDraft::new(audit_actions::ACTIONS_POLICY_ENABLED_REPOS, org_id)
                 .target_id(&key)
                 .after(&json!({ "repos": rec.enabled_repo_ids }).to_string()),
         )
@@ -583,7 +584,7 @@ impl Ci {
         tx.insert(&REQUIRED, &Row::new(org_id, req.id.clone()).msg(&rec))
             .await?;
         tx.audit(
-            AuditDraft::new("workflow.required_create", org_id)
+            AuditDraft::new(audit_actions::WORKFLOW_REQUIRED_CREATE, org_id)
                 .target_id(&req.id)
                 .after(
                     &json!({ "name": name, "path": path, "source": source.full_name }).to_string(),
@@ -649,7 +650,7 @@ impl Ci {
             &Row::new(org_id, id).version(row.version).msg(&rec),
         )
         .await?;
-        tx.audit(AuditDraft::new("workflow.required_update", org_id).target_id(id))
+        tx.audit(AuditDraft::new(audit_actions::WORKFLOW_REQUIRED_UPDATE, org_id).target_id(id))
             .await?;
         tx.commit().await?;
         Ok(req)
@@ -661,7 +662,7 @@ impl Ci {
         if !tx.delete(&REQUIRED, org_id, id).await? {
             return Err(ForgeError::not_found(format!("required workflow {id}")));
         }
-        tx.audit(AuditDraft::new("workflow.required_delete", org_id).target_id(id))
+        tx.audit(AuditDraft::new(audit_actions::WORKFLOW_REQUIRED_DELETE, org_id).target_id(id))
             .await?;
         tx.commit().await
     }
@@ -728,6 +729,25 @@ impl Ci {
         repo: &Repo,
         heads: &[String],
     ) -> Result<Vec<bee_policy::WorkflowGate>> {
+        Ok(self
+            .required_workflow_statuses(cx, repo, heads)
+            .await?
+            .into_iter()
+            .map(|(name, status)| bee_policy::WorkflowGate {
+                name,
+                passed: status == Some(bee_policy::CheckStatus::Success),
+            })
+            .collect())
+    }
+
+    // Safety needs to distinguish an unfinished run and an absent run from a failure.
+    /// Latest enforced workflow state, with absence separate from pending or failing.
+    pub async fn required_workflow_statuses(
+        &self,
+        cx: &Cx,
+        repo: &Repo,
+        heads: &[String],
+    ) -> Result<Vec<(String, Option<bee_policy::CheckStatus>)>> {
         let mut tx = self.db.begin(SURFACE, cx).await?;
         let recs = tx
             .scan_msgs::<RequiredRecord>(&REQUIRED, &Scan::scope(repo.org_id.clone(), 1000))
@@ -766,14 +786,17 @@ impl Ci {
                     .filter(|(_, r)| r.required_workflow_id == req.id)
                     .max_by_key(|(n, _)| *n)
                     .and_then(|(_, r)| r.run.as_ref());
-                let passed = latest.is_some_and(|run| {
-                    run.status == bee_proto::v1::WorkflowStatus::Completed as i32
-                        && run.conclusion == bee_proto::v1::WorkflowConclusion::Success as i32
+                let status = latest.map(|run| {
+                    use bee_policy::CheckStatus;
+                    if run.status != bee_proto::v1::WorkflowStatus::Completed as i32 {
+                        CheckStatus::Pending
+                    } else if run.conclusion == bee_proto::v1::WorkflowConclusion::Success as i32 {
+                        CheckStatus::Success
+                    } else {
+                        CheckStatus::Failure
+                    }
                 });
-                bee_policy::WorkflowGate {
-                    name: req.name,
-                    passed,
-                }
+                (req.name, status)
             })
             .collect())
     }
@@ -837,7 +860,7 @@ impl Ci {
         } else {
             tx.update(&POLICIES, &row).await?;
         }
-        tx.audit(AuditDraft::new("actions_policy.oidc_template", &org_id).target_id(&key))
+        tx.audit(AuditDraft::new(audit_actions::OIDC_TEMPLATE, &org_id).target_id(&key))
             .await?;
         tx.commit().await?;
         self.oidc_template(cx, scope).await

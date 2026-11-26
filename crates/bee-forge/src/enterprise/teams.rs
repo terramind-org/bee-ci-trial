@@ -19,6 +19,7 @@
 //! - Review assignment: [`Teams::pick_reviewers`] turns a review request to a team into
 //!   individual reviewers, round robin or by load, deterministically from stored state.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -958,11 +959,11 @@ impl Teams {
                         },
                     )
                     .await?;
-                    ("team.member_role_changed", "team.member_role_change")
+                    ("team.member_role_changed", audit_actions::TEAM_MEMBER_ROLE)
                 }
                 None => {
                     tx.insert(&TEAM_MEMBERS, &row).await?;
-                    ("team.member_added", "team.member_add")
+                    ("team.member_added", audit_actions::TEAM_MEMBER_ADD)
                 }
             };
             common::emit(
@@ -1069,7 +1070,7 @@ impl Teams {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("team.member_remove", &org.id)
+            AuditDraft::new(audit_actions::TEAM_MEMBER_REMOVE, &org.id)
                 .target(SubjectKind::Team, &t.id)
                 .after(&serde_json::json!({"principal_id": principal_id}).to_string()),
         )
@@ -1302,11 +1303,11 @@ impl Teams {
                         },
                     )
                     .await?;
-                    ("team.member_role_changed", "team.member_role_change")
+                    ("team.member_role_changed", audit_actions::TEAM_MEMBER_ROLE)
                 }
                 None => {
                     tx.insert(&TEAM_MEMBERS, &member_row).await?;
-                    ("team.member_added", "team.member_add")
+                    ("team.member_added", audit_actions::TEAM_MEMBER_ADD)
                 }
             };
             common::emit(
@@ -1382,7 +1383,7 @@ impl Teams {
             )
             .await?;
             tx.audit(
-                AuditDraft::new("team.member_remove", &org)
+                AuditDraft::new(audit_actions::TEAM_MEMBER_REMOVE, &org)
                     .target(SubjectKind::Team, &r.scope)
                     .after(&serde_json::json!({"principal_id": principal_id, "reason": "removed_everywhere"}).to_string()),
             )
@@ -1478,7 +1479,7 @@ impl Teams {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("team.repo_grant", &org.id)
+            AuditDraft::new(audit_actions::TEAM_REPO_GRANT, &org.id)
                 .repo_id(&repo.id)
                 .target(SubjectKind::Team, &t.id)
                 .after(&after),
@@ -1508,7 +1509,7 @@ impl Teams {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("team.repo_revoke", &org.id)
+            AuditDraft::new(audit_actions::TEAM_REPO_REVOKE, &org.id)
                 .repo_id(&repo.id)
                 .target(SubjectKind::Team, &t.id)
                 .after(&after),

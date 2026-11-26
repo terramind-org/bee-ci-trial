@@ -2,6 +2,7 @@
 //! templates, topics, settings, autolinks, custom property values, collaborators and repo
 //! invitations, resolver hook, mirrors and deploy keys.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::BTreeMap;
 
 use bee_proto::v1::{
@@ -759,7 +760,7 @@ impl Orgs {
         let after = serde_json::to_string(&s).unwrap_or_default();
         Self::repo_payload_event(&mut tx, "repo.settings_updated", &repo, after.clone()).await?;
         tx.audit(
-            AuditDraft::new("repo.settings_update", &repo.org_id)
+            AuditDraft::new(audit_actions::REPO_SETTINGS, &repo.org_id)
                 .repo_id(id)
                 .before(&before)
                 .after(&after),
@@ -997,7 +998,7 @@ impl Orgs {
                     .to_string();
             Self::repo_payload_event(&mut tx, "collaborator.added", &repo, after.clone()).await?;
             tx.audit(
-                AuditDraft::new("collaborator.add", &repo.org_id)
+                AuditDraft::new(audit_actions::COLLABORATOR_ADD, &repo.org_id)
                     .repo_id(repo_id)
                     .target(SubjectKind::User, &principal.id)
                     .after(&after),
@@ -1062,7 +1063,7 @@ impl Orgs {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("collaborator.remove", &repo.org_id)
+            AuditDraft::new(audit_actions::COLLABORATOR_REMOVE, &repo.org_id)
                 .repo_id(repo_id)
                 .target(SubjectKind::User, principal_id),
         )
@@ -1579,7 +1580,7 @@ impl Orgs {
             serde_json::json!({"id": id, "title": title, "read_only": read_only}).to_string();
         Self::repo_payload_event(&mut tx, "deploy_key.created", &repo, after.clone()).await?;
         tx.audit(
-            AuditDraft::new("deploy_key.create", &repo.org_id)
+            AuditDraft::new(audit_actions::DEPLOY_KEY_CREATE, &repo.org_id)
                 .repo_id(repo_id)
                 .target_id(&id)
                 .after(&after),
@@ -1675,7 +1676,7 @@ impl Orgs {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("deploy_key.delete", &repo.org_id)
+            AuditDraft::new(audit_actions::DEPLOY_KEY_DELETE, &repo.org_id)
                 .repo_id(repo_id)
                 .target_id(id),
         )

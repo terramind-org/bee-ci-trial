@@ -205,8 +205,13 @@ async fn swarm_and_independent_run_record_their_pull_requests() {
         .await
         .expect("start attempt");
     let worker = register_agent(&c, "docs-worker").await;
+    let worker_token = c
+        .mint_token(&worker, &[], 0, 0)
+        .await
+        .expect("mint the joining agent's token");
+    let requester = c.with_token(worker_token);
     let request = swarms
-        .request_swarm_join(c.req(v1::RequestSwarmJoinRequest {
+        .request_swarm_join(requester.req(v1::RequestSwarmJoinRequest {
             swarm: reference.clone(),
             agent_principal_id: worker,
             budget: Some(v1::AgentRunBudget {

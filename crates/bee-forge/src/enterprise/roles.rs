@@ -12,6 +12,7 @@
 //! A custom *org* role has base `none` or `member` and adds org permissions
 //! ([`Roles::has_org_permission`]). Org roles are assigned to principals or teams.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
@@ -539,7 +540,7 @@ impl Roles {
         .await?;
         common::emit(&mut tx, "role.created", &org.id, None, common::json(&role)).await?;
         tx.audit(
-            AuditDraft::new("role.create", &org.id)
+            AuditDraft::new(audit_actions::ROLE_CREATE, &org.id)
                 .target_id(&role.id)
                 .after(&common::json(&role)),
         )
@@ -655,7 +656,7 @@ impl Roles {
         tx.update(&CUSTOM_ROLES, &next.msg(&r)).await?;
         common::emit(&mut tx, "role.updated", &org.id, None, common::json(&r)).await?;
         tx.audit(
-            AuditDraft::new("role.update", &org.id)
+            AuditDraft::new(audit_actions::ROLE_UPDATE, &org.id)
                 .target_id(&r.id)
                 .before(&before)
                 .after(&common::json(&r)),
@@ -701,7 +702,7 @@ impl Roles {
         tx.delete(&CUSTOM_ROLES, &org.id, role_id).await?;
         common::emit(&mut tx, "role.deleted", &org.id, None, common::json(&r)).await?;
         tx.audit(
-            AuditDraft::new("role.delete", &org.id)
+            AuditDraft::new(audit_actions::ROLE_DELETE, &org.id)
                 .target_id(&r.id)
                 .before(&common::json(&r)),
         )
@@ -785,7 +786,7 @@ impl Roles {
         .await?;
         common::emit(&mut tx, "role.assigned", &org.id, None, common::json(&a)).await?;
         tx.audit(
-            AuditDraft::new("role.assign", &org.id)
+            AuditDraft::new(audit_actions::ROLE_ASSIGN, &org.id)
                 .target(SubjectKind::Unspecified, &key)
                 .after(&common::json(&a)),
         )
@@ -826,8 +827,11 @@ impl Roles {
             serde_json::json!({"role": role_id, "assignee": key}).to_string(),
         )
         .await?;
-        tx.audit(AuditDraft::new("role.unassign", &org.id).target(SubjectKind::Unspecified, &key))
-            .await?;
+        tx.audit(
+            AuditDraft::new(audit_actions::ROLE_UNASSIGN, &org.id)
+                .target(SubjectKind::Unspecified, &key),
+        )
+        .await?;
         tx.commit().await
     }
 

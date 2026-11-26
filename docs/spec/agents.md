@@ -247,13 +247,20 @@ requires the current 1-based attempt number. A delayed retry cannot finish a lat
 An empty or refused task can be tried again. Claimed paths compare by whole path components.
 An attempt starts only while the swarm is working and the run is active. It needs an
 unassigned run and paths that do not overlap another active task's claims in the swarm.
+If the member run ends with an active attempt, the terminal transition and path release
+commit together. An attempt with a recorded hand-back is finished. Otherwise it comes
+back empty with the run's failure or cancellation reason as one line, when available.
 Path leases remain available to protect the corresponding Bee writes. A hand-back has an
 8 KiB encoded limit. The 512 KiB swarm record limit reserves space to close each active
 attempt and pending join.
 
 **Joins.** A signed-in repository reader can offer an agent they control and a positive USD
 budget, even without membership in a public repository. The requester's token must allow
-`swarm_join` on the shared branch. The lead or its owner may decline or accept. Acceptance
+`swarm_join` on the shared branch. The lead, its owner, or a repository admin may decide.
+The requester and joining agent receive `PERMISSION_DENIED/swarm_join_self_decision` if
+they try to decide. If the request came from a non-human principal, the lead agent receives
+`PERMISSION_DENIED/swarm_join_human_required` when accepting. The accountable person or
+a human repository admin can accept that request. Acceptance
 checks the same effective policy as the rest of the forge at the default branch, for
 `swarm_join` across the approver and applicant chains. The action is repository-wide and
 is included in the built-in Read role. An entrant must have an
@@ -264,7 +271,10 @@ from policy. A policy refusal returns the persisted join with state `REFUSED` an
 
 **State.** The accountable person or a repository admin changes swarm state. A pause prevents
 queued members from starting and holds new attempts. A run already in flight can finish its
-attempt. Resuming releases the queue. Stopping atomically cancels live members through the
+attempt. Resuming releases the queue. If a Safety tripwire paused the swarm, resume returns
+`INVALID_STATE/swarm_attention_open_<attention_id>` until the answerable person uses
+`AcknowledgeSafetyAttention`. The subcode includes the lowercased attention id. A person's
+own pause can be resumed directly. Stopping atomically cancels live members through the
 run cancellation path, ends active attempts, and closes pending joins. Workers admitted
 while planning queue until the swarm moves to working. Finishing requires
 every member run to be terminal and every task to have ended. Stopped and finished records are

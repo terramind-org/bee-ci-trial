@@ -196,6 +196,35 @@ pub(crate) async fn may_dispatch(tx: &mut Tx, repo: &str, run: &str) -> Result<b
         || (record.swarm.state() == SwarmState::Planning && record.swarm.lead_run_id == run))
 }
 
+/// Terminal run transitions take the swarm lock before the run lock, like StartSwarmTask.
+pub(crate) async fn lock_run_swarm(tx: &mut Tx, repo: &str, run: &str) -> Result<Option<String>> {
+    let swarm = swarm_for_run(tx, repo, run).await?;
+    if let Some(id) = &swarm {
+        load(tx, repo, id, true).await?;
+    }
+    Ok(swarm)
+}
+
+pub(crate) async fn finish_run_attempt(
+    tx: &mut Tx,
+    repo: &str,
+    org: &str,
+    swarm: Option<&str>,
+    run: &str,
+    reason: &str,
+) -> Result<()> {
+    let Some(id) = swarm else { return Ok(()) };
+    let (mut record, row) = load(tx, repo, id, false).await?;
+    if let Some(details) =
+        super::service::tasks::finish_run_attempt(&mut record, run, reason, ts(tx.now_ms()))?
+    {
+        record.swarm.updated_at = Some(ts(tx.now_ms()));
+        tx.update(&SWARMS, &row.msg(&record)).await?;
+        emit(tx, repo, org, &record.swarm, "swarm.task_finished", details).await?;
+    }
+    Ok(())
+}
+
 // Safety stop also covers planning swarms, whose lead can still run before work begins.
 pub(crate) async fn pause_for_safety(
     tx: &mut Tx,

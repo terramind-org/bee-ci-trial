@@ -35,7 +35,7 @@ use bee_object::{Changeset, Meta, Tree};
 use bee_store::trees::{object_paths_for, read_object_bytes, read_tree};
 use bee_store::{
     DerivedRow, Expected, NewChangeset, ObjectState, OrgId, PutOutcome, ReadFrom, RefUpdate,
-    RepoId, UploadRecord, Writer,
+    RefUpdated, RepoId, UploadRecord, Writer,
 };
 
 use crate::lfs::lfs_pointer;
@@ -68,6 +68,13 @@ pub trait DerivedHook: Send + Sync {
     async fn rows(&self, target: &ImportTarget, changeset: &Changeset) -> Result<Vec<DerivedRow>>;
 }
 
+/// Server-side policy and publication for imports that write directly to stores.
+#[async_trait]
+pub trait RefPublisher: Send + Sync {
+    /// Makes a single imported ref reachable through the server's publication gate.
+    async fn publish(&self, update: RefUpdate) -> Result<RefUpdated>;
+}
+
 /// How to import.
 #[derive(Clone)]
 pub struct ImportOptions {
@@ -94,6 +101,8 @@ pub struct ImportOptions {
     pub head: Option<Vec<u8>>,
     /// Eager derived rows to add to every changeset.
     pub derived: Option<Arc<dyn DerivedHook>>,
+    /// Server publication hook. Local imports use the target's writer.
+    pub ref_publisher: Option<Arc<dyn RefPublisher>>,
 }
 
 impl ImportOptions {
@@ -112,6 +121,7 @@ impl ImportOptions {
             shallow: BTreeSet::new(),
             head: None,
             derived: None,
+            ref_publisher: None,
         }
     }
 }
@@ -929,18 +939,18 @@ impl Run<'_> {
             Some(r) if r.target.is_some() => (Expected::Version(r.version), "updated"),
             _ => (Expected::Absent, "created"),
         };
-        let out = self
-            .target
-            .writer
-            .update_ref(RefUpdate::set(
-                repo,
-                name.clone(),
-                expected,
-                Some(cs),
-                self.opts.creator.clone(),
-                self.opts.at_ms,
-            ))
-            .await?;
+        let update = RefUpdate::set(
+            repo,
+            name.clone(),
+            expected,
+            Some(cs),
+            self.opts.creator.clone(),
+            self.opts.at_ms,
+        );
+        let out = match &self.opts.ref_publisher {
+            Some(publisher) => publisher.publish(update).await?,
+            None => self.target.writer.update_ref(update).await?,
+        };
         self.report.stats.refs_written += 1;
         Ok((action, out.new_version))
     }

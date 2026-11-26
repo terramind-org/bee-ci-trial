@@ -2,17 +2,17 @@
 //! log and the audit chain.
 //!
 //! Each surface is drained independently, in outbox (ULID) order. An item is removed from
-//! the outbox only after it was appended; appends are idempotent (keyed by the outbox id for
-//! events and the entry id for audit), so a crash between append and removal only repeats a
-//! no-op. If the event log or the audit log is down, items wait in their surface's outbox and
-//! the surface itself keeps working.
+//! the outbox after it is appended and any required Safety refresh succeeds. Log appends
+//! are idempotent (keyed by the outbox id for events and the entry id for audit), so a
+//! crash between append and removal retries the refresh without duplicating the log entry.
+//! If delivery fails, items wait in their surface's outbox.
 //!
 //! Ordering: within a surface, items move in commit order. The background relay runs one
 //! task per surface (so a slow surface database delays only its own items); events of
 //! different surfaces are therefore ordered by when they were relayed. [`Relay::drain_all`]
 //! merges all surfaces by outbox id and moves items in global order.
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use tokio::sync::watch;
@@ -32,6 +32,7 @@ pub struct Relay {
     events: Arc<EventLog>,
     audit: Arc<AuditLog>,
     surfaces: Vec<Surface>,
+    safety: OnceLock<crate::safety::SafetyListener>,
 }
 
 impl Relay {
@@ -47,7 +48,30 @@ impl Relay {
             events,
             audit,
             surfaces,
+            safety: OnceLock::new(),
         }
+    }
+
+    // Safety refresh must finish before an event or audit is acknowledged. Appends
+    // deduplicate on replay, but the Safety consumer always sees the retained input.
+    pub(crate) fn attach_safety(&self, agents: &Arc<crate::agents::Agents>) {
+        self.safety
+            .get_or_init(|| crate::safety::SafetyListener::new(agents));
+    }
+
+    async fn deliver(&self, cx: &Cx, id: &str, record: crate::store::OutboxRecord) -> Result<()> {
+        if let Some(event) = &record.event {
+            self.events.append(cx, event.clone(), id).await?;
+        }
+        if let Some(audit) = &record.audit {
+            self.audit.append(cx, audit.clone()).await?;
+        }
+        if let Some(safety) = self.safety.get() {
+            safety
+                .observe(record.event.as_ref(), record.audit.as_ref())
+                .await?;
+        }
+        Ok(())
     }
 
     /// Moves one batch from one surface; returns how many items were moved.
@@ -62,16 +86,7 @@ impl Relay {
         let mut done = Vec::new();
         let mut first_err = None;
         for (id, rec) in items {
-            let r = async {
-                if let Some(e) = rec.event {
-                    self.events.append(cx, e, &id).await?;
-                }
-                if let Some(a) = rec.audit {
-                    self.audit.append(cx, a).await?;
-                }
-                Ok::<(), crate::error::ForgeError>(())
-            }
-            .await;
+            let r = self.deliver(cx, &id, rec).await;
             match r {
                 Ok(()) => done.push(id),
                 Err(e) => {
@@ -136,16 +151,7 @@ impl Relay {
             let mut done: Vec<(Surface, String)> = Vec::new();
             let mut failed = None;
             for (id, s, rec) in items {
-                let r = async {
-                    if let Some(e) = rec.event {
-                        self.events.append(cx, e, &id).await?;
-                    }
-                    if let Some(a) = rec.audit {
-                        self.audit.append(cx, a).await?;
-                    }
-                    Ok::<(), crate::error::ForgeError>(())
-                }
-                .await;
+                let r = self.deliver(cx, &id, rec).await;
                 match r {
                     Ok(()) => done.push((s, id)),
                     Err(e) => {

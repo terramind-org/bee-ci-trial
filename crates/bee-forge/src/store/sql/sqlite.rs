@@ -8,6 +8,7 @@
 //! always starts clean.
 
 use std::collections::HashMap;
+use std::fs::{File, TryLockError};
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -22,7 +23,7 @@ use tokio::time::Instant;
 use super::{Col, Dialect, Exec, SqlBackend, SqlConfig, SqlTx, Val, migrate_surface};
 use crate::error::{ForgeError, Result};
 use crate::ids::Clock;
-use crate::store::{ForgeTx, Migration, MigrationReport, Surface, within};
+use crate::store::{ForgeTx, Migration, MigrationReport, PublicationLock, Surface, within};
 
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
 
@@ -104,6 +105,46 @@ impl SqliteBackend {
             SqlBackend::Sqlite { dir } => Ok(dir.join(format!("forge-{}.db", s.0))),
             SqlBackend::Postgres { .. } => Err(ForgeError::internal("not a sqlite config")),
         }
+    }
+
+    pub(crate) async fn publication_lock(
+        &self,
+        org: &str,
+        shared: bool,
+        deadline: Instant,
+    ) -> Result<PublicationLock> {
+        let key = blake3::hash(org.as_bytes()).to_hex();
+        let path = self
+            .path(Surface("agents"))?
+            .with_file_name(format!("safety-{key}.lock"));
+        // Keep the file in place: unlinking a locked file would let another replica lock a
+        // different inode. The OS releases the lock when the descriptor closes.
+        within(deadline, async move {
+            let file = File::options()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .open(path)
+                .map_err(|e| ForgeError::unavailable(format!("open safety lock: {e}")))?;
+            loop {
+                let result = if shared {
+                    file.try_lock_shared()
+                } else {
+                    file.try_lock()
+                };
+                match result {
+                    Ok(()) => return Ok(Box::new(file) as PublicationLock),
+                    Err(TryLockError::WouldBlock) => {
+                        tokio::time::sleep(Duration::from_millis(5)).await
+                    }
+                    Err(e) => {
+                        return Err(ForgeError::unavailable(format!("acquire safety lock: {e}")));
+                    }
+                }
+            }
+        })
+        .await
     }
 
     fn pool(&self, s: Surface) -> Result<Arc<Pool>> {

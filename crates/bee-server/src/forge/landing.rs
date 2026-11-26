@@ -170,6 +170,8 @@ pub const NS_AUTO_CR: &str = "auto_cr";
 
 /// How long internal land tokens live.
 const INTERNAL_TOKEN_SECS: u64 = 300;
+/// Signed session of a human auto-merge whose revision requires the publication fence.
+pub(crate) const SAFETY_PUBLICATION_SESSION: &str = "bee:automatic-publication";
 
 /// A forge context with a short deadline for calls on the land path, so a slow forge
 /// database never holds a land for long.
@@ -199,13 +201,14 @@ pub async fn internal_token(
     state: &AppState,
     chain: &[String],
 ) -> crate::errors::ApiResult<String> {
-    internal_token_with_kind(state, chain, v1::PrincipalKind::Unspecified).await
+    internal_token_with_kind(state, chain, v1::PrincipalKind::Unspecified, false).await
 }
 
 async fn internal_token_with_kind(
     state: &AppState,
     chain: &[String],
     kind: v1::PrincipalKind,
+    require_safety_fence: bool,
 ) -> crate::errors::ApiResult<String> {
     let actor = chain.first().ok_or_else(|| {
         crate::errors::ApiError::invalid("missing_field", "empty principal chain")
@@ -231,6 +234,12 @@ async fn internal_token_with_kind(
         on_behalf_of.push(PrincipalRef::new(id.clone(), kind));
     }
     let now = state.now_ms() / 1000;
+    let mut scope = Scope::new().expires_at(now + INTERNAL_TOKEN_SECS);
+    if require_safety_fence {
+        // Forwarding a land carries this exact credential. The remote owner can enforce
+        // the fence at publication even if the originating request stops waiting.
+        scope = scope.session(SAFETY_PUBLICATION_SESSION);
+    }
     let token = state
         .ring
         .read()
@@ -239,7 +248,7 @@ async fn internal_token_with_kind(
             &MintRequest {
                 principal,
                 on_behalf_of,
-                scope: Scope::new().expires_at(now + INTERNAL_TOKEN_SECS),
+                scope,
             },
             now,
         )
@@ -264,14 +273,23 @@ impl ServerLander {
 
 #[async_trait]
 impl Lander for ServerLander {
+    fn fences_publication(&self) -> bool {
+        true
+    }
+
     async fn land(&self, repo: &Repo, intent: &LandIntent) -> bee_forge::Result<v1::LandResponse> {
         let state = self
             .state
             .upgrade()
             .ok_or_else(|| ForgeError::unavailable("server stopping"))?;
-        let token = internal_token_with_kind(&state, &intent.chain, intent.actor_kind)
-            .await
-            .map_err(api_to_forge)?;
+        let token = internal_token_with_kind(
+            &state,
+            &intent.chain,
+            intent.actor_kind,
+            intent.require_safety_fence,
+        )
+        .await
+        .map_err(api_to_forge)?;
         let mut req = tonic::Request::new(v1::LandRequest {
             repo: Some(v1::RepoRef {
                 repo: Some(v1::repo_ref::Repo::Id(repo.id.clone())),
@@ -823,11 +841,10 @@ pub fn token_cx(token: &bee_auth::VerifiedToken) -> Cx {
         PolicyKind::Service => PrincipalKind::Service,
         PolicyKind::Human => PrincipalKind::Human,
     };
-    let mut cx = Cx::new(token.principal.id.clone(), kind)
+    Cx::new(token.principal.id.clone(), kind)
         .with_chain(token.chain().into_iter().map(|p| p.id).collect())
-        .with_deadline(tokio::time::Instant::now() + Duration::from_secs(10));
-    cx.token_id = token.token_id.0.clone();
-    cx
+        .with_deadline(tokio::time::Instant::now() + Duration::from_secs(10))
+        .with_verified_token(token) // Safety attributes attenuated credentials by their verified ancestry.
 }
 
 /// A forge context for a verified server caller.

@@ -25,6 +25,7 @@
 //! scope does, intersects allow-lists, unions deny-lists. A narrower scope can only restrict:
 //! setting one that would allow more than the wider scopes is `POLICY_DENIED`.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::sync::Arc;
 
 use bee_proto::v1::{
@@ -453,7 +454,7 @@ impl Workspaces {
             &json,
         ))
         .await?;
-        tx.audit(AuditDraft::new("workspace.org_policy_set", org_id).after(&json))
+        tx.audit(AuditDraft::new(audit_actions::WORKSPACE_ORG_POLICY, org_id).after(&json))
             .await?;
         tx.commit().await?;
         Ok(p)
@@ -2269,7 +2270,7 @@ impl Workspaces {
             .await?;
         }
         tx.audit(
-            AuditDraft::new("workspace.dotfiles_set", org_id)
+            AuditDraft::new(audit_actions::WORKSPACE_DOTFILES, org_id)
                 .target_id(&d.principal_id)
                 .after(&json),
         )
@@ -2386,7 +2387,7 @@ impl Workspaces {
         })
         .await?;
         tx.audit(
-            AuditDraft::new("workspace.egress_set", org_id)
+            AuditDraft::new(audit_actions::WORKSPACE_EGRESS, org_id)
                 .repo_id(if kind == "repo" { repo_id } else { "" })
                 .target_id(&key)
                 .after(&json),

@@ -171,11 +171,15 @@ impl RepoService for ForgeServices {
                 auto_init: r.auto_init,
                 license_template: r.license_template,
             };
+            // Repository provisioning establishes the initial named ref.
+            let fence =
+                crate::safety::control::fence_nonhuman(&self.forge.db, &cx, &org_id).await?;
             self.forge
                 .hooks
                 .provisioner
                 .create_repo(&draft, &init)
                 .await?;
+            drop(fence);
             self.forge
                 .orgs
                 .create_repo(
@@ -467,11 +471,15 @@ impl RepoService for ForgeServices {
                 template_repo_id: template.id.clone(),
                 ..Default::default()
             };
+            // This provisioner copies refs directly rather than calling RefService.
+            let fence =
+                crate::safety::control::fence_nonhuman(&self.forge.db, &cx, &org_id).await?;
             self.forge
                 .hooks
                 .provisioner
                 .create_from_template(&draft, &template, r.include_all_refs)
                 .await?;
+            drop(fence);
             self.forge
                 .orgs
                 .create_repo(
@@ -1215,7 +1223,7 @@ impl RepoService for ForgeServices {
             // The mirror must exist here before the worker runs.
             self.forge.orgs.mirror_record(&cx, &repo.id, &r.id).await?;
             match self.forge.orgs.mirror_syncer() {
-                Some(s) => s.sync(&repo, &r.id).await,
+                Some(s) => s.sync(&cx, &repo, &r.id).await,
                 None => Err(unserved(
                     "RepoService.SyncRepoMirror",
                     "git gateway (mirror sync worker)",

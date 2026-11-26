@@ -2,6 +2,7 @@
 //! with the effective scope, budget and chain, access checks, agents, attenuated tokens and
 //! cascading revocation.
 
+use bee_forge::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::sync::Arc;
 
 use bee_auth::{
@@ -452,7 +453,7 @@ impl AuthApi {
             meta,
             None,
             &id,
-            "create_agent",
+            audit_actions::CREATE_AGENT_CREDENTIAL,
             json!({ "runtime": req.runtime }),
         )
         .await?;
@@ -628,7 +629,7 @@ impl AuthApi {
             meta,
             None,
             &token.id.0,
-            "mint_token",
+            audit_actions::MINT_TOKEN,
             json!({ "principal": principal }),
         )
         .await?;
@@ -676,8 +677,15 @@ impl AuthApi {
             .revocations
             .revoke(s.kv.as_ref(), &TokenId(id.clone()), s.now_ms())
             .await?;
-        s.audit(caller, meta, None, &id, "revoke", json!({ "new": new }))
-            .await?;
+        s.audit(
+            caller,
+            meta,
+            None,
+            &id,
+            audit_actions::REVOKE_TOKEN,
+            json!({ "new": new }),
+        )
+        .await?;
         Ok(v1::RevokeResponse {})
     }
 
@@ -955,7 +963,14 @@ impl AuthService for AuthApi {
                 )
                 .await?;
             self.state
-                .audit(&caller, &meta, None, &rec.id, "update_agent", json!({}))
+                .audit(
+                    &caller,
+                    &meta,
+                    None,
+                    &rec.id,
+                    audit_actions::UPDATE_AGENT_CREDENTIAL,
+                    json!({}),
+                )
                 .await?;
             Ok(principal_to(&rec))
         })
@@ -982,7 +997,7 @@ impl AuthService for AuthApi {
                     &meta,
                     None,
                     &rec.id,
-                    "deactivate",
+                    audit_actions::DEACTIVATE_AGENT,
                     json!({ "reason": inner.reason }),
                 )
                 .await?;
@@ -998,7 +1013,14 @@ impl AuthService for AuthApi {
                 .revoke(self.state.kv.as_ref(), &id, self.state.now_ms())
                 .await?;
             self.state
-                .audit(&caller, &meta, None, &id.0, "logout", json!({}))
+                .audit(
+                    &caller,
+                    &meta,
+                    None,
+                    &id.0,
+                    audit_actions::LOGOUT,
+                    json!({}),
+                )
                 .await?;
             Ok::<_, ApiError>(v1::LogoutResponse {})
         })

@@ -10,12 +10,12 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use prost::Message;
-use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
+use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard, RwLock};
 use tokio::time::Instant;
 
 use super::{
-    ForgeStore, ForgeTx, Key, Migration, MigrationReport, OutboxRecord, Row, Scan, Surface,
-    TableDef, check_surface, migrate,
+    ForgeStore, ForgeTx, Key, Migration, MigrationReport, OutboxRecord, PublicationLock, Row, Scan,
+    Surface, TableDef, check_surface, migrate, within,
 };
 use crate::error::{ForgeError, Result};
 
@@ -44,6 +44,7 @@ enum Undo {
 pub struct MemoryStore {
     surfaces: Mutex<HashMap<&'static str, Arc<AsyncMutex<SurfaceData>>>>,
     applied: Mutex<Vec<(String, String)>>,
+    publication_locks: Mutex<HashMap<String, Arc<RwLock<()>>>>,
 }
 
 impl MemoryStore {
@@ -65,6 +66,30 @@ impl MemoryStore {
 impl ForgeStore for MemoryStore {
     fn backend(&self) -> &'static str {
         "memory"
+    }
+
+    async fn publication_lock(
+        &self,
+        org: &str,
+        shared: bool,
+        deadline: Instant,
+    ) -> Result<PublicationLock> {
+        let lock = self
+            .publication_locks
+            .lock()
+            .map_err(|_| ForgeError::internal("memory store poisoned"))?
+            .entry(org.to_string())
+            .or_default()
+            .clone();
+        within(deadline, async move {
+            let permit: PublicationLock = if shared {
+                Box::new(lock.read_owned().await)
+            } else {
+                Box::new(lock.write_owned().await)
+            };
+            Ok(permit)
+        })
+        .await
     }
 
     async fn migrate(&self, migrations: &[&Migration]) -> Result<MigrationReport> {

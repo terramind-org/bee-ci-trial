@@ -66,6 +66,8 @@ pub struct CommitInfo {
     pub change_id: ChangeId,
     /// Message (empty when the meta is redacted).
     pub message: String,
+    /// Authenticated creator recorded by the server (empty when meta is redacted).
+    pub creator: String,
     /// Author.
     pub author: String,
 }
@@ -220,6 +222,15 @@ pub trait LandFacts: Send + Sync {
         repo: &Repo,
         heads: &[ObjectId],
     ) -> Result<Vec<bee_policy::WorkflowGate>>;
+    /// Required workflow check state for Safety. A gate alone cannot distinguish a
+    /// failure from pending or missing evidence.
+    async fn safety_workflows(
+        &self,
+        _repo: &Repo,
+        _heads: &[ObjectId],
+    ) -> Result<Vec<(String, Option<bee_policy::CheckStatus>)>> {
+        Ok(Vec::new())
+    }
     /// Open code-scanning alerts on `heads` or on `target_ref`.
     async fn code_alerts(
         &self,
@@ -262,6 +273,8 @@ pub struct LandIntent {
     pub chain: Vec<String>,
     /// Kind of the acting principal from the authenticated landing context.
     pub actor_kind: bee_proto::v1::PrincipalKind,
+    /// Whether safety must also gate this publication when the acting principal is human.
+    pub require_safety_fence: bool,
     /// ChangeId of the squash or merge changeset (raw), when the caller picks one.
     pub change_id: Option<Vec<u8>>,
 }
@@ -269,6 +282,11 @@ pub struct LandIntent {
 /// Lands stacks onto refs. The server's implementation routes through the land coalescer.
 #[async_trait]
 pub trait Lander: Send + Sync {
+    /// Whether the lander fences publication at the ref transaction, including auto-merge.
+    fn fences_publication(&self) -> bool {
+        false
+    }
+
     /// Lands `intent` and reports the result.
     async fn land(&self, repo: &Repo, intent: &LandIntent) -> Result<LandResponse>;
 }
@@ -659,6 +677,7 @@ impl ChangeVcs for HistoryVcs {
             parents: cs.parents().iter().map(proto_id).collect(),
             change_id: proto_change(cs.change_id()),
             message: meta.as_ref().map(|m| m.message.clone()).unwrap_or_default(),
+            creator: meta.as_ref().map(|m| m.creator.clone()).unwrap_or_default(),
             author: meta.map(|m| m.author).unwrap_or_default(),
         })
     }

@@ -20,6 +20,7 @@
 //! - **Custom roles** are the enterprise module's ([`bee_forge::enterprise::roles`]).
 //! - **CODEOWNERS** and **signature requirements** read the effective policy at a revision.
 
+use bee_forge::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
 
@@ -1680,7 +1681,7 @@ impl PolicyApi {
             meta,
             None,
             &rec.ruleset.id,
-            "ruleset.create",
+            audit_actions::RULESET_CREATE,
             json!({ "owner": rec.owner_name, "enforcement": mode_of(rec.ruleset.enforcement) }),
         )
         .await?;
@@ -1800,7 +1801,7 @@ impl PolicyApi {
             meta,
             None,
             &stored.ruleset.id,
-            "ruleset.update",
+            audit_actions::RULESET_UPDATE,
             json!({ "version": stored.ruleset.version }),
         )
         .await?;
@@ -2525,7 +2526,7 @@ impl PolicyService for PolicyApi {
                     &meta,
                     None,
                     &rec.ruleset.id,
-                    "ruleset.delete",
+                    audit_actions::RULESET_DELETE,
                     json!({}),
                 )
                 .await?;

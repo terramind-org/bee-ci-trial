@@ -1,5 +1,6 @@
 //! Installations, installation tokens and the access source that ties repo roles to them.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::BTreeSet;
 use std::time::Duration;
 
@@ -623,7 +624,7 @@ impl Apps {
         }
         let org = org_of(&rec);
         tx.audit(
-            AuditDraft::new("app.installation_repos_add", &org)
+            AuditDraft::new(audit_actions::APP_REPOS_ADD, &org)
                 .target_id(id)
                 .after(&serde_json::json!({ "repos": add }).to_string()),
         )
@@ -662,7 +663,7 @@ impl Apps {
         let count = tx.count(&INSTALL_REPOS, id, None).await?;
         let org = org_of(&rec);
         tx.audit(
-            AuditDraft::new("app.installation_repos_remove", &org)
+            AuditDraft::new(audit_actions::APP_REPOS_REMOVE, &org)
                 .target_id(id)
                 .after(&serde_json::json!({ "repos": gone }).to_string()),
         )
@@ -768,7 +769,7 @@ impl Apps {
         tx.update(&INSTALLS, &row.clone().msg(&rec)).await?;
         let org = org_of(&rec);
         tx.audit(
-            AuditDraft::new("app.permissions_accept", &org)
+            AuditDraft::new(audit_actions::APP_PERMISSIONS_ACCEPT, &org)
                 .target_id(id)
                 .before(&before)
                 .after(&json(&inst)),
@@ -895,7 +896,7 @@ impl Apps {
             .await?;
         }
         tx.audit(
-            AuditDraft::new("app.token_create", &org_of(&rec))
+            AuditDraft::new(audit_actions::APP_TOKEN_CREATE, &org_of(&rec))
                 .target_id(id)
                 .after(
                     &serde_json::json!({

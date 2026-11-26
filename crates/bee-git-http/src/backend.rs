@@ -227,6 +227,12 @@ pub trait RepoSession: Send + Sync {
     /// Whether the ref is protected (moves only through Land).
     async fn is_protected(&self, name: &RefName) -> GitResult<bool>;
 
+    /// Allows a hosted backend to keep a publication permit through a multi-ref atomic
+    /// push, including any needed rollback of earlier writes.
+    async fn atomic_publication(&self) -> GitResult<Option<Box<dyn Send + Sync>>> {
+        Ok(None)
+    }
+
     /// Lands the stack ending at `head` on a protected ref through the coalescer, under
     /// policy (SPEC §7.4). The result names the ref's new target, which differs from `head`
     /// when the stack was rebased onto a moved tip.

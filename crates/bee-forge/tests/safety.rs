@@ -312,6 +312,20 @@ async fn safety_summary_counts_human_resolution() {
         ))
         .await,
     );
+    let dismissed = body(
+        api.report_finding(req(
+            &owner,
+            ReportFindingRequest {
+                work: Some(work(&w, SafetyWorkKind::Run, &run.id)),
+                report: Some(signal(
+                    SafetySignalKind::LegalFlags,
+                    SafetySeverity::Warning,
+                )),
+                ..Default::default()
+            },
+        ))
+        .await,
+    );
     w.clock.advance(4000);
     body(
         api.resolve_finding(req(
@@ -321,6 +335,18 @@ async fn safety_summary_counts_human_resolution() {
                 finding_id: finding.id,
                 state: SafetyFindingState::Confirmed as i32,
                 reason: "Confirmed against the provider trace".into(),
+            },
+        ))
+        .await,
+    );
+    body(
+        api.resolve_finding(req(
+            &owner,
+            ResolveFindingRequest {
+                work: Some(work(&w, SafetyWorkKind::Run, &run.id)),
+                finding_id: dismissed.id,
+                state: SafetyFindingState::Dismissed as i32,
+                reason: "Reviewed and dismissed".into(),
             },
         ))
         .await,

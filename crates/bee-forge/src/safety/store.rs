@@ -8,7 +8,7 @@ use crate::audit::AuditDraft;
 use crate::cx::Cx;
 use crate::error::{ForgeError, Result};
 use crate::ids::ts_ms;
-use crate::store::{Row, Tx};
+use crate::store::{Cursor, Row, Scan, Tx};
 
 const MAX_RECORD_BYTES: usize = 384 * 1024;
 pub(super) const MAX_PAGE_BYTES: usize = 3 * 1024 * 1024;
@@ -26,7 +26,9 @@ pub(super) async fn lock(
         .get_for_update(&RECORDS, &repo.id, &key(work))
         .await?
         .ok_or_else(|| ForgeError::not_found("Safety record").with_subcode("safety_record"))?;
-    Ok((row.decode()?, row))
+    let mut record = row.decode()?;
+    load_findings(tx, repo, &mut record).await?;
+    Ok((record, row))
 }
 
 pub(super) async fn ensure(agents: &Agents, cx: &Cx, repo: &Repo, work: &SafetyRef) -> Result<()> {
@@ -44,38 +46,312 @@ pub(super) async fn ensure(agents: &Agents, cx: &Cx, repo: &Repo, work: &SafetyR
     }
 }
 
+pub(super) async fn revision(
+    agents: &Agents,
+    cx: &Cx,
+    repo: &Repo,
+    work: &SafetyRef,
+) -> Result<Option<u64>> {
+    let mut tx = agents.db.begin(SURFACE, cx).await?;
+    Ok(tx
+        .get(&RECORDS, &repo.id, &key(work))
+        .await?
+        .map(|row| row.version))
+}
+
+fn finding_scope(repo: &str, work: &SafetyRef) -> String {
+    format!("safety-findings/{repo}/{}", key(work))
+}
+
+const MAX_VISIBLE_FINDINGS: usize = 40;
+const FINDINGS_OMITTED: &str = "omitted-findings";
+
+pub(super) async fn load_findings(
+    tx: &mut Tx,
+    repo: &Repo,
+    record: &mut SafetyRecord,
+) -> Result<()> {
+    let Some(work) = &record.work else {
+        return Ok(());
+    };
+    if !record
+        .findings
+        .iter()
+        .any(|finding| finding.id == FINDINGS_OMITTED)
+    {
+        return Ok(());
+    }
+    record
+        .findings
+        .retain(|finding| finding.id != FINDINGS_OMITTED);
+    record.findings.extend(
+        overflow(tx, &finding_scope(&repo.id, work))
+            .await?
+            .into_iter()
+            .map(|(finding, _)| finding),
+    );
+    Ok(())
+}
+
+async fn overflow(tx: &mut Tx, scope: &str) -> Result<Vec<(SafetyFinding, Row)>> {
+    let mut cursor = None;
+    let mut findings = Vec::new();
+    loop {
+        let page = tx
+            .scan_msgs(&RECORDS, &Scan::scope(scope, 128).after(cursor))
+            .await?;
+        cursor = page.last().map(|(_, row)| Cursor::after(row));
+        let done = page.len() < 128;
+        findings.extend(page);
+        if done {
+            return Ok(findings);
+        }
+    }
+}
+
+fn preview(record: &mut SafetyRecord, available: usize) -> Vec<SafetyFinding> {
+    record.findings.sort_by(|a, b| {
+        let rank = |finding: &SafetyFinding| {
+            (
+                finding.state() == SafetyFindingState::Dismissed,
+                std::cmp::Reverse(finding.report.as_ref().map_or(0, |r| r.severity)),
+            )
+        };
+        rank(a).cmp(&rank(b)).then_with(|| a.id.cmp(&b.id))
+    });
+    let mut bytes = 0;
+    let count = record
+        .findings
+        .iter()
+        .take(MAX_VISIBLE_FINDINGS)
+        .take_while(|finding| {
+            bytes += finding.encoded_len() + 8;
+            bytes <= available
+        })
+        .count();
+    let omitted = record.findings.split_off(count);
+    if !omitted.is_empty() {
+        record.findings.push(SafetyFinding {
+            id: FINDINGS_OMITTED.into(),
+            report: Some(SafetyFindingReport {
+                evidence: Some(SafetyEvidence {
+                    observation: format!("and {} more", omitted.len()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+    }
+    omitted
+}
+
+pub(super) fn present(mut record: SafetyRecord) -> SafetyRecord {
+    let budget = available_for_findings(&mut record);
+    preview(&mut record, budget);
+    record
+}
+
+fn available_for_findings(record: &mut SafetyRecord) -> usize {
+    let findings = std::mem::take(&mut record.findings);
+    let budget = MAX_RECORD_BYTES
+        .saturating_sub(record.encoded_len() + 256)
+        .min(144 * 1024);
+    record.findings = findings;
+    budget
+}
+
+pub(super) fn bound_evidence(record: &mut SafetyRecord) {
+    let mut asked = std::mem::take(&mut record.asked);
+    let mut done = record.done.take();
+    // Historical reviews and human decisions have priority over the derived preview.
+    let budget = available_for_findings(record);
+    if let Some(done) = done.as_mut() {
+        bound_strings(&mut done.paths, (budget / 5).min(24 * 1024));
+        bound_strings(&mut done.commands, (budget / 5).min(24 * 1024));
+        bound_strings(&mut done.network_destinations, (budget / 16).min(8 * 1024));
+        bound_strings(
+            &mut done.merged_change_request_ids,
+            (budget / 16).min(8 * 1024),
+        );
+    }
+    let mut asked_bytes = 0;
+    let count = asked
+        .iter()
+        .take_while(|ask| {
+            asked_bytes += ask.encoded_len() + 8;
+            asked_bytes <= (budget / 3).min(64 * 1024)
+        })
+        .count();
+    let omitted = asked.len() - count;
+    if omitted > 0 {
+        asked.truncate(count);
+        asked.push(SafetyAsk {
+            text: format!("and {omitted} more requests"),
+            source: None,
+        });
+    }
+    record.asked = asked;
+    record.done = done;
+    for finding in &mut record.findings {
+        if super::detectors::automatic(finding)
+            && let Some(evidence) = finding
+                .report
+                .as_mut()
+                .and_then(|report| report.evidence.as_mut())
+        {
+            bound_strings(&mut evidence.paths, 8 * 1024);
+            if evidence.observation.len() > 4096 {
+                let mut end = 4096;
+                while !evidence.observation.is_char_boundary(end) {
+                    end -= 1;
+                }
+                evidence.observation.truncate(end);
+                evidence.observation.push('…');
+            }
+        }
+    }
+}
+
+fn bound_strings(values: &mut Vec<String>, budget: usize) {
+    let mut bytes = 0;
+    let count = values
+        .iter()
+        .take_while(|value| {
+            bytes += value.len() + 8;
+            bytes <= budget
+        })
+        .count();
+    let omitted = values.len() - count;
+    if omitted > 0 {
+        values.truncate(count);
+        values.push(format!("and {omitted} more"));
+    }
+}
+
 pub(super) async fn save(tx: &mut Tx, row: Row, record: &SafetyRecord) -> Result<()> {
-    let bytes = record.encoded_len();
+    let mut stored = record.clone();
+    let budget = available_for_findings(&mut stored);
+    let omitted = preview(&mut stored, budget);
+    let bytes = stored.encoded_len();
     if bytes > MAX_RECORD_BYTES {
         return Err(ForgeError::too_large(
-            "safety record",
+            "safety review history",
             MAX_RECORD_BYTES as u64,
             bytes as u64,
         ));
     }
-    let time = record.updated_at.as_ref().map_or(0, ts_ms);
-    tx.update(&RECORDS, &row.n1(time as i64).msg(record))
+    if let Some(work) = record.work.as_ref() {
+        let scope = finding_scope(&row.scope, work);
+        let old = overflow(tx, &scope).await?;
+        let mut remaining: std::collections::BTreeMap<_, _> = old
+            .into_iter()
+            .map(|(finding, row)| (row.id, finding))
+            .collect();
+        for finding in omitted {
+            let previous = remaining.remove(&finding.id);
+            if previous.as_ref() != Some(&finding) {
+                tx.put(&RECORDS, &Row::new(&scope, &finding.id).msg(&finding))
+                    .await?;
+            }
+        }
+        for id in remaining.into_keys() {
+            tx.delete(&RECORDS, &scope, &id).await?;
+        }
+    }
+    let time = stored.updated_at.as_ref().map_or(0, ts_ms);
+    tx.update(&RECORDS, &row.n1(time as i64).msg(&stored))
         .await?;
     Ok(())
 }
 
+pub(super) fn attention_recipient(row: &Row, person: &str, repo_admin: bool) -> bool {
+    row.k1
+        .as_deref()
+        .map_or(repo_admin, |recipient| recipient == person)
+}
+
 pub(super) async fn add_attention(tx: &mut Tx, repo: &Repo, item: &SafetyAttention) -> Result<()> {
-    let answerable = item
+    let mut item = item.clone();
+    item.answerable = item
         .answerable
-        .as_ref()
-        .filter(|p| p.kind() == PrincipalKind::Human && !p.id.is_empty())
-        .ok_or_else(|| {
-            ForgeError::invalid("safety_recipient", "Work needs an answerable person")
-        })?;
+        .filter(|p| p.kind() == PrincipalKind::Human && !p.id.is_empty());
     let created = item.created_at.as_ref().map_or(0, ts_ms);
-    tx.insert(
-        &ATTENTION,
-        &Row::new(&repo.id, &item.id)
-            .k1(&answerable.id)
-            .n1(created as i64)
-            .msg(item),
+    let mut row = Row::new(&repo.id, &item.id).n1(created as i64).msg(&item);
+    if let Some(person) = &item.answerable {
+        row = row.k1(&person.id);
+    }
+    // An unset recipient is the shared repository-admin inbox. The first
+    // administrator to acknowledge the item clears it.
+    tx.insert(&ATTENTION, &row).await
+}
+
+pub(super) async fn report_event(
+    tx: &mut Tx,
+    repo: &Repo,
+    work: &SafetyRef,
+    finding: &SafetyFinding,
+) -> Result<()> {
+    let Some(report) = &finding.report else {
+        return Ok(());
+    };
+    let mut payload = serde_json::json!({
+        "finding_id": finding.id, "kind": report.kind().as_str_name(),
+    });
+    // The repository event can be read without code-scanning access.
+    if report.kind() != SafetySignalKind::HarmToCode {
+        payload["severity"] = serde_json::json!(report.severity().as_str_name());
+    }
+    emit(tx, repo, work, "safety.finding_reported", payload).await
+}
+
+pub(super) async fn retire(tx: &mut Tx, repo: &Repo, work: &SafetyRef, id: &str) -> Result<()> {
+    tx.audit(
+        AuditDraft::new("safety.finding_retired", &repo.org_id)
+            .repo_id(&repo.id)
+            .target(SubjectKind::SafetyRecord, &work.id)
+            .after(&serde_json::json!({ "finding_id": id }).to_string()),
     )
     .await
+}
+
+// Resume uses this read while holding the swarm lock that also guards a tripwire pause.
+pub(crate) async fn unacknowledged_swarm_pause(
+    tx: &mut Tx,
+    repo: &str,
+    swarm: &str,
+    owner: &str,
+) -> Result<Option<String>> {
+    const PAGE_SIZE: usize = 128;
+    let mut cursor = None;
+    loop {
+        let rows = tx
+            .scan(&ATTENTION, &Scan::scope(repo, PAGE_SIZE).after(cursor))
+            .await?;
+        for row in &rows {
+            // An ownerless tripwire still needs the administrators' acknowledgment.
+            if !attention_recipient(row, owner, true) {
+                continue;
+            }
+            let item: SafetyAttention = row.decode()?;
+            if item.acknowledged_at.is_none()
+                && item
+                    .tripwire
+                    .as_ref()
+                    .is_some_and(|tripwire| tripwire.paused_swarm)
+                && item
+                    .work
+                    .as_ref()
+                    .is_some_and(|work| work.kind() == SafetyWorkKind::Swarm && work.id == swarm)
+            {
+                return Ok(Some(item.id));
+            }
+        }
+        if rows.len() < PAGE_SIZE {
+            return Ok(None);
+        }
+        cursor = rows.last().map(Cursor::after);
+    }
 }
 
 pub(super) async fn emit(
@@ -106,4 +382,60 @@ pub(super) async fn emit(
             .after(&data.to_string()),
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evidence_preview_keeps_omission_counts_and_the_full_verdict() {
+        let mut record = SafetyRecord {
+            done: Some(SafetyDone {
+                paths: vec!["a".repeat(16 * 1024), "b".repeat(16 * 1024)],
+                commands: vec!["a".repeat(32 * 1024)],
+                ..Default::default()
+            }),
+            verdict: SafetyVerdict::NeedsALook as i32,
+            findings: (0..41)
+                .map(|id| SafetyFinding {
+                    id: id.to_string(),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        };
+        bound_evidence(&mut record);
+        let preview = present(record);
+        let done = preview.done.as_ref().unwrap();
+        assert_eq!(done.paths.last().unwrap(), "and 1 more");
+        assert_eq!(done.commands, ["and 1 more"]);
+        assert_eq!(preview.verdict(), SafetyVerdict::NeedsALook);
+        assert_eq!(preview.findings.len(), MAX_VISIBLE_FINDINGS + 1);
+        assert_eq!(
+            preview
+                .findings
+                .last()
+                .unwrap()
+                .report
+                .as_ref()
+                .unwrap()
+                .evidence
+                .as_ref()
+                .unwrap()
+                .observation,
+            "and 1 more",
+        );
+        assert!(preview.encoded_len() < MAX_RECORD_BYTES);
+    }
+
+    #[test]
+    fn fallback_attention_requires_repository_administration() {
+        let fallback = Row::new("repo", "item");
+        let addressed = Row::new("repo", "item").k1("owner");
+        assert!(attention_recipient(&fallback, "admin", true));
+        assert!(!attention_recipient(&fallback, "reader", false));
+        assert!(attention_recipient(&addressed, "owner", false));
+        assert!(!attention_recipient(&addressed, "admin", true));
+    }
 }

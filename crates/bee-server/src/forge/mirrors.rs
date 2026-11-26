@@ -22,7 +22,7 @@ use async_trait::async_trait;
 use base64::Engine as _;
 use bee_forge::orgs::MirrorSyncer;
 use bee_forge::{Cx, ForgeError};
-use bee_proto::v1::{self, ErrorReason, MirrorDirection, Repo, RepoMirror};
+use bee_proto::v1::{self, ErrorReason, MirrorDirection, PrincipalKind, Repo, RepoMirror};
 
 use super::ForgeWiring;
 use super::adapters::repo_ctx;
@@ -111,7 +111,13 @@ fn basic(credential: &str, url: &str) -> Option<String> {
 }
 
 /// Fetches the remote into the mirror's bare cache and imports it.
-async fn pull(state: &AppState, ctx: &RepoCtx, m: &RepoMirror, credential: &str) -> ApiResult<()> {
+async fn pull(
+    state: &Arc<AppState>,
+    ctx: &RepoCtx,
+    m: &RepoMirror,
+    credential: &str,
+    nonhuman: bool,
+) -> ApiResult<()> {
     let dir = state
         .cfg
         .server
@@ -159,6 +165,12 @@ async fn pull(state: &AppState, ctx: &RepoCtx, m: &RepoMirror, credential: &str)
     opts.derived = Some(Arc::new(crate::services::import::EagerHook::new(
         state.registry.clone(),
     )));
+    if nonhuman {
+        opts.ref_publisher = Some(crate::services::import::ImportPublisher::new(
+            state,
+            ctx.clone(),
+        ));
+    }
     bee_import::import_repository(&dir, &target, &opts).await?;
     Ok(())
 }
@@ -176,10 +188,11 @@ fn mirror_lock(id: &str) -> Arc<tokio::sync::Mutex<()>> {
 
 /// Runs one sync and records its outcome; the mirror comes back with its status.
 pub async fn sync_once(
-    state: &AppState,
+    state: &Arc<AppState>,
     w: &ForgeWiring,
     repo_id: &str,
     id: &str,
+    nonhuman: bool,
 ) -> FResult<RepoMirror> {
     let lock = mirror_lock(id);
     let _held = lock.lock().await;
@@ -190,7 +203,17 @@ pub async fn sync_once(
     let outcome = match MirrorDirection::try_from(m.direction)
         .unwrap_or(MirrorDirection::Unspecified)
     {
-        MirrorDirection::Pull => pull(state, &ctx, &m, &rec.credential).await,
+        MirrorDirection::Pull => {
+            // A pull mirror publishes repo refs directly using the git importer.
+            drop(
+                state
+                    .hub
+                    .fence_ref_publication(state, &ctx, nonhuman)
+                    .await
+                    .map_err(super::api_to_forge)?,
+            );
+            pull(state, &ctx, &m, &rec.credential, nonhuman).await
+        }
         MirrorDirection::Push => match crate::services::export::bare_repo(state, &ctx).await {
             Ok(bare) => {
                 crate::services::export::push(state, &bare, &m.remote_url, &rec.credential).await
@@ -214,7 +237,7 @@ pub async fn sync_once(
 
 #[async_trait]
 impl MirrorSyncer for ServerMirrors {
-    async fn sync(&self, repo: &Repo, mirror_id: &str) -> FResult<RepoMirror> {
+    async fn sync(&self, cx: &Cx, repo: &Repo, mirror_id: &str) -> FResult<RepoMirror> {
         let state = self
             .state
             .upgrade()
@@ -224,7 +247,14 @@ impl MirrorSyncer for ServerMirrors {
             .get()
             .cloned()
             .ok_or_else(|| ForgeError::unavailable("forge not open yet"))?;
-        sync_once(&state, &w, &repo.id, mirror_id).await
+        sync_once(
+            &state,
+            &w,
+            &repo.id,
+            mirror_id,
+            cx.actor_kind != PrincipalKind::Human,
+        )
+        .await
     }
 }
 
@@ -248,7 +278,7 @@ impl ForgeWiring {
         };
         for m in all {
             if due(&m, state.now_ms()) {
-                let _ = sync_once(&state, self, &m.repo_id, &m.id).await;
+                let _ = sync_once(&state, self, &m.repo_id, &m.id, true).await;
             }
         }
     }

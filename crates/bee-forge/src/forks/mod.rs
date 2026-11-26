@@ -24,8 +24,8 @@ use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 use bee_proto::v1::{
-    ChangeState, Event, ObjectId, PrincipalKind, Ref, Repo, RepoRef, RepoRole, SubjectKind,
-    Visibility, event, repo_ref,
+    ChangeState, Event, ObjectId, Ref, Repo, RepoRef, RepoRole, SubjectKind, Visibility, event,
+    repo_ref,
 };
 use serde_json::json;
 
@@ -292,7 +292,10 @@ impl Forks {
                 .filter(|n| forkable_ref(n))
                 .collect()
         };
+        // The fork port publishes refs without going through RefService.
+        let fence = crate::safety::control::fence_nonhuman(&self.db, cx, org_id).await?;
         self.vcs.create(upstream, &draft, &refs).await?;
+        drop(fence);
         let mut repo = self
             .orgs
             .create_repo(
@@ -514,10 +517,13 @@ impl Forks {
         };
         let r = match new {
             Some(target) => {
+                let fence =
+                    crate::safety::control::fence_nonhuman(&self.db, cx, &fork.org_id).await?;
                 let r = self
                     .vcs
                     .move_ref(fork, &fork_ref, version, Some(&target), &cx.actor_id)
                     .await?;
+                drop(fence);
                 let mut tx = self.db.begin(SURFACE, cx).await?;
                 let payload = json!({
                     "ref": fork_ref,
@@ -630,6 +636,7 @@ impl Forks {
         if cur.as_ref().and_then(|r| r.target.as_ref()) == Some(head) {
             return Ok(());
         }
+        let _fence = crate::safety::control::fence_nonhuman(&self.db, cx, &fork.org_id).await?;
         self.vcs
             .move_ref(
                 fork,
@@ -642,7 +649,8 @@ impl Forks {
             .map(|_| ())
     }
 
-    async fn on_fork_push(&self, forge: &Forge, fork_id: &str, r: &Ref) -> Result<()> {
+    async fn on_fork_push(&self, forge: &Forge, ev: &Event, r: &Ref) -> Result<()> {
+        let fork_id = &ev.repo_id;
         let Some(target) = r.target.clone().filter(|t| !t.raw.is_empty()) else {
             return Ok(());
         };
@@ -677,10 +685,13 @@ impl Forks {
                 continue;
             }
             self.pull_head(&cx, &repo, &fork, &target).await?;
-            let author = cr.author.clone().unwrap_or_default();
-            let acx = Cx::new(
-                author.id.clone(),
-                PrincipalKind::try_from(author.kind).unwrap_or(PrincipalKind::Human),
+            // Safety and revision history must see the authenticated pusher, even when
+            // a different principal opened the pull request from the fork.
+            let pusher = changes.principal(&ev.principal).await;
+            let acx = Cx::new(ev.principal.clone(), pusher.kind()).with_chain(
+                std::iter::once(ev.principal.clone())
+                    .chain(ev.on_behalf_of.clone())
+                    .collect(),
             );
             changes.revise(&acx, &repo, &cr.id, &target).await?;
         }
@@ -738,6 +749,6 @@ impl EventListener for FollowForkPushes {
             return;
         };
         // Failures leave the change request at its last revision; the next push retries.
-        let _ = forks.on_fork_push(&forge, &e.repo_id, r).await;
+        let _ = forks.on_fork_push(&forge, e, r).await;
     }
 }

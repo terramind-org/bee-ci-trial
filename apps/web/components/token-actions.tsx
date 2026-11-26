@@ -138,7 +138,7 @@ export function MintTokenForm({ principalId, defaultRepo, now }: { principalId: 
           {ACTIONS.map((a) => (
             <label key={a} className="flex items-center gap-1.5 text-sm">
               <input type="checkbox" checked={actions.includes(a)} onChange={(e) => setActions((xs) => (e.target.checked ? [...xs, a] : xs.filter((x) => x !== a)))} className="accent-[var(--accent)]" />
-              <span className="mono">{a === "land" ? "merge" : a}</span>
+              <span className="mono">{a}</span>
             </label>
           ))}
         </div>

@@ -26,6 +26,9 @@ pub struct Cx {
     pub chain: Vec<String>,
     /// Id of the token used, if any.
     pub token_id: String,
+    // Preserve proof from the verified Biscuit blocks for attribution through attenuation.
+    pub(crate) token_blocks: Vec<String>,
+    pub(crate) run_session: String,
     /// Request id for log correlation.
     pub request_id: String,
     /// Source address as reported by the transport.
@@ -49,6 +52,8 @@ impl Cx {
             actor_id,
             actor_kind,
             token_id: String::new(),
+            token_blocks: Vec::new(),
+            run_session: String::new(),
             request_id: String::new(),
             ip: String::new(),
             user_agent: String::new(),
@@ -56,6 +61,17 @@ impl Cx {
             reason: String::new(),
             deadline: Instant::now() + DEFAULT_DEADLINE,
         }
+    }
+
+    /// Attach credential identity and ancestry from an already verified token.
+    pub fn with_verified_token(mut self, token: &bee_auth::VerifiedToken) -> Self {
+        self.token_id.clone_from(&token.token_id.0);
+        self.token_blocks = token.block_ids().iter().map(|id| id.0.clone()).collect();
+        self.run_session = token
+            .session()
+            .and_then(|s| s.strip_prefix("run-"))
+            .map_or_else(String::new, str::to_ascii_uppercase);
+        self
     }
 
     /// The server itself (background workers, expiry sweeps).
