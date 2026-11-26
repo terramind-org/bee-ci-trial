@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 9a89ac3e6cf355b05f26914d3dc44d80d7d5bf35
+          ref: cf2c247a1baf3e7c62de73cb513461b3f2c5399e
       - run: scripts/dev-setup.sh
       - uses: Swatinem/rust-cache@v2
       - name: Regenerate
@@ -20,6 +20,11 @@ jobs:
           git add -A
           git status --short
           git diff --cached --binary > regen.patch
+          if [ -s regen.patch ]; then
+            git diff --cached --name-only >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Generated files are unchanged." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: regen
@@ -27,4 +32,16 @@ jobs:
           retention-days: 3
       # Early compile feedback for a branch written without a compiler.
       - name: Compile everything with lints
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          set +e
+          cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee "$RUNNER_TEMP/safety-clippy.log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "### Clippy errors"
+              echo "```"
+              sed -n "/^error/,+14p" "$RUNNER_TEMP/safety-clippy.log" | head -200
+              echo "```"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
