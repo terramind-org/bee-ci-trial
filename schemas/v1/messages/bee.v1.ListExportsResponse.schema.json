@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "bee.v1.Export": {
+      "description": "An export job.",
+      "properties": {
+        "downloadUrl": {
+          "description": "signed URL of the archive when SUCCEEDED",
+          "type": "string"
+        },
+        "downloadUrlExpiresUnix": {
+          "format": "int64",
+          "pattern": "^-?[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "error": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/bee.v1.ExportFormat"
+        },
+        "id": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "progress": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ImportProgress"
+          },
+          "type": "array"
+        },
+        "repoIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.ExportState"
+        }
+      },
+      "title": "bee.v1.Export",
+      "type": "object"
+    },
+    "bee.v1.ExportFormat": {
+      "description": "What an export produces.",
+      "enum": [
+        "EXPORT_FORMAT_UNSPECIFIED",
+        "EXPORT_FORMAT_GITHUB_ARCHIVE",
+        "EXPORT_FORMAT_GIT_PUSH"
+      ],
+      "title": "bee.v1.ExportFormat",
+      "type": "string"
+    },
+    "bee.v1.ExportState": {
+      "description": "State of an export job.",
+      "enum": [
+        "EXPORT_STATE_UNSPECIFIED",
+        "EXPORT_STATE_QUEUED",
+        "EXPORT_STATE_RUNNING",
+        "EXPORT_STATE_SUCCEEDED",
+        "EXPORT_STATE_FAILED",
+        "EXPORT_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.ExportState",
+      "type": "string"
+    },
+    "bee.v1.ImportProgress": {
+      "properties": {
+        "category": {
+          "description": "e.g. \"pull_requests\", \"review_comments\", \"lfs\"",
+          "type": "string"
+        },
+        "done": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "total": {
+          "description": "0 when unknown",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ImportProgress",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListExportsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "exports": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Export"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListExportsResponse",
+  "type": "object"
+}

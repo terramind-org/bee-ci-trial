@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.SponsorFrequency": {
+      "description": "How often a tier or sponsorship is paid.",
+      "enum": [
+        "SPONSOR_FREQUENCY_UNSPECIFIED",
+        "SPONSOR_FREQUENCY_MONTHLY",
+        "SPONSOR_FREQUENCY_ONE_TIME"
+      ],
+      "title": "bee.v1.SponsorFrequency",
+      "type": "string"
+    },
+    "bee.v1.Sponsorship": {
+      "description": "One sponsorship.",
+      "properties": {
+        "amountCents": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "currentPeriodEndAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "endedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "frequency": {
+          "$ref": "#/$defs/bee.v1.SponsorFrequency"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maintainee": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "note": {
+          "description": "message from the sponsor",
+          "type": "string"
+        },
+        "private": {
+          "description": "hidden from the public sponsor list",
+          "type": "boolean"
+        },
+        "sponsor": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SponsorshipState"
+        },
+        "tierId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Sponsorship",
+      "type": "object"
+    },
+    "bee.v1.SponsorshipState": {
+      "description": "Lifecycle of a sponsorship.",
+      "enum": [
+        "SPONSORSHIP_STATE_UNSPECIFIED",
+        "SPONSORSHIP_STATE_PENDING",
+        "SPONSORSHIP_STATE_ACTIVE",
+        "SPONSORSHIP_STATE_CANCELLING",
+        "SPONSORSHIP_STATE_ENDED",
+        "SPONSORSHIP_STATE_FAILED"
+      ],
+      "title": "bee.v1.SponsorshipState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateSponsorshipResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateSponsorship.",
+  "properties": {
+    "checkoutUrl": {
+      "description": "set when state is PENDING",
+      "type": "string"
+    },
+    "sponsorship": {
+      "$ref": "#/$defs/bee.v1.Sponsorship"
+    }
+  },
+  "title": "bee.v1.CreateSponsorshipResponse",
+  "type": "object"
+}

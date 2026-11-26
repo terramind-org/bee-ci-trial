@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "bee.v1.DependencyAlertState": {
+      "description": "State of a vulnerability alert.",
+      "enum": [
+        "DEPENDENCY_ALERT_STATE_UNSPECIFIED",
+        "DEPENDENCY_ALERT_STATE_OPEN",
+        "DEPENDENCY_ALERT_STATE_DISMISSED",
+        "DEPENDENCY_ALERT_STATE_FIXED",
+        "DEPENDENCY_ALERT_STATE_AUTO_DISMISSED"
+      ],
+      "title": "bee.v1.DependencyAlertState",
+      "type": "string"
+    },
+    "bee.v1.DependencyScope": {
+      "description": "How a dependency is used.",
+      "enum": [
+        "DEPENDENCY_SCOPE_UNSPECIFIED",
+        "DEPENDENCY_SCOPE_RUNTIME",
+        "DEPENDENCY_SCOPE_DEVELOPMENT"
+      ],
+      "title": "bee.v1.DependencyScope",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDependencyAlertsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListDependencyAlerts.",
+  "properties": {
+    "ecosystem": {
+      "type": "string"
+    },
+    "manifestPath": {
+      "type": "string"
+    },
+    "packageName": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.DependencyScope"
+    },
+    "severities": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecuritySeverity"
+      },
+      "type": "array"
+    },
+    "states": {
+      "description": "empty = open",
+      "items": {
+        "$ref": "#/$defs/bee.v1.DependencyAlertState"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListDependencyAlertsRequest",
+  "type": "object"
+}

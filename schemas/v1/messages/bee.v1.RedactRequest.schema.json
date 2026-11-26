@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RedactRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "allVersions": {
+      "type": "boolean"
+    },
+    "at": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    },
+    "ids": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ObjectId"
+      },
+      "type": "array"
+    },
+    "meta": {
+      "description": "Redact the Meta of the changesets named by `ids` (changeset ids in `ids` stand for their\nMeta; blob ids stay blobs); with no changeset id, the Meta of the changeset at `at`.",
+      "type": "boolean"
+    },
+    "path": {
+      "contentEncoding": "base64",
+      "description": "Path form: redact the blob at `path` in `at`, or every version of it with all_versions.",
+      "type": "string"
+    },
+    "purgeAfterSeconds": {
+      "description": "Seconds in quarantine before the scheduled purge; 0 = default (7 days) (SPEC §13).",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "purgeNow": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.RedactRequest",
+  "type": "object"
+}

@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetCustomRoleRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetCustomRole.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "roleId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetCustomRoleRequest",
+  "type": "object"
+}

@@ -1,0 +1,91 @@
+{{- if .Values.ingress.enabled }}
+{{- $host := required "ingress.host is required when ingress.enabled" .Values.ingress.host }}
+{{- $ing := .Values.ingress }}
+{{- $server := printf "%s-server" (include "bee.fullname" .) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "bee.fullname" . }}
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+  {{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ing.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if $ing.tlsSecretName }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ $ing.tlsSecretName }}
+  {{- end }}
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          {{- range $ing.apiPaths }}
+          - path: {{ . | quote }}
+            pathType: {{ $ing.pathType }}
+            backend:
+              service:
+                name: {{ $server }}
+                port:
+                  name: api
+          {{- end }}
+          {{- with $ing.gitPath }}
+          - path: {{ . | quote }}
+            pathType: {{ $ing.pathType }}
+            backend:
+              service:
+                name: {{ $server }}
+                port:
+                  name: api
+          {{- end }}
+          {{- if .Values.web.enabled }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "bee.fullname" . }}-web
+                port:
+                  name: http
+          {{- end }}
+{{- if $ing.grpc.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "bee.fullname" . }}-grpc
+  labels:
+    {{- include "bee.labels" . | nindent 4 }}
+  {{- with $ing.grpc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ing.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- $grpcHost := required "ingress.grpc.host is required when ingress.grpc.enabled" $ing.grpc.host }}
+  {{- if $ing.grpc.tlsSecretName }}
+  tls:
+    - hosts:
+        - {{ $grpcHost | quote }}
+      secretName: {{ $ing.grpc.tlsSecretName }}
+  {{- end }}
+  rules:
+    - host: {{ $grpcHost | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $server }}
+                port:
+                  name: api
+{{- end }}
+{{- end }}

@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SecurityCampaignState": {
+      "description": "State of a campaign.",
+      "enum": [
+        "SECURITY_CAMPAIGN_STATE_UNSPECIFIED",
+        "SECURITY_CAMPAIGN_STATE_ACTIVE",
+        "SECURITY_CAMPAIGN_STATE_COMPLETED",
+        "SECURITY_CAMPAIGN_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.SecurityCampaignState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSecurityCampaignsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListSecurityCampaigns.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SecurityCampaignState"
+    }
+  },
+  "title": "bee.v1.ListSecurityCampaignsRequest",
+  "type": "object"
+}

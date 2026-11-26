@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkspacePrebuildTrigger": {
+      "description": "When prebuilds run.",
+      "enum": [
+        "WORKSPACE_PREBUILD_TRIGGER_UNSPECIFIED",
+        "WORKSPACE_PREBUILD_TRIGGER_EVERY_LAND",
+        "WORKSPACE_PREBUILD_TRIGGER_CONFIG_CHANGE",
+        "WORKSPACE_PREBUILD_TRIGGER_SCHEDULED",
+        "WORKSPACE_PREBUILD_TRIGGER_MANUAL"
+      ],
+      "title": "bee.v1.WorkspacePrebuildTrigger",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateWorkspacePrebuildConfigRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateWorkspacePrebuildConfig.",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "machineTypes": {
+      "description": "non-empty replaces",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "regions": {
+      "description": "non-empty replaces",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "retainedVersions": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schedule": {
+      "type": "string"
+    },
+    "trigger": {
+      "$ref": "#/$defs/bee.v1.WorkspacePrebuildTrigger"
+    }
+  },
+  "title": "bee.v1.UpdateWorkspacePrebuildConfigRequest",
+  "type": "object"
+}

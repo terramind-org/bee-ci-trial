@@ -1,0 +1,16 @@
+feature_id,test
+F416-003,crates/bee-server/tests/repo_access.rs::visibility_and_roles_decide_access_on_every_surface
+F416-003,crates/bee-server/tests/repo_access.rs::access_changes_reach_cached_decisions_within_the_bound
+F416-003,crates/bee-server/tests/repo_access.rs::private_fork_visibility_holds_on_the_vcs_path
+F416-003,crates/bee-server/tests/repo_access.rs::open_event_streams_end_when_read_access_goes
+F416-003,crates/bee-server/tests/remaining_services.rs::forge_search_saved_searches_trending_and_topics
+F416-003,crates/bee-git-http/tests/git_access.rs::git_clone_and_push_follow_repo_visibility_and_lifecycle
+F416-003,bee_server::access::tests::private_repos_hide_from_principals_without_read
+F416-006,crates/bee-server/tests/repo_access.rs::archive_delete_and_restore_apply_on_every_surface
+F416-006,crates/bee-git-http/tests/git_access.rs::git_clone_and_push_follow_repo_visibility_and_lifecycle
+F416-006,bee_server::access::tests::deleted_repos_are_not_found_for_everyone
+F416-007,crates/bee-server/tests/repo_access.rs::archive_delete_and_restore_apply_on_every_surface
+F416-007,crates/bee-server/tests/repo_access.rs::lfs_transfer_urls_are_reauthorized_when_redeemed
+F416-007,crates/bee-git-http/tests/git_access.rs::git_clone_and_push_follow_repo_visibility_and_lifecycle
+F416-007,bee_server::access::tests::archived_repos_read_but_refuse_every_write
+F416-008,crates/bee-server/tests/repo_access.rs::transfer_moves_access_and_keeps_objects_addressable

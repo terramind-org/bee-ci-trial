@@ -1,0 +1,30 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EventLogInfo.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Retention window of an event log.",
+  "properties": {
+    "latestSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "oldestSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "retentionDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.EventLogInfo",
+  "type": "object"
+}

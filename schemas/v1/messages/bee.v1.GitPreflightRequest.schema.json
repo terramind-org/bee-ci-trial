@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitPreflightRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GitPreflight.",
+  "properties": {
+    "clientGitVersion": {
+      "description": "e.g. \"2.45.1\"",
+      "type": "string"
+    },
+    "credentialHelper": {
+      "description": "the configured helper, if any",
+      "type": "string"
+    },
+    "lfsInstalled": {
+      "type": "boolean"
+    },
+    "protocolVersion": {
+      "description": "the client's protocol.version",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "push": {
+      "description": "check push access too",
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "transport": {
+      "description": "\"https\" or \"ssh\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GitPreflightRequest",
+  "type": "object"
+}

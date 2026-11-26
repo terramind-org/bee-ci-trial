@@ -1,0 +1,28 @@
+project_id = "my-gcp-project"
+domain     = "bee.example.com"
+
+# Cloud SQL sizing for the expected Beehive server replica count.
+database_tier        = "db-custom-2-7680"
+backup_retention_days = 30
+server_replicas       = 2
+# Add principal ids after the first sign-in; see docs/self-hosting.md#first-admin-and-sso.
+# site_admins = ["01H...principal-id"]
+image_tag             = "0.1.0"
+namespace             = "bee"
+tls_secret_name       = "bee-tls"
+
+# Set only when this project already has an authoritative Cloud DNS zone.
+dns_managed_zone = ""
+
+# Install cert-manager only when the operator will apply manifests/cluster-issuer.example.yaml.
+install_cert_manager = false
+
+# Supply the manually converted DER-hex OIDC key without placing it in this file:
+# export TF_VAR_oidc_key_pkcs8_hex="$(openssl pkcs8 -topk8 -nocrypt -outform DER -in key.pem | xxd -p | tr -d '\n')"
+
+master_authorized_networks = [
+  {
+    cidr_block   = "203.0.113.0/24"
+    display_name = "administrator-network"
+  },
+]

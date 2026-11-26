@@ -1,0 +1,262 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.Project": {
+      "description": "A project.",
+      "properties": {
+        "closed": {
+          "type": "boolean"
+        },
+        "closedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "copiedFromProjectId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "creator": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isTemplate": {
+          "type": "boolean"
+        },
+        "itemCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latestStatusUpdate": {
+          "$ref": "#/$defs/bee.v1.ProjectStatusUpdate"
+        },
+        "linkedRepoIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "linkedTeams": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ProjectTeamLink"
+          },
+          "type": "array"
+        },
+        "number": {
+          "description": "per owner",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/$defs/bee.v1.ProjectOwnerKind"
+        },
+        "ownerLogin": {
+          "type": "string"
+        },
+        "public": {
+          "type": "boolean"
+        },
+        "readme": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "shortDescription": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Project",
+      "type": "object"
+    },
+    "bee.v1.ProjectOwnerKind": {
+      "description": "Whether a project belongs to an org or a user.",
+      "enum": [
+        "PROJECT_OWNER_KIND_UNSPECIFIED",
+        "PROJECT_OWNER_KIND_ORG",
+        "PROJECT_OWNER_KIND_USER"
+      ],
+      "title": "bee.v1.ProjectOwnerKind",
+      "type": "string"
+    },
+    "bee.v1.ProjectStatus": {
+      "description": "Health reported by a status update.",
+      "enum": [
+        "PROJECT_STATUS_UNSPECIFIED",
+        "PROJECT_STATUS_INACTIVE",
+        "PROJECT_STATUS_ON_TRACK",
+        "PROJECT_STATUS_AT_RISK",
+        "PROJECT_STATUS_OFF_TRACK",
+        "PROJECT_STATUS_COMPLETE"
+      ],
+      "title": "bee.v1.ProjectStatus",
+      "type": "string"
+    },
+    "bee.v1.ProjectStatusUpdate": {
+      "description": "A status update posted on a project.",
+      "properties": {
+        "body": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "creator": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "startOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.ProjectStatus"
+        },
+        "targetOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ProjectStatusUpdate",
+      "type": "object"
+    },
+    "bee.v1.ProjectTeamLink": {
+      "description": "A team linked to a project.",
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/bee.v1.ProjectTeamRole"
+        },
+        "teamId": {
+          "type": "string"
+        },
+        "teamSlug": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectTeamLink",
+      "type": "object"
+    },
+    "bee.v1.ProjectTeamRole": {
+      "description": "Role a linked team has on a project.",
+      "enum": [
+        "PROJECT_TEAM_ROLE_UNSPECIFIED",
+        "PROJECT_TEAM_ROLE_READ",
+        "PROJECT_TEAM_ROLE_WRITE",
+        "PROJECT_TEAM_ROLE_ADMIN"
+      ],
+      "title": "bee.v1.ProjectTeamRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListProjectsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListProjects.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Project"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListProjectsResponse",
+  "type": "object"
+}

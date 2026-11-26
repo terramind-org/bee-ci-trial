@@ -1,0 +1,505 @@
+// Notifications for bee.v1: inbox, thread subscriptions, repo watching, delivery settings,
+// scheduled reminders and reply-by-email. See docs/PRODUCT.md §4.16 (AS-COLLAB-02).
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// The caller's notification inbox. A thread is one subject (issue, change request, release,
+// agent run and so on) with every notification about it rolled up. All calls act on the
+// caller's own inbox; a notification never reveals a subject the caller can no longer read.
+service NotificationService {
+  // Lists inbox threads matching the filters, most recently updated first.
+  rpc ListNotificationThreads(ListNotificationThreadsRequest) returns (ListNotificationThreadsResponse);
+  // Fetches one thread. NOT_FOUND when it is not in the caller's inbox.
+  rpc GetNotificationThread(GetNotificationThreadRequest) returns (NotificationThread);
+  // Counts unread threads, overall and per reason and repo.
+  rpc GetNotificationUnreadCount(GetNotificationUnreadCountRequest) returns (GetNotificationUnreadCountResponse);
+  // Marks threads read, by ids or everything matching a selector.
+  rpc MarkNotificationThreadsRead(MarkNotificationThreadsReadRequest) returns (MarkNotificationThreadsReadResponse);
+  // Marks threads unread.
+  rpc MarkNotificationThreadsUnread(MarkNotificationThreadsUnreadRequest) returns (MarkNotificationThreadsUnreadResponse);
+  // Marks threads done, moving them out of the inbox. New activity brings a thread back.
+  rpc MarkNotificationThreadsDone(MarkNotificationThreadsDoneRequest) returns (MarkNotificationThreadsDoneResponse);
+  // Saves threads so they stay findable after done.
+  rpc SaveNotificationThreads(SaveNotificationThreadsRequest) returns (SaveNotificationThreadsResponse);
+  // Removes threads from saved.
+  rpc UnsaveNotificationThreads(UnsaveNotificationThreadsRequest) returns (UnsaveNotificationThreadsResponse);
+  // Returns the caller's subscription to a subject.
+  rpc GetNotificationSubscription(GetNotificationSubscriptionRequest) returns (NotificationSubscription);
+  // Subscribes the caller to every notification on a subject.
+  rpc SubscribeNotificationThread(SubscribeNotificationThreadRequest) returns (NotificationSubscription);
+  // Unsubscribes the caller; they are notified again only if they participate later.
+  rpc UnsubscribeNotificationThread(UnsubscribeNotificationThreadRequest) returns (NotificationSubscription);
+  // Ignores a subject: no notifications even when mentioned or participating.
+  rpc IgnoreNotificationThread(IgnoreNotificationThreadRequest) returns (NotificationSubscription);
+  // Sets how the caller watches a repo.
+  rpc SetRepoWatch(SetRepoWatchRequest) returns (RepoWatch);
+  // Returns how the caller watches a repo; level UNSPECIFIED when not watching.
+  rpc GetRepoWatch(GetRepoWatchRequest) returns (RepoWatch);
+  // Stops watching a repo (back to the default: participating and mentions).
+  rpc DeleteRepoWatch(DeleteRepoWatchRequest) returns (DeleteRepoWatchResponse);
+  // Lists repos the caller watches.
+  rpc ListWatchedRepos(ListWatchedReposRequest) returns (ListWatchedReposResponse);
+  // Lists principals watching a repo with all activity.
+  rpc ListRepoWatchers(ListRepoWatchersRequest) returns (ListRepoWatchersResponse);
+  // Returns the caller's delivery settings.
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (NotificationSettings);
+  // Changes delivery settings. INVALID_ARGUMENT (subcode `unverified_email`) when routing to
+  // an email the caller has not verified.
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (NotificationSettings);
+  // Streams the caller's inbox live: a snapshot of matching unread threads first when asked,
+  // then every new or changed thread. Built for agents working an inbox.
+  rpc StreamNotificationInbox(StreamNotificationInboxRequest) returns (stream NotificationInboxEvent);
+  // Creates a scheduled reminder. INVALID_ARGUMENT when the channel is not connected.
+  rpc CreateNotificationReminder(CreateNotificationReminderRequest) returns (NotificationReminder);
+  // Fetches one reminder.
+  rpc GetNotificationReminder(GetNotificationReminderRequest) returns (NotificationReminder);
+  // Lists the caller's reminders, or an org's team reminders with `org` set.
+  rpc ListNotificationReminders(ListNotificationRemindersRequest) returns (ListNotificationRemindersResponse);
+  // Edits a reminder.
+  rpc UpdateNotificationReminder(UpdateNotificationReminderRequest) returns (NotificationReminder);
+  // Deletes a reminder.
+  rpc DeleteNotificationReminder(DeleteNotificationReminderRequest) returns (DeleteNotificationReminderResponse);
+  // Returns the reply-by-email address for a thread. Mail sent to it posts a comment as the
+  // caller. INVALID_STATE when the subject does not accept comments.
+  rpc GetNotificationReplyAddress(GetNotificationReplyAddressRequest) returns (NotificationReplyAddress);
+}
+
+// Why a notification was delivered.
+enum NotificationReason {
+  NOTIFICATION_REASON_UNSPECIFIED = 0;
+  NOTIFICATION_REASON_REVIEW_REQUESTED = 1;
+  NOTIFICATION_REASON_MENTION = 2;
+  NOTIFICATION_REASON_TEAM_MENTION = 3;
+  NOTIFICATION_REASON_ASSIGN = 4;
+  NOTIFICATION_REASON_AUTHOR = 5;
+  NOTIFICATION_REASON_COMMENT = 6;
+  NOTIFICATION_REASON_STATE_CHANGE = 7;
+  NOTIFICATION_REASON_CI_ACTIVITY = 8;
+  NOTIFICATION_REASON_SECURITY_ALERT = 9;
+  NOTIFICATION_REASON_SUBSCRIBED = 10; // watching the repo
+  NOTIFICATION_REASON_MANUAL = 11;     // subscribed to the thread by hand
+  NOTIFICATION_REASON_AGENT_RUN = 12;  // an agent run the caller started or owns
+}
+
+// A thread's inbox state.
+message NotificationThread {
+  string id = 1;
+  SubjectRef subject = 2;
+  string title = 3;             // subject title at last update
+  NotificationReason reason = 4; // most recent reason
+  repeated NotificationReason reasons = 5; // every reason that applies
+  bool unread = 6;
+  bool saved = 7;
+  bool done = 8;
+  string repo_full_name = 9;
+  Principal last_actor = 10;
+  string last_activity = 11;    // short summary, e.g. "commented", "requested your review"
+  string latest_comment_id = 12;
+  string subject_state = 13;    // e.g. "open", "landed", "closed", "draft", "failed"
+  google.protobuf.Timestamp updated_at = 14;
+  google.protobuf.Timestamp last_read_at = 15;
+  string url = 16;
+  string reply_token = 17;      // opaque token in the reply-by-email address
+}
+
+// Filters for the inbox.
+message NotificationThreadFilter {
+  bool unread_only = 1;
+  bool participating_only = 2;  // reasons other than SUBSCRIBED
+  repeated NotificationReason reasons = 3; // any of; empty = all
+  repeated RepoRef repos = 4;   // any of; empty = all
+  bool saved_only = 5;
+  bool include_done = 6;        // default excludes done threads
+  bool done_only = 7;
+  repeated SubjectKind subject_kinds = 8;
+  google.protobuf.Timestamp since = 9;  // updated at or after
+  google.protobuf.Timestamp before = 10; // updated strictly before
+  string org = 11;
+}
+
+// Names threads for a bulk inbox action: explicit ids, or every thread matching a filter and
+// last updated strictly before `before` (so activity after the call is not swept up).
+message NotificationThreadSelector {
+  repeated string thread_ids = 1;
+  NotificationThreadFilter filter = 2; // used when thread_ids is empty
+  google.protobuf.Timestamp before = 3; // required with filter
+}
+
+// How the caller follows one subject.
+enum NotificationSubscriptionState {
+  NOTIFICATION_SUBSCRIPTION_STATE_UNSPECIFIED = 0; // default: participating only
+  NOTIFICATION_SUBSCRIPTION_STATE_SUBSCRIBED = 1;
+  NOTIFICATION_SUBSCRIPTION_STATE_UNSUBSCRIBED = 2;
+  NOTIFICATION_SUBSCRIPTION_STATE_IGNORED = 3;
+}
+
+// The caller's subscription to a subject.
+message NotificationSubscription {
+  SubjectRef subject = 1;
+  NotificationSubscriptionState state = 2;
+  NotificationReason reason = 3; // why subscribed, when implicit
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// How a principal watches a repo.
+enum RepoWatchLevel {
+  REPO_WATCH_LEVEL_UNSPECIFIED = 0;   // not watching: participating and mentions
+  REPO_WATCH_LEVEL_ALL = 1;
+  REPO_WATCH_LEVEL_PARTICIPATING = 2;
+  REPO_WATCH_LEVEL_IGNORE = 3;
+  REPO_WATCH_LEVEL_CUSTOM = 4;        // participating plus the chosen event kinds
+}
+
+// Event kinds a CUSTOM watch can opt into.
+enum RepoWatchEventKind {
+  REPO_WATCH_EVENT_KIND_UNSPECIFIED = 0;
+  REPO_WATCH_EVENT_KIND_ISSUES = 1;
+  REPO_WATCH_EVENT_KIND_CHANGE_REQUESTS = 2;
+  REPO_WATCH_EVENT_KIND_RELEASES = 3;
+  REPO_WATCH_EVENT_KIND_DISCUSSIONS = 4;
+  REPO_WATCH_EVENT_KIND_SECURITY_ALERTS = 5;
+  REPO_WATCH_EVENT_KIND_AGENT_RUNS = 6;
+  REPO_WATCH_EVENT_KIND_WORKFLOW_RUNS = 7;
+}
+
+// A principal's watch on a repo.
+message RepoWatch {
+  RepoRef repo = 1;
+  Principal watcher = 2;
+  RepoWatchLevel level = 3;
+  repeated RepoWatchEventKind custom_events = 4; // CUSTOM only
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// Delivery channels for one reason.
+message NotificationReasonDelivery {
+  NotificationReason reason = 1;
+  bool web = 2;
+  bool email = 3;
+  bool mobile = 4;
+}
+
+// Where an org's email notifications go.
+message NotificationEmailRoute {
+  string org = 1;
+  string email = 2;             // must be one of the caller's verified emails
+}
+
+// The caller's notification delivery settings.
+message NotificationSettings {
+  repeated NotificationReasonDelivery deliveries = 1;
+  string default_email = 2;
+  repeated NotificationEmailRoute email_routes = 3;
+  bool auto_watch_repos = 4;    // watch repos the caller gains push access to
+  bool auto_watch_team_repos = 5;
+  bool include_own_activity = 6; // notify about the caller's own actions
+  bool email_ci_failures_only = 7;
+  bool reply_by_email = 8;      // accept replies to notification emails
+}
+
+// What happened in a live inbox stream message.
+enum NotificationInboxEventKind {
+  NOTIFICATION_INBOX_EVENT_KIND_UNSPECIFIED = 0;
+  NOTIFICATION_INBOX_EVENT_KIND_SNAPSHOT = 1;      // part of the initial snapshot
+  NOTIFICATION_INBOX_EVENT_KIND_SNAPSHOT_END = 2;  // snapshot complete; live updates follow
+  NOTIFICATION_INBOX_EVENT_KIND_NEW = 3;
+  NOTIFICATION_INBOX_EVENT_KIND_UPDATED = 4;
+  NOTIFICATION_INBOX_EVENT_KIND_REMOVED = 5;       // done or no longer readable
+  NOTIFICATION_INBOX_EVENT_KIND_HEARTBEAT = 6;
+}
+
+// One message on the live inbox stream.
+message NotificationInboxEvent {
+  NotificationInboxEventKind kind = 1;
+  NotificationThread thread = 2; // unset for SNAPSHOT_END and HEARTBEAT
+  string cursor = 3;            // pass as resume_cursor to resume after a disconnect
+  google.protobuf.Timestamp at = 4;
+}
+
+// Delivery channel for a scheduled reminder.
+enum NotificationReminderChannel {
+  NOTIFICATION_REMINDER_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_REMINDER_CHANNEL_SLACK = 1;
+  NOTIFICATION_REMINDER_CHANNEL_TEAMS = 2;
+  NOTIFICATION_REMINDER_CHANNEL_EMAIL = 3;
+}
+
+// Day of the week for reminder schedules.
+enum NotificationReminderDay {
+  NOTIFICATION_REMINDER_DAY_UNSPECIFIED = 0;
+  NOTIFICATION_REMINDER_DAY_MONDAY = 1;
+  NOTIFICATION_REMINDER_DAY_TUESDAY = 2;
+  NOTIFICATION_REMINDER_DAY_WEDNESDAY = 3;
+  NOTIFICATION_REMINDER_DAY_THURSDAY = 4;
+  NOTIFICATION_REMINDER_DAY_FRIDAY = 5;
+  NOTIFICATION_REMINDER_DAY_SATURDAY = 6;
+  NOTIFICATION_REMINDER_DAY_SUNDAY = 7;
+}
+
+// Which review requests a reminder reports.
+message NotificationReminderFilter {
+  repeated RepoRef repos = 1;   // empty = all repos in scope
+  bool ignore_drafts = 2;
+  bool ignore_approved = 3;     // skip change requests with enough approvals
+  uint32 min_age_hours = 4;     // only requests waiting at least this long
+  repeated string ignore_labels = 5;
+  repeated string require_labels = 6;
+  bool include_team_requests = 7;
+  bool include_mentions = 8;
+  bool include_assigned_issues = 9;
+}
+
+// A scheduled digest of pending review requests sent to a chat channel or email.
+message NotificationReminder {
+  string id = 1;
+  string org = 2;               // set for team reminders
+  string team_id = 3;           // team reminders only
+  Principal owner = 4;
+  NotificationReminderChannel channel = 5;
+  string channel_target = 6;    // Slack/Teams channel id, or email address
+  repeated NotificationReminderDay days = 7;
+  repeated string times = 8;    // "HH:MM" local times
+  string time_zone = 9;         // IANA name, e.g. "Europe/Berlin"
+  NotificationReminderFilter filter = 10;
+  bool enabled = 11;
+  bool real_time_alerts = 12;   // also post immediately on new review requests
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp last_sent_at = 14;
+}
+
+// A reply-by-email address for a thread.
+message NotificationReplyAddress {
+  string thread_id = 1;
+  string address = 2;           // e.g. "reply+<token>@reply.beehive.example"
+  string token = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for ListNotificationThreads.
+message ListNotificationThreadsRequest {
+  NotificationThreadFilter filter = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListNotificationThreads.
+message ListNotificationThreadsResponse {
+  repeated NotificationThread threads = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetNotificationThread.
+message GetNotificationThreadRequest {
+  string thread_id = 1;
+}
+
+// Request for GetNotificationUnreadCount.
+message GetNotificationUnreadCountRequest {
+  NotificationThreadFilter filter = 1;
+}
+
+// Response for GetNotificationUnreadCount.
+message GetNotificationUnreadCountResponse {
+  uint32 total = 1;
+  map<string, uint32> by_reason = 2; // NotificationReason name -> count
+  map<string, uint32> by_repo = 3;   // repo full name -> count
+}
+
+// Request for MarkNotificationThreadsRead.
+message MarkNotificationThreadsReadRequest {
+  NotificationThreadSelector selector = 1;
+}
+
+// Response for MarkNotificationThreadsRead.
+message MarkNotificationThreadsReadResponse {
+  uint32 updated_count = 1;
+}
+
+// Request for MarkNotificationThreadsUnread.
+message MarkNotificationThreadsUnreadRequest {
+  NotificationThreadSelector selector = 1;
+}
+
+// Response for MarkNotificationThreadsUnread.
+message MarkNotificationThreadsUnreadResponse {
+  uint32 updated_count = 1;
+}
+
+// Request for MarkNotificationThreadsDone.
+message MarkNotificationThreadsDoneRequest {
+  NotificationThreadSelector selector = 1;
+}
+
+// Response for MarkNotificationThreadsDone.
+message MarkNotificationThreadsDoneResponse {
+  uint32 updated_count = 1;
+}
+
+// Request for SaveNotificationThreads.
+message SaveNotificationThreadsRequest {
+  NotificationThreadSelector selector = 1;
+}
+
+// Response for SaveNotificationThreads.
+message SaveNotificationThreadsResponse {
+  uint32 updated_count = 1;
+}
+
+// Request for UnsaveNotificationThreads.
+message UnsaveNotificationThreadsRequest {
+  NotificationThreadSelector selector = 1;
+}
+
+// Response for UnsaveNotificationThreads.
+message UnsaveNotificationThreadsResponse {
+  uint32 updated_count = 1;
+}
+
+// Request for GetNotificationSubscription.
+message GetNotificationSubscriptionRequest {
+  SubjectRef subject = 1;
+}
+
+// Request for SubscribeNotificationThread.
+message SubscribeNotificationThreadRequest {
+  SubjectRef subject = 1;
+}
+
+// Request for UnsubscribeNotificationThread.
+message UnsubscribeNotificationThreadRequest {
+  SubjectRef subject = 1;
+}
+
+// Request for IgnoreNotificationThread.
+message IgnoreNotificationThreadRequest {
+  SubjectRef subject = 1;
+}
+
+// Request for SetRepoWatch.
+message SetRepoWatchRequest {
+  RepoRef repo = 1;
+  RepoWatchLevel level = 2;
+  repeated RepoWatchEventKind custom_events = 3; // CUSTOM only
+}
+
+// Request for GetRepoWatch.
+message GetRepoWatchRequest {
+  RepoRef repo = 1;
+}
+
+// Request for DeleteRepoWatch.
+message DeleteRepoWatchRequest {
+  RepoRef repo = 1;
+}
+
+// Response for DeleteRepoWatch.
+message DeleteRepoWatchResponse {}
+
+// Request for ListWatchedRepos.
+message ListWatchedReposRequest {
+  RepoWatchLevel level = 1;     // UNSPECIFIED = any watch
+  PageRequest page = 2;
+}
+
+// Response for ListWatchedRepos.
+message ListWatchedReposResponse {
+  repeated RepoWatch watches = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListRepoWatchers.
+message ListRepoWatchersRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRepoWatchers.
+message ListRepoWatchersResponse {
+  repeated Principal watchers = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for GetNotificationSettings.
+message GetNotificationSettingsRequest {}
+
+// Request for UpdateNotificationSettings.
+message UpdateNotificationSettingsRequest {
+  repeated NotificationReasonDelivery deliveries = 1; // replaces listed reasons only
+  optional string default_email = 2;
+  repeated NotificationEmailRoute email_routes = 3;   // replaces all routes when replace_email_routes
+  bool replace_email_routes = 4;
+  optional bool auto_watch_repos = 5;
+  optional bool auto_watch_team_repos = 6;
+  optional bool include_own_activity = 7;
+  optional bool email_ci_failures_only = 8;
+  optional bool reply_by_email = 9;
+}
+
+// Request for StreamNotificationInbox.
+message StreamNotificationInboxRequest {
+  NotificationThreadFilter filter = 1;
+  bool initial_snapshot = 2;    // send matching threads first
+  string resume_cursor = 3;     // resume after the event with this cursor
+  uint32 heartbeat_seconds = 4; // 0 = server default
+}
+
+// Request for CreateNotificationReminder.
+message CreateNotificationReminderRequest {
+  string org = 1;               // empty = personal reminder
+  string team_id = 2;
+  NotificationReminderChannel channel = 3;
+  string channel_target = 4;
+  repeated NotificationReminderDay days = 5;
+  repeated string times = 6;
+  string time_zone = 7;
+  NotificationReminderFilter filter = 8;
+  bool real_time_alerts = 9;
+}
+
+// Request for GetNotificationReminder.
+message GetNotificationReminderRequest {
+  string reminder_id = 1;
+}
+
+// Request for ListNotificationReminders.
+message ListNotificationRemindersRequest {
+  string org = 1;               // empty = the caller's personal reminders
+  PageRequest page = 2;
+}
+
+// Response for ListNotificationReminders.
+message ListNotificationRemindersResponse {
+  repeated NotificationReminder reminders = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateNotificationReminder.
+message UpdateNotificationReminderRequest {
+  string reminder_id = 1;
+  optional NotificationReminderChannel channel = 2;
+  optional string channel_target = 3;
+  repeated NotificationReminderDay days = 4; // replaces when replace_schedule
+  repeated string times = 5;
+  bool replace_schedule = 6;
+  optional string time_zone = 7;
+  optional NotificationReminderFilter filter = 8;
+  optional bool enabled = 9;
+  optional bool real_time_alerts = 10;
+}
+
+// Request for DeleteNotificationReminder.
+message DeleteNotificationReminderRequest {
+  string reminder_id = 1;
+}
+
+// Response for DeleteNotificationReminder.
+message DeleteNotificationReminderResponse {}
+
+// Request for GetNotificationReplyAddress.
+message GetNotificationReplyAddressRequest {
+  string thread_id = 1;
+}

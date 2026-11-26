@@ -1,0 +1,82 @@
+[package]
+name = "bee-conformance"
+description = "Cross-crate conformance, differential (vs git), reference-model and simulation tests."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+bee-store = { path = "../bee-store" }
+bee-history = { path = "../bee-history" }
+bee-merge = { path = "../bee-merge" }
+bee-forge = { path = "../bee-forge" }
+bee-testkit = { path = "../bee-testkit" }
+# src/parity: the RPC table (bee-proto), fixture files (serde) and outcomes (serde_json).
+# src/load/client.rs: the typed gRPC client shared by the scale tests and the load harness
+# (bee-proto, tonic, futures-util, pbjson-types).
+bee-proto = { path = "../bee-proto" }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+futures-util = { version = "=0.3.31", default-features = false, features = ["std"] }
+pbjson-types = "=0.9.0"
+tonic = { version = "=0.14.6", default-features = false, features = ["codegen", "router", "transport"] }
+
+[dev-dependencies]
+# tests/github_import.rs: a GitHub import end to end into an in-process bee-server.
+bee-server = { path = "../bee-server" }
+bee-github = { path = "../bee-github" }
+bee-import = { path = "../bee-import" }
+bee-git = { path = "../bee-git" }
+bee-auth = { path = "../bee-auth" }
+bee-policy = { path = "../bee-policy" }
+# The load example's sparse-checkout rows: a working copy cloned cold from the server and
+# warm through a node daemon.
+bee-daemon = { path = "../bee-daemon" }
+bee-wc = { path = "../bee-wc" }
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "http2", "tokio"] }
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+jsonschema = { version = "=0.59.0", default-features = false }
+sha2 = "=0.10.9"
+tempfile = "=3.27.0"
+tokio = { version = "=1.53.3", features = ["macros", "rt-multi-thread", "net", "sync", "time", "process", "io-util"] }
+# tests/three_forms: the CLI's catalog (flag kinds), a raw HTTP client for the Connect and
+# /mcp surfaces, and a raw-bytes gRPC client for the sampled gRPC calls.
+bee-cli = { path = "../bee-cli" }
+base64 = "=0.22.1"
+bytes = "=1.11.0"
+http = "=1.3.1"
+http-body-util = "=0.1.3"
+hyper-util = { version = "=0.1.21", features = ["client-legacy", "http1", "http2", "tokio"] }
+prost = "=0.14.4"
+tonic = { version = "=0.14.6", default-features = false, features = ["codegen", "router", "transport"] }
+
+[[test]]
+name = "three_forms"
+path = "tests/three_forms/main.rs"
+# Own main: the test binary doubles as the `bee` CLI when re-executed with
+# BEE_CONFORMANCE_AS_CLI set (a dev-dependency cannot build a binary target).
+harness = false
+
+# The SPEC §16 load harness. An example rather than a binary: it starts an in-process
+# bee-server, which is a higher layer and therefore only a dev-dependency here.
+[[example]]
+name = "load"
+path = "src/load/main.rs"
+
+# bee head to head with plain git (`git http-backend`) on the same machine and content.
+[[example]]
+name = "vs_git"
+path = "src/load/vs_git.rs"
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

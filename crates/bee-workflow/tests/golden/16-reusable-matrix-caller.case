@@ -1,0 +1,44 @@
+event: push refs/heads/main
+--- .github/workflows/deploy-all.yml
+name: Deploy all regions
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        region: [us-east-1, eu-west-1]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      region: ${{ matrix.region }}
+      environment: production
+    secrets:
+      AWS_ROLE: ${{ secrets.AWS_ROLE }}
+--- .github/workflows/deploy.yml
+on:
+  workflow_call:
+    inputs:
+      region:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+    secrets:
+      AWS_ROLE:
+        required: true
+concurrency:
+  group: deploy-${{ inputs.region }}
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}-${{ inputs.region }}
+      url: https://${{ inputs.region }}.widget.example
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ inputs.region }}
+      - run: terraform apply -auto-approve -var region=${{ inputs.region }}

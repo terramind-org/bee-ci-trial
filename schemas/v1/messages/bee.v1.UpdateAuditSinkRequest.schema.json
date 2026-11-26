@@ -1,0 +1,31 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateAuditSinkRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateAuditSink.",
+  "properties": {
+    "actionPrefixes": {
+      "description": "non-empty replaces",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "credentialSecret": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateAuditSinkRequest",
+  "type": "object"
+}

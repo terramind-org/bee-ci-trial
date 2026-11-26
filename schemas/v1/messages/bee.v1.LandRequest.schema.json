@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.LandMethod": {
+      "description": "How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).",
+      "enum": [
+        "LAND_METHOD_UNSPECIFIED",
+        "LAND_METHOD_REBASE",
+        "LAND_METHOD_SQUASH",
+        "LAND_METHOD_MERGE_COMMIT"
+      ],
+      "title": "bee.v1.LandMethod",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LandRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "allowEmpty": {
+      "type": "boolean"
+    },
+    "changeId": {
+      "$ref": "#/$defs/bee.v1.ChangeId",
+      "description": "ChangeId for the squash or merge changeset"
+    },
+    "changeRequestId": {
+      "description": "optional; lands on behalf of a CR",
+      "type": "string"
+    },
+    "expectedVersion": {
+      "description": "0 = any",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "head": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "message": {
+      "description": "squash or merge-commit message; empty = generated",
+      "type": "string"
+    },
+    "method": {
+      "$ref": "#/$defs/bee.v1.LandMethod"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.LandRequest",
+  "type": "object"
+}

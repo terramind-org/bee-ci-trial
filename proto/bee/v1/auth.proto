@@ -1,0 +1,523 @@
+// Identity, tokens and administration for bee.v1. See SPEC.md §9 and §13.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+service AuthService {
+  // Starts or completes a GitHub device-flow / OIDC login for a human.
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+  rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+  // Creates an agent principal owned by the caller.
+  rpc CreateAgent(CreateAgentRequest) returns (Principal);
+  // Mints a Biscuit token for the caller or an agent it owns, no broader than the caller's own.
+  rpc MintToken(MintTokenRequest) returns (MintTokenResponse);
+  // Revokes a token id and every token derived from it.
+  rpc Revoke(RevokeRequest) returns (RevokeResponse);
+  // Daemon form of CheckAccess: may the subject token read these object ids, and with which
+  // access class (SPEC §10.2). Called by caches with their own service token.
+  rpc CheckObjectAccess(CheckObjectAccessRequest) returns (CheckObjectAccessResponse);
+  // Lists tokens minted by or for the caller (metadata only, never the secret).
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+  // Public keys that verify tokens, newest first; several are valid during rotation.
+  rpc ListSigningKeys(ListSigningKeysRequest) returns (ListSigningKeysResponse);
+  // Fetches a principal by id.
+  rpc GetPrincipal(GetPrincipalRequest) returns (Principal);
+  // Updates an agent principal the caller owns (display, runtime, purpose).
+  rpc UpdateAgentPrincipal(UpdateAgentPrincipalRequest) returns (Principal);
+  // Deactivates a principal: its tokens stop verifying and it can no longer log in.
+  rpc DeactivatePrincipal(DeactivatePrincipalRequest) returns (Principal);
+  // Ends the caller's session and revokes the presented token.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  // Starts enrolling a second factor (TOTP or passkey) for the caller.
+  rpc BeginSecondFactorEnrollment(BeginSecondFactorEnrollmentRequest) returns (BeginSecondFactorEnrollmentResponse);
+  // Completes an enrollment with a TOTP code or a WebAuthn attestation.
+  rpc FinishSecondFactorEnrollment(FinishSecondFactorEnrollmentRequest) returns (SecondFactor);
+  // Lists the caller's second factors.
+  rpc ListSecondFactors(ListSecondFactorsRequest) returns (ListSecondFactorsResponse);
+  // Removes a second factor. Fails with TWO_FACTOR_REQUIRED if an org requires one and it is the last.
+  rpc DeleteSecondFactor(DeleteSecondFactorRequest) returns (DeleteSecondFactorResponse);
+  // Answers a second-factor challenge issued by Login (sudo mode, sensitive actions).
+  rpc VerifySecondFactor(VerifySecondFactorRequest) returns (VerifySecondFactorResponse);
+}
+
+service AdminService {
+  rpc Redact(RedactRequest) returns (RedactResponse);
+  rpc Unredact(UnredactRequest) returns (UnredactResponse);
+  rpc ListRedactions(ListRedactionsRequest) returns (ListRedactionsResponse);
+  rpc RunGc(RunGcRequest) returns (RunGcResponse);
+  // Purges quarantined objects now instead of at their scheduled time. Fails with
+  // NOT_QUARANTINED for objects that are not in quarantine.
+  rpc PurgeNow(PurgeNowRequest) returns (PurgeNowResponse);
+  // Runs fsck over a repo or org and reports every violation found (PRODUCT §4.3).
+  rpc RunFsck(RunFsckRequest) returns (RunFsckResponse);
+  // Takes a backup of a cell's metadata and blob manifests.
+  rpc CreateBackup(CreateBackupRequest) returns (Backup);
+  // Lists backups, newest first.
+  rpc ListBackups(ListBackupsRequest) returns (ListBackupsResponse);
+  // Starts a point-in-time restore into a target cell (restore drills use a scratch cell).
+  rpc StartRestore(StartRestoreRequest) returns (Restore);
+  // Reports the progress and result of a restore, including its fsck and conformance results.
+  rpc GetRestore(GetRestoreRequest) returns (Restore);
+  // Adds a new token signing key and makes it the signer; old keys keep verifying until retired.
+  rpc RotateSigningKey(RotateSigningKeyRequest) returns (RotateSigningKeyResponse);
+  // Removes a retired signing key; tokens signed only by it stop verifying.
+  rpc RetireSigningKey(RetireSigningKeyRequest) returns (RetireSigningKeyResponse);
+  // Size and health of a repo at a ref: counts, bytes, large files and warnings
+  // (PRODUCT §4.16 "repository size and health"). Needs read access to the repo.
+  rpc GetRepoHealth(GetRepoHealthRequest) returns (RepoHealth);
+}
+
+message LoginRequest {
+  oneof method {
+    string github_device_code = 1; // poll with the device code from StartLogin
+    bool github_start = 2;         // start a device flow
+    string oidc_id_token = 3;
+    ServiceCredential service = 4;
+    // A GitHub access token (OAuth, app user-to-server or fine-grained): the server proves
+    // the account with GET /user and logs in its principal (`github:<numeric id>`).
+    string github_token = 5;
+  }
+}
+
+message ServiceCredential {
+  string name = 1;
+  string secret = 2;
+}
+
+message LoginResponse {
+  string token = 1;            // set when login completed
+  string verification_uri = 2; // device flow: where the human goes
+  string user_code = 3;
+  string device_code = 4;
+  uint32 interval_seconds = 5;
+  // Set when login needs a second factor; answer with AuthService.VerifySecondFactor.
+  string second_factor_challenge_id = 6;
+  repeated SecondFactorKind second_factor_kinds = 7;
+  google.protobuf.Timestamp expires_at = 8; // expiry of `token`
+}
+
+message WhoAmIRequest {}
+
+message TokenScope {
+  repeated string repos = 1;       // repo ids or "org/*"
+  repeated bytes read_paths = 2;   // prefixes; empty = inherit
+  repeated bytes write_paths = 3;
+  repeated string refs = 4;        // patterns, e.g. "ws/*", "main"
+  repeated string actions = 5;     // read, commit, land, review, lease, admin
+  google.protobuf.Timestamp expires_at = 6;
+  Budget budget = 7;
+  string session = 8;              // copied into provenance
+}
+
+message Budget {
+  uint64 max_changesets = 1;
+  uint64 max_landed = 2;
+  uint64 max_upload_bytes = 3;
+}
+
+message WhoAmIResponse {
+  Principal principal = 1;
+  repeated string on_behalf_of = 2; // delegation chain back to a human or service
+  TokenScope effective_scope = 3;
+  Budget remaining = 4;
+  repeated string groups = 5;               // policy groups the principal belongs to
+  google.protobuf.Timestamp expires_at = 6; // token expiry
+  string token_id = 7;
+}
+
+message CheckAccessRequest {
+  RepoRef repo = 1;
+  repeated bytes paths = 2;
+  string action = 3;
+}
+
+message CheckAccessResponse {
+  repeated bool allowed = 1;
+  string policy_epoch = 2;
+  repeated AccessClass access_classes = 3; // one per path
+}
+
+message CheckObjectAccessRequest {
+  RepoRef repo = 1;
+  string subject_token = 2; // the end client's token, as presented to the cache
+  repeated ObjectId ids = 3;
+}
+
+message CheckObjectAccessResponse {
+  repeated bool allowed = 1;
+  repeated AccessClass access_classes = 2;
+  string policy_epoch = 3;
+  uint64 redaction_epoch = 4;
+  string principal_id = 5;  // subject the token resolved to
+  uint32 cache_ttl_seconds = 6; // how long the cache may reuse these decisions
+}
+
+message ListTokensRequest {
+  string principal_id = 1; // empty = caller; else an agent the caller owns
+  bool include_revoked = 2;
+  PageRequest page = 3;
+}
+
+// Metadata about a minted token. The token itself is never returned again.
+message TokenInfo {
+  string token_id = 1;
+  string principal_id = 2;
+  string parent_token_id = 3;
+  TokenScope scope = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+  bool revoked = 7;
+  string description = 8;
+  // Consumption so far against scope.budget (gap G2).
+  Budget used = 9;
+}
+
+message ListTokensResponse {
+  repeated TokenInfo tokens = 1;
+  PageResponse page = 2;
+}
+
+message ListSigningKeysRequest {}
+
+// One token signing key's public half.
+message SigningKey {
+  string key_id = 1;
+  string algorithm = 2;
+  bytes public_key = 3;
+  bool signing = 4; // the key that signs new tokens
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp retired_at = 6;
+}
+
+message ListSigningKeysResponse {
+  repeated SigningKey keys = 1;
+}
+
+message GetPrincipalRequest {
+  string principal_id = 1;
+}
+
+message UpdateAgentPrincipalRequest {
+  string principal_id = 1;
+  optional string display = 2;
+  optional string runtime = 3;
+  optional string purpose = 4;
+}
+
+message DeactivatePrincipalRequest {
+  string principal_id = 1;
+  string reason = 2;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+// Kind of second factor (PRODUCT §4.9).
+enum SecondFactorKind {
+  SECOND_FACTOR_KIND_UNSPECIFIED = 0;
+  SECOND_FACTOR_KIND_TOTP = 1;
+  SECOND_FACTOR_KIND_PASSKEY = 2;
+  SECOND_FACTOR_KIND_SECURITY_KEY = 3;
+  SECOND_FACTOR_KIND_RECOVERY_CODES = 4;
+}
+
+// An enrolled second factor.
+message SecondFactor {
+  string id = 1;
+  SecondFactorKind kind = 2;
+  string nickname = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp last_used_at = 5;
+}
+
+message BeginSecondFactorEnrollmentRequest {
+  SecondFactorKind kind = 1;
+  string nickname = 2;
+}
+
+message BeginSecondFactorEnrollmentResponse {
+  string enrollment_id = 1;
+  string totp_uri = 2;              // otpauth:// URI for TOTP
+  string webauthn_options_json = 3; // PublicKeyCredentialCreationOptions for passkeys
+  repeated string recovery_codes = 4; // shown once, for RECOVERY_CODES
+}
+
+message FinishSecondFactorEnrollmentRequest {
+  string enrollment_id = 1;
+  string totp_code = 2;
+  string webauthn_attestation_json = 3;
+}
+
+message ListSecondFactorsRequest {}
+
+message ListSecondFactorsResponse {
+  repeated SecondFactor factors = 1;
+}
+
+message DeleteSecondFactorRequest {
+  string id = 1;
+}
+
+message DeleteSecondFactorResponse {}
+
+message VerifySecondFactorRequest {
+  string challenge_id = 1;
+  string totp_code = 2;
+  string webauthn_assertion_json = 3;
+  string recovery_code = 4;
+}
+
+message VerifySecondFactorResponse {
+  string token = 1; // elevated token, short-lived
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message CreateAgentRequest {
+  string display = 1;
+  string runtime = 2;
+  string purpose = 3;
+  string org = 4;
+}
+
+message MintTokenRequest {
+  string principal_id = 1; // empty = caller
+  TokenScope scope = 2;
+}
+
+message MintTokenResponse {
+  string token = 1;
+  string token_id = 2;
+}
+
+message RevokeRequest {
+  string token_id = 1;
+}
+
+message RevokeResponse {}
+
+message RedactRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+  string reason = 3;
+  bool purge_now = 4;
+  // Seconds in quarantine before the scheduled purge; 0 = default (7 days) (SPEC §13).
+  uint32 purge_after_seconds = 5;
+  // Path form: redact the blob at `path` in `at`, or every version of it with all_versions.
+  bytes path = 6;
+  Revision at = 7;
+  bool all_versions = 8;
+  // Redact the Meta of the changesets named by `ids` (changeset ids in `ids` stand for their
+  // Meta; blob ids stay blobs); with no changeset id, the Meta of the changeset at `at`.
+  bool meta = 9;
+}
+
+message RedactResponse {
+  uint64 redaction_epoch = 1;
+  // Every tier stops serving the objects by this time (the propagation bound).
+  google.protobuf.Timestamp effective_by = 2;
+  repeated ObjectId redacted = 3;
+}
+
+message UnredactRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+}
+
+message UnredactResponse {
+  uint64 redaction_epoch = 1;
+}
+
+message ListRedactionsRequest {
+  RepoRef repo = 1;
+  uint64 since_epoch = 2;
+  RedactionState state = 3; // UNSPECIFIED = all
+  PageRequest page = 4;
+}
+
+// Lifecycle of a redacted object (SPEC §13): live → quarantined → purged.
+enum RedactionState {
+  REDACTION_STATE_UNSPECIFIED = 0;
+  REDACTION_STATE_QUARANTINED = 1; // bytes moved aside; unredact still possible
+  REDACTION_STATE_PURGED = 2;      // bytes deleted for good
+  REDACTION_STATE_UNREDACTED = 3;  // restored from quarantine
+}
+
+message Redaction {
+  ObjectId id = 1;
+  string reason = 2;
+  string principal = 3;
+  google.protobuf.Timestamp time = 4;
+  uint64 epoch = 5;
+  RedactionState state = 6;
+  google.protobuf.Timestamp purge_at = 7; // scheduled purge for quarantined objects
+}
+
+message ListRedactionsResponse {
+  repeated Redaction redactions = 1;
+  uint64 current_epoch = 2;
+  PageResponse page = 3;
+}
+
+message RunGcRequest {
+  string org = 1;
+  bool dry_run = 2;
+  RepoRef repo = 3;                 // limit to one repo's drafts; objects stay org-wide
+  uint32 safety_window_seconds = 4; // 0 = default (24 hours); never shorter than the default
+}
+
+message RunGcResponse {
+  uint64 objects_collected = 1;
+  uint64 bytes_collected = 2;
+  uint64 changesets_collected = 3;
+  bool dry_run = 4; // counts are what would be collected
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp finished_at = 6;
+}
+
+message PurgeNowRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+  string reason = 3;
+}
+
+message PurgeNowResponse {
+  uint64 redaction_epoch = 1;
+  repeated ObjectId purged = 2;
+}
+
+message RunFsckRequest {
+  string org = 1;
+  RepoRef repo = 2;     // empty = the whole org
+  bool verify_bytes = 3; // re-hash blob bytes, not only rows
+}
+
+// One fsck violation (the enumerated kinds are listed in SPEC §14).
+message FsckViolation {
+  string kind = 1;    // e.g. "dangling_reference", "missing_bytes", "hash_mismatch"
+  string repo_id = 2;
+  ObjectId object = 3;
+  string detail = 4;
+}
+
+message RunFsckResponse {
+  repeated FsckViolation violations = 1;
+  uint64 objects_checked = 2;
+  uint64 changesets_checked = 3;
+  uint64 refs_checked = 4;
+  bool clean = 5;
+}
+
+message CreateBackupRequest {
+  string cell = 1; // empty = this server's cell
+  string note = 2;
+}
+
+// State of a backup or restore job.
+enum BackupState {
+  BACKUP_STATE_UNSPECIFIED = 0;
+  BACKUP_STATE_RUNNING = 1;
+  BACKUP_STATE_SUCCEEDED = 2;
+  BACKUP_STATE_FAILED = 3;
+}
+
+// A metadata backup with the blob manifest needed to restore it.
+message Backup {
+  string id = 1;
+  string cell = 2;
+  BackupState state = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp finished_at = 5;
+  uint64 size_bytes = 6;
+  google.protobuf.Timestamp expires_at = 7; // retention is at most 30 days
+  string note = 8;
+}
+
+message ListBackupsRequest {
+  string cell = 1;
+  PageRequest page = 2;
+}
+
+message ListBackupsResponse {
+  repeated Backup backups = 1;
+  PageResponse page = 2;
+}
+
+message StartRestoreRequest {
+  string backup_id = 1;
+  google.protobuf.Timestamp point_in_time = 2; // unset = the backup's own time
+  string target_cell = 3;
+  bool drill = 4; // a restore drill: run fsck and the conformance suite afterwards
+}
+
+// A restore job.
+message Restore {
+  string id = 1;
+  string backup_id = 2;
+  string target_cell = 3;
+  BackupState state = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp finished_at = 6;
+  bool fsck_clean = 7;
+  bool conformance_passed = 8;
+  string detail = 9;
+}
+
+message GetRestoreRequest {
+  string id = 1;
+}
+
+message RotateSigningKeyRequest {
+  string algorithm = 1; // empty = server default
+}
+
+message RotateSigningKeyResponse {
+  SigningKey key = 1;
+}
+
+message RetireSigningKeyRequest {
+  string key_id = 1;
+}
+
+message RetireSigningKeyResponse {}
+
+message GetRepoHealthRequest {
+  RepoRef repo = 1;
+  string ref = 2;                 // empty = main
+  uint64 large_file_bytes = 3;    // files at or above this size are listed; 0 = 50 MiB
+}
+
+// One file at or above the large-file threshold.
+message RepoHealthFile {
+  bytes path = 1;
+  uint64 size_bytes = 2;
+  ObjectId blob = 3;
+}
+
+// A health finding, e.g. `large_file`, `near_push_limit`, `large_tree`, `many_refs`.
+message RepoHealthWarning {
+  string code = 1;
+  string message = 2;
+  bytes path = 3;                 // the file it concerns, if any
+}
+
+message RepoHealth {
+  RepoRef repo = 1;
+  string ref = 2;
+  ObjectId tip = 3;
+  uint64 ref_version = 4;
+  uint64 refs = 5;                // live refs in the repo
+  uint64 history_depth = 6;       // first-parent changesets from the tip to the root
+  uint64 files = 7;               // files (and symlinks) at the tip
+  uint64 directories = 8;
+  uint64 tip_bytes = 9;           // sum of file sizes at the tip
+  uint64 largest_file_bytes = 10;
+  repeated RepoHealthFile large_files = 11;   // largest first, at most 100
+  repeated RepoHealthWarning warnings = 12;
+  uint64 large_file_bytes = 13;   // the threshold used
+  uint64 hidden_paths = 14;       // files under paths the caller cannot read (counted, not listed)
+}

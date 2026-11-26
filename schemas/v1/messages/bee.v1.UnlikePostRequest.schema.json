@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UnlikePostRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UnlikePost.",
+  "properties": {
+    "postId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UnlikePostRequest",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateAgentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "display": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "runtime": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateAgentRequest",
+  "type": "object"
+}

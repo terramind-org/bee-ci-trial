@@ -1,0 +1,33 @@
+event: push refs/heads/main
+--- .github/workflows/broken.yml
+name: Broken
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo one
+       - run: echo two
+--- .github/workflows/bad-keys.yml
+name: Bad keys
+on:
+  push:
+    branches: [main]
+    branches-ignore: [dev]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    step:
+      - run: echo
+  test:
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout
+--- .github/workflows/fine.yml
+on: push
+jobs:
+  ok:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo fine

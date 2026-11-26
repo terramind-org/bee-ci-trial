@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "bee.v1.AuditSinkKind": {
+      "description": "Destination type of a sink.",
+      "enum": [
+        "AUDIT_SINK_KIND_UNSPECIFIED",
+        "AUDIT_SINK_KIND_S3",
+        "AUDIT_SINK_KIND_SPLUNK",
+        "AUDIT_SINK_KIND_DATADOG",
+        "AUDIT_SINK_KIND_HTTPS"
+      ],
+      "title": "bee.v1.AuditSinkKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateAuditSinkRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateAuditSink.",
+  "properties": {
+    "actionPrefixes": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "credentialSecret": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "enterprise": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.AuditSinkKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "startSeq": {
+      "description": "backfill from here; 0 = new entries only",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.CreateAuditSinkRequest",
+  "type": "object"
+}

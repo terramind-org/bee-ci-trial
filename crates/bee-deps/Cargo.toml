@@ -1,0 +1,32 @@
+[package]
+name = "bee-deps"
+description = "Dependency graph, SBOM export and vulnerability matching from manifests and lockfiles (PRODUCT 4.18)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+# Reason: JSON lockfiles (npm, composer, Pipfile, NuGet), OSV records and SBOM documents.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+# Reason: TOML manifests and lockfiles (Cargo, poetry, uv, pyproject, version catalogs).
+toml = "=1.1.8"
+# Reason: SBOM document namespaces and CycloneDX serial numbers derived from content.
+sha2 = "=0.10.9"
+
+[dev-dependencies]
+proptest = "=1.12.0"
+# Reason: validate SBOM output against the published SPDX and CycloneDX JSON schemas.
+jsonschema = { version = "=0.59.0", default-features = false }
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

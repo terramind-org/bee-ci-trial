@@ -1,0 +1,168 @@
+{
+  "$defs": {
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.InsightsAgentStats": {
+      "description": "One agent's results in a repo.",
+      "properties": {
+        "additions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "changeRequestsClosed": {
+          "description": "closed without landing",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changeRequestsLanded": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changeRequestsOpened": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changesetsLanded": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changesetsReverted": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost",
+          "description": "summed from provenance"
+        },
+        "deletions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "revertRate": {
+          "description": "reverted / landed, 0..1",
+          "type": "number"
+        },
+        "reviewRoundsMedian": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.InsightsAgentStats",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListInsightsAgentStatsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListInsightsAgentStats.",
+  "properties": {
+    "agents": {
+      "description": "most landed first",
+      "items": {
+        "$ref": "#/$defs/bee.v1.InsightsAgentStats"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "totalCost": {
+      "$ref": "#/$defs/bee.v1.Cost"
+    }
+  },
+  "title": "bee.v1.ListInsightsAgentStatsResponse",
+  "type": "object"
+}

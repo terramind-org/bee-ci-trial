@@ -1,0 +1,419 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SafetyAsk": {
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/bee.v1.SubjectRef"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SafetyAsk",
+      "type": "object"
+    },
+    "bee.v1.SafetyDone": {
+      "properties": {
+        "commands": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "mergedChangeRequestIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "networkDestinations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SafetyDone",
+      "type": "object"
+    },
+    "bee.v1.SafetyEvidence": {
+      "properties": {
+        "observation": {
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "subjects": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SubjectRef"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SafetyEvidence",
+      "type": "object"
+    },
+    "bee.v1.SafetyFinding": {
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "report": {
+          "$ref": "#/$defs/bee.v1.SafetyFindingReport"
+        },
+        "reportedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "resolutionReason": {
+          "type": "string"
+        },
+        "resolvedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "resolvedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SafetyFindingState"
+        }
+      },
+      "title": "bee.v1.SafetyFinding",
+      "type": "object"
+    },
+    "bee.v1.SafetyFindingReport": {
+      "properties": {
+        "evidence": {
+          "$ref": "#/$defs/bee.v1.SafetyEvidence"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SafetySignalKind"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.SafetySeverity"
+        }
+      },
+      "title": "bee.v1.SafetyFindingReport",
+      "type": "object"
+    },
+    "bee.v1.SafetyFindingState": {
+      "enum": [
+        "SAFETY_FINDING_STATE_UNSPECIFIED",
+        "SAFETY_FINDING_STATE_OPEN",
+        "SAFETY_FINDING_STATE_DISMISSED",
+        "SAFETY_FINDING_STATE_CONFIRMED"
+      ],
+      "title": "bee.v1.SafetyFindingState",
+      "type": "string"
+    },
+    "bee.v1.SafetyRecord": {
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Principal"
+          },
+          "type": "array"
+        },
+        "answerable": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "asked": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SafetyAsk"
+          },
+          "type": "array"
+        },
+        "done": {
+          "$ref": "#/$defs/bee.v1.SafetyDone"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SafetyFinding"
+          },
+          "type": "array"
+        },
+        "override": {
+          "$ref": "#/$defs/bee.v1.SafetyVerdictOverride"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SafetyReview"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/bee.v1.SafetyVerdict"
+        },
+        "work": {
+          "$ref": "#/$defs/bee.v1.SafetyRef"
+        }
+      },
+      "title": "bee.v1.SafetyRecord",
+      "type": "object"
+    },
+    "bee.v1.SafetyRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SafetyWorkKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SafetyRef",
+      "type": "object"
+    },
+    "bee.v1.SafetyReview": {
+      "properties": {
+        "findingIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "proposedVerdict": {
+          "$ref": "#/$defs/bee.v1.SafetyVerdict"
+        },
+        "requestedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "requestedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "submittedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SafetyReview",
+      "type": "object"
+    },
+    "bee.v1.SafetySeverity": {
+      "enum": [
+        "SAFETY_SEVERITY_UNSPECIFIED",
+        "SAFETY_SEVERITY_NOTE",
+        "SAFETY_SEVERITY_WARNING",
+        "SAFETY_SEVERITY_SEVERE"
+      ],
+      "title": "bee.v1.SafetySeverity",
+      "type": "string"
+    },
+    "bee.v1.SafetySignalKind": {
+      "enum": [
+        "SAFETY_SIGNAL_KIND_UNSPECIFIED",
+        "SAFETY_SIGNAL_KIND_OUTSIDE_TASK",
+        "SAFETY_SIGNAL_KIND_AROUND_REFUSAL",
+        "SAFETY_SIGNAL_KIND_TESTS_WEAKENED",
+        "SAFETY_SIGNAL_KIND_OWN_LEASH",
+        "SAFETY_SIGNAL_KIND_SAID_VS_SHOWN",
+        "SAFETY_SIGNAL_KIND_SECRETS_AND_EXIT",
+        "SAFETY_SIGNAL_KIND_FOLLOWING_STRANGERS",
+        "SAFETY_SIGNAL_KIND_HARM_TO_CODE",
+        "SAFETY_SIGNAL_KIND_HARM_TO_OTHERS",
+        "SAFETY_SIGNAL_KIND_LEGAL_FLAGS"
+      ],
+      "title": "bee.v1.SafetySignalKind",
+      "type": "string"
+    },
+    "bee.v1.SafetyVerdict": {
+      "enum": [
+        "SAFETY_VERDICT_UNSPECIFIED",
+        "SAFETY_VERDICT_AS_ASKED",
+        "SAFETY_VERDICT_MORE_THAN_ASKED",
+        "SAFETY_VERDICT_LESS_THAN_ASKED",
+        "SAFETY_VERDICT_SOMETHING_ELSE",
+        "SAFETY_VERDICT_NEEDS_A_LOOK"
+      ],
+      "title": "bee.v1.SafetyVerdict",
+      "type": "string"
+    },
+    "bee.v1.SafetyVerdictOverride": {
+      "properties": {
+        "note": {
+          "type": "string"
+        },
+        "person": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/bee.v1.SafetyVerdict"
+        }
+      },
+      "title": "bee.v1.SafetyVerdictOverride",
+      "type": "object"
+    },
+    "bee.v1.SafetyWorkKind": {
+      "enum": [
+        "SAFETY_WORK_KIND_UNSPECIFIED",
+        "SAFETY_WORK_KIND_RUN",
+        "SAFETY_WORK_KIND_SWARM"
+      ],
+      "title": "bee.v1.SafetyWorkKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSafetyRecordsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SafetyRecord"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListSafetyRecordsResponse",
+  "type": "object"
+}

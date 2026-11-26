@@ -1,0 +1,19 @@
+# event schedule action=-
+run .github/workflows/nightly.yml "Nightly"
+  run-name: "Nightly"
+  event: schedule ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  schedule: "30 3 * * 1-5"
+  permissions: default
+  job fuzz if="github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'" decided=true
+    instance "fuzz"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 120
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo +nightly fuzz run parser -- -max_total_time=3600"
+        run: "cargo +nightly fuzz run parser -- -max_total_time=3600"
+        shell: default -> "bash -e {0}"
+      step 3 "Run echo \"triggered by 30 3 * * 1-5\""
+        run: "echo \"triggered by 30 3 * * 1-5\""
+        shell: default -> "bash -e {0}"

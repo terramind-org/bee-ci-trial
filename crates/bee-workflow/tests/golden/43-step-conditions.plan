@@ -1,0 +1,32 @@
+# event push action=-
+run .github/workflows/steps.yml "Step conditions"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job flaky decided=true
+    instance "flaky"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 10
+      step 1 "Run make test" id=tests
+        run: "make test"
+        shell: default -> "bash -e {0}"
+        continue-on-error: "true"
+        timeout-minutes: "5"
+      step 2 "Report flaky outcome" if="steps.tests.outcome == 'failure'"
+        run: "echo \"tests failed but conclusion is ${{ steps.tests.conclusion }}\""
+        shell: default -> "bash -e {0}"
+      step 3 "Upload logs on failure" if="${{ failure() }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "logs"
+          path: "logs/"
+      step 4 "Always clean up" if="always()"
+        run: "make clean"
+        shell: default -> "bash -e {0}"
+      step 5 "Cancelled" if="cancelled()"
+        run: "echo cancelled"
+        shell: default -> "bash -e {0}"
+      step 6 "Dynamic continue"
+        run: "./maybe.sh"
+        shell: default -> "bash -e {0}"

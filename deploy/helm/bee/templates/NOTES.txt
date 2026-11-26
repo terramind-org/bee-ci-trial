@@ -1,0 +1,31 @@
+Beehive {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Server: {{ .Values.server.replicas }} replica(s), Service {{ include "bee.fullname" . }}-server:{{ .Values.server.service.port }} (API, git over HTTP, MCP).
+{{- if .Values.web.enabled }}
+Web:    Service {{ include "bee.fullname" . }}-web:{{ .Values.web.service.port }}.
+{{- end }}
+{{- if .Values.ssh.enabled }}
+SSH:    Service {{ include "bee.fullname" . }}-ssh:{{ .Values.ssh.service.port }} (git over SSH).
+{{- if and (not .Values.ssh.hostKeySecret.name) (gt (int .Values.server.replicas) 1) }}
+
+WARNING: ssh.hostKeySecret is not set, so every server pod generates its own SSH host key and
+git clients will see a changed host key. Create a Secret that holds an OpenSSH private key and
+name it in ssh.hostKeySecret.name.
+{{- end }}
+{{- end }}
+
+Check it:
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "bee.fullname" . }}-server
+  helm -n {{ .Release.Namespace }} test {{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "bee.fullname" . }}-server 7420:7420
+  curl -s localhost:7420/readyz
+{{- if not .Values.config.siteAdmins }}
+
+No site administrator is set yet. Sign in once, read your principal id with AuthService.WhoAmI,
+then upgrade with --set 'config.siteAdmins={<principal id>}' (README, "First admin").
+{{- end }}
+{{- if not (or .Values.config.login.oidcIssuer .Values.config.login.githubClientId) }}
+
+No sign-in method is configured: set config.login.oidcIssuer and config.login.oidcClientId, or
+config.login.githubClientId.
+{{- end }}

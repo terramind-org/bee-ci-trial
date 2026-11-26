@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SecurityPolicy.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A repo's security policy file.",
+  "properties": {
+    "content": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "contentHtml": {
+      "description": "sanitized rendering",
+      "type": "string"
+    },
+    "path": {
+      "contentEncoding": "base64",
+      "description": "where it was found",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.SecurityPolicy",
+  "type": "object"
+}

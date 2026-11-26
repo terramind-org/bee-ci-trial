@@ -1,0 +1,24 @@
+# event push action=-
+run .github/workflows/cache.yml "Cache"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job build decided=true
+    instance "build"
+      runs-on: ["macos-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Cache Gradle" id=gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: "~/.gradle/caches\n~/.gradle/wrapper\n"
+          key: "${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}"
+          restore-keys: "${{ runner.os }}-gradle-\n"
+      step 3 "Run ./gradlew dependencies" if="steps.gradle-cache.outputs.cache-hit != 'true'"
+        run: "./gradlew dependencies"
+        shell: default -> "bash -e {0}"
+      step 4 "Run ./gradlew build -Pversion=2222222222222222222222222222222222222222"
+        run: "./gradlew build -Pversion=2222222222222222222222222222222222222222"
+        shell: default -> "bash -e {0}"

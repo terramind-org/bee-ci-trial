@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "bee.v1.GitObjectType": {
+      "description": "Git object type.",
+      "enum": [
+        "GIT_OBJECT_TYPE_UNSPECIFIED",
+        "GIT_OBJECT_TYPE_COMMIT",
+        "GIT_OBJECT_TYPE_TREE",
+        "GIT_OBJECT_TYPE_BLOB",
+        "GIT_OBJECT_TYPE_TAG"
+      ],
+      "title": "bee.v1.GitObjectType",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitObjectChunk.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One chunk of a git object. The first chunk of each object carries type and size.",
+  "properties": {
+    "data": {
+      "contentEncoding": "base64",
+      "description": "raw object content without the git header",
+      "type": "string"
+    },
+    "errorReason": {
+      "description": "per-object failure, e.g. PERMISSION_DENIED, NOT_FOUND",
+      "type": "string"
+    },
+    "last": {
+      "type": "boolean"
+    },
+    "offset": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "oid": {
+      "type": "string"
+    },
+    "replacementOid": {
+      "description": "Set when the requested commit is redacted: the oid of its replacement commit, whose bytes\nthis chunk carries instead (the original stays addressable through refs/replace/<oid>).",
+      "type": "string"
+    },
+    "signedUrl": {
+      "description": "set instead of data when allowed",
+      "type": "string"
+    },
+    "signedUrlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "size": {
+      "description": "full uncompressed size",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "type": {
+      "$ref": "#/$defs/bee.v1.GitObjectType"
+    }
+  },
+  "title": "bee.v1.GitObjectChunk",
+  "type": "object"
+}

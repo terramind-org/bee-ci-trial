@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IssueTaskListProgress.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Checkbox counts derived from Markdown task lists in the body.",
+  "properties": {
+    "completed": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.IssueTaskListProgress",
+  "type": "object"
+}

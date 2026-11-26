@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/model.list-eval-runs.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModelService/ListEvalRuns: `data` is a bee.v1.ListEvalRunsResponse in proto3-JSON. `bee model list-eval-runs --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListEvalRunsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.model.list-eval-runs"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee model list-eval-runs",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetUserStatusRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetUserStatus.",
+  "properties": {
+    "busy": {
+      "type": "boolean"
+    },
+    "emoji": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SetUserStatusRequest",
+  "type": "object"
+}

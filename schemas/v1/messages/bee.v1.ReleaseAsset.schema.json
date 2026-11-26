@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReleaseAssetState": {
+      "description": "Upload state of a release asset.",
+      "enum": [
+        "RELEASE_ASSET_STATE_UNSPECIFIED",
+        "RELEASE_ASSET_STATE_UPLOADING",
+        "RELEASE_ASSET_STATE_UPLOADED"
+      ],
+      "title": "bee.v1.ReleaseAssetState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ReleaseAsset.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A file attached to a release.",
+  "properties": {
+    "contentType": {
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "downloadCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "releaseId": {
+      "type": "string"
+    },
+    "sha256": {
+      "contentEncoding": "base64",
+      "description": "32-byte digest, set once uploaded",
+      "type": "string"
+    },
+    "size": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.ReleaseAssetState"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "uploader": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    }
+  },
+  "title": "bee.v1.ReleaseAsset",
+  "type": "object"
+}

@@ -1,0 +1,23 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.StartRestoreRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "backupId": {
+      "type": "string"
+    },
+    "drill": {
+      "description": "a restore drill: run fsck and the conformance suite afterwards",
+      "type": "boolean"
+    },
+    "pointInTime": {
+      "description": "unset = the backup's own time",
+      "format": "date-time",
+      "type": "string"
+    },
+    "targetCell": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.StartRestoreRequest",
+  "type": "object"
+}

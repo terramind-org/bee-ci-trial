@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetPagesOrgSettingsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetPagesOrgSettings.",
+  "properties": {
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetPagesOrgSettingsRequest",
+  "type": "object"
+}

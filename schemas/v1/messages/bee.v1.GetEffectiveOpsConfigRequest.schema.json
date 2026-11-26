@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetEffectiveOpsConfigRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetEffectiveOpsConfig.",
+  "properties": {
+    "cell": {
+      "type": "string"
+    },
+    "component": {
+      "type": "string"
+    },
+    "node": {
+      "description": "empty = any node in the cell",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetEffectiveOpsConfigRequest",
+  "type": "object"
+}

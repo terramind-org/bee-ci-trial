@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WatcherState": {
+      "description": "Watcher lifecycle.",
+      "enum": [
+        "WATCHER_STATE_UNSPECIFIED",
+        "WATCHER_STATE_ACTIVE",
+        "WATCHER_STATE_PAUSED",
+        "WATCHER_STATE_ERROR"
+      ],
+      "title": "bee.v1.WatcherState",
+      "type": "string"
+    },
+    "bee.v1.WatcherTelemetrySelector": {
+      "description": "Telemetry a watcher reads. Selectors use OpsService metric names and label matchers.",
+      "properties": {
+        "labelMatchers": {
+          "description": "exact matches, e.g. service=checkout",
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "logComponents": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "metricNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "traceService": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WatcherTelemetrySelector",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateComponentWatcherRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateComponentWatcher.",
+  "properties": {
+    "autoOpenIssues": {
+      "type": "boolean"
+    },
+    "checkIntervalSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "paths": {
+      "description": "non-empty replaces",
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "serviceName": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.WatcherState"
+    },
+    "telemetry": {
+      "$ref": "#/$defs/bee.v1.WatcherTelemetrySelector",
+      "description": "unset = unchanged"
+    }
+  },
+  "title": "bee.v1.UpdateComponentWatcherRequest",
+  "type": "object"
+}

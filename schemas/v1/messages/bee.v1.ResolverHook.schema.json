@@ -1,0 +1,29 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ResolverHook.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The repo's conflict resolver endpoint (SPEC §11.6).",
+  "properties": {
+    "agentPrincipalId": {
+      "description": "alternatively an agent that receives conflicts as events",
+      "type": "string"
+    },
+    "autoLand": {
+      "description": "land accepted resolutions when policy allows",
+      "type": "boolean"
+    },
+    "repoId": {
+      "type": "string"
+    },
+    "timeoutSeconds": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "url": {
+      "description": "HTTPS endpoint, or empty when none",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ResolverHook",
+  "type": "object"
+}

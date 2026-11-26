@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.StreamSearchCodeRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for StreamSearchCode.",
+  "properties": {
+    "caseSensitive": {
+      "type": "boolean"
+    },
+    "contextLines": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "includeFacets": {
+      "type": "boolean"
+    },
+    "maxMatches": {
+      "description": "0 = server default",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "query": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.StreamSearchCodeRequest",
+  "type": "object"
+}

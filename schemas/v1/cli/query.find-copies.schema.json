@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/query.find-copies.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.QueryService/FindCopies: `data` is a bee.v1.FindCopiesResponse in proto3-JSON. `bee query find-copies --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.FindCopiesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.query.find-copies"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee query find-copies",
+  "type": "object"
+}

@@ -1,0 +1,36 @@
+{
+  "$defs": {
+    "bee.v1.AccessClass": {
+      "description": "Whether an object is readable by every repo reader or only by principals allowed on a\nrestricted path (SPEC §9.3, §10.2).",
+      "enum": [
+        "ACCESS_CLASS_UNSPECIFIED",
+        "ACCESS_CLASS_ROOT",
+        "ACCESS_CLASS_RESTRICTED"
+      ],
+      "title": "bee.v1.AccessClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CheckAccessResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accessClasses": {
+      "description": "one per path",
+      "items": {
+        "$ref": "#/$defs/bee.v1.AccessClass"
+      },
+      "type": "array"
+    },
+    "allowed": {
+      "items": {
+        "type": "boolean"
+      },
+      "type": "array"
+    },
+    "policyEpoch": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CheckAccessResponse",
+  "type": "object"
+}

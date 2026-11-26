@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RevokeUserSessionRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RevokeUserSession.",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RevokeUserSessionRequest",
+  "type": "object"
+}

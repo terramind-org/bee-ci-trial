@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "bee.v1.ServiceCredential": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ServiceCredential",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LoginRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Oneof `method`: at most one of `githubDeviceCode`, `githubStart`, `oidcIdToken`, `service`, `githubToken` is set.",
+  "properties": {
+    "githubDeviceCode": {
+      "description": "poll with the device code from StartLogin",
+      "type": "string"
+    },
+    "githubStart": {
+      "description": "start a device flow",
+      "type": "boolean"
+    },
+    "githubToken": {
+      "description": "A GitHub access token (OAuth, app user-to-server or fine-grained): the server proves\nthe account with GET /user and logs in its principal (`github:<numeric id>`).",
+      "type": "string"
+    },
+    "oidcIdToken": {
+      "type": "string"
+    },
+    "service": {
+      "$ref": "#/$defs/bee.v1.ServiceCredential"
+    }
+  },
+  "title": "bee.v1.LoginRequest",
+  "type": "object"
+}

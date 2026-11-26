@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/git.git-ingest-commits.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.GitService/GitIngestCommits: `data` is a bee.v1.GitIngestCommitsResponse in proto3-JSON. `bee git git-ingest-commits --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GitIngestCommitsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.git.git-ingest-commits"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee git git-ingest-commits",
+  "type": "object"
+}

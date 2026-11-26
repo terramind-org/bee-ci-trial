@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.cancel-workflow-run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/CancelWorkflowRun: `data` is a bee.v1.CancelWorkflowRunResponse in proto3-JSON. `bee workflow cancel-workflow-run --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CancelWorkflowRunResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.cancel-workflow-run"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow cancel-workflow-run",
+  "type": "object"
+}

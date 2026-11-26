@@ -1,0 +1,43 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserActivityOverview.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Share of contribution types and where they happened.",
+  "properties": {
+    "changeRequestsPercent": {
+      "type": "number"
+    },
+    "changesetsPercent": {
+      "type": "number"
+    },
+    "fromDate": {
+      "type": "string"
+    },
+    "issuesPercent": {
+      "type": "number"
+    },
+    "login": {
+      "type": "string"
+    },
+    "reviewsPercent": {
+      "type": "number"
+    },
+    "toDate": {
+      "type": "string"
+    },
+    "topOrgs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "topRepos": {
+      "description": "full names",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.UserActivityOverview",
+  "type": "object"
+}

@@ -1,0 +1,29 @@
+# event pull_request action=opened
+run .github/workflows/lint.yml "Lint"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  concurrency: "Lint-42" cancel-in-progress=true
+  permissions: contents=read
+  job fmt decided=true
+    instance "fmt"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=read
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo fmt --all -- --check"
+        run: "cargo fmt --all -- --check"
+        shell: default -> "bash -e {0}"
+  job clippy decided=true
+    instance "clippy"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=read
+      timeout-minutes: 30
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          ref: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      step 2 "Clippy (feature/parser into main)"
+        run: "cargo clippy --all-targets -- -D warnings"
+        shell: default -> "bash -e {0}"
+# event pull_request_target action=opened

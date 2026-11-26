@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/redact.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee redact --json`: one such document with `schema` = bee.v1.redact. Redact content: a path at a revision, objects, or changeset metadata (AdminService/Redact). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.RedactResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.redact"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee redact",
+  "type": "object"
+}

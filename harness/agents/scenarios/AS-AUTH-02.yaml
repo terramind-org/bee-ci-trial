@@ -1,0 +1,65 @@
+id: AS-AUTH-02
+area: "4.9"
+title: Change a ruleset in evaluate mode and report which recent lands it would have blocked
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: a disabled ruleset on main
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: infra-guard
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_DISABLED
+      conditions: { refNameIncludes: ["~DEFAULT_BRANCH"] }
+      rules: [{ noDeletion: {} }]
+    save: { ruleset: "$" }
+  - { commit: { repo: "${repo.fullName}", ref: main, message: "Add app", files: { app/main.py: "run()\n" } } }
+  - commit: { repo: "${repo.fullName}", ref: main, message: "Add terraform", files: { infra/main.tf: "resource {}\n" } }
+    save: infra1
+  - { commit: { repo: "${repo.fullName}", ref: main, message: "Docs", files: { docs/ops.md: "ops\n" } } }
+  - commit: { repo: "${repo.fullName}", ref: main, message: "Tune autoscaling", files: { infra/autoscale.tf: "max = 10\n", app/main.py: "run(fast=True)\n" } }
+    save: infra2
+  - { commit: { repo: "${repo.fullName}", ref: main, message: "Fix typo", files: { docs/ops.md: "Ops\n" } } }
+  - name: the worker administers this repo's policy
+    call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${worker.id}", role: REPO_ROLE_ADMIN }
+  - call: AuthService/MintToken
+    request:
+      principalId: "${worker.id}"
+      scope: { repos: ["${repo.fullName}"], actions: [read, manage_policy, manage_settings], session: "${run.session}" }
+    save: { policyToken: token }
+agent:
+  token: "${policyToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, the ruleset `infra-guard` protects main but is
+  disabled. Change it so that it forbids changes to anything under `infra/`, and switch it to
+  evaluate mode (record what it would do, never block). Then find out which lands on main in the
+  last seven days it would have blocked.
+
+  Write your answer to `answer.json` in the current directory as:
+  {"would_block": ["<id of each landed changeset it would have blocked>", ...]}
+assertions:
+  - name: the ruleset is in evaluate mode and restricts infra/
+    call: PolicyService/GetRuleset
+    request: { rulesetId: "${ruleset.id}" }
+    expect:
+      - { path: enforcement, eq: RULESET_ENFORCEMENT_EVALUATE }
+      - path: rules
+        some:
+          - { path: "restrictedPaths.pathGlobs", truthy: true }
+      - { path: "rules[*].restrictedPaths.pathGlobs[*]", matches: "^/?infra(/|$)" }
+  - name: ground truth - replaying it blocks exactly the two infra lands
+    call: PolicyService/SimulateRuleset
+    request: { rulesetId: "${ruleset.id}", repo: { fullName: "${repo.fullName}" }, sinceAt: "${time:-7d}", actions: [RULESET_EVALUATION_ACTION_LAND] }
+    expect:
+      - { path: wouldBlockCount, eq: 2 }
+  - name: the agent reported the two infra lands
+    answer:
+      file: answer.json
+      expect:
+        - { path: would_block, len: 2 }
+        - { path: would_block, some: [{ path: "$", prefix_of: "${id:infra1.result}" }] }
+        - { path: would_block, some: [{ path: "$", prefix_of: "${id:infra2.result}" }] }

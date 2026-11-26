@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetNotificationUnreadCountResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetNotificationUnreadCount.",
+  "properties": {
+    "byReason": {
+      "additionalProperties": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "description": "NotificationReason name -> count",
+      "type": "object"
+    },
+    "byRepo": {
+      "additionalProperties": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "description": "repo full name -> count",
+      "type": "object"
+    },
+    "total": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.GetNotificationUnreadCountResponse",
+  "type": "object"
+}

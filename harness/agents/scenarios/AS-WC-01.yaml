@@ -1,0 +1,52 @@
+id: AS-WC-01
+area: "4.6"
+title: Check out only services/api from a 10^6-file repo, change it, commit, land
+surfaces: cli
+timeout: 1800
+budget: { max_turns: 80 }
+requires: ["bin:bee", "fixture:mono1m"]
+notes: >
+  `--fixture mono1m=<org/repo>` names a pre-provisioned repository with at least 10^6 files whose
+  main has `services/api/server.py` defining `def health():`. Generating 10^6 files per run would
+  dominate the run time, so each run forks it into the run's org and works on the fork.
+fixtures: [base]
+setup:
+  - name: fork the million-file repo into this run's org
+    call: RepoService/ForkRepo
+    request: { repo: { fullName: "${run.fixtures.mono1m}" }, org: "${run.ns}", name: mono, defaultRefOnly: true }
+    save: { mono: "$" }
+  - call: AuthService/MintToken
+    request:
+      principalId: "${worker.id}"
+      scope: { repos: ["${mono.id}"], actions: [read, commit, land], session: "${run.session}" }
+    save: { monoToken: token }
+  - call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${mono.fullName}" }, name: main }
+    save: { before: ref }
+agent:
+  token: "${monoToken}"
+prompt: |
+  The bee repository ${mono.fullName} has over a million files. Check out only the
+  `services/api` directory into `./mono` under the current directory. In
+  `services/api/server.py`, add a function `def version():` that returns the string "1.4.0",
+  next to the existing `health` function. Commit the change and land it on main.
+assertions:
+  - name: main advanced by exactly one change from this session
+    call: QueryService/Log
+    request: { repo: { fullName: "${mono.fullName}" }, from: { expr: main }, page: { pageSize: 1 }, includeMeta: true }
+    expect:
+      - { path: "changesets[0].parents[0].raw", eq: "${before.target.raw}" }
+      - { path: "changesets[0].meta.provenance.session", eq: "${run.session}" }
+      - path: "changesets[0].delta"
+        every:
+          - { path: path, decode: base64, matches: "^services/api/" }
+  - name: the function landed
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${mono.fullName}" }, at: { expr: main }, path: "${b64:services/api/server.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "def version\\(\\):\\s*\\n\\s*return \"1\\.4\\.0\"" }
+      - { path: "messages[*].data", decode: base64, matches: "def health\\(" }
+  - name: the checkout is sparse (the API directory only, far below 10^6 files)
+    workdir: { glob: "mono/services/api/**", min: 1 }
+  - name: nothing outside services/api was materialised
+    workdir: { glob: "mono/*/**", max: 20000 }

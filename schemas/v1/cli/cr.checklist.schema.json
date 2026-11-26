@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/cr.checklist.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee cr checklist --json`: one such document with `schema` = bee.v1.cr.checklist. Show what a change request's brief and evidence still owe (BriefService/GetBriefChecklist). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BriefChecklist.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.cr.checklist"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee cr checklist",
+  "type": "object"
+}

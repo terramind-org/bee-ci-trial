@@ -1,0 +1,315 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/stack.squash.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee stack squash --json`: one such document with `schema` = bee.v1.stack.squash. Fold a change (default: the checked-out one) into the change below it. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "changeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "changeset": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conflicts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "content",
+                  "add_add",
+                  "modify_delete",
+                  "symlink",
+                  "binary",
+                  "redacted",
+                  "mode",
+                  "file_directory"
+                ]
+              },
+              "markers": {
+                "description": "The file holds diff3 conflict markers.",
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "resolved": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "kind",
+              "markers",
+              "resolved"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "dropped": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "head": {
+          "type": "string"
+        },
+        "hidden": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "land": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "attempts": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "eventSeq": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "landed": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "changeId": {
+                        "type": "string"
+                      },
+                      "result": {
+                        "type": "string"
+                      },
+                      "skipped": {
+                        "type": "boolean"
+                      },
+                      "source": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "changeId",
+                      "source",
+                      "result",
+                      "skipped"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "version": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "ref",
+                "target",
+                "version",
+                "attempts",
+                "eventSeq",
+                "landed"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "onto": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string"
+        },
+        "rebase": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "current": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "currentSubject": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "done": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "enum": [
+                    "sync",
+                    "restack"
+                  ]
+                },
+                "pending": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "current",
+                "currentSubject",
+                "done",
+                "pending"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "redacted": {
+          "description": "Newly redacted files replaced with the placeholder (SPEC 13).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "redactedDirty": {
+          "description": "Newly redacted files left alone because they hold local changes.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "removed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seq": {
+          "description": "Operation-log sequence number; 0 when nothing changed.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stack": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "changeId": {
+                "pattern": "^k_[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "changeset": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "head": {
+                "description": "The working copy is based on this change.",
+                "type": "boolean"
+              },
+              "index": {
+                "description": "Position from 1 at the bottom.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "parent": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "changeId",
+              "changeset",
+              "parent",
+              "subject",
+              "head"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "undid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "written": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "op",
+        "seq",
+        "summary",
+        "head",
+        "onto",
+        "stack",
+        "changeset",
+        "changeId",
+        "written",
+        "removed",
+        "conflicts",
+        "rebase",
+        "dropped",
+        "hidden",
+        "land",
+        "undid",
+        "redacted",
+        "redactedDirty"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.stack.squash"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee stack squash",
+  "type": "object"
+}

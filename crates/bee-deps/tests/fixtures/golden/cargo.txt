@@ -1,0 +1,10 @@
+manifest Cargo.lock cargo lock=true count=6
+manifest Cargo.toml cargo lock=false count=0
+manifest crates/app/Cargo.toml cargo lock=false count=5
+manifest crates/util/Cargo.toml cargo lock=false count=1
+Cargo.lock cargo aho-corasick@1.1.3 runtime indirect req=- pkg:cargo/aho-corasick@1.1.3 -> cargo/memchr@2.7.2
+Cargo.lock cargo memchr@2.7.2 runtime direct req=2 pkg:cargo/memchr@2.7.2
+Cargo.lock cargo regex@1.10.4 runtime direct req=1.10 pkg:cargo/regex@1.10.4 -> cargo/aho-corasick@1.1.3,cargo/memchr@2.7.2,cargo/regex-syntax@0.8.3
+Cargo.lock cargo regex-syntax@0.8.3 runtime indirect req=- pkg:cargo/regex-syntax@0.8.3
+Cargo.lock cargo serde@1.0.200 runtime direct req=1.0.200 pkg:cargo/serde@1.0.200
+Cargo.lock cargo tempfile@3.10.1 dev direct req=3.10.1 pkg:cargo/tempfile@3.10.1 -> cargo/memchr@2.7.2

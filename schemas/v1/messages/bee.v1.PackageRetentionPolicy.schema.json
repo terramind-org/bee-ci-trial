@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PackageRetentionPolicy.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Which versions retention deletes (they stay restorable inside the restore window).",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem"
+    },
+    "inherited": {
+      "description": "the package has none of its own; this is the owner default",
+      "type": "boolean"
+    },
+    "keepLast": {
+      "description": "keep at most this many live versions; 0 = unlimited",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "name": {
+      "description": "empty = the owner's default",
+      "type": "string"
+    },
+    "olderThanDays": {
+      "description": "delete versions older than this, tagged or not; 0 = never",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "untaggedDays": {
+      "description": "delete untagged versions older than this; 0 = never",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.PackageRetentionPolicy",
+  "type": "object"
+}

@@ -1,0 +1,6 @@
+feature_id,test
+F413-043,crates/bee-cli/tests/wc_aliases.rs::cr_brief_and_checklist_map_to_the_brief_service
+F413-043,crates/bee-cli/tests/wc_aliases.rs::cr_open_sends_the_brief_and_returns_the_checklist
+F413-044,crates/bee-cli/tests/wc_aliases.rs::cr_evidence_adds_lists_and_removes
+F413-044,crates/bee-cli/tests/wc_server.rs::show_your_work_brief_checklist_and_evidence_from_the_cli
+F413-046,crates/bee-mcp/tests/schemas.rs::brief_tools_are_in_the_core_and_changes_toolsets

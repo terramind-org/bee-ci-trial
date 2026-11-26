@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "bee.v1.ActionsPolicyAllowedActions": {
+      "description": "Which `uses:` actions and reusable workflows may run.",
+      "enum": [
+        "ACTIONS_POLICY_ALLOWED_ACTIONS_UNSPECIFIED",
+        "ACTIONS_POLICY_ALLOWED_ACTIONS_ALL",
+        "ACTIONS_POLICY_ALLOWED_ACTIONS_LOCAL_ONLY",
+        "ACTIONS_POLICY_ALLOWED_ACTIONS_SELECTED"
+      ],
+      "title": "bee.v1.ActionsPolicyAllowedActions",
+      "type": "string"
+    },
+    "bee.v1.ActionsPolicyEnabledRepos": {
+      "description": "Which repos of an org may run workflows.",
+      "enum": [
+        "ACTIONS_POLICY_ENABLED_REPOS_UNSPECIFIED",
+        "ACTIONS_POLICY_ENABLED_REPOS_ALL",
+        "ACTIONS_POLICY_ENABLED_REPOS_SELECTED",
+        "ACTIONS_POLICY_ENABLED_REPOS_NONE"
+      ],
+      "title": "bee.v1.ActionsPolicyEnabledRepos",
+      "type": "string"
+    },
+    "bee.v1.ActionsPolicyForkApproval": {
+      "description": "Which outside contributors need approval before their runs start.",
+      "enum": [
+        "ACTIONS_POLICY_FORK_APPROVAL_UNSPECIFIED",
+        "ACTIONS_POLICY_FORK_APPROVAL_FIRST_TIME_NEW_ACCOUNTS",
+        "ACTIONS_POLICY_FORK_APPROVAL_FIRST_TIME_CONTRIBUTORS",
+        "ACTIONS_POLICY_FORK_APPROVAL_ALL_EXTERNAL"
+      ],
+      "title": "bee.v1.ActionsPolicyForkApproval",
+      "type": "string"
+    },
+    "bee.v1.ActionsPolicyScope": {
+      "description": "Names the org or repo an actions policy applies to.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.ActionsPolicyScopeKind"
+        },
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.ActionsPolicyScope",
+      "type": "object"
+    },
+    "bee.v1.ActionsPolicyScopeKind": {
+      "description": "Whether a policy is read or written at org or repo level.",
+      "enum": [
+        "ACTIONS_POLICY_SCOPE_KIND_UNSPECIFIED",
+        "ACTIONS_POLICY_SCOPE_KIND_ORG",
+        "ACTIONS_POLICY_SCOPE_KIND_REPO"
+      ],
+      "title": "bee.v1.ActionsPolicyScopeKind",
+      "type": "string"
+    },
+    "bee.v1.ActionsPolicyTokenPermission": {
+      "description": "Default permission of the job token.",
+      "enum": [
+        "ACTIONS_POLICY_TOKEN_PERMISSION_UNSPECIFIED",
+        "ACTIONS_POLICY_TOKEN_PERMISSION_READ",
+        "ACTIONS_POLICY_TOKEN_PERMISSION_WRITE"
+      ],
+      "title": "bee.v1.ActionsPolicyTokenPermission",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ActionsPolicy.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Actions settings of an org or repo. On a repo, fields the org enforces are reported as the\neffective value and `org_enforced` lists their names.",
+  "properties": {
+    "agentRunsRequireApproval": {
+      "description": "runs for agent-authored CRs need a human approval",
+      "type": "boolean"
+    },
+    "allowedActions": {
+      "$ref": "#/$defs/bee.v1.ActionsPolicyAllowedActions"
+    },
+    "allowedPatterns": {
+      "description": "with SELECTED",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "artifactRetentionDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "cacheMaxSizeBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "cacheRetentionDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "defaultTokenPermission": {
+      "$ref": "#/$defs/bee.v1.ActionsPolicyTokenPermission"
+    },
+    "enabled": {
+      "description": "repo: workflows may run",
+      "type": "boolean"
+    },
+    "enabledRepos": {
+      "$ref": "#/$defs/bee.v1.ActionsPolicyEnabledRepos",
+      "description": "org only"
+    },
+    "forkApproval": {
+      "$ref": "#/$defs/bee.v1.ActionsPolicyForkApproval"
+    },
+    "forkRequireApprovalPrivate": {
+      "type": "boolean"
+    },
+    "forkRunsOnPrivate": {
+      "description": "run workflows from fork CRs on private repos",
+      "type": "boolean"
+    },
+    "forkSendSecrets": {
+      "type": "boolean"
+    },
+    "forkSendWriteTokens": {
+      "type": "boolean"
+    },
+    "logRetentionDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "orgEnforced": {
+      "description": "output only",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.ActionsPolicyScope"
+    },
+    "shaPinningRequired": {
+      "description": "`uses:` must pin a full commit id",
+      "type": "boolean"
+    },
+    "tokenCanApproveChangeRequests": {
+      "type": "boolean"
+    },
+    "verifiedCreatorsAllowed": {
+      "description": "with SELECTED: actions by verified creators",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.ActionsPolicy",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+# event release action=published
+run .github/workflows/publish.yml "Publish"
+  run-name: "Publish"
+  event: release ref=refs/tags/v3.1.0 sha=2222222222222222222222222222222222222222
+  permissions: default
+  job pypi decided=true
+    instance "pypi"
+      runs-on: ["ubuntu-latest"]
+      environment: "pypi" url="https://pypi.org/p/widget"
+      permissions: id-token=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          ref: "v3.1.0"
+      step 2 "Run python -m build"
+        run: "python -m build"
+        shell: default -> "bash -e {0}"
+      step 3 "Run pypa/gh-action-pypi-publish@release/v1" if="${{ !github.event.release.prerelease }}"
+        uses: pypa/gh-action-pypi-publish@release/v1

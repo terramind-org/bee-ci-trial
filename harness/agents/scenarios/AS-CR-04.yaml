@@ -1,0 +1,71 @@
+id: AS-CR-04
+area: "4.13"
+title: Attach a brief and before/after evidence to a UI change, then see the evidence go stale on a revision
+surfaces: both
+timeout: 2400
+budget: { max_turns: 120 }
+notes: >
+  The change touches a UI file, so its checklist owes visual evidence. The agent writes the brief
+  and the before/after evidence, then revises the change; the evidence was captured for the first
+  revision, so the server must report it stale (it stays listed). Landing is advisory-only for
+  briefs, so the scenario does not require a land. The agent makes its own small PNG files.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        web/settings.tsx: |
+          export function Settings() {
+            return <h1>Settings</h1>;
+          }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, change the heading in `web/settings.tsx` from
+  "Settings" to "Account settings" and open a change request for it targeting main. Then tell
+  the reviewers what changed and show it: give the change request a brief (the outcome, what it
+  does, and how to undo it) and attach before and after screenshots of the page. Draw the two
+  screenshots yourself as small PNG files. Afterwards revise the change so the heading also has a
+  `data-testid="settings-heading"` attribute, and update the change request with that revision.
+assertions:
+  - name: the worker's change request has two revisions
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, authorId: "${worker.id}" }
+    retry: { attempts: 12, interval_ms: 5000 }
+    expect:
+      - { path: changes, len: 1 }
+      - { path: "changes[0].revisions", len_gte: 2 }
+    save: { cr: "changes[0]" }
+  - name: the brief states an outcome, a highlight and a rollback
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, authorId: "${worker.id}" }
+    expect:
+      - { path: "changes[0].brief.outcome", exists: true }
+      - { path: "changes[0].brief.highlights", len_gte: 1 }
+      - { path: "changes[0].brief.rollback", exists: true }
+  - name: before and after evidence is attached and flagged stale after the revision
+    call: BriefService/ListEvidence
+    request: { repo: { fullName: "${repo.fullName}" }, changeIds: ["${cr.id}"] }
+    expect:
+      - path: evidence
+        some:
+          - { path: spec.kind, eq: EVIDENCE_KIND_BEFORE_AFTER }
+          - { path: state, eq: EVIDENCE_STATE_READY }
+          - { path: stale, eq: true }
+          - { path: assets, len: 2 }
+  - name: the checklist still owes visual evidence for the current revision
+    call: BriefService/GetBriefChecklist
+    request: { repo: { fullName: "${repo.fullName}" }, changeId: "${cr.id}" }
+    expect:
+      - path: items
+        some:
+          - { path: id, eq: "evidence:ui" }
+          - { path: satisfied, absent: true }
+  - name: the brief and the evidence were announced as events
+    call: EventService/ListEvents
+    request: { repo: { fullName: "${repo.fullName}" }, kinds: ["cr.*", "evidence.*"] }
+    expect:
+      - { path: events, some: [{ path: kind, eq: "cr.brief_set" }] }
+      - { path: events, some: [{ path: kind, eq: "evidence.added" }] }

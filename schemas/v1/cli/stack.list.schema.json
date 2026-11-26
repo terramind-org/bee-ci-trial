@@ -1,0 +1,79 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/stack.list.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee stack list --json`: one such document with `schema` = bee.v1.stack.list. List the local stack of unlanded changes, bottom first. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "head": {
+          "type": "string"
+        },
+        "onto": {
+          "type": "string"
+        },
+        "stack": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "changeId": {
+                "pattern": "^k_[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "changeset": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "head": {
+                "description": "The working copy is based on this change.",
+                "type": "boolean"
+              },
+              "index": {
+                "description": "Position from 1 at the bottom.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "parent": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "changeId",
+              "changeset",
+              "parent",
+              "subject",
+              "head"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "targetRef": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "head",
+        "onto",
+        "targetRef",
+        "stack"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.stack.list"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee stack list",
+  "type": "object"
+}

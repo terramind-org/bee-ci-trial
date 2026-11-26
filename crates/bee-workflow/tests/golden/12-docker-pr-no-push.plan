@@ -1,0 +1,19 @@
+# event pull_request action=opened
+run .github/workflows/image.yml "Image"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job image decided=true
+    instance "image"
+      runs-on: ["ubuntu-24.04"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run docker/build-push-action@v6"
+        uses: docker/build-push-action@v6
+        with:
+          push: "false"
+          tags: "widget:pr-42"
+          build-args: "VERSION=ffffffffffffffffffffffffffffffffffffffff\nREF=refs/pull/42/merge\n"
+# event pull_request_target action=opened

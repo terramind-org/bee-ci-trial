@@ -1,0 +1,156 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.SwarmAttempt": {
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "handBack": {
+          "$ref": "#/$defs/bee.v1.SwarmHandBack"
+        },
+        "outcome": {
+          "$ref": "#/$defs/bee.v1.SwarmAttemptOutcome"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SwarmAttempt",
+      "type": "object"
+    },
+    "bee.v1.SwarmAttemptOutcome": {
+      "enum": [
+        "SWARM_ATTEMPT_OUTCOME_UNSPECIFIED",
+        "SWARM_ATTEMPT_OUTCOME_FINISHED",
+        "SWARM_ATTEMPT_OUTCOME_EMPTY",
+        "SWARM_ATTEMPT_OUTCOME_REFUSED"
+      ],
+      "title": "bee.v1.SwarmAttemptOutcome",
+      "type": "string"
+    },
+    "bee.v1.SwarmHandBack": {
+      "properties": {
+        "concerns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "deviations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "done": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "followUps": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SwarmHandBack",
+      "type": "object"
+    },
+    "bee.v1.SwarmTaskState": {
+      "enum": [
+        "SWARM_TASK_STATE_UNSPECIFIED",
+        "SWARM_TASK_STATE_OPEN",
+        "SWARM_TASK_STATE_WORKING",
+        "SWARM_TASK_STATE_FINISHED",
+        "SWARM_TASK_STATE_EMPTY"
+      ],
+      "title": "bee.v1.SwarmTaskState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SwarmTask.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "attempts": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SwarmAttempt"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "paths": {
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "runId": {
+      "description": "only while working",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SwarmTaskState"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SwarmTask",
+  "type": "object"
+}

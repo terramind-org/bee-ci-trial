@@ -1,0 +1,27 @@
+event: push refs/heads/main files=crates/a/src/lib.rs,crates/b/src/lib.rs
+--- .github/workflows/dynamic.yml
+name: Dynamic matrix
+on: push
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      crates: ${{ steps.changed.outputs.crates }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: changed
+        run: echo "crates=$(./scripts/changed-crates.sh)" >> "$GITHUB_OUTPUT"
+  test:
+    needs: plan
+    if: needs.plan.outputs.crates != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: ${{ fromJSON(needs.plan.outputs.crates) }}
+    steps:
+      - run: cargo test -p ${{ matrix.crate }}
+  static:
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.plan.outputs.crates }}

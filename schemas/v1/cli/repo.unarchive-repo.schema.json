@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/repo.unarchive-repo.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RepoService/UnarchiveRepo: `data` is a bee.v1.Repo in proto3-JSON. `bee repo unarchive-repo --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Repo.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.repo.unarchive-repo"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee repo unarchive-repo",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "bee.v1.DependencyReviewRange": {
+      "description": "Two revisions to compare.",
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/bee.v1.Revision"
+        },
+        "head": {
+          "$ref": "#/$defs/bee.v1.Revision"
+        }
+      },
+      "title": "bee.v1.DependencyReviewRange",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetDependencyReviewRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetDependencyReview.\n\nOneof `target`: at most one of `changeRequest`, `range` is set.",
+  "properties": {
+    "changeRequest": {
+      "description": "CR number",
+      "type": "string"
+    },
+    "failOnSeverity": {
+      "$ref": "#/$defs/bee.v1.SecuritySeverity"
+    },
+    "range": {
+      "$ref": "#/$defs/bee.v1.DependencyReviewRange"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.GetDependencyReviewRequest",
+  "type": "object"
+}

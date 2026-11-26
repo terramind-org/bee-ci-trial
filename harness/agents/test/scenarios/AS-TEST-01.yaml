@@ -1,0 +1,52 @@
+# Self-test scenario: the shape of AS-CORE-01, restricted to the RPCs the fake server serves.
+id: AS-TEST-01
+area: "4.25"
+title: Self-test - land a one-file fix against the fake server
+surfaces: both
+timeout: 30
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add tax computation"
+      files:
+        src/billing/tax.py: "TAX_RATE = 0.7\n"
+        README.md: "# app\n"
+    save: seed
+agent:
+  token: "${workerToken}"
+  env:
+    FAKE_AGENT_MODE: good
+prompt: |
+  In the bee repository ${repo.fullName}, `src/billing/tax.py` applies a 70% tax: TAX_RATE is
+  0.7 but it should be 0.07. Fix the constant and land the fix on main.
+assertions:
+  - name: main moved past the seed
+    call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: main }
+    expect:
+      - { path: ref.version, gt: "${seed.ref.version}" }
+  - name: the tip is the worker's one-file change, in this run's session
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 1 }, includeMeta: true }
+    expect:
+      - { path: "changesets[0].delta", len: 1 }
+      - { path: "changesets[0].delta[0].path", decode: base64, eq: src/billing/tax.py }
+      - { path: "changesets[0].meta.provenance.session", eq: "${run.session}" }
+      - { path: "changesets[0].meta.creator", eq: "${worker.id}" }
+      - { path: "changesets[0].parents[0].raw", eq: "${seed.result.raw}" }
+  - name: the file has the right rate
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/billing/tax.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "TAX_RATE = 0\\.07\\n" }
+  - name: a missing path reads as NOT_FOUND
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:nope.txt}" }
+    expect_error: { reason: NOT_FOUND }
+  - name: the agent reported what it landed
+    answer:
+      file: answer.json
+      expect:
+        - { path: landed, eq: src/billing/tax.py }

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/discussion.mark-discussion-answer.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.DiscussionService/MarkDiscussionAnswer: `data` is a bee.v1.Discussion in proto3-JSON. `bee discussion mark-discussion-answer --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Discussion.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.discussion.mark-discussion-answer"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee discussion mark-discussion-answer",
+  "type": "object"
+}

@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "bee.v1.LandMethod": {
+      "description": "How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).",
+      "enum": [
+        "LAND_METHOD_UNSPECIFIED",
+        "LAND_METHOD_REBASE",
+        "LAND_METHOD_SQUASH",
+        "LAND_METHOD_MERGE_COMMIT"
+      ],
+      "title": "bee.v1.LandMethod",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EnqueueChangeRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "method": {
+      "$ref": "#/$defs/bee.v1.LandMethod"
+    },
+    "priority": {
+      "description": "needs the merge-queue jump permission above 0",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.EnqueueChangeRequest",
+  "type": "object"
+}

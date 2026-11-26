@@ -1,0 +1,25 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetPolicyEpochResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetPolicyEpoch.",
+  "properties": {
+    "changedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "epoch": {
+      "description": "decimal u64: BLAKE3 of normalized policy plus revocation counter",
+      "type": "string"
+    },
+    "revocationCounter": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.GetPolicyEpochResponse",
+  "type": "object"
+}

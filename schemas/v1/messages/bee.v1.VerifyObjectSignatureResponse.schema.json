@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.LocalCheck": {
+      "properties": {
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.LocalCheck",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.Provenance": {
+      "description": "Provenance claims recorded in Meta (SPEC §10.4).",
+      "properties": {
+        "checksRun": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.LocalCheck"
+          },
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost"
+        },
+        "model": {
+          "type": "string"
+        },
+        "principalChain": {
+          "description": "filled by the server",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "promptDigest": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Provenance",
+      "type": "object"
+    },
+    "bee.v1.SecuritySignatureReason": {
+      "description": "Outcome of a signature check, matching the badge reasons clients show.",
+      "enum": [
+        "SECURITY_SIGNATURE_REASON_UNSPECIFIED",
+        "SECURITY_SIGNATURE_REASON_VALID",
+        "SECURITY_SIGNATURE_REASON_UNSIGNED",
+        "SECURITY_SIGNATURE_REASON_UNKNOWN_KEY",
+        "SECURITY_SIGNATURE_REASON_BAD_SIGNATURE",
+        "SECURITY_SIGNATURE_REASON_EXPIRED_KEY",
+        "SECURITY_SIGNATURE_REASON_REVOKED_KEY",
+        "SECURITY_SIGNATURE_REASON_UNVERIFIED_EMAIL",
+        "SECURITY_SIGNATURE_REASON_SIGNER_MISMATCH",
+        "SECURITY_SIGNATURE_REASON_MALFORMED"
+      ],
+      "title": "bee.v1.SecuritySignatureReason",
+      "type": "string"
+    },
+    "bee.v1.SecuritySignatureScheme": {
+      "description": "Signature scheme.",
+      "enum": [
+        "SECURITY_SIGNATURE_SCHEME_UNSPECIFIED",
+        "SECURITY_SIGNATURE_SCHEME_GPG",
+        "SECURITY_SIGNATURE_SCHEME_SSH",
+        "SECURITY_SIGNATURE_SCHEME_SMIME"
+      ],
+      "title": "bee.v1.SecuritySignatureScheme",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.VerifyObjectSignatureResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for VerifyObjectSignature.",
+  "properties": {
+    "provenance": {
+      "$ref": "#/$defs/bee.v1.Provenance",
+      "description": "provenance claims from Meta, shown as claims"
+    },
+    "provenanceChainVerified": {
+      "description": "principal_chain was filled by the server",
+      "type": "boolean"
+    },
+    "reason": {
+      "$ref": "#/$defs/bee.v1.SecuritySignatureReason"
+    },
+    "scheme": {
+      "$ref": "#/$defs/bee.v1.SecuritySignatureScheme"
+    },
+    "signature": {
+      "description": "armored signature as stored",
+      "type": "string"
+    },
+    "signer": {
+      "$ref": "#/$defs/bee.v1.Principal",
+      "description": "principal owning the key, when known"
+    },
+    "signerKeyId": {
+      "description": "key id or fingerprint",
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.VerifyObjectSignatureResponse",
+  "type": "object"
+}

@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Workflow": {
+      "description": "A workflow file and what it declares.",
+      "properties": {
+        "badgeUrl": {
+          "type": "string"
+        },
+        "blob": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "blob id of the YAML at that ref"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "dispatchInputs": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.WorkflowDispatchInput"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "description": "e.g. \".github/workflows/ci.yml\"",
+          "type": "string"
+        },
+        "ref": {
+          "description": "ref the definition was read from",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "source": {
+          "description": "YAML text, when requested",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.WorkflowState"
+        },
+        "triggers": {
+          "description": "event names under `on:`",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Workflow",
+      "type": "object"
+    },
+    "bee.v1.WorkflowDispatchInput": {
+      "description": "A declared `workflow_dispatch` input.",
+      "properties": {
+        "defaultValue": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "options": {
+          "description": "for \"choice\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "type": {
+          "description": "\"string\", \"boolean\", \"number\", \"choice\" or \"environment\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkflowDispatchInput",
+      "type": "object"
+    },
+    "bee.v1.WorkflowState": {
+      "description": "Whether a workflow can be triggered.",
+      "enum": [
+        "WORKFLOW_STATE_UNSPECIFIED",
+        "WORKFLOW_STATE_ACTIVE",
+        "WORKFLOW_STATE_DISABLED_MANUALLY",
+        "WORKFLOW_STATE_DISABLED_INACTIVITY",
+        "WORKFLOW_STATE_DISABLED_FORK",
+        "WORKFLOW_STATE_DELETED"
+      ],
+      "title": "bee.v1.WorkflowState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkflowsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListWorkflows.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "workflows": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Workflow"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListWorkflowsResponse",
+  "type": "object"
+}

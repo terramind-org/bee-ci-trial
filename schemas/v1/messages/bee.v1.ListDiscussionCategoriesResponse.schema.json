@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "bee.v1.DiscussionCategory": {
+      "description": "A discussion category.",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "discussionCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "emoji": {
+          "description": "e.g. \":speech_balloon:\"",
+          "type": "string"
+        },
+        "formPath": {
+          "description": "discussion form file on the default ref, if any",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/bee.v1.DiscussionCategoryFormat"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "orgId": {
+          "description": "set for org categories",
+          "type": "string"
+        },
+        "position": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "repoId": {
+          "description": "set for repo categories",
+          "type": "string"
+        },
+        "section": {
+          "description": "optional grouping heading",
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.DiscussionCategory",
+      "type": "object"
+    },
+    "bee.v1.DiscussionCategoryFormat": {
+      "description": "The kind of conversation a category hosts.",
+      "enum": [
+        "DISCUSSION_CATEGORY_FORMAT_UNSPECIFIED",
+        "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED",
+        "DISCUSSION_CATEGORY_FORMAT_QUESTION_ANSWER",
+        "DISCUSSION_CATEGORY_FORMAT_ANNOUNCEMENT",
+        "DISCUSSION_CATEGORY_FORMAT_POLL"
+      ],
+      "title": "bee.v1.DiscussionCategoryFormat",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDiscussionCategoriesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListDiscussionCategories.",
+  "properties": {
+    "categories": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DiscussionCategory"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListDiscussionCategoriesResponse",
+  "type": "object"
+}

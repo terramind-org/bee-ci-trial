@@ -1,0 +1,22 @@
+event: push refs/heads/main
+--- .github/workflows/cache.yml
+name: Cache
+on: push
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Gradle
+        id: gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - if: steps.gradle-cache.outputs.cache-hit != 'true'
+        run: ./gradlew dependencies
+      - run: ./gradlew build -Pversion=${{ github.sha }}

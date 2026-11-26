@@ -1,0 +1,5 @@
+manifest go.mod go lock=false count=3
+manifest go.sum go lock=true count=3
+go.mod go github.com/gin-gonic/gin@v1.7.2 runtime direct req=v1.7.2 pkg:golang/github.com/gin-gonic/gin@v1.7.2
+go.mod go golang.org/x/text@v0.3.6 runtime indirect req=- pkg:golang/golang.org/x/text@v0.3.6
+go.mod go gopkg.in/yaml.v3@v3.0.0-20210107192922-496545a6307b runtime direct req=v3.0.0-20210107192922-496545a6307b pkg:golang/gopkg.in/yaml.v3@v3.0.0-20210107192922-496545a6307b

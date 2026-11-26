@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WebhookFormat": {
+      "description": "Payload format of webhook deliveries.",
+      "enum": [
+        "WEBHOOK_FORMAT_UNSPECIFIED",
+        "WEBHOOK_FORMAT_BEE",
+        "WEBHOOK_FORMAT_GITHUB"
+      ],
+      "title": "bee.v1.WebhookFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateWebhookRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "format": {
+      "$ref": "#/$defs/bee.v1.WebhookFormat"
+    },
+    "inactive": {
+      "description": "create disabled",
+      "type": "boolean"
+    },
+    "insecureSsl": {
+      "type": "boolean"
+    },
+    "kinds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "org": {
+      "description": "create an org-level webhook instead of a repo one",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "secret": {
+      "description": "HMAC key; write-only",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateWebhookRequest",
+  "type": "object"
+}

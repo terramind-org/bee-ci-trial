@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/app.create-marketplace-plan.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AppService/CreateMarketplacePlan: `data` is a bee.v1.MarketplacePlan in proto3-JSON. `bee app create-marketplace-plan --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.MarketplacePlan.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.app.create-marketplace-plan"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee app create-marketplace-plan",
+  "type": "object"
+}

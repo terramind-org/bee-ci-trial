@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/issue.create-issue-milestone.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.IssueService/CreateIssueMilestone: `data` is a bee.v1.Milestone in proto3-JSON. `bee issue create-issue-milestone --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Milestone.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.issue.create-issue-milestone"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee issue create-issue-milestone",
+  "type": "object"
+}

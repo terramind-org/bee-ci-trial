@@ -1,0 +1,5 @@
+{
+  "name": "yarn-app",
+  "dependencies": { "@babel/code-frame": "^7.10.4", "ms": "2.1.2" },
+  "devDependencies": { "debug": "^4.3.0" }
+}

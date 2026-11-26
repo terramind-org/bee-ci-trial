@@ -1,0 +1,246 @@
+{
+  "$defs": {
+    "bee.v1.AgentOutcomes": {
+      "description": "Outcomes of an agent's landed and closed work.",
+      "properties": {
+        "changeRequestsClosed": {
+          "description": "closed without landing",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestsLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestsOpened": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesReverted": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "reviewsSubmitted": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "runsFailed": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "runsSucceeded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentOutcomes",
+      "type": "object"
+    },
+    "bee.v1.AgentPrincipalSummary": {
+      "description": "An agent principal with summary stats.",
+      "properties": {
+        "lastActiveAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lastModel": {
+          "description": "Model of the agent's most recent changeset (gap G1).",
+          "type": "string"
+        },
+        "lastSession": {
+          "description": "Session of the agent's most recent changeset.",
+          "type": "string"
+        },
+        "openChangeRequests": {
+          "description": "Change requests the agent authored that are still open.",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/bee.v1.AgentStats"
+        }
+      },
+      "title": "bee.v1.AgentPrincipalSummary",
+      "type": "object"
+    },
+    "bee.v1.AgentStats": {
+      "description": "Aggregated stats for one agent over a window.",
+      "properties": {
+        "activeLeases": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "activeRuns": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost",
+          "description": "summed from provenance claims"
+        },
+        "outcomes": {
+          "$ref": "#/$defs/bee.v1.AgentOutcomes"
+        },
+        "workItems": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentStats",
+      "type": "object"
+    },
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAgentPrincipalsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAgentPrincipals.",
+  "properties": {
+    "agents": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentPrincipalSummary"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListAgentPrincipalsResponse",
+  "type": "object"
+}

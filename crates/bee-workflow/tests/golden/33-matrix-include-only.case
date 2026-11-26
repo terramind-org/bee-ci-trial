@@ -1,0 +1,16 @@
+event: push refs/heads/main
+--- .github/workflows/sites.yml
+name: Sites
+on: push
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - site: production
+            datacenter: site-a
+          - site: staging
+            datacenter: site-b
+    steps:
+      - run: curl -fsS https://${{ matrix.site }}.${{ matrix.datacenter }}.example/health

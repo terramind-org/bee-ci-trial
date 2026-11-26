@@ -1,0 +1,25 @@
+# event push action=-
+run .github/workflows/env.yml "Env precedence"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job show decided=true
+    instance "show"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        LEVEL: "job"
+        SHARED: "debug"
+        NUMBER: "3.1"
+        FLAG: "true"
+        JOB_ONLY: "${{ github.job }}"
+      step 1 "Run echo \"$LEVEL $SHARED $NUMBER $FLAG\""
+        run: "echo \"$LEVEL $SHARED $NUMBER $FLAG\""
+        shell: default -> "bash -e {0}"
+        env:
+          LEVEL: "step"
+          FROM_ENV: "${{ env.SHARED }}"
+      step 2 "Run echo \"${{ env.LEVEL }}\""
+        run: "echo \"${{ env.LEVEL }}\""
+        shell: default -> "bash -e {0}"

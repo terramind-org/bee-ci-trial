@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/agent.list-context-bundles.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AgentService/ListContextBundles: `data` is a bee.v1.ListContextBundlesResponse in proto3-JSON. `bee agent list-context-bundles --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListContextBundlesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.agent.list-context-bundles"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee agent list-context-bundles",
+  "type": "object"
+}

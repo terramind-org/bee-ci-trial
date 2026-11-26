@@ -1,0 +1,223 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RulesetEnforcement": {
+      "description": "Whether a ruleset is enforced.",
+      "enum": [
+        "RULESET_ENFORCEMENT_UNSPECIFIED",
+        "RULESET_ENFORCEMENT_ACTIVE",
+        "RULESET_ENFORCEMENT_EVALUATE",
+        "RULESET_ENFORCEMENT_DISABLED"
+      ],
+      "title": "bee.v1.RulesetEnforcement",
+      "type": "string"
+    },
+    "bee.v1.RulesetEvaluation": {
+      "description": "One evaluation of the rulesets covering an operation.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/bee.v1.RulesetEvaluationAction"
+        },
+        "actor": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "blocked": {
+          "description": "the operation was actually refused",
+          "type": "boolean"
+        },
+        "changeRequestNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/bee.v1.RulesetEnforcement",
+          "description": "enforcement of the evaluated rulesets"
+        },
+        "evaluatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "gitOid": {
+          "description": "set when the operation came through the git gateway",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID; empty for simulated evaluations",
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "result": {
+          "$ref": "#/$defs/bee.v1.RulesetEvaluationResult"
+        },
+        "ruleResults": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetRuleResult"
+          },
+          "type": "array"
+        },
+        "wouldBlock": {
+          "description": "an EVALUATE-mode ruleset would have refused it",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.RulesetEvaluation",
+      "type": "object"
+    },
+    "bee.v1.RulesetEvaluationAction": {
+      "description": "The operation a ruleset was evaluated against.",
+      "enum": [
+        "RULESET_EVALUATION_ACTION_UNSPECIFIED",
+        "RULESET_EVALUATION_ACTION_LAND",
+        "RULESET_EVALUATION_ACTION_PUSH",
+        "RULESET_EVALUATION_ACTION_REF_CREATE",
+        "RULESET_EVALUATION_ACTION_REF_DELETE",
+        "RULESET_EVALUATION_ACTION_WRITE"
+      ],
+      "title": "bee.v1.RulesetEvaluationAction",
+      "type": "string"
+    },
+    "bee.v1.RulesetEvaluationResult": {
+      "description": "Outcome of evaluating a rule or a whole ruleset.",
+      "enum": [
+        "RULESET_EVALUATION_RESULT_UNSPECIFIED",
+        "RULESET_EVALUATION_RESULT_PASS",
+        "RULESET_EVALUATION_RESULT_FAIL",
+        "RULESET_EVALUATION_RESULT_BYPASSED"
+      ],
+      "title": "bee.v1.RulesetEvaluationResult",
+      "type": "string"
+    },
+    "bee.v1.RulesetRuleResult": {
+      "description": "The result of one rule in an evaluation.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "missing": {
+          "description": "e.g. \"approval:human\", \"check:test\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "result": {
+          "$ref": "#/$defs/bee.v1.RulesetEvaluationResult"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "ruleType": {
+          "description": "the RulesetRule oneof field name, e.g. \"required_approvals\"",
+          "type": "string"
+        },
+        "rulesetId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RulesetRuleResult",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRulesetEvaluationsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListRulesetEvaluations.",
+  "properties": {
+    "evaluations": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RulesetEvaluation"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListRulesetEvaluationsResponse",
+  "type": "object"
+}

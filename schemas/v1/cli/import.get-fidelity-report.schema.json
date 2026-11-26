@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/import.get-fidelity-report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ImportService/GetFidelityReport: `data` is a bee.v1.FidelityReport in proto3-JSON. `bee import get-fidelity-report --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.FidelityReport.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.import.get-fidelity-report"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee import get-fidelity-report",
+  "type": "object"
+}

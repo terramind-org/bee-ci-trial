@@ -1,0 +1,268 @@
+{
+  "$defs": {
+    "bee.v1.CodeScanningAlertInstance": {
+      "description": "One occurrence of an alert on a ref.",
+      "properties": {
+        "analysisId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "classifications": {
+          "description": "e.g. \"test\", \"generated\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "location": {
+          "$ref": "#/$defs/bee.v1.CodeScanningLocation"
+        },
+        "message": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.CodeScanningAlertState"
+        }
+      },
+      "title": "bee.v1.CodeScanningAlertInstance",
+      "type": "object"
+    },
+    "bee.v1.CodeScanningAlertState": {
+      "description": "State of a code scanning alert.",
+      "enum": [
+        "CODE_SCANNING_ALERT_STATE_UNSPECIFIED",
+        "CODE_SCANNING_ALERT_STATE_OPEN",
+        "CODE_SCANNING_ALERT_STATE_DISMISSED",
+        "CODE_SCANNING_ALERT_STATE_FIXED"
+      ],
+      "title": "bee.v1.CodeScanningAlertState",
+      "type": "string"
+    },
+    "bee.v1.CodeScanningDismissReason": {
+      "description": "Why a code scanning alert was dismissed.",
+      "enum": [
+        "CODE_SCANNING_DISMISS_REASON_UNSPECIFIED",
+        "CODE_SCANNING_DISMISS_REASON_FALSE_POSITIVE",
+        "CODE_SCANNING_DISMISS_REASON_WONT_FIX",
+        "CODE_SCANNING_DISMISS_REASON_USED_IN_TESTS"
+      ],
+      "title": "bee.v1.CodeScanningDismissReason",
+      "type": "string"
+    },
+    "bee.v1.CodeScanningLocation": {
+      "description": "A source location.",
+      "properties": {
+        "endColumn": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "endLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "startColumn": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "startLine": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.CodeScanningLocation",
+      "type": "object"
+    },
+    "bee.v1.CodeScanningRule": {
+      "description": "The rule an alert violates.",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "help": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "securitySeverity": {
+          "$ref": "#/$defs/bee.v1.SecuritySeverity"
+        },
+        "severity": {
+          "description": "tool level: \"error\", \"warning\", \"note\"",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.CodeScanningRule",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CodeScanningAlert.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A code scanning alert.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "dismissedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "dismissedBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "dismissedComment": {
+      "type": "string"
+    },
+    "dismissedReason": {
+      "$ref": "#/$defs/bee.v1.CodeScanningDismissReason"
+    },
+    "fixChangeRequest": {
+      "description": "CR number of an autofix, if any",
+      "type": "string"
+    },
+    "fixedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "mostRecentInstance": {
+      "$ref": "#/$defs/bee.v1.CodeScanningAlertInstance"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "rule": {
+      "$ref": "#/$defs/bee.v1.CodeScanningRule"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.CodeScanningAlertState"
+    },
+    "toolName": {
+      "type": "string"
+    },
+    "toolVersion": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CodeScanningAlert",
+  "type": "object"
+}

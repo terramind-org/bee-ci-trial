@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RunPromptEvalRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RunPromptEval.",
+  "properties": {
+    "checkName": {
+      "type": "string"
+    },
+    "datasetPath": {
+      "contentEncoding": "base64",
+      "type": "string"
+    },
+    "models": {
+      "description": "empty = the prompt file's model",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "passThreshold": {
+      "description": "minimum mean score for the check to pass",
+      "type": "number"
+    },
+    "promptPath": {
+      "contentEncoding": "base64",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "reportCheck": {
+      "description": "report the result as a check run on the changeset",
+      "type": "boolean"
+    },
+    "revision": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    }
+  },
+  "title": "bee.v1.RunPromptEvalRequest",
+  "type": "object"
+}

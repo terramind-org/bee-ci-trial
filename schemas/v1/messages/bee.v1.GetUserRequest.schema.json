@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetUserRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetUser.\n\nOneof `user`: at most one of `login`, `id` is set.",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "login": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetUserRequest",
+  "type": "object"
+}

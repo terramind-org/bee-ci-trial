@@ -1,0 +1,169 @@
+# event push action=-
+run .github/workflows/ci.yml "CI"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job test decided=true
+    instance "Test ubuntu-latest / stable"
+      matrix: {"os":"ubuntu-latest","toolchain":"stable"}
+      strategy: index=0 total=6 fail-fast=false max-parallel=6
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "stable"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: default -> "bash -e {0}"
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: default -> "bash -e {0}"
+    instance "Test ubuntu-latest / beta"
+      matrix: {"os":"ubuntu-latest","toolchain":"beta"}
+      strategy: index=1 total=6 fail-fast=false max-parallel=6
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "beta"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: default -> "bash -e {0}"
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: default -> "bash -e {0}"
+    instance "Test macos-latest / stable"
+      matrix: {"os":"macos-latest","toolchain":"stable"}
+      strategy: index=2 total=6 fail-fast=false max-parallel=6
+      runs-on: ["macos-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "stable"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: default -> "bash -e {0}"
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: default -> "bash -e {0}"
+    instance "Test macos-latest / beta"
+      matrix: {"os":"macos-latest","toolchain":"beta"}
+      strategy: index=3 total=6 fail-fast=false max-parallel=6
+      runs-on: ["macos-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "beta"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: default -> "bash -e {0}"
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: default -> "bash -e {0}"
+    instance "Test windows-latest / stable"
+      matrix: {"os":"windows-latest","toolchain":"stable"}
+      strategy: index=4 total=6 fail-fast=false max-parallel=6
+      runs-on: ["windows-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "stable"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+    instance "Test ubuntu-latest / nightly"
+      matrix: {"os":"ubuntu-latest","toolchain":"nightly","experimental":true}
+      strategy: index=5 total=6 fail-fast=false max-parallel=6
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      continue-on-error: true
+      env:
+        CARGO_TERM_COLOR: "always"
+        RUSTFLAGS: "-D warnings"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run dtolnay/rust-toolchain@master"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "nightly"
+          components: "clippy, rustfmt"
+      step 3 "Run actions/cache@v4"
+        uses: actions/cache@v4
+        with:
+          path: "~/.cargo/registry\ntarget\n"
+          key: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+      step 4 "Run cargo test --workspace --all-features"
+        run: "cargo test --workspace --all-features"
+        shell: default -> "bash -e {0}"
+      step 5 "Run cargo test --doc" if="matrix.toolchain == 'stable'"
+        run: "cargo test --doc"
+        shell: default -> "bash -e {0}"

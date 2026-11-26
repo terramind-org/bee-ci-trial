@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/repo.list-deleted-repos.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RepoService/ListDeletedRepos: `data` is a bee.v1.ListDeletedReposResponse in proto3-JSON. `bee repo list-deleted-repos --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListDeletedReposResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.repo.list-deleted-repos"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee repo list-deleted-repos",
+  "type": "object"
+}

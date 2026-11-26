@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RebuildWorkspaceRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RebuildWorkspace.",
+  "properties": {
+    "full": {
+      "description": "ignore the build cache",
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RebuildWorkspaceRequest",
+  "type": "object"
+}

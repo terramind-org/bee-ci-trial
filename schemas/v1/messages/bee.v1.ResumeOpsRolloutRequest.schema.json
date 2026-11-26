@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ResumeOpsRolloutRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ResumeOpsRollout.",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ResumeOpsRolloutRequest",
+  "type": "object"
+}

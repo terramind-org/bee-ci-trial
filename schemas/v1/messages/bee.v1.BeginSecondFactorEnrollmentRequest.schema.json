@@ -1,0 +1,28 @@
+{
+  "$defs": {
+    "bee.v1.SecondFactorKind": {
+      "description": "Kind of second factor (PRODUCT §4.9).",
+      "enum": [
+        "SECOND_FACTOR_KIND_UNSPECIFIED",
+        "SECOND_FACTOR_KIND_TOTP",
+        "SECOND_FACTOR_KIND_PASSKEY",
+        "SECOND_FACTOR_KIND_SECURITY_KEY",
+        "SECOND_FACTOR_KIND_RECOVERY_CODES"
+      ],
+      "title": "bee.v1.SecondFactorKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginSecondFactorEnrollmentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.SecondFactorKind"
+    },
+    "nickname": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.BeginSecondFactorEnrollmentRequest",
+  "type": "object"
+}

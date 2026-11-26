@@ -1,0 +1,51 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Enterprise.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An enterprise account above a set of orgs.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "description": "ULID",
+      "type": "string"
+    },
+    "managedUsers": {
+      "description": "Enterprise managed users: every member principal is provisioned by the IdP (SCIM),\ncannot create public content and cannot join orgs outside the enterprise.",
+      "type": "boolean"
+    },
+    "managedUsersShortcode": {
+      "description": "suffix appended to managed usernames, e.g. \"_acme\"",
+      "type": "string"
+    },
+    "memberCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "orgCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "websiteUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Enterprise",
+  "type": "object"
+}

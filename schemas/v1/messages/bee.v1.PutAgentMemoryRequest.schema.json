@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "bee.v1.AgentMemoryScope": {
+      "description": "Owner scope of a memory.\n\nOneof `scope`: at most one of `repo`, `org`, `agentPrincipalId` is set.",
+      "properties": {
+        "agentPrincipalId": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.AgentMemoryScope",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PutAgentMemoryRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for PutAgentMemory.",
+  "properties": {
+    "contentType": {
+      "type": "string"
+    },
+    "expectedVersion": {
+      "description": "0 = any",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "key": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.AgentMemoryScope"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SubjectRef"
+      },
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "ttlSeconds": {
+      "description": "0 = no expiry",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "value": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.PutAgentMemoryRequest",
+  "type": "object"
+}

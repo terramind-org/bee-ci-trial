@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "bee.v1.UserEmail": {
+      "description": "An email on the caller's account.",
+      "properties": {
+        "addedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "noreply": {
+          "description": "the generated noreply address",
+          "type": "boolean"
+        },
+        "primary": {
+          "type": "boolean"
+        },
+        "public": {
+          "description": "shown on the profile",
+          "type": "boolean"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "verifiedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.UserEmail",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListUserEmailsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListUserEmails.",
+  "properties": {
+    "blockPrivatePushes": {
+      "type": "boolean"
+    },
+    "emails": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.UserEmail"
+      },
+      "type": "array"
+    },
+    "keepPrivate": {
+      "type": "boolean"
+    },
+    "noreplyAddress": {
+      "description": "e.g. \"<id>+<login>@users.noreply.beehive.example\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListUserEmailsResponse",
+  "type": "object"
+}

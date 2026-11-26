@@ -1,0 +1,27 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginPostMediaUploadResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for BeginPostMediaUpload.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "mediaId": {
+      "type": "string"
+    },
+    "uploadHeaders": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "headers the PUT must send",
+      "type": "object"
+    },
+    "uploadUrl": {
+      "description": "signed PUT URL",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.BeginPostMediaUploadResponse",
+  "type": "object"
+}

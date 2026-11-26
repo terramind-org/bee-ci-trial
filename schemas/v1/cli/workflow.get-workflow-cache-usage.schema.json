@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.get-workflow-cache-usage.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/GetWorkflowCacheUsage: `data` is a bee.v1.WorkflowCacheUsage in proto3-JSON. `bee workflow get-workflow-cache-usage --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowCacheUsage.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.get-workflow-cache-usage"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow get-workflow-cache-usage",
+  "type": "object"
+}

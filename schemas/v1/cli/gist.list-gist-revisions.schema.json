@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/gist.list-gist-revisions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.GistService/ListGistRevisions: `data` is a bee.v1.ListGistRevisionsResponse in proto3-JSON. `bee gist list-gist-revisions --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListGistRevisionsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.gist.list-gist-revisions"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee gist list-gist-revisions",
+  "type": "object"
+}

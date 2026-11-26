@@ -1,0 +1,17 @@
+event: pr landed base=main head=feature/x title="Add search"
+--- .github/workflows/post-merge.yml
+name: Post merge
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "PR #${{ github.event.number }} ${{ github.event.pull_request.title }} merged"'
+  if_closed:
+    if: github.event.pull_request.merged == false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo closed without merge

@@ -1,0 +1,1613 @@
+// Supply-chain and code security for bee.v1: dependency graph, SBOMs, advisories,
+// vulnerability alerts and updates, dependency review, code scanning, secret scanning and
+// push protection, repository advisories, overview, campaigns, code quality and signature
+// verification. See docs/PRODUCT.md §4.18 and SPEC.md §10.4.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Security features for repos and orgs. Every state change here writes an audit entry; push
+// protection bypasses in particular are always audited (action "push_protection.bypass").
+service SecurityService {
+  // ---- Dependency graph ----
+
+  // Lists resolved dependencies of a repo at a revision, optionally limited to one manifest.
+  // NOT_FOUND when the repo or revision is not visible.
+  rpc ListDependencies(ListDependenciesRequest) returns (ListDependenciesResponse);
+  // Lists the manifests and lockfiles the dependency graph detected at a revision.
+  rpc ListDependencyManifests(ListDependencyManifestsRequest) returns (ListDependencyManifestsResponse);
+  // Submits a snapshot of build-time dependencies detected by a tool (submission API).
+  // A later snapshot from the same detector and job correlator replaces the earlier one.
+  // INVALID_ARGUMENT for malformed package URLs; TOO_LARGE past the snapshot size limit.
+  rpc SubmitDependencySnapshot(SubmitDependencySnapshotRequest) returns (SubmitDependencySnapshotResponse);
+  // Lists repos that depend on a package published by this repo (dependents).
+  rpc ListDependents(ListDependentsRequest) returns (ListDependentsResponse);
+
+  // ---- SBOM ----
+
+  // Exports a software bill of materials for a revision as SPDX or CycloneDX JSON. Small
+  // documents return inline; large ones return a short-lived signed URL.
+  rpc ExportSbom(ExportSbomRequest) returns (ExportSbomResponse);
+
+  // ---- Global advisory database ----
+
+  // Lists advisories from the global advisory database, filtered by ecosystem, severity,
+  // package and publication time.
+  rpc ListAdvisories(ListAdvisoriesRequest) returns (ListAdvisoriesResponse);
+  // Fetches one global advisory by GHSA id or CVE id. NOT_FOUND when neither matches.
+  rpc GetAdvisory(GetAdvisoryRequest) returns (Advisory);
+
+  // ---- Vulnerability alerts ----
+
+  // Lists vulnerability alerts raised by matching the dependency graph against advisories.
+  rpc ListDependencyAlerts(ListDependencyAlertsRequest) returns (ListDependencyAlertsResponse);
+  // Fetches one vulnerability alert by its per-repo number.
+  rpc GetDependencyAlert(GetDependencyAlertRequest) returns (DependencyAlert);
+  // Dismisses or reopens a vulnerability alert. Dismissal requires a reason.
+  // INVALID_STATE when reopening a fixed alert; INVALID_ARGUMENT when the reason is missing.
+  rpc UpdateDependencyAlert(UpdateDependencyAlertRequest) returns (DependencyAlert);
+
+  // ---- Automated security and version updates ----
+
+  // Returns the repo's automated update configuration (the parsed update config file plus
+  // server-side switches).
+  rpc GetDependencyUpdateConfig(GetDependencyUpdateConfigRequest) returns (DependencyUpdateConfig);
+  // Replaces the server-side switches of the update configuration. The schedule and groups
+  // still come from the repo's config file; this sets enablement and the acting principal.
+  rpc SetDependencyUpdateConfig(SetDependencyUpdateConfigRequest) returns (DependencyUpdateConfig);
+  // Starts an update run now for one ecosystem and directory, or for every configured entry.
+  // RESOURCE_EXHAUSTED when a run for the same entry is already queued.
+  rpc TriggerDependencyUpdateRun(TriggerDependencyUpdateRunRequest) returns (DependencyUpdateRun);
+  // Lists update runs, newest first.
+  rpc ListDependencyUpdateRuns(ListDependencyUpdateRunsRequest) returns (ListDependencyUpdateRunsResponse);
+  // Fetches one update run with the change requests it opened.
+  rpc GetDependencyUpdateRun(GetDependencyUpdateRunRequest) returns (DependencyUpdateRun);
+
+  // ---- Dependency review ----
+
+  // Diffs the dependency graphs of two revisions, or of a change request's base and head,
+  // reporting added, removed and changed packages with their vulnerabilities and licenses.
+  rpc GetDependencyReview(GetDependencyReviewRequest) returns (DependencyReview);
+
+  // ---- Code scanning ----
+
+  // Uploads a SARIF log for a changeset and ref. The log is gzip-compressed bytes (up to
+  // 10 MiB inline) or a signed URL the server fetches. Processing is asynchronous; poll
+  // GetSarifUpload. TOO_LARGE past the inline limit; INVALID_ARGUMENT for bad SARIF.
+  rpc UploadSarif(UploadSarifRequest) returns (CodeScanningSarifUpload);
+  // Returns the processing status of a SARIF upload.
+  rpc GetSarifUpload(GetSarifUploadRequest) returns (CodeScanningSarifUpload);
+  // Lists code scanning alerts, filtered by ref, tool, state and severity.
+  rpc ListCodeScanningAlerts(ListCodeScanningAlertsRequest) returns (ListCodeScanningAlertsResponse);
+  // Fetches one code scanning alert by its per-repo number.
+  rpc GetCodeScanningAlert(GetCodeScanningAlertRequest) returns (CodeScanningAlert);
+  // Dismisses or reopens a code scanning alert. INVALID_STATE for a fixed alert.
+  rpc UpdateCodeScanningAlert(UpdateCodeScanningAlertRequest) returns (CodeScanningAlert);
+  // Lists the instances of an alert: one per ref and location where it was found.
+  rpc ListCodeScanningAlertInstances(ListCodeScanningAlertInstancesRequest) returns (ListCodeScanningAlertInstancesResponse);
+  // Lists analyses (one per processed SARIF run) for a repo.
+  rpc ListCodeScanningAnalyses(ListCodeScanningAnalysesRequest) returns (ListCodeScanningAnalysesResponse);
+  // Fetches one analysis.
+  rpc GetCodeScanningAnalysis(GetCodeScanningAnalysisRequest) returns (CodeScanningAnalysis);
+  // Returns the default setup configuration (server-managed scanning).
+  rpc GetCodeScanningDefaultSetup(GetCodeScanningDefaultSetupRequest) returns (CodeScanningDefaultSetup);
+  // Updates the default setup configuration.
+  rpc UpdateCodeScanningDefaultSetup(UpdateCodeScanningDefaultSetupRequest) returns (CodeScanningDefaultSetup);
+  // Asks an agent to open a change request fixing a code scanning alert (autofix). Returns
+  // the agent run id; the run links the change request when it opens.
+  rpc RequestCodeScanningAutofix(RequestCodeScanningAutofixRequest) returns (RequestCodeScanningAutofixResponse);
+
+  // ---- Secret scanning ----
+
+  // Lists secret scanning alerts, filtered by state, secret type, resolution and validity.
+  rpc ListSecretScanningAlerts(ListSecretScanningAlertsRequest) returns (ListSecretScanningAlertsResponse);
+  // Fetches one secret scanning alert by its per-repo number. The secret value is never
+  // returned; only a redacted preview.
+  rpc GetSecretScanningAlert(GetSecretScanningAlertRequest) returns (SecretScanningAlert);
+  // Resolves or reopens a secret scanning alert. Resolution requires a resolution reason.
+  rpc UpdateSecretScanningAlert(UpdateSecretScanningAlertRequest) returns (SecretScanningAlert);
+  // Lists where a secret appears: blob paths, changesets, comments and issue bodies.
+  rpc ListSecretScanningLocations(ListSecretScanningLocationsRequest) returns (ListSecretScanningLocationsResponse);
+  // Creates a custom secret pattern at repo or org scope. INVALID_ARGUMENT for a regex
+  // that does not compile; ALREADY_EXISTS for a duplicate name.
+  rpc CreateSecretScanningPattern(CreateSecretScanningPatternRequest) returns (SecretScanningPattern);
+  // Lists custom secret patterns visible at a scope.
+  rpc ListSecretScanningPatterns(ListSecretScanningPatternsRequest) returns (ListSecretScanningPatternsResponse);
+  // Updates a custom secret pattern. Editing a pattern closes alerts it no longer matches.
+  rpc UpdateSecretScanningPattern(UpdateSecretScanningPatternRequest) returns (SecretScanningPattern);
+  // Deletes a custom secret pattern and resolves its open alerts as PATTERN_DELETED.
+  rpc DeleteSecretScanningPattern(DeleteSecretScanningPatternRequest) returns (DeleteSecretScanningPatternResponse);
+  // Turns partner validity checks on or off for a repo or org.
+  rpc SetSecretScanningValidityChecks(SetSecretScanningValidityChecksRequest) returns (SetSecretScanningValidityChecksResponse);
+
+  // ---- Push protection ----
+
+  // Requests a bypass for a write that push protection blocked (reason SECRET_DETECTED).
+  // Depending on policy the bypass is granted at once or waits for review. Always audited.
+  // PERMISSION_DENIED when the block did not allow a bypass.
+  rpc RequestPushProtectionBypass(RequestPushProtectionBypassRequest) returns (PushProtectionBypass);
+  // Lists bypass requests for review.
+  rpc ListPushProtectionBypasses(ListPushProtectionBypassesRequest) returns (ListPushProtectionBypassesResponse);
+  // Fetches one bypass request.
+  rpc GetPushProtectionBypass(GetPushProtectionBypassRequest) returns (PushProtectionBypass);
+  // Approves or denies a pending bypass request. INVALID_STATE when it is already decided
+  // or expired; PERMISSION_DENIED when the caller is not a bypass reviewer.
+  rpc ReviewPushProtectionBypass(ReviewPushProtectionBypassRequest) returns (PushProtectionBypass);
+
+  // ---- Repository security advisories ----
+
+  // Creates a draft advisory for a repo.
+  rpc CreateSecurityAdvisory(CreateSecurityAdvisoryRequest) returns (SecurityRepoAdvisory);
+  // Lists a repo's advisories (drafts are visible only to maintainers and collaborators).
+  rpc ListSecurityAdvisories(ListSecurityAdvisoriesRequest) returns (ListSecurityAdvisoriesResponse);
+  // Fetches one repo advisory by GHSA id.
+  rpc GetSecurityAdvisory(GetSecurityAdvisoryRequest) returns (SecurityRepoAdvisory);
+  // Updates a draft or published advisory. INVALID_STATE for a withdrawn advisory.
+  rpc UpdateSecurityAdvisory(UpdateSecurityAdvisoryRequest) returns (SecurityRepoAdvisory);
+  // Publishes a draft advisory to the global database. INVALID_STATE unless it is a draft.
+  rpc PublishSecurityAdvisory(PublishSecurityAdvisoryRequest) returns (SecurityRepoAdvisory);
+  // Requests a CVE id for a draft advisory.
+  rpc RequestAdvisoryCve(RequestAdvisoryCveRequest) returns (SecurityRepoAdvisory);
+  // Adds a principal or team as a collaborator on a draft advisory.
+  rpc AddSecurityAdvisoryCollaborator(AddSecurityAdvisoryCollaboratorRequest) returns (SecurityRepoAdvisory);
+  // Removes a collaborator from a draft advisory.
+  rpc RemoveSecurityAdvisoryCollaborator(RemoveSecurityAdvisoryCollaboratorRequest) returns (SecurityRepoAdvisory);
+  // Returns whether private vulnerability reporting is enabled for a repo.
+  rpc GetPrivateVulnerabilityReporting(GetPrivateVulnerabilityReportingRequest) returns (GetPrivateVulnerabilityReportingResponse);
+  // Enables or disables private vulnerability reporting for a repo.
+  rpc SetPrivateVulnerabilityReporting(SetPrivateVulnerabilityReportingRequest) returns (SetPrivateVulnerabilityReportingResponse);
+  // Submits a private vulnerability report; it becomes a draft advisory visible to the
+  // reporter and maintainers. INVALID_STATE when reporting is off.
+  rpc SubmitVulnerabilityReport(SubmitVulnerabilityReportRequest) returns (SecurityRepoAdvisory);
+
+  // ---- Overview and campaigns ----
+
+  // Returns org-wide alert counts aggregated by repo, severity and tool, plus coverage.
+  rpc GetSecurityOverview(GetSecurityOverviewRequest) returns (SecurityOverview);
+  // Creates a campaign from an alert filter and assigns it to agents or teams.
+  rpc CreateSecurityCampaign(CreateSecurityCampaignRequest) returns (SecurityCampaign);
+  // Fetches one campaign with its progress.
+  rpc GetSecurityCampaign(GetSecurityCampaignRequest) returns (SecurityCampaign);
+  // Lists an org's campaigns.
+  rpc ListSecurityCampaigns(ListSecurityCampaignsRequest) returns (ListSecurityCampaignsResponse);
+  // Updates a campaign's name, description, due date, assignees or state.
+  rpc UpdateSecurityCampaign(UpdateSecurityCampaignRequest) returns (SecurityCampaign);
+
+  // ---- Code quality ----
+
+  // Lists code quality findings for a repo at a ref.
+  rpc ListCodeQualityFindings(ListCodeQualityFindingsRequest) returns (ListCodeQualityFindingsResponse);
+  // Dismisses or reopens a code quality finding.
+  rpc UpdateCodeQualityFinding(UpdateCodeQualityFindingRequest) returns (SecurityCodeQualityFinding);
+
+  // ---- Signatures and provenance ----
+
+  // Verifies the signature on a changeset or tag (GPG, SSH or S/MIME) and returns the result
+  // with a provenance summary shown alongside.
+  rpc VerifyObjectSignature(VerifyObjectSignatureRequest) returns (VerifyObjectSignatureResponse);
+
+  // ---- Security configuration ----
+
+  // Returns which security features are enabled for a repo.
+  rpc GetSecurityConfiguration(GetSecurityConfigurationRequest) returns (SecurityConfiguration);
+  // Enables or disables security features for a repo. Unset fields are unchanged.
+  rpc UpdateSecurityConfiguration(UpdateSecurityConfigurationRequest) returns (SecurityConfiguration);
+
+  // ---- Secret rescans and the security policy ----
+
+  // Rescans a ref's history for secrets with the repo's current patterns (newest changesets
+  // first, at most `limit`, default 1000) and opens alerts. Needs repo admin. INVALID_STATE
+  // when secret scanning is off.
+  rpc RescanSecrets(RescanSecretsRequest) returns (RescanSecretsResponse);
+  // The repo's security policy: SECURITY.md, .github/SECURITY.md or docs/SECURITY.md at the
+  // default ref, first found. Needs `read`. NOT_FOUND when the repo has none.
+  rpc GetSecurityPolicy(GetSecurityPolicyRequest) returns (SecurityPolicy);
+}
+
+// ---------- Shared enums ----------
+
+// Severity used by advisories, alerts and findings.
+enum SecuritySeverity {
+  SECURITY_SEVERITY_UNSPECIFIED = 0;
+  SECURITY_SEVERITY_LOW = 1;
+  SECURITY_SEVERITY_MEDIUM = 2;
+  SECURITY_SEVERITY_HIGH = 3;
+  SECURITY_SEVERITY_CRITICAL = 4;
+}
+
+// How a dependency is used.
+enum DependencyScope {
+  DEPENDENCY_SCOPE_UNSPECIFIED = 0;
+  DEPENDENCY_SCOPE_RUNTIME = 1;
+  DEPENDENCY_SCOPE_DEVELOPMENT = 2;
+}
+
+// Whether a dependency is declared directly or pulled in transitively.
+enum DependencyRelationship {
+  DEPENDENCY_RELATIONSHIP_UNSPECIFIED = 0;
+  DEPENDENCY_RELATIONSHIP_DIRECT = 1;
+  DEPENDENCY_RELATIONSHIP_INDIRECT = 2;
+}
+
+// ---------- Dependency graph ----------
+
+// One resolved package in the dependency graph.
+message Dependency {
+  string package_url = 1;     // purl, e.g. "pkg:cargo/serde@1.0.200"
+  string ecosystem = 2;       // "npm", "cargo", "pip", "maven", "go", ...
+  string name = 3;
+  string version = 4;
+  string manifest_path = 5;   // manifest or lockfile that declared it
+  DependencyScope scope = 6;
+  DependencyRelationship relationship = 7;
+  repeated string licenses = 8; // SPDX expressions
+  repeated string dependency_urls = 9; // purls this package depends on
+  bool submitted = 10;        // came from the submission API rather than manifest parsing
+}
+
+// A detected manifest or lockfile.
+message DependencyManifest {
+  string path = 1;
+  string ecosystem = 2;
+  bool is_lockfile = 3;
+  uint32 dependency_count = 4;
+  string detector = 5;        // "static" or the submitting tool name
+}
+
+// Request for ListDependencies.
+message ListDependenciesRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;      // unset = default branch tip
+  string manifest_path = 3;   // empty = all manifests
+  string ecosystem = 4;
+  DependencyScope scope = 5;  // UNSPECIFIED = all
+  PageRequest page = 6;
+}
+
+// Response for ListDependencies.
+message ListDependenciesResponse {
+  repeated Dependency dependencies = 1;
+  ObjectId changeset = 2;     // the resolved revision
+  PageResponse page = 3;
+}
+
+// Request for ListDependencyManifests.
+message ListDependencyManifestsRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDependencyManifests.
+message ListDependencyManifestsResponse {
+  repeated DependencyManifest manifests = 1;
+  PageResponse page = 2;
+}
+
+// Packages one submitted manifest resolved to.
+message DependencySubmittedManifest {
+  string path = 1;            // logical name or file path
+  string ecosystem = 2;
+  repeated Dependency dependencies = 3;
+}
+
+// Request for SubmitDependencySnapshot.
+message SubmitDependencySnapshotRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string ref = 3;
+  string detector_name = 4;
+  string detector_version = 5;
+  string job_correlator = 6;  // stable key identifying the submitting job
+  string job_id = 7;
+  repeated DependencySubmittedManifest manifests = 8;
+  google.protobuf.Timestamp scanned_at = 9;
+}
+
+// Response for SubmitDependencySnapshot.
+message SubmitDependencySnapshotResponse {
+  string snapshot_id = 1;
+  uint32 dependency_count = 2;
+}
+
+// A repo that depends on a package.
+message DependencyDependent {
+  RepoRef repo = 1;
+  string package_url = 2;
+  string version = 3;
+}
+
+// Request for ListDependents.
+message ListDependentsRequest {
+  RepoRef repo = 1;
+  string package_url = 2;     // empty = every package this repo publishes
+  PageRequest page = 3;
+}
+
+// Response for ListDependents.
+message ListDependentsResponse {
+  repeated DependencyDependent dependents = 1;
+  uint64 total = 2;
+  PageResponse page = 3;
+}
+
+// ---------- SBOM ----------
+
+// SBOM document format.
+enum SbomFormat {
+  SBOM_FORMAT_UNSPECIFIED = 0;
+  SBOM_FORMAT_SPDX_JSON = 1;
+  SBOM_FORMAT_CYCLONEDX_JSON = 2;
+}
+
+// Request for ExportSbom.
+message ExportSbomRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  SbomFormat format = 3;
+  bool prefer_signed_url = 4;
+}
+
+// Response for ExportSbom.
+message ExportSbomResponse {
+  SbomFormat format = 1;
+  oneof body {
+    string document = 2;      // JSON document
+    string signed_url = 3;
+  }
+  google.protobuf.Timestamp url_expires_at = 4;
+  ObjectId changeset = 5;
+}
+
+// ---------- Advisories ----------
+
+// A range of affected versions for one package.
+message AdvisoryAffectedPackage {
+  string ecosystem = 1;
+  string name = 2;
+  string vulnerable_range = 3;  // e.g. ">= 1.0, < 1.4.2"
+  string first_patched_version = 4;
+  repeated string vulnerable_functions = 5;
+}
+
+// Advisory type in the global database.
+enum AdvisoryType {
+  ADVISORY_TYPE_UNSPECIFIED = 0;
+  ADVISORY_TYPE_REVIEWED = 1;
+  ADVISORY_TYPE_UNREVIEWED = 2;
+  ADVISORY_TYPE_MALWARE = 3;
+}
+
+// An entry in the global advisory database.
+message Advisory {
+  string ghsa_id = 1;
+  string cve_id = 2;
+  AdvisoryType type = 3;
+  string summary = 4;
+  string description = 5;     // Markdown
+  SecuritySeverity severity = 6;
+  string cvss_vector = 7;
+  double cvss_score = 8;
+  repeated string cwe_ids = 9;
+  repeated AdvisoryAffectedPackage affected = 10;
+  repeated string references = 11; // URLs
+  google.protobuf.Timestamp published_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp withdrawn_at = 14;
+  RepoRef source_repo = 15;   // set when published from a repo advisory
+}
+
+// Request for ListAdvisories.
+message ListAdvisoriesRequest {
+  string ecosystem = 1;
+  SecuritySeverity severity = 2; // UNSPECIFIED = all
+  string package_name = 3;
+  AdvisoryType type = 4;
+  string cwe_id = 5;
+  google.protobuf.Timestamp published_after = 6;
+  google.protobuf.Timestamp updated_after = 7;
+  PageRequest page = 8;
+}
+
+// Response for ListAdvisories.
+message ListAdvisoriesResponse {
+  repeated Advisory advisories = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetAdvisory.
+message GetAdvisoryRequest {
+  oneof key {
+    string ghsa_id = 1;
+    string cve_id = 2;
+  }
+}
+
+// ---------- Vulnerability alerts ----------
+
+// State of a vulnerability alert.
+enum DependencyAlertState {
+  DEPENDENCY_ALERT_STATE_UNSPECIFIED = 0;
+  DEPENDENCY_ALERT_STATE_OPEN = 1;
+  DEPENDENCY_ALERT_STATE_DISMISSED = 2;
+  DEPENDENCY_ALERT_STATE_FIXED = 3;
+  DEPENDENCY_ALERT_STATE_AUTO_DISMISSED = 4;
+}
+
+// Why a vulnerability alert was dismissed.
+enum DependencyAlertDismissReason {
+  DEPENDENCY_ALERT_DISMISS_REASON_UNSPECIFIED = 0;
+  DEPENDENCY_ALERT_DISMISS_REASON_FIX_STARTED = 1;
+  DEPENDENCY_ALERT_DISMISS_REASON_INACCURATE = 2;
+  DEPENDENCY_ALERT_DISMISS_REASON_NO_BANDWIDTH = 3;
+  DEPENDENCY_ALERT_DISMISS_REASON_NOT_USED = 4;
+  DEPENDENCY_ALERT_DISMISS_REASON_TOLERABLE_RISK = 5;
+}
+
+// A vulnerable dependency found in a repo.
+message DependencyAlert {
+  uint64 number = 1;          // per repo
+  RepoRef repo = 2;
+  DependencyAlertState state = 3;
+  Dependency dependency = 4;
+  Advisory advisory = 5;
+  SecuritySeverity severity = 6;
+  DependencyAlertDismissReason dismissed_reason = 7;
+  string dismissed_comment = 8;
+  Principal dismissed_by = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp dismissed_at = 12;
+  google.protobuf.Timestamp fixed_at = 13;
+  string update_change_request = 14; // number of the CR that updates the dependency, if any
+  string url = 15;
+}
+
+// Request for ListDependencyAlerts.
+message ListDependencyAlertsRequest {
+  RepoRef repo = 1;
+  repeated DependencyAlertState states = 2; // empty = open
+  repeated SecuritySeverity severities = 3;
+  string ecosystem = 4;
+  string package_name = 5;
+  string manifest_path = 6;
+  DependencyScope scope = 7;
+  PageRequest page = 8;
+}
+
+// Response for ListDependencyAlerts.
+message ListDependencyAlertsResponse {
+  repeated DependencyAlert alerts = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetDependencyAlert.
+message GetDependencyAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for UpdateDependencyAlert.
+message UpdateDependencyAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  DependencyAlertState state = 3; // OPEN or DISMISSED
+  DependencyAlertDismissReason dismissed_reason = 4;
+  string dismissed_comment = 5;
+}
+
+// ---------- Automated updates ----------
+
+// One configured update entry, mirroring an entry of the repo's update config file.
+message DependencyUpdateEntry {
+  string ecosystem = 1;
+  string directory = 2;
+  string schedule = 3;        // "daily", "weekly", "monthly" or a cron expression
+  uint32 open_change_request_limit = 4;
+  repeated string groups = 5; // group names for grouped updates
+  string target_ref = 6;
+}
+
+// Automated security and version update configuration for a repo.
+message DependencyUpdateConfig {
+  RepoRef repo = 1;
+  bool security_updates_enabled = 2;
+  bool version_updates_enabled = 3;
+  bool grouped_security_updates = 4;
+  string config_path = 5;     // path of the config file read from the default branch
+  repeated DependencyUpdateEntry entries = 6;
+  string actor_principal_id = 7; // bot agent principal that opens update CRs
+  repeated string config_errors = 8; // parse errors in the config file
+}
+
+// Request for GetDependencyUpdateConfig.
+message GetDependencyUpdateConfigRequest {
+  RepoRef repo = 1;
+}
+
+// Request for SetDependencyUpdateConfig.
+message SetDependencyUpdateConfigRequest {
+  RepoRef repo = 1;
+  optional bool security_updates_enabled = 2;
+  optional bool version_updates_enabled = 3;
+  optional bool grouped_security_updates = 4;
+  optional string actor_principal_id = 5;
+}
+
+// State of an update run.
+enum DependencyUpdateRunState {
+  DEPENDENCY_UPDATE_RUN_STATE_UNSPECIFIED = 0;
+  DEPENDENCY_UPDATE_RUN_STATE_QUEUED = 1;
+  DEPENDENCY_UPDATE_RUN_STATE_RUNNING = 2;
+  DEPENDENCY_UPDATE_RUN_STATE_SUCCEEDED = 3;
+  DEPENDENCY_UPDATE_RUN_STATE_FAILED = 4;
+}
+
+// One execution of the update bot.
+message DependencyUpdateRun {
+  string id = 1;
+  RepoRef repo = 2;
+  string ecosystem = 3;
+  string directory = 4;
+  bool security_only = 5;
+  DependencyUpdateRunState state = 6;
+  repeated string change_requests = 7; // CR numbers opened or updated
+  string error = 8;
+  string agent_run_id = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp finished_at = 11;
+}
+
+// Request for TriggerDependencyUpdateRun.
+message TriggerDependencyUpdateRunRequest {
+  RepoRef repo = 1;
+  string ecosystem = 2;       // empty = all entries
+  string directory = 3;
+  bool security_only = 4;
+}
+
+// Request for ListDependencyUpdateRuns.
+message ListDependencyUpdateRunsRequest {
+  RepoRef repo = 1;
+  DependencyUpdateRunState state = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDependencyUpdateRuns.
+message ListDependencyUpdateRunsResponse {
+  repeated DependencyUpdateRun runs = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetDependencyUpdateRun.
+message GetDependencyUpdateRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// ---------- Dependency review ----------
+
+// How a dependency differs between two revisions.
+enum DependencyChangeType {
+  DEPENDENCY_CHANGE_TYPE_UNSPECIFIED = 0;
+  DEPENDENCY_CHANGE_TYPE_ADDED = 1;
+  DEPENDENCY_CHANGE_TYPE_REMOVED = 2;
+  DEPENDENCY_CHANGE_TYPE_CHANGED = 3;
+}
+
+// One changed dependency in a review.
+message DependencyChange {
+  DependencyChangeType change_type = 1;
+  string manifest_path = 2;
+  string ecosystem = 3;
+  string name = 4;
+  string base_version = 5;
+  string head_version = 6;
+  string package_url = 7;
+  repeated string licenses = 8;
+  DependencyScope scope = 9;
+  repeated Advisory vulnerabilities = 10;
+  bool license_denied = 11;   // license is on the org's deny list
+}
+
+// Result of a dependency review.
+message DependencyReview {
+  ObjectId base = 1;
+  ObjectId head = 2;
+  repeated DependencyChange changes = 3;
+  uint32 vulnerable_additions = 4;
+  SecuritySeverity highest_severity = 5;
+  bool passes = 6;            // meets the repo's dependency review policy
+  string check_run_id = 7;    // the check run reporting this review, if any
+}
+
+// Request for GetDependencyReview.
+message GetDependencyReviewRequest {
+  RepoRef repo = 1;
+  oneof target {
+    string change_request = 2; // CR number
+    DependencyReviewRange range = 3;
+  }
+  SecuritySeverity fail_on_severity = 4;
+}
+
+// Two revisions to compare.
+message DependencyReviewRange {
+  Revision base = 1;
+  Revision head = 2;
+}
+
+// ---------- Code scanning ----------
+
+// Processing status of a SARIF upload.
+enum CodeScanningSarifStatus {
+  CODE_SCANNING_SARIF_STATUS_UNSPECIFIED = 0;
+  CODE_SCANNING_SARIF_STATUS_PENDING = 1;
+  CODE_SCANNING_SARIF_STATUS_COMPLETE = 2;
+  CODE_SCANNING_SARIF_STATUS_FAILED = 3;
+}
+
+// A SARIF upload and its processing status.
+message CodeScanningSarifUpload {
+  string id = 1;
+  RepoRef repo = 2;
+  ObjectId changeset = 3;
+  string ref = 4;
+  string tool_name = 5;
+  string category = 6;
+  CodeScanningSarifStatus status = 7;
+  repeated string errors = 8;
+  repeated string analysis_ids = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp processed_at = 11;
+}
+
+// Request for UploadSarif.
+message UploadSarifRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string ref = 3;
+  oneof sarif {
+    bytes sarif_gzip = 4;     // gzip-compressed SARIF, up to 10 MiB
+    string sarif_url = 5;     // signed URL the server fetches
+  }
+  string tool_name = 6;
+  string category = 7;        // distinguishes several analyses of one tool
+  string checkout_uri = 8;
+  google.protobuf.Timestamp started_at = 9;
+}
+
+// Request for GetSarifUpload.
+message GetSarifUploadRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// State of a code scanning alert.
+enum CodeScanningAlertState {
+  CODE_SCANNING_ALERT_STATE_UNSPECIFIED = 0;
+  CODE_SCANNING_ALERT_STATE_OPEN = 1;
+  CODE_SCANNING_ALERT_STATE_DISMISSED = 2;
+  CODE_SCANNING_ALERT_STATE_FIXED = 3;
+}
+
+// Why a code scanning alert was dismissed.
+enum CodeScanningDismissReason {
+  CODE_SCANNING_DISMISS_REASON_UNSPECIFIED = 0;
+  CODE_SCANNING_DISMISS_REASON_FALSE_POSITIVE = 1;
+  CODE_SCANNING_DISMISS_REASON_WONT_FIX = 2;
+  CODE_SCANNING_DISMISS_REASON_USED_IN_TESTS = 3;
+}
+
+// A source location.
+message CodeScanningLocation {
+  bytes path = 1;
+  uint32 start_line = 2;
+  uint32 end_line = 3;
+  uint32 start_column = 4;
+  uint32 end_column = 5;
+}
+
+// The rule an alert violates.
+message CodeScanningRule {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  SecuritySeverity security_severity = 4;
+  string severity = 5;        // tool level: "error", "warning", "note"
+  repeated string tags = 6;
+  string help = 7;            // Markdown
+}
+
+// One occurrence of an alert on a ref.
+message CodeScanningAlertInstance {
+  string ref = 1;
+  string analysis_id = 2;
+  string category = 3;
+  CodeScanningAlertState state = 4;
+  ObjectId changeset = 5;
+  CodeScanningLocation location = 6;
+  string message = 7;
+  repeated string classifications = 8; // e.g. "test", "generated"
+}
+
+// A code scanning alert.
+message CodeScanningAlert {
+  uint64 number = 1;
+  RepoRef repo = 2;
+  CodeScanningAlertState state = 3;
+  CodeScanningRule rule = 4;
+  string tool_name = 5;
+  string tool_version = 6;
+  CodeScanningAlertInstance most_recent_instance = 7;
+  CodeScanningDismissReason dismissed_reason = 8;
+  string dismissed_comment = 9;
+  Principal dismissed_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp dismissed_at = 13;
+  google.protobuf.Timestamp fixed_at = 14;
+  string fix_change_request = 15; // CR number of an autofix, if any
+  string url = 16;
+}
+
+// Request for ListCodeScanningAlerts.
+message ListCodeScanningAlertsRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  string tool_name = 3;
+  repeated CodeScanningAlertState states = 4;
+  repeated SecuritySeverity severities = 5;
+  bytes path_prefix = 6;
+  PageRequest page = 7;
+}
+
+// Response for ListCodeScanningAlerts.
+message ListCodeScanningAlertsResponse {
+  repeated CodeScanningAlert alerts = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetCodeScanningAlert.
+message GetCodeScanningAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for UpdateCodeScanningAlert.
+message UpdateCodeScanningAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  CodeScanningAlertState state = 3; // OPEN or DISMISSED
+  CodeScanningDismissReason dismissed_reason = 4;
+  string dismissed_comment = 5;
+}
+
+// Request for ListCodeScanningAlertInstances.
+message ListCodeScanningAlertInstancesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string ref = 3;             // empty = all refs
+  PageRequest page = 4;
+}
+
+// Response for ListCodeScanningAlertInstances.
+message ListCodeScanningAlertInstancesResponse {
+  repeated CodeScanningAlertInstance instances = 1;
+  PageResponse page = 2;
+}
+
+// One processed analysis.
+message CodeScanningAnalysis {
+  string id = 1;
+  RepoRef repo = 2;
+  string ref = 3;
+  ObjectId changeset = 4;
+  string tool_name = 5;
+  string tool_version = 6;
+  string category = 7;
+  uint32 results_count = 8;
+  uint32 rules_count = 9;
+  string sarif_upload_id = 10;
+  string error = 11;
+  repeated string warnings = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// Request for ListCodeScanningAnalyses.
+message ListCodeScanningAnalysesRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  string tool_name = 3;
+  ObjectId changeset = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListCodeScanningAnalyses.
+message ListCodeScanningAnalysesResponse {
+  repeated CodeScanningAnalysis analyses = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetCodeScanningAnalysis.
+message GetCodeScanningAnalysisRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Default setup state.
+enum CodeScanningSetupState {
+  CODE_SCANNING_SETUP_STATE_UNSPECIFIED = 0;
+  CODE_SCANNING_SETUP_STATE_NOT_CONFIGURED = 1;
+  CODE_SCANNING_SETUP_STATE_CONFIGURED = 2;
+}
+
+// Server-managed scanning configuration.
+message CodeScanningDefaultSetup {
+  RepoRef repo = 1;
+  CodeScanningSetupState state = 2;
+  repeated string languages = 3;
+  string query_suite = 4;     // "default" or "extended"
+  string schedule = 5;        // e.g. "weekly"
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// Request for GetCodeScanningDefaultSetup.
+message GetCodeScanningDefaultSetupRequest {
+  RepoRef repo = 1;
+}
+
+// Request for UpdateCodeScanningDefaultSetup.
+message UpdateCodeScanningDefaultSetupRequest {
+  RepoRef repo = 1;
+  optional CodeScanningSetupState state = 2;
+  repeated string languages = 3; // empty = unchanged
+  optional string query_suite = 4;
+  optional string schedule = 5;
+}
+
+// Request for RequestCodeScanningAutofix.
+message RequestCodeScanningAutofixRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string agent_runtime_id = 3; // empty = the repo's default autofix agent
+}
+
+// Response for RequestCodeScanningAutofix.
+message RequestCodeScanningAutofixResponse {
+  string agent_run_id = 1;
+}
+
+// ---------- Secret scanning ----------
+
+// State of a secret scanning alert.
+enum SecretScanningAlertState {
+  SECRET_SCANNING_ALERT_STATE_UNSPECIFIED = 0;
+  SECRET_SCANNING_ALERT_STATE_OPEN = 1;
+  SECRET_SCANNING_ALERT_STATE_RESOLVED = 2;
+}
+
+// Why a secret scanning alert was resolved.
+enum SecretScanningResolution {
+  SECRET_SCANNING_RESOLUTION_UNSPECIFIED = 0;
+  SECRET_SCANNING_RESOLUTION_FALSE_POSITIVE = 1;
+  SECRET_SCANNING_RESOLUTION_WONT_FIX = 2;
+  SECRET_SCANNING_RESOLUTION_REVOKED = 3;
+  SECRET_SCANNING_RESOLUTION_USED_IN_TESTS = 4;
+  SECRET_SCANNING_RESOLUTION_PATTERN_DELETED = 5;
+  SECRET_SCANNING_RESOLUTION_PATTERN_EDITED = 6;
+}
+
+// Result of a partner validity check.
+enum SecretScanningValidity {
+  SECRET_SCANNING_VALIDITY_UNSPECIFIED = 0;
+  SECRET_SCANNING_VALIDITY_ACTIVE = 1;
+  SECRET_SCANNING_VALIDITY_INACTIVE = 2;
+  SECRET_SCANNING_VALIDITY_UNKNOWN = 3;
+}
+
+// A secret found in repo content.
+message SecretScanningAlert {
+  uint64 number = 1;
+  RepoRef repo = 2;
+  SecretScanningAlertState state = 3;
+  string secret_type = 4;     // e.g. "aws_access_key_id"
+  string secret_type_display_name = 5;
+  string secret_preview = 6;  // redacted, e.g. "AKIA****WXYZ"; never the value
+  string pattern_id = 7;      // custom pattern id, when a custom pattern matched
+  SecretScanningValidity validity = 8;
+  SecretScanningResolution resolution = 9;
+  string resolution_comment = 10;
+  Principal resolved_by = 11;
+  bool push_protection_bypassed = 12;
+  string push_protection_bypass_id = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  google.protobuf.Timestamp resolved_at = 16;
+  bool publicly_leaked = 17;
+  string url = 18;
+  // Severity of the leaked secret (gap G11).
+  SecuritySeverity severity = 19;
+}
+
+// Request for ListSecretScanningAlerts.
+message ListSecretScanningAlertsRequest {
+  RepoRef repo = 1;
+  SecretScanningAlertState state = 2; // UNSPECIFIED = all
+  repeated string secret_types = 3;
+  repeated SecretScanningResolution resolutions = 4;
+  SecretScanningValidity validity = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListSecretScanningAlerts.
+message ListSecretScanningAlertsResponse {
+  repeated SecretScanningAlert alerts = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetSecretScanningAlert.
+message GetSecretScanningAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for UpdateSecretScanningAlert.
+message UpdateSecretScanningAlertRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  SecretScanningAlertState state = 3;
+  SecretScanningResolution resolution = 4;
+  string resolution_comment = 5;
+}
+
+// Where a secret was found.
+message SecretScanningLocation {
+  oneof location {
+    SecretFinding blob = 1;   // path, blob and line in repo content
+    SubjectRef subject = 2;   // issue, CR, discussion body or comment
+  }
+  ObjectId changeset = 3;     // first changeset that introduced it, for blob locations
+}
+
+// Request for ListSecretScanningLocations.
+message ListSecretScanningLocationsRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListSecretScanningLocations.
+message ListSecretScanningLocationsResponse {
+  repeated SecretScanningLocation locations = 1;
+  PageResponse page = 2;
+}
+
+// A custom secret pattern.
+message SecretScanningPattern {
+  string id = 1;
+  string org = 2;             // set for org-scope patterns
+  RepoRef repo = 3;           // set for repo-scope patterns
+  string name = 4;
+  string regex = 5;
+  string before_regex = 6;
+  string after_regex = 7;
+  repeated string must_match = 8;
+  repeated string must_not_match = 9;
+  bool push_protection = 10;  // block writes that match
+  bool published = 11;        // false = dry-run only
+  Principal created_by = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Request for CreateSecretScanningPattern.
+message CreateSecretScanningPatternRequest {
+  oneof scope {
+    string org = 1;
+    RepoRef repo = 2;
+  }
+  string name = 3;
+  string regex = 4;
+  string before_regex = 5;
+  string after_regex = 6;
+  repeated string must_match = 7;
+  repeated string must_not_match = 8;
+  bool push_protection = 9;
+  bool published = 10;
+}
+
+// Request for ListSecretScanningPatterns.
+message ListSecretScanningPatternsRequest {
+  oneof scope {
+    string org = 1;
+    RepoRef repo = 2;
+  }
+  PageRequest page = 3;
+}
+
+// Response for ListSecretScanningPatterns.
+message ListSecretScanningPatternsResponse {
+  repeated SecretScanningPattern patterns = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateSecretScanningPattern.
+message UpdateSecretScanningPatternRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string regex = 3;
+  optional string before_regex = 4;
+  optional string after_regex = 5;
+  optional bool push_protection = 6;
+  optional bool published = 7;
+}
+
+// Request for DeleteSecretScanningPattern.
+message DeleteSecretScanningPatternRequest {
+  string id = 1;
+}
+
+// Response for DeleteSecretScanningPattern.
+message DeleteSecretScanningPatternResponse {}
+
+// Request for SetSecretScanningValidityChecks.
+message SetSecretScanningValidityChecksRequest {
+  oneof scope {
+    string org = 1;
+    RepoRef repo = 2;
+  }
+  bool enabled = 3;
+}
+
+// Response for SetSecretScanningValidityChecks.
+message SetSecretScanningValidityChecksResponse {
+  bool enabled = 1;
+}
+
+// ---------- Push protection ----------
+
+// Why the requester says the blocked secret is safe to write.
+enum PushProtectionBypassReason {
+  PUSH_PROTECTION_BYPASS_REASON_UNSPECIFIED = 0;
+  PUSH_PROTECTION_BYPASS_REASON_USED_IN_TESTS = 1;
+  PUSH_PROTECTION_BYPASS_REASON_FALSE_POSITIVE = 2;
+  PUSH_PROTECTION_BYPASS_REASON_WILL_FIX_LATER = 3;
+}
+
+// State of a bypass request.
+enum PushProtectionBypassState {
+  PUSH_PROTECTION_BYPASS_STATE_UNSPECIFIED = 0;
+  PUSH_PROTECTION_BYPASS_STATE_PENDING = 1;
+  PUSH_PROTECTION_BYPASS_STATE_APPROVED = 2;
+  PUSH_PROTECTION_BYPASS_STATE_DENIED = 3;
+  PUSH_PROTECTION_BYPASS_STATE_EXPIRED = 4;
+  PUSH_PROTECTION_BYPASS_STATE_GRANTED = 5;  // allowed without review by policy
+}
+
+// A request to write content that push protection blocked.
+message PushProtectionBypass {
+  string id = 1;
+  RepoRef repo = 2;
+  string block_id = 3;        // from the SECRET_DETECTED error's bypass request URL
+  repeated SecretFinding findings = 4;
+  PushProtectionBypassReason reason = 5;
+  string comment = 6;
+  PushProtectionBypassState state = 7;
+  Principal requester = 8;
+  Principal reviewer = 9;
+  string review_comment = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp reviewed_at = 12;
+  google.protobuf.Timestamp expires_at = 13; // an approved bypass must be used before this
+  string audit_entry_id = 14;
+}
+
+// Request for RequestPushProtectionBypass.
+message RequestPushProtectionBypassRequest {
+  RepoRef repo = 1;
+  string block_id = 2;
+  repeated SecretFinding findings = 3; // must match the block
+  PushProtectionBypassReason reason = 4;
+  string comment = 5;
+}
+
+// Request for ListPushProtectionBypasses.
+message ListPushProtectionBypassesRequest {
+  RepoRef repo = 1;
+  PushProtectionBypassState state = 2; // UNSPECIFIED = all
+  string requester_id = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListPushProtectionBypasses.
+message ListPushProtectionBypassesResponse {
+  repeated PushProtectionBypass bypasses = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetPushProtectionBypass.
+message GetPushProtectionBypassRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for ReviewPushProtectionBypass.
+message ReviewPushProtectionBypassRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  bool approve = 3;           // false = deny
+  string comment = 4;
+}
+
+// ---------- Repository security advisories ----------
+
+// Lifecycle of a repo advisory.
+enum SecurityAdvisoryState {
+  SECURITY_ADVISORY_STATE_UNSPECIFIED = 0;
+  SECURITY_ADVISORY_STATE_TRIAGE = 1;    // submitted through private vulnerability reporting
+  SECURITY_ADVISORY_STATE_DRAFT = 2;
+  SECURITY_ADVISORY_STATE_PUBLISHED = 3;
+  SECURITY_ADVISORY_STATE_CLOSED = 4;
+  SECURITY_ADVISORY_STATE_WITHDRAWN = 5;
+}
+
+// A principal or team credited on, or collaborating on, an advisory.
+message SecurityAdvisoryCredit {
+  string principal_id = 1;
+  string team_id = 2;
+  string role = 3;            // "finder", "reporter", "remediation_developer", "collaborator"
+}
+
+// A security advisory owned by a repo.
+message SecurityRepoAdvisory {
+  string ghsa_id = 1;
+  RepoRef repo = 2;
+  SecurityAdvisoryState state = 3;
+  string summary = 4;
+  string description = 5;
+  SecuritySeverity severity = 6;
+  string cvss_vector = 7;
+  repeated string cwe_ids = 8;
+  string cve_id = 9;
+  bool cve_requested = 10;
+  repeated AdvisoryAffectedPackage affected = 11;
+  repeated SecurityAdvisoryCredit credits = 12;
+  repeated SecurityAdvisoryCredit collaborators = 13;
+  Principal author = 14;
+  Principal reporter = 15;    // set for private vulnerability reports
+  RepoRef private_fork = 16;  // temporary private fork for the fix, if any
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+  google.protobuf.Timestamp published_at = 19;
+  string url = 20;
+}
+
+// Request for CreateSecurityAdvisory.
+message CreateSecurityAdvisoryRequest {
+  RepoRef repo = 1;
+  string summary = 2;
+  string description = 3;
+  SecuritySeverity severity = 4;
+  string cvss_vector = 5;
+  repeated string cwe_ids = 6;
+  repeated AdvisoryAffectedPackage affected = 7;
+  repeated SecurityAdvisoryCredit credits = 8;
+  bool start_private_fork = 9;
+}
+
+// Request for ListSecurityAdvisories.
+message ListSecurityAdvisoriesRequest {
+  RepoRef repo = 1;
+  SecurityAdvisoryState state = 2; // UNSPECIFIED = all visible
+  PageRequest page = 3;
+}
+
+// Response for ListSecurityAdvisories.
+message ListSecurityAdvisoriesResponse {
+  repeated SecurityRepoAdvisory advisories = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetSecurityAdvisory.
+message GetSecurityAdvisoryRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+}
+
+// Request for UpdateSecurityAdvisory.
+message UpdateSecurityAdvisoryRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+  optional string summary = 3;
+  optional string description = 4;
+  optional SecuritySeverity severity = 5;
+  optional string cvss_vector = 6;
+  repeated string cwe_ids = 7;   // empty = unchanged
+  repeated AdvisoryAffectedPackage affected = 8; // empty = unchanged
+  optional SecurityAdvisoryState state = 9; // DRAFT, CLOSED or WITHDRAWN
+}
+
+// Request for PublishSecurityAdvisory.
+message PublishSecurityAdvisoryRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+}
+
+// Request for RequestAdvisoryCve.
+message RequestAdvisoryCveRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+}
+
+// Request for AddSecurityAdvisoryCollaborator.
+message AddSecurityAdvisoryCollaboratorRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+  SecurityAdvisoryCredit collaborator = 3;
+}
+
+// Request for RemoveSecurityAdvisoryCollaborator.
+message RemoveSecurityAdvisoryCollaboratorRequest {
+  RepoRef repo = 1;
+  string ghsa_id = 2;
+  string principal_id = 3;
+  string team_id = 4;
+}
+
+// Request for GetPrivateVulnerabilityReporting.
+message GetPrivateVulnerabilityReportingRequest {
+  RepoRef repo = 1;
+}
+
+// Response for GetPrivateVulnerabilityReporting.
+message GetPrivateVulnerabilityReportingResponse {
+  bool enabled = 1;
+}
+
+// Request for SetPrivateVulnerabilityReporting.
+message SetPrivateVulnerabilityReportingRequest {
+  RepoRef repo = 1;
+  bool enabled = 2;
+}
+
+// Response for SetPrivateVulnerabilityReporting.
+message SetPrivateVulnerabilityReportingResponse {
+  bool enabled = 1;
+}
+
+// Request for SubmitVulnerabilityReport.
+message SubmitVulnerabilityReportRequest {
+  RepoRef repo = 1;
+  string summary = 2;
+  string description = 3;
+  SecuritySeverity severity = 4;
+  string cvss_vector = 5;
+  repeated string cwe_ids = 6;
+  repeated AdvisoryAffectedPackage affected = 7;
+  bool start_private_fork = 8;
+}
+
+// ---------- Overview ----------
+
+// Kind of alert counted by the overview and targeted by campaigns.
+enum SecurityAlertKind {
+  SECURITY_ALERT_KIND_UNSPECIFIED = 0;
+  SECURITY_ALERT_KIND_DEPENDENCY = 1;
+  SECURITY_ALERT_KIND_CODE_SCANNING = 2;
+  SECURITY_ALERT_KIND_SECRET_SCANNING = 3;
+  SECURITY_ALERT_KIND_CODE_QUALITY = 4;
+}
+
+// Open alert counts for one bucket.
+message SecurityAlertCounts {
+  uint64 critical = 1;
+  uint64 high = 2;
+  uint64 medium = 3;
+  uint64 low = 4;
+  uint64 total_open = 5;
+  uint64 fixed_in_window = 6;
+  uint64 dismissed_in_window = 7;
+}
+
+// Counts for one repo.
+message SecurityOverviewRepo {
+  RepoRef repo = 1;
+  SecurityAlertCounts counts = 2;
+  repeated SecurityAlertKind enabled_features = 3;
+}
+
+// Counts for one tool.
+message SecurityOverviewTool {
+  SecurityAlertKind kind = 1;
+  string tool_name = 2;
+  SecurityAlertCounts counts = 3;
+}
+
+// Org-wide security posture.
+message SecurityOverview {
+  string org = 1;
+  SecurityAlertCounts totals = 2;
+  repeated SecurityOverviewRepo repos = 3;
+  repeated SecurityOverviewTool tools = 4;
+  uint32 repos_total = 5;
+  uint32 repos_with_dependency_alerts_enabled = 6;
+  uint32 repos_with_code_scanning_enabled = 7;
+  uint32 repos_with_secret_scanning_enabled = 8;
+  uint32 repos_with_push_protection_enabled = 9;
+  uint64 mean_time_to_remediate_seconds = 10;
+  PageResponse page = 11;     // pages over repos
+}
+
+// Request for GetSecurityOverview.
+message GetSecurityOverviewRequest {
+  string org = 1;
+  repeated SecurityAlertKind kinds = 2; // empty = all
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+  string repo_query = 5;      // filters repos, e.g. "topic:payments"
+  PageRequest page = 6;
+}
+
+// ---------- Campaigns ----------
+
+// Which alerts a campaign targets.
+message SecurityAlertFilter {
+  SecurityAlertKind kind = 1;
+  repeated string repo_ids = 2;  // empty = all org repos
+  repeated SecuritySeverity severities = 3;
+  string tool_name = 4;
+  string rule_id = 5;
+  string query = 6;           // free text with qualifiers, e.g. "rule:js/xss"
+}
+
+// State of a campaign.
+enum SecurityCampaignState {
+  SECURITY_CAMPAIGN_STATE_UNSPECIFIED = 0;
+  SECURITY_CAMPAIGN_STATE_ACTIVE = 1;
+  SECURITY_CAMPAIGN_STATE_COMPLETED = 2;
+  SECURITY_CAMPAIGN_STATE_CANCELLED = 3;
+}
+
+// Remediation progress of a campaign.
+message SecurityCampaignProgress {
+  uint64 total_alerts = 1;
+  uint64 open_alerts = 2;
+  uint64 fixed_alerts = 3;
+  uint64 dismissed_alerts = 4;
+  uint64 open_change_requests = 5;
+  uint64 agent_runs = 6;
+}
+
+// A bulk remediation effort over a filtered set of alerts.
+message SecurityCampaign {
+  string id = 1;
+  string org = 2;
+  string name = 3;
+  string description = 4;
+  SecurityAlertFilter filter = 5;
+  repeated string assignee_principal_ids = 6; // agents or humans
+  repeated string assignee_team_ids = 7;
+  SecurityCampaignState state = 8;
+  SecurityCampaignProgress progress = 9;
+  google.protobuf.Timestamp due_at = 10;
+  Principal created_by = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// Request for CreateSecurityCampaign.
+message CreateSecurityCampaignRequest {
+  string org = 1;
+  string name = 2;
+  string description = 3;
+  SecurityAlertFilter filter = 4;
+  repeated string assignee_principal_ids = 5;
+  repeated string assignee_team_ids = 6;
+  google.protobuf.Timestamp due_at = 7;
+  bool start_agent_runs = 8;  // start an agent run per alert for agent assignees
+}
+
+// Request for GetSecurityCampaign.
+message GetSecurityCampaignRequest {
+  string org = 1;
+  string id = 2;
+}
+
+// Request for ListSecurityCampaigns.
+message ListSecurityCampaignsRequest {
+  string org = 1;
+  SecurityCampaignState state = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListSecurityCampaigns.
+message ListSecurityCampaignsResponse {
+  repeated SecurityCampaign campaigns = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateSecurityCampaign.
+message UpdateSecurityCampaignRequest {
+  string org = 1;
+  string id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional SecurityCampaignState state = 5;
+  google.protobuf.Timestamp due_at = 6; // unset = unchanged
+  repeated string assignee_principal_ids = 7; // replaces when replace_assignees
+  repeated string assignee_team_ids = 8;
+  bool replace_assignees = 9;
+}
+
+// ---------- Code quality ----------
+
+// State of a code quality finding.
+enum CodeQualityFindingState {
+  CODE_QUALITY_FINDING_STATE_UNSPECIFIED = 0;
+  CODE_QUALITY_FINDING_STATE_OPEN = 1;
+  CODE_QUALITY_FINDING_STATE_DISMISSED = 2;
+  CODE_QUALITY_FINDING_STATE_FIXED = 3;
+}
+
+// A maintainability or reliability finding.
+message SecurityCodeQualityFinding {
+  uint64 number = 1;
+  RepoRef repo = 2;
+  string rule_id = 3;
+  string category = 4;        // "maintainability", "reliability", ...
+  SecuritySeverity severity = 5;
+  CodeQualityFindingState state = 6;
+  CodeScanningLocation location = 7;
+  string message = 8;
+  string ref = 9;
+  string tool_name = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Request for ListCodeQualityFindings.
+message ListCodeQualityFindingsRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  CodeQualityFindingState state = 3;
+  string category = 4;
+  bytes path_prefix = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListCodeQualityFindings.
+message ListCodeQualityFindingsResponse {
+  repeated SecurityCodeQualityFinding findings = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateCodeQualityFinding.
+message UpdateCodeQualityFindingRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  CodeQualityFindingState state = 3; // OPEN or DISMISSED
+  string comment = 4;
+}
+
+// ---------- Signature verification ----------
+
+// Signature scheme.
+enum SecuritySignatureScheme {
+  SECURITY_SIGNATURE_SCHEME_UNSPECIFIED = 0;
+  SECURITY_SIGNATURE_SCHEME_GPG = 1;
+  SECURITY_SIGNATURE_SCHEME_SSH = 2;
+  SECURITY_SIGNATURE_SCHEME_SMIME = 3;
+}
+
+// Outcome of a signature check, matching the badge reasons clients show.
+enum SecuritySignatureReason {
+  SECURITY_SIGNATURE_REASON_UNSPECIFIED = 0;
+  SECURITY_SIGNATURE_REASON_VALID = 1;
+  SECURITY_SIGNATURE_REASON_UNSIGNED = 2;
+  SECURITY_SIGNATURE_REASON_UNKNOWN_KEY = 3;
+  SECURITY_SIGNATURE_REASON_BAD_SIGNATURE = 4;
+  SECURITY_SIGNATURE_REASON_EXPIRED_KEY = 5;
+  SECURITY_SIGNATURE_REASON_REVOKED_KEY = 6;
+  SECURITY_SIGNATURE_REASON_UNVERIFIED_EMAIL = 7;
+  SECURITY_SIGNATURE_REASON_SIGNER_MISMATCH = 8;
+  SECURITY_SIGNATURE_REASON_MALFORMED = 9;
+}
+
+// Request for VerifyObjectSignature.
+message VerifyObjectSignatureRequest {
+  RepoRef repo = 1;
+  oneof target {
+    ObjectId changeset = 2;
+    string tag = 3;           // tag ref name
+  }
+}
+
+// Response for VerifyObjectSignature.
+message VerifyObjectSignatureResponse {
+  bool verified = 1;
+  SecuritySignatureReason reason = 2;
+  SecuritySignatureScheme scheme = 3;
+  string signer_key_id = 4;   // key id or fingerprint
+  Principal signer = 5;       // principal owning the key, when known
+  string signature = 6;       // armored signature as stored
+  Provenance provenance = 7;  // provenance claims from Meta, shown as claims
+  bool provenance_chain_verified = 8; // principal_chain was filled by the server
+}
+
+// ---------- Security configuration ----------
+
+// Security features enabled for a repo.
+message SecurityConfiguration {
+  RepoRef repo = 1;
+  bool dependency_graph = 2;
+  bool dependency_alerts = 3;
+  bool security_updates = 4;
+  bool code_scanning_default_setup = 5;
+  bool secret_scanning = 6;
+  bool secret_scanning_push_protection = 7;
+  bool secret_scanning_validity_checks = 8;
+  bool private_vulnerability_reporting = 9;
+  bool code_quality = 10;
+  bool dependency_review_required = 11;
+  string inherited_from = 12; // org or enterprise configuration name, when inherited
+  google.protobuf.Timestamp updated_at = 13;
+  // How push-protection bypass requests are decided: "review" (a reviewer approves, the
+  // default), "allow" (granted at once, audited) or "deny" (blocks cannot be bypassed).
+  string push_protection_bypass_mode = 14;
+  // Principals who may review bypass requests besides repo admins and security managers.
+  repeated string bypass_reviewer_ids = 15;
+  // Hours an approved bypass stays usable.
+  uint32 bypass_ttl_hours = 16;
+}
+
+// Request for GetSecurityConfiguration.
+message GetSecurityConfigurationRequest {
+  RepoRef repo = 1;
+}
+
+// Request for UpdateSecurityConfiguration.
+message UpdateSecurityConfigurationRequest {
+  RepoRef repo = 1;
+  optional bool dependency_graph = 2;
+  optional bool dependency_alerts = 3;
+  optional bool security_updates = 4;
+  optional bool code_scanning_default_setup = 5;
+  optional bool secret_scanning = 6;
+  optional bool secret_scanning_push_protection = 7;
+  optional bool secret_scanning_validity_checks = 8;
+  optional bool private_vulnerability_reporting = 9;
+  optional bool code_quality = 10;
+  optional bool dependency_review_required = 11;
+  optional string push_protection_bypass_mode = 12; // "review", "allow" or "deny"
+  repeated string bypass_reviewer_ids = 13;  // replaces when non-empty or replace_bypass_reviewers
+  bool replace_bypass_reviewers = 14;        // set bypass_reviewer_ids even when empty
+  optional uint32 bypass_ttl_hours = 15;     // 0 = the default (24)
+}
+
+// Request for RescanSecrets.
+message RescanSecretsRequest {
+  RepoRef repo = 1;
+  string ref = 2;       // empty = the default ref
+  uint32 limit = 3;     // changesets, newest first; 0 = 1000
+}
+
+// Response for RescanSecrets.
+message RescanSecretsResponse {
+  repeated uint64 opened_alert_numbers = 1; // alerts opened by this rescan
+}
+
+// Request for GetSecurityPolicy.
+message GetSecurityPolicyRequest {
+  RepoRef repo = 1;
+}
+
+// A repo's security policy file.
+message SecurityPolicy {
+  RepoRef repo = 1;
+  bytes path = 2;       // where it was found
+  string content = 3;   // Markdown
+  string content_html = 4; // sanitized rendering
+}

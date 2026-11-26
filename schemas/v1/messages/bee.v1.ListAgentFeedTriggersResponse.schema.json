@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "bee.v1.AgentFeedTrigger": {
+      "description": "An agent's feed trigger in a repo: posts published in repos the agent follows start\nADOPT_EVALUATE runs in this repo.",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "checkIntervalSeconds": {
+          "description": "posts arriving within it are folded into one run",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "dailyUsdBudget": {
+          "description": "0 = unlimited",
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "maxRunsPerDay": {
+          "description": "0 = unlimited",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "runsToday": {
+          "description": "runs started since 00:00 UTC",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sources": {
+          "description": "repos the agent follows for this trigger",
+          "items": {
+            "$ref": "#/$defs/bee.v1.RepoRef"
+          },
+          "type": "array"
+        },
+        "spentUsdToday": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentFeedTrigger",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAgentFeedTriggersResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAgentFeedTriggers.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "triggers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentFeedTrigger"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListAgentFeedTriggersResponse",
+  "type": "object"
+}

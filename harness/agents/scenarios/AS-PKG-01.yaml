@@ -1,0 +1,75 @@
+id: AS-PKG-01
+area: "4.17"
+title: Publish a container image and an npm package from a workflow, then consume both
+surfaces: both
+timeout: 3000
+budget: { max_turns: 150 }
+requires: ["bin:docker", "bin:npm"]
+notes: >
+  Needs a runner that can build containers and run npm. Consumption happens on the harness host
+  with the stock docker and npm clients against the server's registries; the run's marker
+  (run.ns) proves the consumed artifacts are the ones this run published.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add image and library sources"
+      files:
+        image/Dockerfile: |
+          FROM busybox:1.36
+          CMD ["echo", "hello from ${run.ns}"]
+        greet/package.json: |
+          {
+            "name": "@${run.ns}/greet",
+            "version": "1.0.0",
+            "main": "index.js"
+          }
+        greet/index.js: |
+          module.exports = (name) => `hello $${name} from ${run.ns}`;
+  - name: workflow and package rights for the worker
+    call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${worker.id}", role: REPO_ROLE_WRITE }
+agent:
+  token: "${workerToken}"
+prompt: |
+  The bee repository ${repo.fullName} contains a container image definition in `image/` and an
+  npm library in `greet/` (package `@${run.ns}/greet`). Add a workflow that, on every push to
+  main, builds the image and publishes it to the server's container registry as
+  `${run.ns}/hello:1.0.0`, and publishes the npm package to the server's npm registry. Land it
+  and make sure the run succeeds.
+
+  Then consume both on this machine: run the published image, and install the published package
+  into `./consumer` with npm and run `node -e "console.log(require('@${run.ns}/greet')('agent'))"`
+  in `./consumer`. Write both outputs to `package-outputs.json` in the current directory as:
+  {"image": "<what the container printed>", "npm": "<what node printed>"}
+assertions:
+  - name: the container image was published by a workflow run
+    call: PackageService/ListPackageVersions
+    request: { owner: "${run.ns}", ecosystem: PACKAGE_ECOSYSTEM_CONTAINER, name: hello }
+    expect:
+      - path: versions
+        some:
+          - { path: tags, contains: "1.0.0" }
+          - { path: workflowRunId, truthy: true }
+  - name: the npm package was published by a workflow run
+    call: PackageService/ListPackageVersions
+    request: { owner: "${run.ns}", ecosystem: PACKAGE_ECOSYSTEM_NPM, name: "@${run.ns}/greet" }
+    expect:
+      - path: versions
+        some:
+          - { path: version, eq: "1.0.0" }
+          - { path: workflowRunId, truthy: true }
+  - name: the workflow succeeded
+    call: WorkflowService/ListWorkflowRuns
+    request: { repo: { fullName: "${repo.fullName}" }, conclusion: WORKFLOW_CONCLUSION_SUCCESS }
+    expect:
+      - { path: runs, len_gte: 1 }
+  - name: both artifacts were consumed with this run's marker
+    answer:
+      file: package-outputs.json
+      expect:
+        - { path: image, contains: "hello from ${run.ns}" }
+        - { path: npm, contains: "hello agent from ${run.ns}" }
+  - name: the package was installed from the registry
+    workdir: { glob: "consumer/node_modules/@${run.ns}/greet/package.json", min: 1 }

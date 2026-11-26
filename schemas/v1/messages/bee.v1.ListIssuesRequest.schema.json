@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "bee.v1.IssueSort": {
+      "description": "Sort order for issue lists.",
+      "enum": [
+        "ISSUE_SORT_UNSPECIFIED",
+        "ISSUE_SORT_CREATED",
+        "ISSUE_SORT_UPDATED",
+        "ISSUE_SORT_COMMENTS",
+        "ISSUE_SORT_REACTIONS"
+      ],
+      "title": "bee.v1.IssueSort",
+      "type": "string"
+    },
+    "bee.v1.IssueState": {
+      "description": "Open or closed.",
+      "enum": [
+        "ISSUE_STATE_UNSPECIFIED",
+        "ISSUE_STATE_OPEN",
+        "ISSUE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.IssueState",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListIssuesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListIssues.",
+  "properties": {
+    "allStates": {
+      "description": "open and closed",
+      "type": "boolean"
+    },
+    "ascending": {
+      "type": "boolean"
+    },
+    "assignee": {
+      "description": "principal id or handle; \"none\" or \"*\"",
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "issueType": {
+      "description": "name; \"none\" for untyped",
+      "type": "string"
+    },
+    "labels": {
+      "description": "all must match",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "mentioned": {
+      "type": "string"
+    },
+    "milestone": {
+      "description": "number, title, \"none\" or \"*\"",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "query": {
+      "description": "GitHub-compatible qualifiers, e.g. \"is:open label:bug\"",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "since": {
+      "description": "updated at or after",
+      "format": "date-time",
+      "type": "string"
+    },
+    "sort": {
+      "$ref": "#/$defs/bee.v1.IssueSort"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.IssueState",
+      "description": "UNSPECIFIED = open"
+    }
+  },
+  "title": "bee.v1.ListIssuesRequest",
+  "type": "object"
+}

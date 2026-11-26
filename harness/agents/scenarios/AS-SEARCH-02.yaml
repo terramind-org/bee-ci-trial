@@ -1,0 +1,90 @@
+id: AS-SEARCH-02
+area: "4.4"
+title: Find all open change requests touching billing/ that are waiting on review
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: a reviewer agent
+    call: AuthService/CreateAgent
+    request: { display: "reviewer-${run.ns}", runtime: claude-code, purpose: "code review", org: "${run.ns}" }
+    save: { reviewer: "$" }
+  - name: let reviewer join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${reviewer.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${reviewer.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request: { principalId: "${reviewer.id}", scope: { repos: ["${repo.fullName}"], actions: [read, review] } }
+    save: { reviewerToken: token }
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        billing/invoice.py: "TOTAL = 0\n"
+        billing/refund.py: "REFUNDS = []\n"
+        billing/ledger.py: "LEDGER = {}\n"
+        billing/discount.py: "DISCOUNT = 0\n"
+        web/home.py: "HOME = 1\n"
+  # A: billing, review pending -> expected
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/a, change: a, message: "Invoice totals", files: { billing/invoice.py: "TOTAL = 1\n" } }
+    save: a
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${a.id}", title: "Invoice totals", reviewerIds: ["${reviewer.id}"] }
+    save: { crA: "$" }
+  # B: billing, already approved -> not waiting
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/b, change: b, message: "Refund log", files: { billing/refund.py: "REFUNDS = [0]\n" } }
+    save: b
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${b.id}", title: "Refund log", reviewerIds: ["${reviewer.id}"] }
+    save: { crB: "$" }
+  - call: ChangeService/SubmitReview
+    as: "${reviewerToken}"
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${crB.id}", revision: 1, verdict: VERDICT_APPROVE, body: "LGTM" }
+  # C: web only, review pending -> wrong path
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/c, change: c, message: "Home tweak", files: { web/home.py: "HOME = 2\n" } }
+    save: c
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${c.id}", title: "Home tweak", reviewerIds: ["${reviewer.id}"] }
+  # D: billing, review pending, but closed -> not open
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/d, change: d, message: "Ledger rewrite", files: { billing/ledger.py: "LEDGER = {1: 1}\n" } }
+    save: d
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${d.id}", title: "Ledger rewrite", reviewerIds: ["${reviewer.id}"] }
+    save: { crD: "$" }
+  - call: ChangeService/CloseChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${crD.id}" }
+  # E: billing and web, review pending -> expected
+  - commit: { repo: "${repo.fullName}", ref: main, land: false, ref_name: ws/e, change: e, message: "Discount banner", files: { billing/discount.py: "DISCOUNT = 5\n", web/home.py: "HOME = 3\n" } }
+    save: e
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${e.id}", title: "Discount banner", reviewerIds: ["${reviewer.id}"] }
+    save: { crE: "$" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, which open change requests touch files under
+  `billing/` and are still waiting on a review (a review was requested and nobody has approved
+  them yet)?
+
+  Write your answer to `answer.json` in the current directory as: {"numbers": [<change request number>, ...]}
+assertions:
+  - name: ground truth - four open CRs exist, three of them touch billing/
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, state: CHANGE_STATE_OPEN }
+    expect:
+      - { path: changes, len: 4 }
+  - name: ground truth - B carries an approval
+    call: ChangeService/ListReviews
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${crB.id}" }
+    expect:
+      - { path: "reviews[*].verdict", contains: VERDICT_APPROVE }
+  - name: the agent found exactly A and E
+    answer:
+      file: answer.json
+      expect:
+        - { path: numbers, len: 2 }
+        - { path: numbers, contains: "${crA.number}" }
+        - { path: numbers, contains: "${crE.number}" }

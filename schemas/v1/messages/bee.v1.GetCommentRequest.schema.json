@@ -1,0 +1,14 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetCommentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commentId": {
+      "type": "string"
+    },
+    "includeHtml": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.GetCommentRequest",
+  "type": "object"
+}

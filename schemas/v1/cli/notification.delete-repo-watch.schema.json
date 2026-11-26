@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/notification.delete-repo-watch.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.NotificationService/DeleteRepoWatch: `data` is a bee.v1.DeleteRepoWatchResponse in proto3-JSON. `bee notification delete-repo-watch --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteRepoWatchResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.notification.delete-repo-watch"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee notification delete-repo-watch",
+  "type": "object"
+}

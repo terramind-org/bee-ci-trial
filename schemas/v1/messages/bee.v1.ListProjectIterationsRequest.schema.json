@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListProjectIterationsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListProjectIterations.",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "includeCompleted": {
+      "type": "boolean"
+    },
+    "projectId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListProjectIterationsRequest",
+  "type": "object"
+}

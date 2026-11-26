@@ -1,0 +1,42 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.stop.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon stop --json`: one such document with `schema` = bee.v1.daemon.stop. Stop the node daemon that `bee daemon start` started. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "pid": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "socket": {
+          "type": "string"
+        },
+        "stopped": {
+          "description": "False when no daemon was running.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stopped",
+        "socket",
+        "pid"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.stop"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon stop",
+  "type": "object"
+}

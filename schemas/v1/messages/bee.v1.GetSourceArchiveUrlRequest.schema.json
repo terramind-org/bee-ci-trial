@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    },
+    "bee.v1.SourceArchiveFormat": {
+      "description": "Archive format for source downloads.",
+      "enum": [
+        "SOURCE_ARCHIVE_FORMAT_UNSPECIFIED",
+        "SOURCE_ARCHIVE_FORMAT_ZIP",
+        "SOURCE_ARCHIVE_FORMAT_TAR_GZ"
+      ],
+      "title": "bee.v1.SourceArchiveFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetSourceArchiveUrlRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetSourceArchiveUrl.",
+  "properties": {
+    "at": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    },
+    "format": {
+      "$ref": "#/$defs/bee.v1.SourceArchiveFormat"
+    },
+    "prefix": {
+      "description": "top-level directory name; default \"<repo>-<revision>\"",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.GetSourceArchiveUrlRequest",
+  "type": "object"
+}

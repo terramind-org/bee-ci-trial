@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "bee.v1.TeamPrivacy": {
+      "description": "Who can see a team.",
+      "enum": [
+        "TEAM_PRIVACY_UNSPECIFIED",
+        "TEAM_PRIVACY_VISIBLE",
+        "TEAM_PRIVACY_SECRET"
+      ],
+      "title": "bee.v1.TeamPrivacy",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateTeamRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateTeam.",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "maintainerIds": {
+      "description": "principals added as maintainers; default the caller",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "notificationsEnabled": {
+      "type": "boolean"
+    },
+    "org": {
+      "type": "string"
+    },
+    "parentTeam": {
+      "description": "slug or id; empty for top level",
+      "type": "string"
+    },
+    "privacy": {
+      "$ref": "#/$defs/bee.v1.TeamPrivacy",
+      "description": "default VISIBLE"
+    },
+    "slug": {
+      "description": "derived from name when empty",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateTeamRequest",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/moderation.list-blocked-users.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModerationService/ListBlockedUsers: `data` is a bee.v1.ListBlockedUsersResponse in proto3-JSON. `bee moderation list-blocked-users --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListBlockedUsersResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.moderation.list-blocked-users"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee moderation list-blocked-users",
+  "type": "object"
+}

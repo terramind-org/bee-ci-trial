@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/admin.list-redactions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AdminService/ListRedactions: `data` is a bee.v1.ListRedactionsResponse in proto3-JSON. `bee admin list-redactions --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListRedactionsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.admin.list-redactions"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee admin list-redactions",
+  "type": "object"
+}

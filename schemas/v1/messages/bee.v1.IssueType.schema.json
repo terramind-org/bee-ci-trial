@@ -1,0 +1,47 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IssueType.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An org-defined issue type such as Bug, Feature or Task.",
+  "properties": {
+    "color": {
+      "description": "six hex digits, no '#'",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "enabled": {
+      "description": "disabled types stay on existing issues",
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "orgId": {
+      "type": "string"
+    },
+    "position": {
+      "description": "display order",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.IssueType",
+  "type": "object"
+}

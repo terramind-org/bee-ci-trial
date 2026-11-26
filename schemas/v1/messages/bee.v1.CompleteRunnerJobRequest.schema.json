@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.WorkflowConclusion": {
+      "description": "Outcome of a completed run, job or step.",
+      "enum": [
+        "WORKFLOW_CONCLUSION_UNSPECIFIED",
+        "WORKFLOW_CONCLUSION_SUCCESS",
+        "WORKFLOW_CONCLUSION_FAILURE",
+        "WORKFLOW_CONCLUSION_NEUTRAL",
+        "WORKFLOW_CONCLUSION_CANCELLED",
+        "WORKFLOW_CONCLUSION_SKIPPED",
+        "WORKFLOW_CONCLUSION_TIMED_OUT",
+        "WORKFLOW_CONCLUSION_ACTION_REQUIRED",
+        "WORKFLOW_CONCLUSION_STALE",
+        "WORKFLOW_CONCLUSION_STARTUP_FAILURE"
+      ],
+      "title": "bee.v1.WorkflowConclusion",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CompleteRunnerJobRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CompleteRunnerJob.",
+  "properties": {
+    "completedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "conclusion": {
+      "$ref": "#/$defs/bee.v1.WorkflowConclusion"
+    },
+    "environmentUrl": {
+      "description": "The evaluated `environment.url` of a job that deploys to an environment; recorded on the\nfinal deployment status.",
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "leaseId": {
+      "type": "string"
+    },
+    "outputs": {
+      "description": "job outputs",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "runnerId": {
+      "type": "string"
+    },
+    "summaryMarkdown": {
+      "description": "step summary, at most 1 MiB",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CompleteRunnerJobRequest",
+  "type": "object"
+}

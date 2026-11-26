@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "bee.v1.ProjectChartPoint": {
+      "description": "One data point of a chart series.",
+      "properties": {
+        "at": {
+          "description": "bucket time for historical charts",
+          "format": "date-time",
+          "type": "string"
+        },
+        "label": {
+          "description": "bucket label for current charts",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "title": "bee.v1.ProjectChartPoint",
+      "type": "object"
+    },
+    "bee.v1.ProjectChartSeries": {
+      "description": "One series of a computed chart.",
+      "properties": {
+        "name": {
+          "description": "group value, or \"\" without grouping",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ProjectChartPoint"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.ProjectChartSeries",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.QueryProjectChartResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for QueryProjectChart.",
+  "properties": {
+    "computedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ProjectChartSeries"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.QueryProjectChartResponse",
+  "type": "object"
+}

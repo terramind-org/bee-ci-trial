@@ -1,0 +1,39 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateProjectRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateProject.",
+  "properties": {
+    "closed": {
+      "type": "boolean"
+    },
+    "expectedVersion": {
+      "description": "0 = any; otherwise VERSION_MISMATCH when stale",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "isTemplate": {
+      "type": "boolean"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "public": {
+      "type": "boolean"
+    },
+    "readme": {
+      "type": "string"
+    },
+    "shortDescription": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateProjectRequest",
+  "type": "object"
+}

@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RepoWatchEventKind": {
+      "description": "Event kinds a CUSTOM watch can opt into.",
+      "enum": [
+        "REPO_WATCH_EVENT_KIND_UNSPECIFIED",
+        "REPO_WATCH_EVENT_KIND_ISSUES",
+        "REPO_WATCH_EVENT_KIND_CHANGE_REQUESTS",
+        "REPO_WATCH_EVENT_KIND_RELEASES",
+        "REPO_WATCH_EVENT_KIND_DISCUSSIONS",
+        "REPO_WATCH_EVENT_KIND_SECURITY_ALERTS",
+        "REPO_WATCH_EVENT_KIND_AGENT_RUNS",
+        "REPO_WATCH_EVENT_KIND_WORKFLOW_RUNS"
+      ],
+      "title": "bee.v1.RepoWatchEventKind",
+      "type": "string"
+    },
+    "bee.v1.RepoWatchLevel": {
+      "description": "How a principal watches a repo.",
+      "enum": [
+        "REPO_WATCH_LEVEL_UNSPECIFIED",
+        "REPO_WATCH_LEVEL_ALL",
+        "REPO_WATCH_LEVEL_PARTICIPATING",
+        "REPO_WATCH_LEVEL_IGNORE",
+        "REPO_WATCH_LEVEL_CUSTOM"
+      ],
+      "title": "bee.v1.RepoWatchLevel",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetRepoWatchRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetRepoWatch.",
+  "properties": {
+    "customEvents": {
+      "description": "CUSTOM only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoWatchEventKind"
+      },
+      "type": "array"
+    },
+    "level": {
+      "$ref": "#/$defs/bee.v1.RepoWatchLevel"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.SetRepoWatchRequest",
+  "type": "object"
+}

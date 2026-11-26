@@ -1,0 +1,473 @@
+@layer ui-sdk;
+
+@import "tailwindcss";
+
+/* Design tokens. Binding reference: docs/design/tokens.md. Change both together. */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant bee (&:where([data-mode="bee"], [data-mode="bee"] *));
+@custom-variant keeper (&:where([data-mode="keeper"], [data-mode="keeper"] *));
+
+/* Paper and ink. Every colour is one `light-dark()` pair, so the page follows the system setting
+   with no script at all; `data-theme` (set before paint by components/theme.tsx) only pins the
+   scheme when the person chose one. One colour besides ink: the yellow mark, which means "a
+   person answers for this" and is a dot or a ring, never text. */
+:root {
+  color-scheme: light dark;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --bg: light-dark(#f4f2ec, #0f0f0e);
+  --surface: light-dark(#f4f2ec, #0f0f0e);
+  --sunken: light-dark(#eceae3, #171716);
+  --hover: light-dark(#eceae3, #191918);
+  --selected: light-dark(#e6e4dd, #20201f);
+  --line: light-dark(rgb(22 23 26 / 0.14), rgb(244 243 237 / 0.16));
+  --line-strong: light-dark(rgb(22 23 26 / 0.3), rgb(244 243 237 / 0.32));
+  --input: light-dark(rgb(255 255 255 / 0.7), rgb(28 27 25 / 0.7));
+  --popover: light-dark(#fbfaf6, #191918);
+  --ink: light-dark(#16171a, #f4f3ed);
+  /* Two greys. Both are text, so both pass 4.5:1 on `bg` and on `selected`. */
+  --ink-2: light-dark(#5b5a57, #a3a19b);
+  --ink-3: light-dark(#666562, #93918c);
+  /* The prototype's third grey. Too faint for text: marks, rules and empty cells only. */
+  --faint: light-dark(#9a9892, #75736e);
+  /* The mark, and the thin ring that keeps it visible on paper. */
+  --mark: light-dark(#f0cb45, #f4d463);
+  --mark-ring: light-dark(rgb(22 23 26 / 0.55), transparent);
+  /* The accent is ink: a primary button is solid ink, links and focus are ink. Never blue. */
+  --accent: var(--ink);
+  --accent-ink: var(--ink);
+  --accent-hover: light-dark(#303135, #dedcd5);
+  --accent-soft: light-dark(rgb(22 23 26 / 0.07), rgb(244 243 237 / 0.09));
+  --on-accent: var(--bg);
+  --focus: var(--ink);
+  /* Status is a word and a shape. These only tint it, faintly; all pass 4.5:1 as text. */
+  --ok: light-dark(#3f5a49, #a9c4b2);
+  --ok-soft: light-dark(rgb(60 140 90 / 0.1), rgb(90 190 130 / 0.12));
+  --warn: light-dark(#665a36, #cfc39c);
+  --warn-soft: light-dark(rgb(150 120 30 / 0.1), rgb(210 180 90 / 0.12));
+  --bad: light-dark(#7a403a, #dfaaa3);
+  --bad-soft: light-dark(rgb(190 70 60 / 0.09), rgb(230 110 100 / 0.13));
+  --live: var(--ink-2);
+  /* Diff: the one place green and red stay, soft. */
+  --add-bg: light-dark(rgb(60 140 90 / 0.12), rgb(90 190 130 / 0.14));
+  --add-gutter: light-dark(rgb(60 140 90 / 0.2), rgb(90 190 130 / 0.22));
+  --add-word: light-dark(rgb(60 140 90 / 0.28), rgb(90 190 130 / 0.32));
+  --del-bg: light-dark(rgb(190 70 60 / 0.1), rgb(230 110 100 / 0.14));
+  --del-gutter: light-dark(rgb(190 70 60 / 0.18), rgb(230 110 100 / 0.22));
+  --del-word: light-dark(rgb(190 70 60 / 0.26), rgb(230 110 100 / 0.32));
+  /* Syntax (sugar-high): ink with a faint hue per kind. */
+  --sh-class: light-dark(#3b4f7a, #a9bce6);
+  --sh-identifier: var(--ink);
+  --sh-sign: var(--ink-2);
+  --sh-property: light-dark(#2f5d73, #9fcbdc);
+  --sh-entity: light-dark(#5d4a82, #c4b3e6);
+  --sh-jsxliterals: light-dark(#5d4a82, #c4b3e6);
+  --sh-string: light-dark(#3d6148, #a8cfb2);
+  --sh-keyword: light-dark(#84404f, #e3a6b4);
+  --sh-comment: var(--ink-3);
+  --shadow-overlay: 0 1px 2px light-dark(rgb(22 23 26 / 0.06), rgb(0 0 0 / 0.4)), 0 14px 36px -8px light-dark(rgb(22 23 26 / 0.18), rgb(0 0 0 / 0.65));
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-input: var(--input);
+  --color-popover: var(--popover);
+  --color-live: var(--live);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-faint: var(--faint);
+  --color-mark: var(--mark);
+  --color-mark-ring: var(--mark-ring);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-focus: var(--focus);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-add: var(--add-bg);
+  --color-add-gutter: var(--add-gutter);
+  --color-del: var(--del-bg);
+  --color-del-gutter: var(--del-gutter);
+
+  /* Type scale (size / line height). Body 16px; controls, tabs and quiet lines 15px; small
+     print 13px; rows 18px light; page titles 34px and the display step 48px, both light. */
+  --text-2xs: 12px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 15px;
+  --text-base--line-height: 22px;
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 22px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 34px;
+  --text-2xl--line-height: 38px;
+  --text-3xl: 48px;
+  --text-3xl--line-height: 52px;
+
+  /* Nothing in the interface is heavier than medium; `font-semibold` and `font-bold` are kept as
+     names so existing markup keeps working. */
+  --font-weight-semibold: 500;
+  --font-weight-bold: 600;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 18px;
+
+  --shadow-overlay: var(--shadow-overlay);
+
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --animate-enter: enter 180ms var(--ease-out);
+  --animate-arrive: arrive 260ms var(--ease-out);
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+  --animate-swap: swap 220ms var(--ease-out);
+  --animate-fade: fade 240ms var(--ease-out);
+  --animate-leave: leave 200ms var(--ease-out) forwards;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+  }
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+    background-color: var(--accent-soft);
+  }
+}
+@keyframes swap {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+@keyframes leave {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    /* Root stays 16px so rem-based spacing keeps its 4px grid ("bee space"). */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--mark) 45%, transparent);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  /* Mono is for code, paths, refs and ids only. Names, numbers and labels stay in the UI face. */
+  code,
+  pre,
+  .mono {
+    font-family: var(--mono);
+    font-size: 0.875em;
+    font-variant-ligatures: none;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .link {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+  .link:hover {
+    text-decoration-color: var(--ink);
+  }
+  /* Stacked links keep a 24px target (WCAG 2.5.8). */
+  li > .link {
+    display: inline-block;
+    padding-block: 3px;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  /* The mark: a person answers for this. A dot, with a thin ring so it holds on paper. */
+  .dot {
+    display: inline-block;
+    flex: none;
+    width: 0.62em;
+    height: 0.62em;
+    border-radius: 50%;
+    background: var(--mark);
+    box-shadow: 0 0 0 1px var(--mark-ring);
+  }
+  /* The small spaced label above a page title and over a group in the rail. */
+  .eyebrow {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  /* A page's one large sentence. */
+  .display {
+    font-weight: 200;
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.06;
+    letter-spacing: -0.04em;
+  }
+  /* Two or three choices in one pill; the pressed one is solid ink. */
+  .seg {
+    display: flex;
+    overflow: hidden;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .seg > * {
+    flex: 1;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    color: var(--ink-2);
+    border-radius: 999px;
+  }
+  .seg > :focus-visible {
+    outline-offset: -2px;
+    border-radius: 999px;
+  }
+  .seg > [aria-pressed="true"],
+  .seg > [aria-current="true"] {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  /* A hairline between sections, in place of a box. */
+  .rule {
+    border-top: 1px solid var(--line);
+  }
+  .prose-bee {
+    font-size: 17px;
+    line-height: 27px;
+    color: var(--ink);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .prose-bee > * + * {
+    margin-top: 0.85em;
+  }
+  .prose-bee h1,
+  .prose-bee h2,
+  .prose-bee h3 {
+    font-weight: 300;
+    margin-top: 1.6em;
+    letter-spacing: -0.03em;
+  }
+  .prose-bee h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  .prose-bee h2 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .prose-bee h3 {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .prose-bee ul {
+    list-style: disc;
+    padding-left: 1.3em;
+  }
+  .prose-bee ol {
+    list-style: decimal;
+    padding-left: 1.3em;
+  }
+  .prose-bee code {
+    background: var(--sunken);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .prose-bee pre {
+    background: var(--sunken);
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .prose-bee pre code {
+    border: 0;
+    padding: 0;
+    background: none;
+  }
+  .prose-bee table {
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .prose-bee th,
+  .prose-bee td {
+    border-bottom: 1px solid var(--line);
+    padding: 6px 12px 6px 0;
+    text-align: left;
+  }
+  .prose-bee a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+/* Unlayered on purpose, so these hold over utilities written before the redesign. */
+
+/* Large type is light. Page titles and the display step were semibold; nothing large is now. */
+.text-2xl,
+.text-3xl {
+  font-weight: 300;
+  letter-spacing: -0.035em;
+}
+
+/* Popups from the kit (components/kit). Their content opens in the top layer and needs no
+   z-index; the backdrop is an ordinary element under it, so it takes one. */
+[data-slot$="-backdrop"] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: light-dark(rgb(22 23 26 / 0.32), rgb(0 0 0 / 0.6));
+  transition: opacity 160ms var(--ease-out);
+}
+[data-slot$="-backdrop"]:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+}
+:is([data-slot="dialog-content"], [data-slot="alert-dialog-content"])::backdrop {
+  background: transparent;
+}
+:is([data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="menu-content"], [data-slot="popover-content"], [data-slot="tooltip-content"]) {
+  transition:
+    opacity 160ms var(--ease-out),
+    translate 180ms var(--ease-out);
+}
+:is([data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="menu-content"], [data-slot="popover-content"], [data-slot="tooltip-content"]):is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  translate: 0 4px;
+}
+
+/* Bee mode: the same page for an agent. Mono, flat, still. Per-page renderers replace the
+   person's layout slice by slice; until then this keeps every page readable as text. */
+[data-mode="bee"] main {
+  --sans: var(--mono);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+[data-mode="bee"] main :is(h1, .text-2xl, .text-3xl, .display) {
+  font: 600 15px/1.6 var(--mono);
+  letter-spacing: 0;
+  max-width: none;
+}
+[data-mode="bee"] *,
+[data-mode="bee"] *::before,
+[data-mode="bee"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot] {
+    transition: none !important;
+  }
+}

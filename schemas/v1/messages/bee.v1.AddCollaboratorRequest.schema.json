@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RepoRole": {
+      "description": "Repo role names shared by orgs, teams and collaborators.",
+      "enum": [
+        "REPO_ROLE_UNSPECIFIED",
+        "REPO_ROLE_NONE",
+        "REPO_ROLE_READ",
+        "REPO_ROLE_TRIAGE",
+        "REPO_ROLE_WRITE",
+        "REPO_ROLE_MAINTAIN",
+        "REPO_ROLE_ADMIN"
+      ],
+      "title": "bee.v1.RepoRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddCollaboratorRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "customRoleId": {
+      "type": "string"
+    },
+    "inviteeLogin": {
+      "type": "string"
+    },
+    "principalId": {
+      "description": "or invitee_login",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.RepoRole"
+    }
+  },
+  "title": "bee.v1.AddCollaboratorRequest",
+  "type": "object"
+}

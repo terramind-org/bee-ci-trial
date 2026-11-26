@@ -1,0 +1,21 @@
+# event push action=-
+failed .github/workflows/bad-keys.yml
+  5:22: 'branches' and 'branches-ignore' cannot both be used for the same event
+  7:3: Required property is missing: steps (job 'build')
+  9:5: Unexpected value 'step'
+  11:3: Job 'test' depends on unknown job 'lint'.
+  15:15: Expected format {org}/{repo}[/path]@ref. Actual 'actions/checkout'
+failed .github/workflows/broken.yml
+  8:8: bad indentation of a sequence item
+run .github/workflows/fine.yml ".github/workflows/fine.yml"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job ok decided=true
+    instance "ok"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo fine"
+        run: "echo fine"
+        shell: default -> "bash -e {0}"

@@ -1,0 +1,30 @@
+{
+  "service": "bee.v1.OpsService",
+  "fixtures": [
+    {"method": "GetOpsHealth", "request": {"includeComponents": true}, "volatile": ["/ok/0/node"]},
+    {"method": "GetOpsClusterStatus", "request": {"cells": ["dev"]}, "volatile": ["/ok/0/cells/*/configVersion"]},
+    {"method": "ListMetricDescriptors", "request": {"prefix": "bee_land"}},
+    {"method": "QueryMetrics", "request": {"name": "bee_up", "aggregation": "METRIC_AGGREGATION_MAX"}},
+    {"method": "QueryMetricsRange", "request": {"name": "bee_up", "aggregation": "METRIC_AGGREGATION_MAX", "stepSeconds": "60"}},
+    {"method": "QueryOpsLogs", "request": {"filter": {"components": ["server"], "minLevel": "OPS_LOG_LEVEL_INFO"}, "newestFirst": true, "page": {"pageSize": 5}}},
+    {"method": "TailOpsLogs", "request": {"filter": {"components": ["server"]}, "backfill": 3}, "maxItems": 3},
+    {"method": "ValidateOpsConfig", "request": {"toml": "[server]\ncell = \"dev\"\n", "component": "server"}},
+    {"method": "GetEffectiveOpsConfig", "request": {"component": "server"}, "volatile": ["/ok/0/configVersion", "/ok/0/toml"], "note": "Each form's server runs from its own temporary data_dir, which the effective config (and its version hash) includes, so the TOML text is volatile."},
+    {"method": "GetRateLimitStatus", "request": {}},
+    {"method": "ListOpsRollouts", "request": {"state": "OPS_ROLLOUT_STATE_SUCCEEDED"}, "volatile": ["/ok/0/rollouts/*/toVersion", "/ok/0/rollouts/*/fromVersion"]},
+    {"method": "GetOpsRollout", "setup": [{"call": "OpsService/ListOpsRollouts", "save": "ro", "request": {}}], "request": {"id": "{{ro.rollouts.0.id}}"}, "volatile": ["/ok/0/toVersion", "/ok/0/fromVersion"]},
+    {"method": "PauseOpsRollout", "setup": [{"call": "OpsService/ListOpsRollouts", "save": "ro", "request": {}}], "request": {"id": "{{ro.rollouts.0.id}}", "reason": "pause-ops-rollout fixture"}, "expect": "INVALID_STATE", "note": "A dev server records only finished (SUCCEEDED) rollouts, one per binary/config start; no RPC creates a pending or in-progress rollout, so pausing is impossible on a single server."},
+    {"method": "ResumeOpsRollout", "setup": [{"call": "OpsService/ListOpsRollouts", "save": "ro", "request": {}}], "request": {"id": "{{ro.rollouts.0.id}}"}, "expect": "INVALID_STATE", "note": "Only a PAUSED rollout resumes; a dev server only ever records SUCCEEDED rollouts and none can be paused (see PauseOpsRollout)."},
+    {"method": "RollbackOpsRollout", "setup": [{"call": "OpsService/ListOpsRollouts", "save": "ro", "request": {}}], "request": {"id": "{{ro.rollouts.0.id}}", "reason": "rollback-ops-rollout fixture"}, "expect": "INVALID_STATE", "note": "Only a pending, in-progress or paused rollout rolls back; a dev server only ever records SUCCEEDED rollouts (undone by starting the previous version)."},
+    {"method": "CreateOpsIncident", "save": "inc", "request": {"title": "create-ops-incident fixture", "impact": "minor", "body": "investigating", "componentIds": ["webhooks"], "cells": ["dev"], "componentStatus": "OPS_COMPONENT_STATUS_DEGRADED"}},
+    {"method": "SearchOpsTraces", "request": {"service": "bee-server", "operation": "CreateOpsIncident", "page": {"pageSize": 5}}, "volatile": ["/ok/0/traces/*/durationUs", "/ok/0/traces/*/traceId"], "note": "Trace and span ids are random 64-bit hex and durations are wall-clock, so they are volatile."},
+    {"method": "GetOpsTrace", "setup": [{"call": "OpsService/SearchOpsTraces", "save": "tr", "request": {"operation": "CreateOpsIncident", "page": {"pageSize": 1}}}], "request": {"traceId": "{{tr.traces.0.traceId}}"}, "volatile": ["/ok/0/durationUs", "/ok/0/traceId", "/ok/0/spans/*/durationUs", "/ok/0/spans/*/spanId", "/ok/0/spans/*/parentSpanId"], "note": "Trace and span ids are random 64-bit hex and durations are wall-clock, so they are volatile."},
+    {"method": "UpdateOpsIncident", "request": {"id": "{{inc.id}}", "state": "OPS_INCIDENT_STATE_RESOLVED", "body": "fixed", "impact": "none", "componentIds": ["webhooks"], "componentStatus": "OPS_COMPONENT_STATUS_OPERATIONAL"}},
+    {"method": "ListOpsIncidents", "request": {"state": "OPS_INCIDENT_STATE_RESOLVED", "page": {"pageSize": 10}}},
+    {"method": "SetOpsStatusComponent", "request": {"id": "pages", "status": "OPS_COMPONENT_STATUS_OPERATIONAL"}},
+    {"method": "ListOpsStatusComponents", "request": {}},
+    {"method": "ListOpsBackups", "request": {"cell": "dev", "page": {"pageSize": 10}}},
+    {"method": "ListOpsRestoreDrills", "request": {"cell": "dev", "page": {"pageSize": 10}}},
+    {"method": "GetOpsCacheStats", "request": {"cell": "dev"}}
+  ]
+}

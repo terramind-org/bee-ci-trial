@@ -1,0 +1,27 @@
+event: schedule 2026-10-19T03:30
+--- .github/workflows/nightly.yml
+name: Nightly
+on:
+  schedule:
+    - cron: '30 3 * * 1-5'
+    - cron: '0 12 * * 0'
+  workflow_dispatch:
+jobs:
+  fuzz:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo +nightly fuzz run parser -- -max_total_time=3600
+      - run: echo "triggered by ${{ github.event.schedule }}"
+--- .github/workflows/weekly.yml
+name: Weekly
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cargo audit

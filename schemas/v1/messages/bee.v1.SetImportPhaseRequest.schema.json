@@ -1,0 +1,27 @@
+{
+  "$defs": {
+    "bee.v1.ImportPhase": {
+      "enum": [
+        "IMPORT_PHASE_UNSPECIFIED",
+        "IMPORT_PHASE_DRY_RUN",
+        "IMPORT_PHASE_MIRROR",
+        "IMPORT_PHASE_BRIDGE",
+        "IMPORT_PHASE_CUTOVER"
+      ],
+      "title": "bee.v1.ImportPhase",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetImportPhaseRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "phase": {
+      "$ref": "#/$defs/bee.v1.ImportPhase"
+    }
+  },
+  "title": "bee.v1.SetImportPhaseRequest",
+  "type": "object"
+}

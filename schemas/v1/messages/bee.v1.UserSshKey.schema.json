@@ -1,0 +1,38 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserSshKey.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An SSH key for git authentication.",
+  "properties": {
+    "algorithm": {
+      "description": "e.g. \"ssh-ed25519\"",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "fingerprint": {
+      "description": "SHA256:...",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "lastUsedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "publicKey": {
+      "description": "OpenSSH format",
+      "type": "string"
+    },
+    "readOnly": {
+      "type": "boolean"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UserSshKey",
+  "type": "object"
+}

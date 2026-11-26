@@ -1,0 +1,23 @@
+# event pull_request action=synchronize
+run .github/workflows/web.yml "Web"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job e2e decided=true
+    instance "e2e"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-node@v4"
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      step 3 "Run npm ci"
+        run: "npm ci"
+        shell: default -> "bash -e {0}"
+      step 4 "Run npx playwright test --shard=0/1"
+        run: "npx playwright test --shard=0/1"
+        shell: default -> "bash -e {0}"
+# event pull_request_target action=synchronize

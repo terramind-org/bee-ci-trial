@@ -1,0 +1,85 @@
+# Configuration of every server replica in deploy/compose.scale.yml (docs/scaling.md).
+# It is deploy/server.toml with what a replica needs to share one store with others:
+# its own forwarding address, and every key that signs something one replica issues and another
+# checks set from the environment, so all replicas hold the same ones.
+# Every key is documented in docs/spec/server.md section 2. Unknown keys are errors.
+# A value of exactly $NAME is replaced by the environment variable NAME (unset is an error).
+
+[server]
+edition = "enterprise"
+listen = "0.0.0.0:7420"
+# The URL people and agents reach the load balancer at.
+public_url = "$BEE_PUBLIC_URL"
+# The address the other replicas reach THIS replica at. The replica that owns a protected ref's
+# land coalescer (SPEC 7.4) writes it into the lease row, and the others forward lands of that
+# ref to it. Each replica's compose service sets its own.
+advertise_url = "$BEE_ADVERTISE_URL"
+# Private to the replica: caches, the search index, local work directories.
+data_dir = "/data"
+cell = "main"
+region = "local"
+# The load balancer sets X-Forwarded-For.
+trust_forwarded_for = true
+
+[metadata]
+backend = "postgres"
+postgres_url = "$BEE_POSTGRES_URL"
+postgres_schema = "bee"
+# Connections of the metadata store per replica. A replica also holds 4 for the server tables
+# and up to 4 per forge surface it has used, so size the database's max_connections for all
+# replicas together (deploy/compose.scale.yml sets 400 for three; docs/scaling.md).
+max_connections = 16
+
+[blobs]
+backend = "s3"
+s3_bucket = "$BEE_S3_BUCKET"
+s3_region = "us-east-1"
+s3_endpoint = "$BEE_S3_ENDPOINT"
+s3_access_key_id = "$BEE_S3_ACCESS_KEY"
+s3_secret_access_key = "$BEE_S3_SECRET_KEY"
+s3_prefix = "blobs/"
+# Signs blob, CI transfer and media URLs. Without it each replica generates its own in data_dir,
+# and a URL signed by one replica is refused by the others. 64+ hex digits.
+url_key_hex = "$BEE_URL_KEY_HEX"
+
+[auth]
+# 64 hex digits. Generate with: openssl rand -hex 32
+signing_key_hex = "$BEE_SIGNING_KEY_HEX"
+# The ES256 key of the server's OpenID provider (JWKS, id_tokens, Actions OIDC tokens and
+# attestations), as unpadded hex of a PKCS#8 document. Without it each replica generates its own
+# in data_dir, and the JWKS a client fetches does not verify tokens the other replicas sign.
+# Generate with: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | xxd -p | tr -d '\n'
+oidc_key_pkcs8_hex = "$BEE_OIDC_KEY_HEX"
+
+[forge]
+database = "$BEE_FORGE_DATABASE"
+# After the first sign-in, put your principal id here and recreate the replicas
+# (docs/self-hosting.md, "First admin").
+site_admins = []
+
+[import]
+allowed_roots = ["/data/imports"]
+
+[backup]
+target = "s3"
+s3_prefix = "bee-backups/"
+retention_days = 30
+
+[admission]
+# Admission limits are counted by each replica on its own: with N replicas behind a round-robin
+# balancer a principal can reach about N times these rates.
+per_principal_rps = 200
+per_root_rps = 400
+
+[logging]
+level = "info"
+requests = true
+
+# Sign-in, as in deploy/server.toml: uncomment one block and fill it in.
+#
+# [login]
+# oidc_issuer = "https://id.example.com"
+# oidc_client_id = "bee"
+#
+# [login]
+# github_client_id = "<client id of your GitHub OAuth app>"

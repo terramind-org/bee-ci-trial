@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "bee.v1.MarketplacePricingModel": {
+      "description": "How a plan is priced.",
+      "enum": [
+        "MARKETPLACE_PRICING_MODEL_UNSPECIFIED",
+        "MARKETPLACE_PRICING_MODEL_FREE",
+        "MARKETPLACE_PRICING_MODEL_FLAT",
+        "MARKETPLACE_PRICING_MODEL_PER_UNIT"
+      ],
+      "title": "bee.v1.MarketplacePricingModel",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MarketplacePlan.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A pricing plan on a listing. Prices are in micro-USD.",
+  "properties": {
+    "bullets": {
+      "description": "feature list shown on the listing",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "freeTrialDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "id": {
+      "description": "ULID",
+      "type": "string"
+    },
+    "listingId": {
+      "type": "string"
+    },
+    "monthlyPriceMicroUsd": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "pricingModel": {
+      "$ref": "#/$defs/bee.v1.MarketplacePricingModel"
+    },
+    "retired": {
+      "description": "no new purchases",
+      "type": "boolean"
+    },
+    "unitName": {
+      "description": "PER_UNIT only, e.g. \"seat\"",
+      "type": "string"
+    },
+    "yearlyPriceMicroUsd": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.MarketplacePlan",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+apiVersion: v2
+name: bee
+description: "Beehive, the forge for Bee source control: the server, the web app and their Kubernetes wiring. Postgres 17 and an S3-compatible bucket are external."
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/terramind-org/bee
+sources:
+  - https://github.com/terramind-org/bee
+keywords:
+  - bee
+  - source-control
+  - agents
+maintainers:
+  - name: Terramind
+    url: https://github.com/terramind-org
+annotations:
+  category: DeveloperTools
+  licenses: Apache-2.0

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/pages.list-pages-deployments.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PagesService/ListPagesDeployments: `data` is a bee.v1.ListPagesDeploymentsResponse in proto3-JSON. `bee pages list-pages-deployments --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListPagesDeploymentsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.pages.list-pages-deployments"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee pages list-pages-deployments",
+  "type": "object"
+}

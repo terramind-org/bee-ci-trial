@@ -1,0 +1,36 @@
+event: dispatch .github/workflows/manual-deploy.yml ref=refs/heads/release/1.x input.environment=staging input.dry-run=true input.replicas=3
+--- .github/workflows/manual-deploy.yml
+name: Manual deploy
+run-name: Deploy ${{ inputs.environment }} by @${{ github.actor }}${{ inputs.dry-run && ' (dry run)' || '' }}
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+      dry-run:
+        type: boolean
+        default: false
+      replicas:
+        type: number
+        default: 2
+      log-level:
+        type: string
+        default: info
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - run: ./deploy.sh --replicas ${{ inputs.replicas }} --log ${{ inputs.log-level }} --dry=${{ github.event.inputs.dry-run }}
+      - if: ${{ !inputs.dry-run }}
+        run: ./smoke-test.sh
+--- .github/workflows/other.yml
+on: workflow_dispatch
+jobs:
+  x:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never

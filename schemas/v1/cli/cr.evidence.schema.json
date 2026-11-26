@@ -1,0 +1,30 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/cr.evidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee cr evidence --json`: one such document with `schema` = bee.v1.cr.evidence. Attach, list or remove evidence of a change request: add, list, rm (BriefService). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "anyOf": [
+        {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Evidence.schema.json"
+        },
+        {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListEvidenceResponse.schema.json"
+        },
+        {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteEvidenceResponse.schema.json"
+        }
+      ]
+    },
+    "schema": {
+      "const": "bee.v1.cr.evidence"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee cr evidence",
+  "type": "object"
+}

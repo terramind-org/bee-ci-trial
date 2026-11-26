@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "bee.v1.UserPinnedItem": {
+      "description": "A pinned repo or gist on a profile.",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "forkCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "id": {
+          "description": "repo or gist id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.UserPinnedItemKind"
+        },
+        "language": {
+          "type": "string"
+        },
+        "starCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "title": {
+          "description": "repo full name or gist description",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.UserPinnedItem",
+      "type": "object"
+    },
+    "bee.v1.UserPinnedItemKind": {
+      "description": "What a pinned item is.",
+      "enum": [
+        "USER_PINNED_ITEM_KIND_UNSPECIFIED",
+        "USER_PINNED_ITEM_KIND_REPO",
+        "USER_PINNED_ITEM_KIND_GIST"
+      ],
+      "title": "bee.v1.UserPinnedItemKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListUserPinnedItemsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListUserPinnedItems.",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.UserPinnedItem"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListUserPinnedItemsResponse",
+  "type": "object"
+}

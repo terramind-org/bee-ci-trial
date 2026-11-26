@@ -1,0 +1,6 @@
+manifest pyproject.toml pip lock=false count=3
+manifest uv.lock pip lock=true count=4
+uv.lock pip annotated-types@0.6.0 runtime indirect req=- pkg:pypi/annotated-types@0.6.0
+uv.lock pip httpx@0.27.0 runtime direct req=>=0.27 pkg:pypi/httpx@0.27.0
+uv.lock pip pydantic@2.6.4 runtime direct req=>=2.6,<3 pkg:pypi/pydantic@2.6.4 -> pypi/annotated-types@0.6.0
+uv.lock pip ruff@0.4.1 dev direct req=>=0.4 pkg:pypi/ruff@0.4.1

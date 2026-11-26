@@ -1,0 +1,13 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MarkDiscussionAnswerRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for MarkDiscussionAnswer.",
+  "properties": {
+    "commentId": {
+      "description": "a top-level comment or reply in a Q&A discussion",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.MarkDiscussionAnswerRequest",
+  "type": "object"
+}

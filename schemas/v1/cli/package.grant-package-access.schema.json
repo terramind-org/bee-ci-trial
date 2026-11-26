@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/package.grant-package-access.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PackageService/GrantPackageAccess: `data` is a bee.v1.PackageAccessGrant in proto3-JSON. `bee package grant-package-access --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.PackageAccessGrant.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.package.grant-package-access"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee package grant-package-access",
+  "type": "object"
+}

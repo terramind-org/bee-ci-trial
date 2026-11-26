@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/gist.star-gist.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.GistService/StarGist: `data` is a bee.v1.StarGistResponse in proto3-JSON. `bee gist star-gist --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.StarGistResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.gist.star-gist"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee gist star-gist",
+  "type": "object"
+}

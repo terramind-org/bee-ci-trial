@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "bee.v1.WorkflowJobUsage": {
+      "description": "Time one job used.",
+      "properties": {
+        "billableMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "machineClass": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkflowJobUsage",
+      "type": "object"
+    },
+    "bee.v1.WorkflowRunnerUsage": {
+      "description": "Usage of one runner class.",
+      "properties": {
+        "billableMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "jobCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "machineClass": {
+          "description": "e.g. \"linux-x64-4\", or \"self-hosted\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkflowRunnerUsage",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowRunUsage.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Time used by one run.",
+  "properties": {
+    "jobs": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkflowJobUsage"
+      },
+      "type": "array"
+    },
+    "runDurationMs": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "runners": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkflowRunnerUsage"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.WorkflowRunUsage",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+# Patterns to ignore when building packages.
+.DS_Store
+.git/
+.gitignore
+*.swp
+*.bak
+*.tmp
+*~
+# Test manifests and values for scripts/check-helm.sh are not part of the package.
+ci/

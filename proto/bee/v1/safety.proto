@@ -1,0 +1,306 @@
+// Beehive's record of what people asked agents to do and what the forge observed.
+syntax = "proto3";
+
+package bee.v1;
+
+import "bee/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service SafetyService {
+  // Read the requested work and its evidence.
+  rpc GetSafetyRecord(SafetyRef) returns (SafetyRecord);
+  // List work in a repository.
+  rpc ListSafetyRecords(ListSafetyRecordsRequest) returns (ListSafetyRecordsResponse);
+  // Record a report made by a person or assigned independent reviewer.
+  rpc ReportFinding(ReportFindingRequest) returns (SafetyFinding);
+  // Dismiss or confirm a finding with a reason.
+  rpc ResolveFinding(ResolveFindingRequest) returns (SafetyFinding);
+  // Record a person's verdict and note.
+  rpc SetVerdict(SetVerdictRequest) returns (SafetyRecord);
+  // Ask an independent agent to review work.
+  rpc RequestSafetyReview(RequestSafetyReviewRequest) returns (SafetyReview);
+  // Submit evidence and a proposed verdict for a requested review.
+  rpc SubmitSafetyReview(SubmitSafetyReviewRequest) returns (SafetyReview);
+  // Stop the caller's run and ask its answerable person to review a concern.
+  rpc RaiseConcern(RaiseConcernRequest) returns (SafetyConcern);
+  // List safety items addressed to the signed-in person.
+  rpc ListSafetyAttention(ListSafetyAttentionRequest) returns (ListSafetyAttentionResponse);
+  // Acknowledge an item addressed to the signed-in person.
+  rpc AcknowledgeSafetyAttention(AcknowledgeSafetyAttentionRequest) returns (SafetyAttention);
+  // Freeze agent merges and interrupt agent work in the organization.
+  rpc StopEverything(SetSafetyStopRequest) returns (SafetyStop);
+  // Lift the organization's agent merge freeze.
+  rpc ResumeEverything(SetSafetyStopRequest) returns (SafetyStop);
+  // Sample agent-merged work for a person to review.
+  rpc SpotCheck(SpotCheckRequest) returns (SpotCheckResponse);
+  // Summarize an organization's safety record for a period.
+  rpc GetSafetySummary(GetSafetySummaryRequest) returns (SafetySummary);
+}
+
+enum SafetyWorkKind {
+  SAFETY_WORK_KIND_UNSPECIFIED = 0;
+  SAFETY_WORK_KIND_RUN = 1;
+  SAFETY_WORK_KIND_SWARM = 2;
+}
+
+enum SafetyVerdict {
+  SAFETY_VERDICT_UNSPECIFIED = 0;
+  SAFETY_VERDICT_AS_ASKED = 1;
+  SAFETY_VERDICT_MORE_THAN_ASKED = 2;
+  SAFETY_VERDICT_LESS_THAN_ASKED = 3;
+  SAFETY_VERDICT_SOMETHING_ELSE = 4;
+  SAFETY_VERDICT_NEEDS_A_LOOK = 5;
+}
+
+enum SafetySignalKind {
+  SAFETY_SIGNAL_KIND_UNSPECIFIED = 0;
+  SAFETY_SIGNAL_KIND_OUTSIDE_TASK = 1;
+  SAFETY_SIGNAL_KIND_AROUND_REFUSAL = 2;
+  SAFETY_SIGNAL_KIND_TESTS_WEAKENED = 3;
+  SAFETY_SIGNAL_KIND_OWN_LEASH = 4;
+  SAFETY_SIGNAL_KIND_SAID_VS_SHOWN = 5;
+  SAFETY_SIGNAL_KIND_SECRETS_AND_EXIT = 6;
+  SAFETY_SIGNAL_KIND_FOLLOWING_STRANGERS = 7;
+  SAFETY_SIGNAL_KIND_HARM_TO_CODE = 8;
+  SAFETY_SIGNAL_KIND_HARM_TO_OTHERS = 9;
+  SAFETY_SIGNAL_KIND_LEGAL_FLAGS = 10;
+}
+
+enum SafetySeverity {
+  SAFETY_SEVERITY_UNSPECIFIED = 0;
+  SAFETY_SEVERITY_NOTE = 1;
+  SAFETY_SEVERITY_WARNING = 2;
+  SAFETY_SEVERITY_SEVERE = 3;
+}
+
+enum SafetyFindingState {
+  SAFETY_FINDING_STATE_UNSPECIFIED = 0;
+  SAFETY_FINDING_STATE_OPEN = 1;
+  SAFETY_FINDING_STATE_DISMISSED = 2;
+  SAFETY_FINDING_STATE_CONFIRMED = 3;
+}
+
+enum SafetyConcernCategory {
+  SAFETY_CONCERN_CATEGORY_UNSPECIFIED = 0;
+  SAFETY_CONCERN_CATEGORY_RULE_CONFLICT = 1;
+  SAFETY_CONCERN_CATEGORY_UNSAFE = 2;
+  SAFETY_CONCERN_CATEGORY_POTENTIALLY_UNLAWFUL = 3;
+}
+
+message SafetyRef {
+  RepoRef repo = 1;
+  SafetyWorkKind kind = 2;
+  string id = 3;
+}
+
+message SafetyAsk {
+  string text = 1;
+  SubjectRef source = 2;
+}
+
+message SafetyDone {
+  repeated string paths = 1;
+  repeated string commands = 2;
+  repeated string network_destinations = 3;
+  repeated string merged_change_request_ids = 4;
+}
+
+message SafetyEvidence {
+  string observation = 1;
+  repeated SubjectRef subjects = 2;
+  repeated string paths = 3;
+}
+
+message SafetyFindingReport {
+  SafetySignalKind kind = 1;
+  SafetySeverity severity = 2;
+  SafetyEvidence evidence = 3;
+}
+
+message SafetyFinding {
+  string id = 1;
+  SafetyFindingReport report = 2;
+  SafetyFindingState state = 3;
+  Principal reported_by = 4;
+  google.protobuf.Timestamp created_at = 5;
+  Principal resolved_by = 6;
+  string resolution_reason = 7;
+  google.protobuf.Timestamp resolved_at = 8;
+}
+
+message SafetyVerdictOverride {
+  SafetyVerdict verdict = 1;
+  Principal person = 2;
+  string note = 3;
+  google.protobuf.Timestamp time = 4;
+}
+
+message SafetyRecord {
+  SafetyRef work = 1;
+  repeated SafetyAsk asked = 2;
+  SafetyDone done = 3;
+  SafetyVerdict verdict = 4;
+  SafetyVerdictOverride override = 5;
+  repeated SafetyFinding findings = 6;
+  repeated Principal agents = 7;
+  Principal answerable = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  repeated SafetyReview reviews = 10;
+}
+
+message ListSafetyRecordsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+message ListSafetyRecordsResponse {
+  repeated SafetyRecord records = 1;
+  PageResponse page = 2;
+}
+
+message ReportFindingRequest {
+  SafetyRef work = 1;
+  SafetyFindingReport report = 2;
+  string review_id = 3;
+}
+
+message ResolveFindingRequest {
+  SafetyRef work = 1;
+  string finding_id = 2;
+  SafetyFindingState state = 3;
+  string reason = 4;
+}
+
+message SetVerdictRequest {
+  SafetyRef work = 1;
+  SafetyVerdict verdict = 2;
+  string note = 3;
+}
+
+message SafetyReview {
+  string id = 1;
+  Principal requested_by = 2;
+  Principal reviewer = 3;
+  google.protobuf.Timestamp requested_at = 4;
+  string model = 5;
+  SafetyVerdict proposed_verdict = 6;
+  string note = 7;
+  repeated string finding_ids = 8;
+  google.protobuf.Timestamp submitted_at = 9;
+}
+
+message RequestSafetyReviewRequest {
+  SafetyRef work = 1;
+  string reviewer_id = 2;
+}
+
+message SubmitSafetyReviewRequest {
+  SafetyRef work = 1;
+  string review_id = 2;
+  string model = 3;
+  SafetyVerdict proposed_verdict = 4;
+  string note = 5;
+  repeated SafetyFindingReport findings = 6;
+}
+
+message RaiseConcernRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  SafetyConcernCategory category = 3;
+  string text = 4;
+}
+
+message SafetyConcern {
+  string id = 1;
+  string run_id = 2;
+  SafetyConcernCategory category = 3;
+  string text = 4;
+  Principal raised_by = 5;
+}
+
+message SafetyTripwire {
+  string finding_id = 1;
+  SafetySignalKind kind = 2;
+  string reason = 3;
+  repeated string stopped_run_ids = 4;
+  bool paused_swarm = 5;
+}
+
+message SafetyAttention {
+  string id = 1;
+  SafetyRef work = 2;
+  Principal answerable = 3;
+  SafetyTripwire tripwire = 4;
+  SafetyConcern concern = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp acknowledged_at = 7;
+}
+
+message ListSafetyAttentionRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+message ListSafetyAttentionResponse {
+  repeated SafetyAttention items = 1;
+  PageResponse page = 2;
+}
+
+message AcknowledgeSafetyAttentionRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message SetSafetyStopRequest {
+  string org = 1;
+  string reason = 2;
+}
+
+message SafetyStop {
+  string org = 1;
+  bool frozen = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  repeated string stopped_run_ids = 4;
+  repeated string paused_swarm_ids = 5;
+  uint32 stopped_run_count = 6;
+  uint32 paused_swarm_count = 7;
+}
+
+message SafetyPeriod {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+message SpotCheckRequest {
+  RepoRef repo = 1;
+  SafetyPeriod period = 2;
+  string seed = 3;
+  uint32 limit = 4;
+}
+
+message SpotCheckResponse {
+  repeated SafetyRecord records = 1;
+}
+
+message GetSafetySummaryRequest {
+  string org = 1;
+  SafetyPeriod period = 2;
+}
+
+message SafetySignalCount {
+  SafetySignalKind kind = 1;
+  uint64 count = 2;
+}
+
+message SafetyWorkCount {
+  string id = 1;
+  SafetyWorkKind kind = 2;
+  repeated SafetySignalCount signals = 3;
+}
+
+message SafetySummary {
+  repeated SafetySignalCount signals = 1;
+  repeated SafetyWorkCount work = 2;
+  repeated SafetyAttention tripwires = 3;
+  optional uint64 median_wait_ms = 4;
+}

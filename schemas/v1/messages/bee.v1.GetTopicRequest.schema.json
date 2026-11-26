@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetTopicRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetTopic.",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "topRepoCount": {
+      "description": "0 = server default",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.GetTopicRequest",
+  "type": "object"
+}

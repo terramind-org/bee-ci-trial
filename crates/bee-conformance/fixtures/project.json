@@ -1,0 +1,1908 @@
+{
+  "service": "bee.v1.ProjectService",
+  "note": "Each fixture creates its own org project in dev (and whatever fields, items, views or teams it needs) in setup.",
+  "fixtures": [
+    {
+      "method": "CreateProject",
+      "request": {
+        "owner": "{{org}}",
+        "title": "create-project-fixture",
+        "shortDescription": "made by the fixture",
+        "readme": "# create-project-fixture\n",
+        "public": true,
+        "linkRepos": [
+          {
+            "fullName": "{{repo}}"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GetProject",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "get-project-fixture",
+            "shortDescription": "get-project-fixture",
+            "readme": "# get-project-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}"
+      }
+    },
+    {
+      "method": "GetProjectByNumber",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "get-project-by-number-fixture",
+            "shortDescription": "get-project-by-number-fixture",
+            "readme": "# get-project-by-number-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "owner": "{{org}}",
+        "number": "{{p.number}}"
+      }
+    },
+    {
+      "method": "ListProjects",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-projects-fixture",
+            "shortDescription": "list-projects-fixture",
+            "readme": "# list-projects-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "owner": "{{org}}",
+        "query": "fixture",
+        "includeClosed": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "UpdateProject",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-project-fixture",
+            "shortDescription": "update-project-fixture",
+            "readme": "# update-project-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "title": "update-project-fixture-renamed",
+        "shortDescription": "updated",
+        "readme": "# updated\n",
+        "public": false,
+        "closed": true,
+        "isTemplate": true,
+        "expectedVersion": "{{p.version}}"
+      }
+    },
+    {
+      "method": "DeleteProject",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-project-fixture",
+            "shortDescription": "delete-project-fixture",
+            "readme": "# delete-project-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}"
+      }
+    },
+    {
+      "method": "CopyProject",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "copy-project-fixture",
+            "shortDescription": "copy-project-fixture",
+            "readme": "# copy-project-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "copy-project-draft",
+            "body": "copy-project-draft body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "sourceProjectId": "{{p.id}}",
+        "owner": "{{org}}",
+        "title": "copy-project-fixture-copy",
+        "includeDraftItems": true,
+        "public": true
+      }
+    },
+    {
+      "method": "AddProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "add-item-fixture",
+            "shortDescription": "add-item-fixture",
+            "readme": "# add-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-item-fixture issue",
+            "body": "add-item-fixture issue"
+          },
+          "save": "i"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "content": {
+          "kind": "SUBJECT_KIND_ISSUE",
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "id": "{{i.number}}"
+        }
+      }
+    },
+    {
+      "method": "CreateProjectDraftItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-draft-fixture",
+            "shortDescription": "create-draft-fixture",
+            "readme": "# create-draft-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "title": "create-draft-fixture",
+        "body": "a draft",
+        "assignees": [
+          "{{userName}}"
+        ]
+      }
+    },
+    {
+      "method": "UpdateProjectDraftItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-draft-fixture",
+            "shortDescription": "update-draft-fixture",
+            "readme": "# update-draft-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "update-draft-fixture",
+            "body": "update-draft-fixture body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}",
+        "title": "update-draft-fixture-renamed",
+        "body": "edited",
+        "assignees": [
+          "{{user}}"
+        ],
+        "setAssignees": true,
+        "expectedVersion": "{{d.version}}"
+      }
+    },
+    {
+      "method": "ConvertProjectDraftItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "convert-draft-fixture",
+            "shortDescription": "convert-draft-fixture",
+            "readme": "# convert-draft-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "convert-draft-fixture",
+            "body": "convert-draft-fixture body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}",
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "GetProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "get-item-fixture",
+            "shortDescription": "get-item-fixture",
+            "readme": "# get-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-item-fixture issue",
+            "body": "get-item-fixture issue"
+          },
+          "save": "i"
+        },
+        {
+          "call": "ProjectService/AddProjectItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "content": {
+              "kind": "SUBJECT_KIND_ISSUE",
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "id": "{{i.number}}"
+            }
+          },
+          "save": "it"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{it.id}}"
+      }
+    },
+    {
+      "method": "ListProjectItems",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-items-fixture",
+            "shortDescription": "list-items-fixture",
+            "readme": "# list-items-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-items-fixture issue",
+            "body": "list-items-fixture issue"
+          },
+          "save": "i"
+        },
+        {
+          "call": "ProjectService/AddProjectItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "content": {
+              "kind": "SUBJECT_KIND_ISSUE",
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "id": "{{i.number}}"
+            }
+          },
+          "save": "it"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "list-items-draft",
+            "body": "list-items-draft body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "includeArchived": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "MoveProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "move-item-fixture",
+            "shortDescription": "move-item-fixture",
+            "readme": "# move-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "move-item-a",
+            "body": "move-item-a body"
+          },
+          "save": "a"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "move-item-b",
+            "body": "move-item-b body"
+          },
+          "save": "b"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{a.id}}",
+        "afterItemId": "{{b.id}}"
+      }
+    },
+    {
+      "method": "ArchiveProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "archive-item-fixture",
+            "shortDescription": "archive-item-fixture",
+            "readme": "# archive-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "archive-item-fixture",
+            "body": "archive-item-fixture body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}"
+      }
+    },
+    {
+      "method": "UnarchiveProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "unarchive-item-fixture",
+            "shortDescription": "unarchive-item-fixture",
+            "readme": "# unarchive-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "unarchive-item-fixture",
+            "body": "unarchive-item-fixture body"
+          },
+          "save": "d"
+        },
+        {
+          "call": "ProjectService/ArchiveProjectItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "itemId": "{{d.id}}"
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}"
+      }
+    },
+    {
+      "method": "DeleteProjectItem",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-item-fixture",
+            "shortDescription": "delete-item-fixture",
+            "readme": "# delete-item-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "delete-item-fixture",
+            "body": "delete-item-fixture body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}"
+      }
+    },
+    {
+      "method": "CreateProjectField",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-field-fixture",
+            "shortDescription": "create-field-fixture",
+            "readme": "# create-field-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "name": "create-field-fixture",
+        "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+        "options": [
+          {
+            "name": "Low",
+            "color": "GREEN",
+            "description": "low"
+          },
+          {
+            "name": "High",
+            "color": "RED",
+            "description": "high"
+          }
+        ]
+      }
+    },
+    {
+      "method": "UpdateProjectField",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-field-fixture",
+            "shortDescription": "update-field-fixture",
+            "readme": "# update-field-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "update-field-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "fieldId": "{{f.id}}",
+        "name": "update-field-fixture-renamed",
+        "options": [
+          {
+            "id": "{{f.options.0.id}}",
+            "name": "Todo",
+            "color": "GRAY"
+          },
+          {
+            "name": "Doing",
+            "color": "YELLOW"
+          }
+        ],
+        "setOptions": true,
+        "expectedVersion": "{{f.version}}"
+      }
+    },
+    {
+      "method": "DeleteProjectField",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-field-fixture",
+            "shortDescription": "delete-field-fixture",
+            "readme": "# delete-field-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "delete-field-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "fieldId": "{{f.id}}"
+      }
+    },
+    {
+      "method": "ListProjectFields",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-fields-fixture",
+            "shortDescription": "list-fields-fixture",
+            "readme": "# list-fields-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "list-fields-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "SetProjectItemFieldValue",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "set-field-value-fixture",
+            "shortDescription": "set-field-value-fixture",
+            "readme": "# set-field-value-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "set-field-value-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "set-field-value-fixture",
+            "body": "set-field-value-fixture body"
+          },
+          "save": "d"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}",
+        "value": {
+          "fieldId": "{{f.id}}",
+          "optionId": "{{f.options.1.id}}"
+        },
+        "expectedVersion": "{{d.version}}"
+      }
+    },
+    {
+      "method": "ClearProjectItemFieldValue",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "clear-field-value-fixture",
+            "shortDescription": "clear-field-value-fixture",
+            "readme": "# clear-field-value-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "clear-field-value-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "clear-field-value-fixture",
+            "body": "clear-field-value-fixture body"
+          },
+          "save": "d"
+        },
+        {
+          "call": "ProjectService/SetProjectItemFieldValue",
+          "request": {
+            "projectId": "{{p.id}}",
+            "itemId": "{{d.id}}",
+            "value": {
+              "fieldId": "{{f.id}}",
+              "optionId": "{{f.options.0.id}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "itemId": "{{d.id}}",
+        "fieldId": "{{f.id}}"
+      }
+    },
+    {
+      "method": "CreateProjectView",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-view-fixture",
+            "shortDescription": "create-view-fixture",
+            "readme": "# create-view-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "create-view-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "name": "create-view-fixture",
+        "layout": "PROJECT_VIEW_LAYOUT_BOARD",
+        "filter": "is:open",
+        "columnFieldId": "{{f.id}}",
+        "sortBy": [
+          {
+            "fieldId": "{{f.id}}",
+            "descending": true
+          }
+        ]
+      }
+    },
+    {
+      "method": "GetProjectView",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "get-view-fixture",
+            "shortDescription": "get-view-fixture",
+            "readme": "# get-view-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectView",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "get-view-fixture",
+            "layout": "PROJECT_VIEW_LAYOUT_TABLE",
+            "filter": "is:open"
+          },
+          "save": "v"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "viewId": "{{v.id}}"
+      }
+    },
+    {
+      "method": "UpdateProjectView",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-view-fixture",
+            "shortDescription": "update-view-fixture",
+            "readme": "# update-view-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectView",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "update-view-fixture",
+            "layout": "PROJECT_VIEW_LAYOUT_TABLE",
+            "filter": "is:open"
+          },
+          "save": "v"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "viewId": "{{v.id}}",
+        "name": "update-view-fixture-renamed",
+        "layout": "PROJECT_VIEW_LAYOUT_TABLE",
+        "filter": "is:issue",
+        "expectedVersion": "{{v.version}}"
+      }
+    },
+    {
+      "method": "DeleteProjectView",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-view-fixture",
+            "shortDescription": "delete-view-fixture",
+            "readme": "# delete-view-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectView",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "delete-view-fixture",
+            "layout": "PROJECT_VIEW_LAYOUT_TABLE",
+            "filter": "is:open"
+          },
+          "save": "v"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "viewId": "{{v.id}}"
+      }
+    },
+    {
+      "method": "ListProjectViews",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-views-fixture",
+            "shortDescription": "list-views-fixture",
+            "readme": "# list-views-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectView",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "list-views-fixture",
+            "layout": "PROJECT_VIEW_LAYOUT_TABLE",
+            "filter": "is:open"
+          },
+          "save": "v"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "ListProjectIterations",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-iterations-fixture",
+            "shortDescription": "list-iterations-fixture",
+            "readme": "# list-iterations-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "list-iterations-fixture",
+            "kind": "PROJECT_FIELD_KIND_ITERATION",
+            "iterationConfig": {
+              "startOn": "2030-01-07T00:00:00Z",
+              "durationDays": 14
+            }
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/AddProjectIteration",
+          "request": {
+            "projectId": "{{p.id}}",
+            "fieldId": "{{f.id}}",
+            "title": "Sprint 1",
+            "startOn": "2030-01-07T00:00:00Z",
+            "durationDays": 14
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "fieldId": "{{f.id}}",
+        "includeCompleted": true
+      }
+    },
+    {
+      "method": "AddProjectIteration",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "add-iteration-fixture",
+            "shortDescription": "add-iteration-fixture",
+            "readme": "# add-iteration-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "add-iteration-fixture",
+            "kind": "PROJECT_FIELD_KIND_ITERATION",
+            "iterationConfig": {
+              "startOn": "2030-01-07T00:00:00Z",
+              "durationDays": 14
+            }
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "fieldId": "{{f.id}}",
+        "title": "add-iteration-fixture",
+        "startOn": "2030-01-07T00:00:00Z",
+        "durationDays": 7
+      }
+    },
+    {
+      "method": "CompleteProjectIteration",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "complete-iteration-fixture",
+            "shortDescription": "complete-iteration-fixture",
+            "readme": "# complete-iteration-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "complete-iteration-fixture",
+            "kind": "PROJECT_FIELD_KIND_ITERATION",
+            "iterationConfig": {
+              "startOn": "2030-01-07T00:00:00Z",
+              "durationDays": 14
+            }
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/AddProjectIteration",
+          "request": {
+            "projectId": "{{p.id}}",
+            "fieldId": "{{f.id}}",
+            "title": "Sprint A",
+            "startOn": "2030-01-07T00:00:00Z",
+            "durationDays": 14
+          },
+          "save": "a"
+        },
+        {
+          "call": "ProjectService/AddProjectIteration",
+          "request": {
+            "projectId": "{{p.id}}",
+            "fieldId": "{{f.id}}",
+            "title": "Sprint B",
+            "startOn": "2030-01-21T00:00:00Z",
+            "durationDays": 14
+          },
+          "save": "b"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "fieldId": "{{f.id}}",
+        "iterationId": "{{a.id}}",
+        "moveOpenItemsToIterationId": "{{b.id}}"
+      }
+    },
+    {
+      "method": "ListProjectWorkflows",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-workflows-fixture",
+            "shortDescription": "list-workflows-fixture",
+            "readme": "# list-workflows-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}"
+      }
+    },
+    {
+      "method": "CreateProjectWorkflow",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-workflow-fixture",
+            "shortDescription": "create-workflow-fixture",
+            "readme": "# create-workflow-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "create-workflow-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "kind": "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+        "name": "create-workflow-fixture",
+        "fieldId": "{{f.id}}",
+        "optionId": "{{f.options.0.id}}",
+        "enabled": true
+      }
+    },
+    {
+      "method": "UpdateProjectWorkflow",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-workflow-fixture",
+            "shortDescription": "update-workflow-fixture",
+            "readme": "# update-workflow-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "update-workflow-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectWorkflow",
+          "request": {
+            "projectId": "{{p.id}}",
+            "kind": "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+            "name": "update-workflow-fixture",
+            "fieldId": "{{f.id}}",
+            "optionId": "{{f.options.0.id}}",
+            "enabled": true
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "workflowId": "{{w.id}}",
+        "name": "update-workflow-fixture-renamed",
+        "optionId": "{{f.options.1.id}}",
+        "expectedVersion": "{{w.version}}"
+      }
+    },
+    {
+      "method": "EnableProjectWorkflow",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "enable-workflow-fixture",
+            "shortDescription": "enable-workflow-fixture",
+            "readme": "# enable-workflow-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "enable-workflow-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectWorkflow",
+          "request": {
+            "projectId": "{{p.id}}",
+            "kind": "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+            "name": "enable-workflow-fixture",
+            "fieldId": "{{f.id}}",
+            "optionId": "{{f.options.0.id}}",
+            "enabled": false
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "workflowId": "{{w.id}}"
+      }
+    },
+    {
+      "method": "DisableProjectWorkflow",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "disable-workflow-fixture",
+            "shortDescription": "disable-workflow-fixture",
+            "readme": "# disable-workflow-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "disable-workflow-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectWorkflow",
+          "request": {
+            "projectId": "{{p.id}}",
+            "kind": "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+            "name": "disable-workflow-fixture",
+            "fieldId": "{{f.id}}",
+            "optionId": "{{f.options.0.id}}",
+            "enabled": true
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "workflowId": "{{w.id}}"
+      }
+    },
+    {
+      "method": "DeleteProjectWorkflow",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-workflow-fixture",
+            "shortDescription": "delete-workflow-fixture",
+            "readme": "# delete-workflow-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "delete-workflow-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectWorkflow",
+          "request": {
+            "projectId": "{{p.id}}",
+            "kind": "PROJECT_WORKFLOW_KIND_ITEM_ADDED",
+            "name": "delete-workflow-fixture",
+            "fieldId": "{{f.id}}",
+            "optionId": "{{f.options.0.id}}",
+            "enabled": true
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "workflowId": "{{w.id}}"
+      }
+    },
+    {
+      "method": "CreateProjectChart",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-chart-fixture",
+            "shortDescription": "create-chart-fixture",
+            "readme": "# create-chart-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "create-chart-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "chart": {
+          "name": "create-chart-fixture",
+          "layout": "PROJECT_CHART_LAYOUT_COLUMN",
+          "filter": "",
+          "xAxisFieldId": "{{f.id}}",
+          "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+        }
+      }
+    },
+    {
+      "method": "UpdateProjectChart",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-chart-fixture",
+            "shortDescription": "update-chart-fixture",
+            "readme": "# update-chart-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "update-chart-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectChart",
+          "request": {
+            "projectId": "{{p.id}}",
+            "chart": {
+              "name": "update-chart-fixture",
+              "layout": "PROJECT_CHART_LAYOUT_COLUMN",
+              "filter": "",
+              "xAxisFieldId": "{{f.id}}",
+              "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+            }
+          },
+          "save": "c"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "chartId": "{{c.id}}",
+        "chart": {
+          "name": "update-chart-fixture-renamed",
+          "layout": "PROJECT_CHART_LAYOUT_BAR",
+          "filter": "",
+          "xAxisFieldId": "{{f.id}}",
+          "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+        },
+        "expectedVersion": "{{c.version}}"
+      }
+    },
+    {
+      "method": "DeleteProjectChart",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-chart-fixture",
+            "shortDescription": "delete-chart-fixture",
+            "readme": "# delete-chart-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "delete-chart-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectChart",
+          "request": {
+            "projectId": "{{p.id}}",
+            "chart": {
+              "name": "delete-chart-fixture",
+              "layout": "PROJECT_CHART_LAYOUT_COLUMN",
+              "filter": "",
+              "xAxisFieldId": "{{f.id}}",
+              "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+            }
+          },
+          "save": "c"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "chartId": "{{c.id}}"
+      }
+    },
+    {
+      "method": "ListProjectCharts",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-charts-fixture",
+            "shortDescription": "list-charts-fixture",
+            "readme": "# list-charts-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "list-charts-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectChart",
+          "request": {
+            "projectId": "{{p.id}}",
+            "chart": {
+              "name": "list-charts-fixture",
+              "layout": "PROJECT_CHART_LAYOUT_COLUMN",
+              "filter": "",
+              "xAxisFieldId": "{{f.id}}",
+              "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+            }
+          },
+          "save": "c"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}"
+      }
+    },
+    {
+      "method": "QueryProjectChart",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "query-chart-fixture",
+            "shortDescription": "query-chart-fixture",
+            "readme": "# query-chart-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectField",
+          "request": {
+            "projectId": "{{p.id}}",
+            "name": "query-chart-fixture",
+            "kind": "PROJECT_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "Todo",
+                "color": "GRAY"
+              },
+              {
+                "name": "Done",
+                "color": "GREEN"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "ProjectService/CreateProjectChart",
+          "request": {
+            "projectId": "{{p.id}}",
+            "chart": {
+              "name": "query-chart-fixture",
+              "layout": "PROJECT_CHART_LAYOUT_COLUMN",
+              "filter": "",
+              "xAxisFieldId": "{{f.id}}",
+              "aggregate": "PROJECT_CHART_AGGREGATE_COUNT"
+            }
+          },
+          "save": "c"
+        },
+        {
+          "call": "ProjectService/CreateProjectDraftItem",
+          "request": {
+            "projectId": "{{p.id}}",
+            "title": "query-chart-draft",
+            "body": "query-chart-draft body"
+          },
+          "save": "d"
+        },
+        {
+          "call": "ProjectService/SetProjectItemFieldValue",
+          "request": {
+            "projectId": "{{p.id}}",
+            "itemId": "{{d.id}}",
+            "value": {
+              "fieldId": "{{f.id}}",
+              "optionId": "{{f.options.1.id}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "chartId": "{{c.id}}"
+      }
+    },
+    {
+      "method": "CreateProjectStatusUpdate",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "create-status-update-fixture",
+            "shortDescription": "create-status-update-fixture",
+            "readme": "# create-status-update-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "status": "PROJECT_STATUS_AT_RISK",
+        "startOn": "2030-01-01T00:00:00Z",
+        "targetOn": "2030-06-01T00:00:00Z",
+        "body": "create-status-update-fixture"
+      }
+    },
+    {
+      "method": "UpdateProjectStatusUpdate",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "update-status-update-fixture",
+            "shortDescription": "update-status-update-fixture",
+            "readme": "# update-status-update-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectStatusUpdate",
+          "request": {
+            "projectId": "{{p.id}}",
+            "status": "PROJECT_STATUS_ON_TRACK",
+            "startOn": "2030-01-01T00:00:00Z",
+            "targetOn": "2030-03-01T00:00:00Z",
+            "body": "update-status-update-fixture"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "statusUpdateId": "{{s.id}}",
+        "status": "PROJECT_STATUS_COMPLETE",
+        "body": "done",
+        "expectedVersion": "{{s.version}}"
+      }
+    },
+    {
+      "method": "DeleteProjectStatusUpdate",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "delete-status-update-fixture",
+            "shortDescription": "delete-status-update-fixture",
+            "readme": "# delete-status-update-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectStatusUpdate",
+          "request": {
+            "projectId": "{{p.id}}",
+            "status": "PROJECT_STATUS_ON_TRACK",
+            "startOn": "2030-01-01T00:00:00Z",
+            "targetOn": "2030-03-01T00:00:00Z",
+            "body": "delete-status-update-fixture"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "statusUpdateId": "{{s.id}}"
+      }
+    },
+    {
+      "method": "ListProjectStatusUpdates",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "list-status-updates-fixture",
+            "shortDescription": "list-status-updates-fixture",
+            "readme": "# list-status-updates-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/CreateProjectStatusUpdate",
+          "request": {
+            "projectId": "{{p.id}}",
+            "status": "PROJECT_STATUS_ON_TRACK",
+            "startOn": "2030-01-01T00:00:00Z",
+            "targetOn": "2030-03-01T00:00:00Z",
+            "body": "list-status-updates-fixture"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "LinkProjectRepo",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "link-repo-fixture",
+            "shortDescription": "link-repo-fixture",
+            "readme": "# link-repo-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "UnlinkProjectRepo",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "unlink-repo-fixture",
+            "shortDescription": "unlink-repo-fixture",
+            "readme": "# unlink-repo-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "ProjectService/LinkProjectRepo",
+          "request": {
+            "projectId": "{{p.id}}",
+            "repo": {
+              "fullName": "{{repo}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "LinkProjectTeam",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "link-team-fixture",
+            "shortDescription": "link-team-fixture",
+            "readme": "# link-team-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "TeamService/CreateTeam",
+          "request": {
+            "org": "{{org}}",
+            "slug": "link-project-team-fixture",
+            "name": "link-project-team-fixture",
+            "description": "fixture team"
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "team": "link-project-team-fixture",
+        "role": "PROJECT_TEAM_ROLE_WRITE"
+      }
+    },
+    {
+      "method": "UnlinkProjectTeam",
+      "setup": [
+        {
+          "call": "ProjectService/CreateProject",
+          "request": {
+            "owner": "{{org}}",
+            "title": "unlink-team-fixture",
+            "shortDescription": "unlink-team-fixture",
+            "readme": "# unlink-team-fixture\n",
+            "public": true
+          },
+          "save": "p"
+        },
+        {
+          "call": "TeamService/CreateTeam",
+          "request": {
+            "org": "{{org}}",
+            "slug": "unlink-project-team-fixture",
+            "name": "unlink-project-team-fixture",
+            "description": "fixture team"
+          }
+        },
+        {
+          "call": "ProjectService/LinkProjectTeam",
+          "request": {
+            "projectId": "{{p.id}}",
+            "team": "unlink-project-team-fixture"
+          }
+        }
+      ],
+      "request": {
+        "projectId": "{{p.id}}",
+        "team": "unlink-project-team-fixture"
+      }
+    }
+  ]
+}

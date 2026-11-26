@@ -1,0 +1,13 @@
+{
+  "service": "bee.v1.ObjectService",
+  "fixtures": [
+    {"method": "GetServerInfo", "request": {}},
+    {"method": "GetObjects",
+     "request": {"repo": {"fullName": "{{repo}}"}, "ids": ["{{base.objectId}}", "{{base.blobs.README\\.md.objectId}}"]}},
+    {"method": "HasObjects",
+     "request": {"repo": {"fullName": "{{repo}}"}, "ids": ["{{base.objectId}}"]}},
+    {"method": "ResolveRef", "request": {"repo": {"fullName": "{{repo}}"}, "name": "main"}},
+    {"method": "GetTierStats", "request": {}},
+    {"method": "GetDaemonSnapshot", "request": {"repo": {"fullName": "{{repo}}"}}}
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ProjectStatus": {
+      "description": "Health reported by a status update.",
+      "enum": [
+        "PROJECT_STATUS_UNSPECIFIED",
+        "PROJECT_STATUS_INACTIVE",
+        "PROJECT_STATUS_ON_TRACK",
+        "PROJECT_STATUS_AT_RISK",
+        "PROJECT_STATUS_OFF_TRACK",
+        "PROJECT_STATUS_COMPLETE"
+      ],
+      "title": "bee.v1.ProjectStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ProjectStatusUpdate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A status update posted on a project.",
+  "properties": {
+    "body": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "creator": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "id": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "startOn": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.ProjectStatus"
+    },
+    "targetOn": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.ProjectStatusUpdate",
+  "type": "object"
+}

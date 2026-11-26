@@ -1,0 +1,314 @@
+// Sponsors and FUNDING.yml for bee.v1. See docs/PRODUCT.md §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Sponsorable profiles, tiers and sponsorships for users and orgs, plus FUNDING.yml parsing.
+// Money moves through an external payment processor; this service records intent and state.
+// Amounts are integer cents in `currency`.
+service SponsorService {
+  // Returns a user's or org's sponsorable profile. NOT_FOUND when not sponsorable.
+  rpc GetSponsorProfile(GetSponsorProfileRequest) returns (SponsorProfile);
+  // Enables, disables or edits the caller's (or an org's) sponsorable profile. Enabling
+  // requires a fiscal host or payout account (INVALID_STATE otherwise).
+  rpc UpdateSponsorProfile(UpdateSponsorProfileRequest) returns (SponsorProfile);
+  // Adds a tier. ALREADY_EXISTS when a published tier has the same amount and frequency.
+  rpc CreateSponsorTier(CreateSponsorTierRequest) returns (SponsorTier);
+  // Lists a maintainee's tiers.
+  rpc ListSponsorTiers(ListSponsorTiersRequest) returns (ListSponsorTiersResponse);
+  // Edits a tier. The amount of a tier with active sponsors cannot change (INVALID_STATE);
+  // retire it and create a new one.
+  rpc UpdateSponsorTier(UpdateSponsorTierRequest) returns (SponsorTier);
+  // Deletes a draft tier, or retires a published one (existing sponsors keep it).
+  rpc DeleteSponsorTier(DeleteSponsorTierRequest) returns (DeleteSponsorTierResponse);
+  // Starts sponsoring a maintainee on a tier, or with a custom amount. Returns a checkout URL
+  // when payment confirmation is needed. ALREADY_EXISTS for a second active monthly sponsorship.
+  rpc CreateSponsorship(CreateSponsorshipRequest) returns (CreateSponsorshipResponse);
+  // Fetches one sponsorship. Private sponsorships are visible only to the two parties.
+  rpc GetSponsorship(GetSponsorshipRequest) returns (Sponsorship);
+  // Cancels a monthly sponsorship at the end of the current period.
+  rpc CancelSponsorship(CancelSponsorshipRequest) returns (Sponsorship);
+  // Lists sponsorships where the caller (or an org) is the sponsor or the maintainee.
+  rpc ListSponsorships(ListSponsorshipsRequest) returns (ListSponsorshipsResponse);
+  // Parses a repo's FUNDING.yml (root, then `.github`, then `docs`). NOT_FOUND when absent;
+  // INVALID_ARGUMENT (subcode `bad_funding_file`) when it does not parse.
+  rpc GetSponsorFundingFile(GetSponsorFundingFileRequest) returns (SponsorFundingFile);
+  // Returns the fiscal host a maintainee receives funds through, if any.
+  rpc GetSponsorFiscalHost(GetSponsorFiscalHostRequest) returns (SponsorFiscalHost);
+  // Read-only payout summary for a maintainee. Maintainee and org admins only.
+  rpc GetSponsorPayoutSummary(GetSponsorPayoutSummaryRequest) returns (SponsorPayoutSummary);
+  // Lists who has sponsor-only access to a maintainee's repos through their tiers.
+  rpc ListSponsorContentAccess(ListSponsorContentAccessRequest) returns (ListSponsorContentAccessResponse);
+}
+
+// How often a tier or sponsorship is paid.
+enum SponsorFrequency {
+  SPONSOR_FREQUENCY_UNSPECIFIED = 0;
+  SPONSOR_FREQUENCY_MONTHLY = 1;
+  SPONSOR_FREQUENCY_ONE_TIME = 2;
+}
+
+// Lifecycle of a tier.
+enum SponsorTierState {
+  SPONSOR_TIER_STATE_UNSPECIFIED = 0;
+  SPONSOR_TIER_STATE_DRAFT = 1;
+  SPONSOR_TIER_STATE_PUBLISHED = 2;
+  SPONSOR_TIER_STATE_RETIRED = 3;
+}
+
+// Lifecycle of a sponsorship.
+enum SponsorshipState {
+  SPONSORSHIP_STATE_UNSPECIFIED = 0;
+  SPONSORSHIP_STATE_PENDING = 1;     // awaiting payment confirmation
+  SPONSORSHIP_STATE_ACTIVE = 2;
+  SPONSORSHIP_STATE_CANCELLING = 3;  // ends at period end
+  SPONSORSHIP_STATE_ENDED = 4;
+  SPONSORSHIP_STATE_FAILED = 5;      // payment failed
+}
+
+// Which side of a sponsorship to list.
+enum SponsorshipRole {
+  SPONSORSHIP_ROLE_UNSPECIFIED = 0;
+  SPONSORSHIP_ROLE_SPONSOR = 1;
+  SPONSORSHIP_ROLE_MAINTAINEE = 2;
+}
+
+// A sponsorable user or org.
+message SponsorProfile {
+  Principal maintainee = 1;
+  string login = 2;
+  bool enabled = 3;
+  string introduction = 4;      // Markdown
+  string introduction_html = 5;
+  uint64 goal_cents = 6;        // monthly goal; 0 = none
+  string goal_description = 7;
+  uint64 monthly_total_cents = 8; // public sponsors only, unless the caller is the maintainee
+  uint32 sponsor_count = 9;
+  string currency = 10;         // ISO 4217
+  repeated SponsorTier tiers = 11; // published tiers
+  bool has_fiscal_host = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// A sponsorship tier.
+message SponsorTier {
+  string id = 1;
+  string name = 2;
+  string description = 3;       // Markdown
+  uint64 amount_cents = 4;
+  SponsorFrequency frequency = 5;
+  SponsorTierState state = 6;
+  bool custom_amount = 7;       // sponsors may pay more than amount_cents
+  repeated RepoRef sponsor_only_repos = 8; // read access granted while sponsoring
+  string welcome_message = 9;   // sent to new sponsors
+  uint32 active_sponsor_count = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// One sponsorship.
+message Sponsorship {
+  string id = 1;
+  Principal sponsor = 2;
+  Principal maintainee = 3;
+  string tier_id = 4;
+  uint64 amount_cents = 5;
+  string currency = 6;
+  SponsorFrequency frequency = 7;
+  SponsorshipState state = 8;
+  bool private = 9;             // hidden from the public sponsor list
+  string note = 10;             // message from the sponsor
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp current_period_end_at = 12;
+  google.protobuf.Timestamp ended_at = 13;
+}
+
+// One platform entry in FUNDING.yml.
+message SponsorFundingLink {
+  string platform = 1;          // e.g. "github", "open_collective", "ko_fi", "custom"
+  repeated string accounts = 2; // usernames as written
+  repeated string urls = 3;     // resolved links
+}
+
+// A parsed FUNDING.yml.
+message SponsorFundingFile {
+  RepoRef repo = 1;
+  bytes path = 2;
+  ObjectId blob = 3;
+  repeated SponsorFundingLink links = 4;
+  repeated string warnings = 5; // unknown platforms or too many entries
+}
+
+// A fiscal host that receives funds for a maintainee.
+message SponsorFiscalHost {
+  string name = 1;              // e.g. "Open Source Collective"
+  string url = 2;
+  string host_account = 3;      // the maintainee's account at the host
+  uint32 fee_basis_points = 4;  // host fee, 100 = 1%
+  bool verified = 5;
+}
+
+// A maintainee's payout totals.
+message SponsorPayoutSummary {
+  Principal maintainee = 1;
+  string currency = 2;
+  uint64 pending_cents = 3;
+  uint64 paid_last_30_days_cents = 4;
+  uint64 paid_lifetime_cents = 5;
+  google.protobuf.Timestamp next_payout_at = 6;
+  repeated SponsorPayout recent_payouts = 7;
+}
+
+// One completed or scheduled payout.
+message SponsorPayout {
+  string id = 1;
+  uint64 amount_cents = 2;
+  string status = 3;            // "scheduled", "paid", "failed"
+  google.protobuf.Timestamp paid_at = 4;
+}
+
+// One sponsor's access to sponsor-only repos.
+message SponsorContentAccess {
+  Principal sponsor = 1;
+  string tier_id = 2;
+  repeated RepoRef repos = 3;
+  google.protobuf.Timestamp granted_at = 4;
+  google.protobuf.Timestamp expires_at = 5; // end of the paid period
+}
+
+// Request for GetSponsorProfile.
+message GetSponsorProfileRequest {
+  string login = 1;             // user or org login
+}
+
+// Request for UpdateSponsorProfile.
+message UpdateSponsorProfileRequest {
+  string login = 1;             // empty = the caller; an org login needs org admin
+  optional bool enabled = 2;
+  optional string introduction = 3;
+  optional uint64 goal_cents = 4;
+  optional string goal_description = 5;
+  optional string currency = 6;
+}
+
+// Request for CreateSponsorTier.
+message CreateSponsorTierRequest {
+  string login = 1;             // maintainee; empty = the caller
+  string name = 2;
+  string description = 3;
+  uint64 amount_cents = 4;
+  SponsorFrequency frequency = 5;
+  bool custom_amount = 6;
+  repeated RepoRef sponsor_only_repos = 7;
+  string welcome_message = 8;
+  bool publish = 9;             // false creates a draft
+}
+
+// Request for ListSponsorTiers.
+message ListSponsorTiersRequest {
+  string login = 1;
+  bool include_drafts = 2;      // maintainee only
+  bool include_retired = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListSponsorTiers.
+message ListSponsorTiersResponse {
+  repeated SponsorTier tiers = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateSponsorTier.
+message UpdateSponsorTierRequest {
+  string tier_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional uint64 amount_cents = 4;
+  optional bool custom_amount = 5;
+  repeated RepoRef sponsor_only_repos = 6; // replaces when replace_sponsor_only_repos
+  bool replace_sponsor_only_repos = 7;
+  optional string welcome_message = 8;
+  optional SponsorTierState state = 9;   // DRAFT -> PUBLISHED, or PUBLISHED -> RETIRED
+}
+
+// Request for DeleteSponsorTier.
+message DeleteSponsorTierRequest {
+  string tier_id = 1;
+}
+
+// Response for DeleteSponsorTier.
+message DeleteSponsorTierResponse {}
+
+// Request for CreateSponsorship.
+message CreateSponsorshipRequest {
+  string maintainee_login = 1;
+  string tier_id = 2;           // empty with amount_cents for a custom amount
+  uint64 amount_cents = 3;
+  SponsorFrequency frequency = 4;
+  bool private = 5;
+  string note = 6;
+  string sponsor_org = 7;       // sponsor as this org; empty = the caller
+}
+
+// Response for CreateSponsorship.
+message CreateSponsorshipResponse {
+  Sponsorship sponsorship = 1;
+  string checkout_url = 2;      // set when state is PENDING
+}
+
+// Request for GetSponsorship.
+message GetSponsorshipRequest {
+  string sponsorship_id = 1;
+}
+
+// Request for CancelSponsorship.
+message CancelSponsorshipRequest {
+  string sponsorship_id = 1;
+}
+
+// Request for ListSponsorships.
+message ListSponsorshipsRequest {
+  SponsorshipRole role = 1;
+  string login = 2;             // user or org; empty = the caller
+  bool include_ended = 3;
+  bool include_private = 4;     // honored for the parties only
+  PageRequest page = 5;
+}
+
+// Response for ListSponsorships.
+message ListSponsorshipsResponse {
+  repeated Sponsorship sponsorships = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetSponsorFundingFile.
+message GetSponsorFundingFileRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+}
+
+// Request for GetSponsorFiscalHost.
+message GetSponsorFiscalHostRequest {
+  string login = 1;
+}
+
+// Request for GetSponsorPayoutSummary.
+message GetSponsorPayoutSummaryRequest {
+  string login = 1;             // empty = the caller
+}
+
+// Request for ListSponsorContentAccess.
+message ListSponsorContentAccessRequest {
+  string login = 1;             // maintainee; empty = the caller
+  RepoRef repo = 2;             // filter to one repo
+  PageRequest page = 3;
+}
+
+// Response for ListSponsorContentAccess.
+message ListSponsorContentAccessResponse {
+  repeated SponsorContentAccess accesses = 1;
+  PageResponse page = 2;
+}

@@ -1,0 +1,26 @@
+{
+  "service": "bee.v1.WikiService",
+  "note": "Runs on its own repo dev/wiki-fixture (created by EnableWiki's setup) so dev/playground's wiki setting is untouched; pages are created before they are read, DisableWiki runs last.",
+  "fixtures": [
+    {"method": "EnableWiki",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "wiki-fixture", "visibility": "VISIBILITY_PUBLIC", "description": "wiki fixtures"}}],
+     "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "editAccess": "WIKI_EDIT_ACCESS_COLLABORATORS"}},
+    {"method": "GetWiki", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}}},
+    {"method": "CreateWikiPage", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "title": "Getting Started", "content": "# Getting Started\n\nInstall bee and run it.\n", "format": "WIKI_PAGE_FORMAT_MARKDOWN", "message": "Create Getting Started"}},
+    {"method": "ListWikiPages", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "page": {"pageSize": 50}}},
+    {"method": "GetWikiPage", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "slug": "Getting-Started", "includeHtml": true}},
+    {"method": "UpdateWikiPage",
+     "setup": [{"call": "WikiService/GetWikiPage", "save": "p", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "slug": "Getting-Started"}}],
+     "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "slug": "Getting-Started", "expectedChangeset": "{{p.changeset}}", "content": "# Getting Started\n\nInstall bee, then run `bee init`.\n", "message": "Update Getting Started"}},
+    {"method": "ListWikiPageRevisions", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "slug": "Getting-Started", "page": {"pageSize": 50}}},
+    {"method": "SetWikiSidebar", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "content": "* [[Getting Started]]\n", "message": "Set sidebar"}},
+    {"method": "GetWikiSidebar", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "includeHtml": true}},
+    {"method": "SetWikiFooter", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "content": "Maintained by the bee team.\n", "message": "Set footer"}},
+    {"method": "GetWikiFooter", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "includeHtml": true}},
+    {"method": "SearchWikiPages", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "query": "install", "page": {"pageSize": 20}}},
+    {"method": "DeleteWikiPage",
+     "setup": [{"call": "WikiService/CreateWikiPage", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "title": "Delete Me", "content": "temporary page\n"}}],
+     "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}, "slug": "Delete-Me", "message": "Delete Delete Me"}},
+    {"method": "DisableWiki", "request": {"repo": {"fullName": "{{org}}/wiki-fixture"}}}
+  ]
+}

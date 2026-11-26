@@ -1,0 +1,34 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateCustomRoleRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateCustomRole. Unset fields are unchanged.",
+  "properties": {
+    "baseRole": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "permissions": {
+      "description": "replaces when replace_permissions is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "replacePermissions": {
+      "type": "boolean"
+    },
+    "roleId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateCustomRoleRequest",
+  "type": "object"
+}

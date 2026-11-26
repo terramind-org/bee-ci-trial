@@ -1,0 +1,20 @@
+feature_id,test
+F424-004,web:e2e/shell.spec.ts::works at 390px: navigation drawer and review on a phone
+F424-004,web:e2e/shell.spec.ts::serves an installable web app manifest and makes no third-party requests
+F424-005,web:e2e/shell.spec.ts::command palette jumps to a change by title
+F424-005,web:e2e/shell.spec.ts::the browser reaches the server only through the session proxy
+F424-005,web:e2e/auth.setup.ts::sign in with the dev server's root token
+F424-005,web:e2e/a11y.spec.ts::axe: 390px layout with the navigation drawer open
+F48-005,web:e2e/activity.spec.ts::replays the server's events, then shows live ones on the same stream
+F48-005,web:e2e/activity.spec.ts::pause buffers new events and resume shows them
+F413-019,web:e2e/changes.spec.ts::land is blocked by policy until a human approves; the agent then lands through the queue
+F413-011,web:e2e/changes.spec.ts::comments with a suggestion, resolves the thread, and applies the suggestion as a new revision
+F44-003,web:e2e/code.spec.ts::shows history and blame for a file
+F44-003,web:e2e/code.spec.ts::file lines are anchorable
+F419-003,web:e2e/agents.spec.ts::agent detail: tokens with budget used, leases and provenance
+F419-003,web:e2e/changes.spec.ts::checks, provenance and path context for the viewed revision
+F416-021,web:e2e/forge.spec.ts::lists releases, generates notes from landed changes and publishes an immutable release
+F415-023,web:e2e/work.spec.ts::moves a card on the board with the keyboard-friendly select
+F418-006,web:e2e/forge.spec.ts::lists code scanning alerts and dismisses one with a reason
+F410-001,web:e2e/forge.spec.ts::audit log verifies the hash chain, names actors and filters
+F416-050,web:e2e/forge.spec.ts::members, teams and apps

@@ -1,0 +1,60 @@
+[package]
+name = "bee-cli"
+description = "bee: the command-line client, `--json` on every command."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[[bin]]
+name = "bee"
+path = "src/main.rs"
+
+[[bin]]
+name = "bee-cli-gen"
+path = "src/bin/bee-cli-gen.rs"
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+bee-proto = { path = "../bee-proto" }
+bee-wc = { path = "../bee-wc" }
+bee-daemon = { path = "../bee-daemon" }
+bee-mcp = { path = "../bee-mcp" }
+base64 = "=0.22.1"
+bytes = "=1.11.0"
+clap = { version = "=4.6.7", default-features = false, features = ["std", "help", "usage", "error-context", "suggestions", "string"] }
+# futures-util: keeps several GetObjects streams in flight on the CLI's one-thread runtime
+# (same pinned version bee-daemon already uses; was a dev-dependency here).
+futures-util = { version = "=0.3.31", default-features = false, features = ["std"] }
+http = "=1.3.1"
+http-body-util = "=0.1.3"
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
+prost = "=0.14.4"
+prost-types = "=0.14.4"
+serde = { version = "=1.0.229", features = ["derive"] }
+# float_roundtrip: responses are re-printed, so parsing must not change a number's last digit.
+serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
+tokio = { version = "=1.53.3", features = ["rt", "net", "time", "io-util", "io-std"] }
+# sha2: the SHA-256 of evidence files, which FinalizeEvidence compares with the stored bytes (same
+# pinned version bee-forge uses).
+sha2 = "=0.10.9"
+toml = "=1.1.8"
+
+[dev-dependencies]
+bee-server = { path = "../bee-server" }
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "http2", "tokio"] }
+jsonschema = { version = "=0.59.0", default-features = false }
+tempfile = "=3.27.0"
+tokio = { version = "=1.53.3", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

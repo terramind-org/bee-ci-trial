@@ -1,0 +1,43 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateOAuthAuthorizationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateOAuthAuthorization. Called for the signed-in user.\n\nOneof `flow`: at most one of `clientId`, `userCode` is set.",
+  "properties": {
+    "clientId": {
+      "description": "authorization-code flow",
+      "type": "string"
+    },
+    "codeChallenge": {
+      "description": "PKCE",
+      "type": "string"
+    },
+    "codeChallengeMethod": {
+      "description": "\"S256\"",
+      "type": "string"
+    },
+    "deny": {
+      "description": "the user declined",
+      "type": "boolean"
+    },
+    "redirectUri": {
+      "description": "code flow; must match a registered callback URL",
+      "type": "string"
+    },
+    "scopes": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "state": {
+      "description": "echoed back in the redirect",
+      "type": "string"
+    },
+    "userCode": {
+      "description": "device flow: the code the user typed",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateOAuthAuthorizationRequest",
+  "type": "object"
+}

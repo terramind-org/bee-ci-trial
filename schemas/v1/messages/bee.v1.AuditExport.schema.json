@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "bee.v1.AuditExportFormat": {
+      "description": "File format of an export.",
+      "enum": [
+        "AUDIT_EXPORT_FORMAT_UNSPECIFIED",
+        "AUDIT_EXPORT_FORMAT_CSV",
+        "AUDIT_EXPORT_FORMAT_JSON"
+      ],
+      "title": "bee.v1.AuditExportFormat",
+      "type": "string"
+    },
+    "bee.v1.AuditExportState": {
+      "description": "Export lifecycle.",
+      "enum": [
+        "AUDIT_EXPORT_STATE_UNSPECIFIED",
+        "AUDIT_EXPORT_STATE_PENDING",
+        "AUDIT_EXPORT_STATE_READY",
+        "AUDIT_EXPORT_STATE_FAILED"
+      ],
+      "title": "bee.v1.AuditExportState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AuditExport.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An audit log export.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "entryCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "firstSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "format": {
+      "$ref": "#/$defs/bee.v1.AuditExportFormat"
+    },
+    "headHash": {
+      "contentEncoding": "base64",
+      "description": "hash of last_seq, for offline verification",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "lastSeq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "signedUrl": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.AuditExportState"
+    },
+    "urlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AuditExport",
+  "type": "object"
+}

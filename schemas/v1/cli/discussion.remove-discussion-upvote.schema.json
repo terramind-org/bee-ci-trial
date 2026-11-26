@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/discussion.remove-discussion-upvote.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.DiscussionService/RemoveDiscussionUpvote: `data` is a bee.v1.RemoveDiscussionUpvoteResponse in proto3-JSON. `bee discussion remove-discussion-upvote --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.RemoveDiscussionUpvoteResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.discussion.remove-discussion-upvote"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee discussion remove-discussion-upvote",
+  "type": "object"
+}

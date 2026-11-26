@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateScimTokenResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateScimToken. The token appears only here.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "token": {
+      "type": "string"
+    },
+    "tokenId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateScimTokenResponse",
+  "type": "object"
+}

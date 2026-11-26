@@ -1,0 +1,627 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RulesetBypassActor": {
+      "description": "An actor allowed to bypass a ruleset.",
+      "properties": {
+        "actorId": {
+          "description": "principal id, team id, role name or custom role id, app id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.RulesetBypassActorKind"
+        },
+        "mode": {
+          "$ref": "#/$defs/bee.v1.RulesetBypassMode"
+        }
+      },
+      "title": "bee.v1.RulesetBypassActor",
+      "type": "object"
+    },
+    "bee.v1.RulesetBypassActorKind": {
+      "description": "Kind of actor that may bypass a ruleset.",
+      "enum": [
+        "RULESET_BYPASS_ACTOR_KIND_UNSPECIFIED",
+        "RULESET_BYPASS_ACTOR_KIND_PRINCIPAL",
+        "RULESET_BYPASS_ACTOR_KIND_TEAM",
+        "RULESET_BYPASS_ACTOR_KIND_ROLE",
+        "RULESET_BYPASS_ACTOR_KIND_APP"
+      ],
+      "title": "bee.v1.RulesetBypassActorKind",
+      "type": "string"
+    },
+    "bee.v1.RulesetBypassMode": {
+      "description": "When a bypass actor may bypass.",
+      "enum": [
+        "RULESET_BYPASS_MODE_UNSPECIFIED",
+        "RULESET_BYPASS_MODE_ALWAYS",
+        "RULESET_BYPASS_MODE_CHANGE_REQUEST_ONLY"
+      ],
+      "title": "bee.v1.RulesetBypassMode",
+      "type": "string"
+    },
+    "bee.v1.RulesetCodeScanningTool": {
+      "description": "One code scanning tool and the alert levels that block.",
+      "properties": {
+        "alertsThreshold": {
+          "description": "\"none\", \"errors\", \"errors_and_warnings\", \"all\"",
+          "type": "string"
+        },
+        "securityAlertsThreshold": {
+          "description": "\"none\", \"critical\", \"high_or_higher\", \"medium_or_higher\", \"all\"",
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RulesetCodeScanningTool",
+      "type": "object"
+    },
+    "bee.v1.RulesetConditions": {
+      "description": "Which refs and repos a ruleset applies to.",
+      "properties": {
+        "orgNameIncludes": {
+          "description": "enterprise rulesets only",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "refNameExcludes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "refNameIncludes": {
+          "description": "Ref patterns (fnmatch). \"~DEFAULT_BRANCH\" and \"~ALL\" are special values.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repoNameExcludes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repoNameIncludes": {
+          "description": "Org and enterprise rulesets only: repo name patterns.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repoPropertyExcludes": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetPropertyMatcher"
+          },
+          "type": "array"
+        },
+        "repoPropertyIncludes": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetPropertyMatcher"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetConditions",
+      "type": "object"
+    },
+    "bee.v1.RulesetEnforcement": {
+      "description": "Whether a ruleset is enforced.",
+      "enum": [
+        "RULESET_ENFORCEMENT_UNSPECIFIED",
+        "RULESET_ENFORCEMENT_ACTIVE",
+        "RULESET_ENFORCEMENT_EVALUATE",
+        "RULESET_ENFORCEMENT_DISABLED"
+      ],
+      "title": "bee.v1.RulesetEnforcement",
+      "type": "string"
+    },
+    "bee.v1.RulesetMergeMethod": {
+      "description": "A way a change request may land.",
+      "enum": [
+        "RULESET_MERGE_METHOD_UNSPECIFIED",
+        "RULESET_MERGE_METHOD_MERGE",
+        "RULESET_MERGE_METHOD_SQUASH",
+        "RULESET_MERGE_METHOD_REBASE"
+      ],
+      "title": "bee.v1.RulesetMergeMethod",
+      "type": "string"
+    },
+    "bee.v1.RulesetPatternOperator": {
+      "description": "How a pattern rule compares.",
+      "enum": [
+        "RULESET_PATTERN_OPERATOR_UNSPECIFIED",
+        "RULESET_PATTERN_OPERATOR_STARTS_WITH",
+        "RULESET_PATTERN_OPERATOR_ENDS_WITH",
+        "RULESET_PATTERN_OPERATOR_CONTAINS",
+        "RULESET_PATTERN_OPERATOR_REGEX"
+      ],
+      "title": "bee.v1.RulesetPatternOperator",
+      "type": "string"
+    },
+    "bee.v1.RulesetPatternSubject": {
+      "description": "What a pattern rule matches against.",
+      "enum": [
+        "RULESET_PATTERN_SUBJECT_UNSPECIFIED",
+        "RULESET_PATTERN_SUBJECT_COMMIT_MESSAGE",
+        "RULESET_PATTERN_SUBJECT_AUTHOR_EMAIL",
+        "RULESET_PATTERN_SUBJECT_COMMITTER_EMAIL",
+        "RULESET_PATTERN_SUBJECT_REF_NAME"
+      ],
+      "title": "bee.v1.RulesetPatternSubject",
+      "type": "string"
+    },
+    "bee.v1.RulesetPropertyMatcher": {
+      "description": "Matches repos by a custom or system property.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "description": "\"custom\" or \"system\"",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetPropertyMatcher",
+      "type": "object"
+    },
+    "bee.v1.RulesetRequiredCheck": {
+      "description": "A status check that must pass.",
+      "properties": {
+        "appId": {
+          "description": "only this app's report counts; empty = any",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RulesetRequiredCheck",
+      "type": "object"
+    },
+    "bee.v1.RulesetRule": {
+      "description": "One typed rule in a ruleset.\n\nOneof `rule`: at most one of `requiredApprovals`, `requiredChecks`, `requiredSignatures`, `linearHistory`, `noDeletion`, `noForcePush`, `noCreation`, `requiredDeployments`, `requiredWorkflows`, `requiredCodeScanning`, `restrictedPaths`, `restrictedExtensions`, `maxFileSize`, `maxPathLength`, `pattern`, `mergeMethods`, `mergeQueue` is set.",
+      "properties": {
+        "id": {
+          "description": "stable within the ruleset, assigned by the server when empty",
+          "type": "string"
+        },
+        "linearHistory": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleLinearHistory"
+        },
+        "maxFileSize": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleMaxFileSize"
+        },
+        "maxPathLength": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleMaxPathLength"
+        },
+        "mergeMethods": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleMergeMethods"
+        },
+        "mergeQueue": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleMergeQueue"
+        },
+        "noCreation": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleNoCreation"
+        },
+        "noDeletion": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleNoDeletion"
+        },
+        "noForcePush": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleNoForcePush"
+        },
+        "pattern": {
+          "$ref": "#/$defs/bee.v1.RulesetRulePattern"
+        },
+        "requiredApprovals": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredApprovals"
+        },
+        "requiredChecks": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredChecks"
+        },
+        "requiredCodeScanning": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredCodeScanning"
+        },
+        "requiredDeployments": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredDeployments"
+        },
+        "requiredSignatures": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredSignatures"
+        },
+        "requiredWorkflows": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRequiredWorkflows"
+        },
+        "restrictedExtensions": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRestrictedExtensions"
+        },
+        "restrictedPaths": {
+          "$ref": "#/$defs/bee.v1.RulesetRuleRestrictedPaths"
+        }
+      },
+      "title": "bee.v1.RulesetRule",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleLinearHistory": {
+      "description": "Forbids merge changesets on the ref.",
+      "properties": {},
+      "title": "bee.v1.RulesetRuleLinearHistory",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleMaxFileSize": {
+      "description": "Push rule: refuses files larger than a size (TOO_LARGE).",
+      "properties": {
+        "maxBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.RulesetRuleMaxFileSize",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleMaxPathLength": {
+      "description": "Push rule: refuses paths longer than a length.",
+      "properties": {
+        "maxBytes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.RulesetRuleMaxPathLength",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleMergeMethods": {
+      "description": "Limits the land methods allowed.",
+      "properties": {
+        "allowed": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetMergeMethod"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleMergeMethods",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleMergeQueue": {
+      "description": "Requires landing through the merge queue (land train).",
+      "properties": {
+        "allEntriesMustPass": {
+          "description": "false = entries are tested independently",
+          "type": "boolean"
+        },
+        "checkTimeoutSeconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxEntriesToBuild": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxEntriesToMerge": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mergeMethod": {
+          "$ref": "#/$defs/bee.v1.RulesetMergeMethod"
+        },
+        "minEntriesToMerge": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minEntriesWaitSeconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.RulesetRuleMergeQueue",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleNoCreation": {
+      "description": "Restricts creating matching refs to bypass actors.",
+      "properties": {},
+      "title": "bee.v1.RulesetRuleNoCreation",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleNoDeletion": {
+      "description": "Forbids deleting matching refs.",
+      "properties": {},
+      "title": "bee.v1.RulesetRuleNoDeletion",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleNoForcePush": {
+      "description": "Forbids non-fast-forward updates (NOT_FAST_FORWARD).",
+      "properties": {},
+      "title": "bee.v1.RulesetRuleNoForcePush",
+      "type": "object"
+    },
+    "bee.v1.RulesetRulePattern": {
+      "description": "Requires commit messages (or emails, or ref names) to match a pattern.",
+      "properties": {
+        "name": {
+          "description": "shown in errors",
+          "type": "string"
+        },
+        "negate": {
+          "description": "the value must NOT match",
+          "type": "boolean"
+        },
+        "operator": {
+          "$ref": "#/$defs/bee.v1.RulesetPatternOperator"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/bee.v1.RulesetPatternSubject"
+        }
+      },
+      "title": "bee.v1.RulesetRulePattern",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredApprovals": {
+      "description": "Requires approvals, optionally only for some diff classes or paths.",
+      "properties": {
+        "agentsMayApprove": {
+          "type": "boolean"
+        },
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "diffClasses": {
+          "description": "applies when the change has one of these; empty = all",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "dismissStaleOnPush": {
+          "type": "boolean"
+        },
+        "humanCount": {
+          "description": "of `count`, how many must be humans",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pathPrefixes": {
+          "description": "applies when the change touches these; empty = all",
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "requireConversationResolution": {
+          "type": "boolean"
+        },
+        "requireLastPushApproval": {
+          "description": "someone other than the last pusher approves",
+          "type": "boolean"
+        },
+        "requireOwnerApproval": {
+          "type": "boolean"
+        },
+        "requiredReviewerGroups": {
+          "description": "e.g. \"@acme/security\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRequiredApprovals",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredChecks": {
+      "description": "Requires checks to pass before landing.",
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetRequiredCheck"
+          },
+          "type": "array"
+        },
+        "skipOnCreate": {
+          "description": "do not require on ref creation",
+          "type": "boolean"
+        },
+        "strict": {
+          "description": "must pass on the change rebased onto the current tip",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRequiredChecks",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredCodeScanning": {
+      "description": "Requires code scanning results before landing.",
+      "properties": {
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetCodeScanningTool"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRequiredCodeScanning",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredDeployments": {
+      "description": "Requires a successful deployment to environments before landing.",
+      "properties": {
+        "environments": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRequiredDeployments",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredSignatures": {
+      "description": "Requires every changeset to carry a verified signature.",
+      "properties": {},
+      "title": "bee.v1.RulesetRuleRequiredSignatures",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRequiredWorkflows": {
+      "description": "Requires workflows to pass before landing.",
+      "properties": {
+        "workflows": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.RulesetWorkflowRef"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRequiredWorkflows",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRestrictedExtensions": {
+      "description": "Push rule: refuses writes that add files with these extensions.",
+      "properties": {
+        "extensions": {
+          "description": "e.g. \".exe\", \".pem\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRestrictedExtensions",
+      "type": "object"
+    },
+    "bee.v1.RulesetRuleRestrictedPaths": {
+      "description": "Push rule: refuses writes that touch these path globs.",
+      "properties": {
+        "pathGlobs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.RulesetRuleRestrictedPaths",
+      "type": "object"
+    },
+    "bee.v1.RulesetTarget": {
+      "description": "What a ruleset governs.",
+      "enum": [
+        "RULESET_TARGET_UNSPECIFIED",
+        "RULESET_TARGET_BRANCH",
+        "RULESET_TARGET_TAG",
+        "RULESET_TARGET_PUSH"
+      ],
+      "title": "bee.v1.RulesetTarget",
+      "type": "string"
+    },
+    "bee.v1.RulesetWorkflowRef": {
+      "description": "A workflow that must run and pass.",
+      "properties": {
+        "path": {
+          "description": "e.g. \".bee/workflows/ci.yml\"",
+          "type": "string"
+        },
+        "ref": {
+          "description": "ref or changeset id to pin",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.RulesetWorkflowRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateRulesetRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateRuleset. Unset fields are unchanged.",
+  "properties": {
+    "bypassActors": {
+      "description": "replaces when replace_bypass_actors is set",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RulesetBypassActor"
+      },
+      "type": "array"
+    },
+    "conditions": {
+      "$ref": "#/$defs/bee.v1.RulesetConditions",
+      "description": "replaces the conditions when set"
+    },
+    "enforcement": {
+      "$ref": "#/$defs/bee.v1.RulesetEnforcement"
+    },
+    "expectedVersion": {
+      "description": "0 = skip the check",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "replaceBypassActors": {
+      "type": "boolean"
+    },
+    "replaceRules": {
+      "type": "boolean"
+    },
+    "rules": {
+      "description": "replaces the rules when replace_rules is set",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RulesetRule"
+      },
+      "type": "array"
+    },
+    "rulesetId": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/bee.v1.RulesetTarget"
+    }
+  },
+  "title": "bee.v1.UpdateRulesetRequest",
+  "type": "object"
+}

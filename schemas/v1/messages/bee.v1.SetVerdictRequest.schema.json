@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SafetyRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SafetyWorkKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SafetyRef",
+      "type": "object"
+    },
+    "bee.v1.SafetyVerdict": {
+      "enum": [
+        "SAFETY_VERDICT_UNSPECIFIED",
+        "SAFETY_VERDICT_AS_ASKED",
+        "SAFETY_VERDICT_MORE_THAN_ASKED",
+        "SAFETY_VERDICT_LESS_THAN_ASKED",
+        "SAFETY_VERDICT_SOMETHING_ELSE",
+        "SAFETY_VERDICT_NEEDS_A_LOOK"
+      ],
+      "title": "bee.v1.SafetyVerdict",
+      "type": "string"
+    },
+    "bee.v1.SafetyWorkKind": {
+      "enum": [
+        "SAFETY_WORK_KIND_UNSPECIFIED",
+        "SAFETY_WORK_KIND_RUN",
+        "SAFETY_WORK_KIND_SWARM"
+      ],
+      "title": "bee.v1.SafetyWorkKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetVerdictRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "note": {
+      "type": "string"
+    },
+    "verdict": {
+      "$ref": "#/$defs/bee.v1.SafetyVerdict"
+    },
+    "work": {
+      "$ref": "#/$defs/bee.v1.SafetyRef"
+    }
+  },
+  "title": "bee.v1.SetVerdictRequest",
+  "type": "object"
+}

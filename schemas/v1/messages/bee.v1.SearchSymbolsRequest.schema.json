@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SymbolKind": {
+      "description": "Kind of a code symbol.",
+      "enum": [
+        "SYMBOL_KIND_UNSPECIFIED",
+        "SYMBOL_KIND_FILE",
+        "SYMBOL_KIND_MODULE",
+        "SYMBOL_KIND_NAMESPACE",
+        "SYMBOL_KIND_PACKAGE",
+        "SYMBOL_KIND_CLASS",
+        "SYMBOL_KIND_METHOD",
+        "SYMBOL_KIND_PROPERTY",
+        "SYMBOL_KIND_FIELD",
+        "SYMBOL_KIND_CONSTRUCTOR",
+        "SYMBOL_KIND_ENUM",
+        "SYMBOL_KIND_INTERFACE",
+        "SYMBOL_KIND_FUNCTION",
+        "SYMBOL_KIND_VARIABLE",
+        "SYMBOL_KIND_CONSTANT",
+        "SYMBOL_KIND_STRUCT",
+        "SYMBOL_KIND_TRAIT",
+        "SYMBOL_KIND_TYPE_ALIAS",
+        "SYMBOL_KIND_MACRO",
+        "SYMBOL_KIND_ENUM_MEMBER"
+      ],
+      "title": "bee.v1.SymbolKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SearchSymbolsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SearchSymbols.",
+  "properties": {
+    "kinds": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SymbolKind"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "query": {
+      "description": "name or /regex/ plus repo:, org:, path:, language:, kind:",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SearchSymbolsRequest",
+  "type": "object"
+}

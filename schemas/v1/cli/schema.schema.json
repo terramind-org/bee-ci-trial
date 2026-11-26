@@ -1,0 +1,77 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/schema.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee schema --json`: one such document with `schema` = bee.v1.schema. Print the request, response and --json output JSON Schemas of a command. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "description": "Command words, e.g. `write land`.",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "unary",
+            "server-streaming",
+            "client-streaming",
+            "bidi-streaming",
+            "local",
+            "stream",
+            "error"
+          ],
+          "type": "string"
+        },
+        "output": {
+          "description": "JSON Schema of the --json output document.",
+          "type": "object"
+        },
+        "request": {
+          "description": "JSON Schema of the request message.",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "response": {
+          "description": "JSON Schema of the response message.",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "rpc": {
+          "description": "RPC path, for generated commands.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "schema": {
+          "description": "The `schema` value of its --json output.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command",
+        "schema",
+        "kind",
+        "rpc",
+        "request",
+        "response",
+        "output"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.schema"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee schema",
+  "type": "object"
+}

@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "bee.v1.GitObjectFormat": {
+      "description": "Hash function of a repo's git representation. One format per repo.",
+      "enum": [
+        "GIT_OBJECT_FORMAT_UNSPECIFIED",
+        "GIT_OBJECT_FORMAT_SHA1",
+        "GIT_OBJECT_FORMAT_SHA256"
+      ],
+      "title": "bee.v1.GitObjectFormat",
+      "type": "string"
+    },
+    "bee.v1.GitPreflightProblem": {
+      "description": "One problem found by preflight.",
+      "properties": {
+        "code": {
+          "description": "e.g. \"git_too_old\", \"no_credential_helper\", \"protocol_v0\", \"lfs_missing\"",
+          "type": "string"
+        },
+        "fix": {
+          "description": "a command or setting that fixes it",
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.GitPreflightSeverity"
+        }
+      },
+      "title": "bee.v1.GitPreflightProblem",
+      "type": "object"
+    },
+    "bee.v1.GitPreflightSeverity": {
+      "description": "How serious a preflight problem is.",
+      "enum": [
+        "GIT_PREFLIGHT_SEVERITY_UNSPECIFIED",
+        "GIT_PREFLIGHT_SEVERITY_ERROR",
+        "GIT_PREFLIGHT_SEVERITY_WARNING",
+        "GIT_PREFLIGHT_SEVERITY_INFO"
+      ],
+      "title": "bee.v1.GitPreflightSeverity",
+      "type": "string"
+    },
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitPreflightResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GitPreflight.",
+  "properties": {
+    "minGitVersion": {
+      "type": "string"
+    },
+    "objectFormat": {
+      "$ref": "#/$defs/bee.v1.GitObjectFormat"
+    },
+    "ok": {
+      "description": "no ERROR problems",
+      "type": "boolean"
+    },
+    "problems": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitPreflightProblem"
+      },
+      "type": "array"
+    },
+    "recommendedConfig": {
+      "description": "e.g. protocol.version=2",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "remoteUrl": {
+      "description": "the URL to use for this transport",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GitPreflightResponse",
+  "type": "object"
+}

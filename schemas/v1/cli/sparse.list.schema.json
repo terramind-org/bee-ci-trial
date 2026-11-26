@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/sparse.list.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee sparse list --json`: one such document with `schema` = bee.v1.sparse.list. Show the sparse profile (`.` = the whole repo). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "sparse": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "sparse"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.sparse.list"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee sparse list",
+  "type": "object"
+}

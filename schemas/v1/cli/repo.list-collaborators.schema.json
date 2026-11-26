@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/repo.list-collaborators.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RepoService/ListCollaborators: `data` is a bee.v1.ListCollaboratorsResponse in proto3-JSON. `bee repo list-collaborators --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListCollaboratorsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.repo.list-collaborators"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee repo list-collaborators",
+  "type": "object"
+}

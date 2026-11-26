@@ -1,0 +1,25 @@
+event: push refs/heads/feature/login
+--- .github/workflows/build.yml
+name: Build
+on:
+  push:
+    branches-ignore: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - run: ./build.sh
+--- .github/workflows/main-only.yml
+name: Main
+on:
+  push:
+    branches: [main]
+concurrency: main-${{ github.ref }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./build.sh

@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "bee.v1.RepoRole": {
+      "description": "Repo role names shared by orgs, teams and collaborators.",
+      "enum": [
+        "REPO_ROLE_UNSPECIFIED",
+        "REPO_ROLE_NONE",
+        "REPO_ROLE_READ",
+        "REPO_ROLE_TRIAGE",
+        "REPO_ROLE_WRITE",
+        "REPO_ROLE_MAINTAIN",
+        "REPO_ROLE_ADMIN"
+      ],
+      "title": "bee.v1.RepoRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.OrgSettings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Org-wide settings: base permissions and member privileges.",
+  "properties": {
+    "baseRepoRole": {
+      "$ref": "#/$defs/bee.v1.RepoRole",
+      "description": "what every member gets on every repo"
+    },
+    "maxOpenChangesPerAgent": {
+      "description": "agent flood defense default (PRODUCT §4.21)",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "membersCanCreatePublicRepos": {
+      "type": "boolean"
+    },
+    "membersCanCreateRepos": {
+      "type": "boolean"
+    },
+    "membersCanCreateTeams": {
+      "type": "boolean"
+    },
+    "membersCanDeleteRepos": {
+      "type": "boolean"
+    },
+    "membersCanForkPrivateRepos": {
+      "type": "boolean"
+    },
+    "membersCanInviteOutsideCollaborators": {
+      "type": "boolean"
+    },
+    "orgId": {
+      "type": "string"
+    },
+    "pinnedRepoIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "readmeRepoId": {
+      "description": "org profile README",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "webCommitSignoffRequired": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.OrgSettings",
+  "type": "object"
+}

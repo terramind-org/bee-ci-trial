@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SponsorFrequency": {
+      "description": "How often a tier or sponsorship is paid.",
+      "enum": [
+        "SPONSOR_FREQUENCY_UNSPECIFIED",
+        "SPONSOR_FREQUENCY_MONTHLY",
+        "SPONSOR_FREQUENCY_ONE_TIME"
+      ],
+      "title": "bee.v1.SponsorFrequency",
+      "type": "string"
+    },
+    "bee.v1.SponsorTier": {
+      "description": "A sponsorship tier.",
+      "properties": {
+        "activeSponsorCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "amountCents": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "customAmount": {
+          "description": "sponsors may pay more than amount_cents",
+          "type": "boolean"
+        },
+        "description": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "frequency": {
+          "$ref": "#/$defs/bee.v1.SponsorFrequency"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sponsorOnlyRepos": {
+          "description": "read access granted while sponsoring",
+          "items": {
+            "$ref": "#/$defs/bee.v1.RepoRef"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SponsorTierState"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "welcomeMessage": {
+          "description": "sent to new sponsors",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SponsorTier",
+      "type": "object"
+    },
+    "bee.v1.SponsorTierState": {
+      "description": "Lifecycle of a tier.",
+      "enum": [
+        "SPONSOR_TIER_STATE_UNSPECIFIED",
+        "SPONSOR_TIER_STATE_DRAFT",
+        "SPONSOR_TIER_STATE_PUBLISHED",
+        "SPONSOR_TIER_STATE_RETIRED"
+      ],
+      "title": "bee.v1.SponsorTierState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSponsorTiersResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListSponsorTiers.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "tiers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SponsorTier"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListSponsorTiersResponse",
+  "type": "object"
+}

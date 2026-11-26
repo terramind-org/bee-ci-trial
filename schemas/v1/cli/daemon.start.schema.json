@@ -1,0 +1,60 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.start.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon start --json`: one such document with `schema` = bee.v1.daemon.start. Start the node daemon (a shared object cache) in the background, unless one runs. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "log": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pid": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "socket": {
+          "type": "string"
+        },
+        "started": {
+          "description": "False when a daemon already answered.",
+          "type": "boolean"
+        },
+        "upstream": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "running",
+        "started",
+        "socket",
+        "pid",
+        "upstream",
+        "log"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.start"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon start",
+  "type": "object"
+}

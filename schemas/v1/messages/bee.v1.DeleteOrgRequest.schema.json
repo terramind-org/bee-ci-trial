@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteOrgRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "confirmName": {
+      "description": "must equal the org name",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteOrgRequest",
+  "type": "object"
+}

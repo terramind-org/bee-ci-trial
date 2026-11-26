@@ -1,0 +1,36 @@
+# event push action=-
+run .github/workflows/release-please.yml "release-please"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: contents=write, pull-requests=write
+  job release-please decided=true
+    instance "release-please"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=write, pull-requests=write
+      timeout-minutes: 360
+      outputs:
+        release_created: "${{ steps.release.outputs.release_created }}"
+        tag_name: "${{ steps.release.outputs.tag_name }}"
+      step 1 "Run googleapis/release-please-action@v4" id=release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: "node"
+          token: "${{ secrets.RELEASE_TOKEN }}"
+  job publish needs=[release-please] if="${{ needs.release-please.outputs.release_created }}"
+    instance "publish"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=read, id-token=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run actions/setup-node@v4"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      step 3 "Run npm publish --provenance"
+        run: "npm publish --provenance"
+        shell: default -> "bash -e {0}"
+        env:
+          NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}"
+          TAG: "${{ needs.release-please.outputs.tag_name }}"

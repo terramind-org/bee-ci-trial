@@ -1,0 +1,30 @@
+event: release published v3.1.0
+--- .github/workflows/publish.yml
+name: Publish
+on:
+  release:
+    types: [published]
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/widget
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ !github.event.release.prerelease }}
+--- .github/workflows/created.yml
+on:
+  release:
+    types: [created]
+jobs:
+  x:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo created

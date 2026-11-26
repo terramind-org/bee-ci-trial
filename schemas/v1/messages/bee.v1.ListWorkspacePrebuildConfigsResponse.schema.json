@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkspacePrebuildConfig": {
+      "description": "A prebuild configuration.",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "devcontainerPath": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machineTypes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "regions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "retainedVersions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schedule": {
+          "description": "cron, for SCHEDULED",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/bee.v1.WorkspacePrebuildTrigger"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WorkspacePrebuildConfig",
+      "type": "object"
+    },
+    "bee.v1.WorkspacePrebuildTrigger": {
+      "description": "When prebuilds run.",
+      "enum": [
+        "WORKSPACE_PREBUILD_TRIGGER_UNSPECIFIED",
+        "WORKSPACE_PREBUILD_TRIGGER_EVERY_LAND",
+        "WORKSPACE_PREBUILD_TRIGGER_CONFIG_CHANGE",
+        "WORKSPACE_PREBUILD_TRIGGER_SCHEDULED",
+        "WORKSPACE_PREBUILD_TRIGGER_MANUAL"
+      ],
+      "title": "bee.v1.WorkspacePrebuildTrigger",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkspacePrebuildConfigsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListWorkspacePrebuildConfigs.",
+  "properties": {
+    "configs": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkspacePrebuildConfig"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListWorkspacePrebuildConfigsResponse",
+  "type": "object"
+}

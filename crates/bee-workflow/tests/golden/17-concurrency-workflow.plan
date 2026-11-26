@@ -1,0 +1,14 @@
+# event push action=-
+run .github/workflows/build.yml "Build"
+  run-name: "Update code"
+  event: push ref=refs/heads/feature/login sha=2222222222222222222222222222222222222222
+  concurrency: "Build-refs/heads/feature/login" cancel-in-progress=true
+  permissions: default
+  job build decided=true
+    instance "build"
+      runs-on: ["self-hosted", "linux", "x64"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./build.sh"
+        run: "./build.sh"
+        shell: default -> "bash -e {0}"

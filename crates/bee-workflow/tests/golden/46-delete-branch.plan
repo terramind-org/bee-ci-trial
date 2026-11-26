@@ -1,0 +1,20 @@
+# event push action=-
+run .github/workflows/push.yml "Push"
+  run-name: "Push"
+  event: push ref=refs/heads/feature/old sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: default
+  job noop if="${{ !github.event.deleted }}" decided=false
+    skipped
+# event delete action=-
+run .github/workflows/cleanup.yml "Cleanup preview"
+  run-name: "Cleanup preview"
+  event: delete ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: default
+  job cleanup if="github.event.ref_type == 'branch'" decided=true
+    instance "cleanup"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./teardown-preview.sh \"feature/old\""
+        run: "./teardown-preview.sh \"feature/old\""
+        shell: default -> "bash -e {0}"

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/app.poll-o-auth-device-flow.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AppService/PollOAuthDeviceFlow: `data` is a bee.v1.PollOAuthDeviceFlowResponse in proto3-JSON. `bee app poll-o-auth-device-flow --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.PollOAuthDeviceFlowResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.app.poll-o-auth-device-flow"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee app poll-o-auth-device-flow",
+  "type": "object"
+}

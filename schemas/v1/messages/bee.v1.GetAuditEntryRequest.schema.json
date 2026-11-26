@@ -1,0 +1,26 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetAuditEntryRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetAuditEntry.\n\nOneof `key`: at most one of `seq`, `id` is set.",
+  "properties": {
+    "enterprise": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "seq": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.GetAuditEntryRequest",
+  "type": "object"
+}

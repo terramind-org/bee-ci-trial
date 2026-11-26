@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "bee.v1.PagesAccess": {
+      "description": "Who can read a site.",
+      "enum": [
+        "PAGES_ACCESS_UNSPECIFIED",
+        "PAGES_ACCESS_PUBLIC",
+        "PAGES_ACCESS_PRIVATE"
+      ],
+      "title": "bee.v1.PagesAccess",
+      "type": "string"
+    },
+    "bee.v1.PagesBuildType": {
+      "description": "How a site's content is produced.",
+      "enum": [
+        "PAGES_BUILD_TYPE_UNSPECIFIED",
+        "PAGES_BUILD_TYPE_REF",
+        "PAGES_BUILD_TYPE_WORKFLOW"
+      ],
+      "title": "bee.v1.PagesBuildType",
+      "type": "string"
+    },
+    "bee.v1.PagesSource": {
+      "description": "The ref and folder a REF-type site serves.",
+      "properties": {
+        "path": {
+          "description": "\"/\" or \"/docs\"",
+          "type": "string"
+        },
+        "ref": {
+          "description": "e.g. \"main\" or \"gh-pages\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PagesSource",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreatePagesSiteRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreatePagesSite.",
+  "properties": {
+    "access": {
+      "$ref": "#/$defs/bee.v1.PagesAccess"
+    },
+    "buildType": {
+      "$ref": "#/$defs/bee.v1.PagesBuildType"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "source": {
+      "$ref": "#/$defs/bee.v1.PagesSource"
+    }
+  },
+  "title": "bee.v1.CreatePagesSiteRequest",
+  "type": "object"
+}

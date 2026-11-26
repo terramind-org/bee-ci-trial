@@ -1,0 +1,334 @@
+// Briefs and evidence for bee.v1: the words and media that show what a change request does
+// (screenshots, before and after, video, benchmarks, test reports, preview links), and the
+// advisory checklist of what an author still owes. See SPEC.md §11.9.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/forge.proto";
+
+// Briefs and evidence of change requests. Reads need repo Read on the change request's repo
+// (anonymous callers too, for public repos). Writing the brief and uploading evidence need the
+// right to edit the change request: its author, or repo Write. Evidence reported by CI
+// (`check_run_id` set) needs the caller to be that check run's reporter, and the run's changeset
+// must be the head of one of the change request's revisions; such evidence can be deleted only
+// by its reporter or a repo maintainer. Nothing here is consulted by landing: the checklist is
+// advice, never a gate.
+service BriefService {
+  // Sets a change request's brief, replacing the previous one. The server records the caller as
+  // `author`, the current revision as `written_for_revision` and the time as `updated_at`, and
+  // emits `cr.brief_set`. INVALID_ARGUMENT for an outcome over 280 characters, more than 20
+  // highlights, asks or risks, an ask with fewer than 2 or more than 6 options, or a
+  // `try_it_url` that is not https (subcodes `brief_too_long`, `bad_brief`, `bad_url`).
+  // VERSION_MISMATCH when `expected_version` is set and the change request moved on.
+  rpc SetChangeBrief(SetChangeBriefRequest) returns (SetChangeBriefResponse);
+  // Computes what the brief and evidence of a change request still owe for one revision. A pure
+  // function of the revision's per-path diff classes, the brief and the evidence (SPEC §11.9).
+  rpc GetBriefChecklist(GetBriefChecklistRequest) returns (BriefChecklist);
+  // Adds one evidence item whose bytes come with the request (inline assets, at most 8 MiB in
+  // total), from a workflow artifact, or that has no files (a benchmark, a preview link, a test
+  // report). Larger files use BeginEvidenceUpload and FinalizeEvidence. TOO_LARGE above the
+  // per-kind or per-change limits; INVALID_ARGUMENT for assets the kind does not allow
+  // (`bad_evidence`), an image without alt text (`missing_alt`) or bytes that are not the
+  // declared type or are SVG, HTML or script (`bad_media`).
+  rpc AddEvidence(AddEvidenceRequest) returns (Evidence);
+  // Starts an upload: creates the evidence item in state PENDING and returns one signed PUT URL
+  // per asset. The URLs expire after 15 minutes; a PENDING item not finalized within one hour is
+  // deleted. Same limits and rules as AddEvidence.
+  rpc BeginEvidenceUpload(BeginEvidenceUploadRequest) returns (BeginEvidenceUploadResponse);
+  // Completes an upload: the server computes each asset's digest and compares it with the one
+  // the caller sent (INTEGRITY on a mismatch), sniffs the bytes (`bad_media`) and reads image
+  // sizes, then the item becomes READY and `evidence.added` is emitted. INVALID_STATE when the
+  // item is not PENDING; INVALID_ARGUMENT (`missing_asset`) when an asset was never uploaded.
+  rpc FinalizeEvidence(FinalizeEvidenceRequest) returns (Evidence);
+  // Fetches one evidence item with fresh signed URLs. NOT_FOUND when absent or not readable.
+  rpc GetEvidence(GetEvidenceRequest) returns (Evidence);
+  // Lists READY evidence of one or more change requests of a repo (at most 100 ids), ordered by
+  // change request, then hero first, then `spec.order`, then creation. `hero_only` returns at most
+  // one item per change request, for list thumbnails.
+  rpc ListEvidence(ListEvidenceRequest) returns (ListEvidenceResponse);
+  // Replaces an evidence item's title, caption, benchmark series, test report, URL, paths, hero
+  // flag and order, and the alt text of its assets. The kind and the files never change (add a
+  // new item instead): INVALID_ARGUMENT (`kind_immutable`). Emits `evidence.updated`.
+  rpc UpdateEvidence(UpdateEvidenceRequest) returns (Evidence);
+  // Deletes an evidence item and its files. Emits `evidence.deleted`.
+  rpc DeleteEvidence(DeleteEvidenceRequest) returns (DeleteEvidenceResponse);
+}
+
+// What an evidence item shows. Each kind allows a fixed set of assets (by role); anything else
+// is INVALID_ARGUMENT (subcode `bad_evidence`). Every image asset needs alt text.
+enum EvidenceKind {
+  EVIDENCE_KIND_UNSPECIFIED = 0;
+  EVIDENCE_KIND_SCREENSHOT = 1;    // one MAIN image
+  EVIDENCE_KIND_BEFORE_AFTER = 2;  // one BEFORE and one AFTER image
+  EVIDENCE_KIND_VIDEO = 3;         // one MAIN video; optional POSTER image and CAPTIONS (WebVTT)
+  EVIDENCE_KIND_BENCHMARK = 4;     // no assets; at least one `spec.benchmark` series
+  EVIDENCE_KIND_IMAGE = 5;         // 1 to 12 MAIN images (an image set or generated media)
+  EVIDENCE_KIND_AUDIO = 6;         // one MAIN audio file; optional CAPTIONS (WebVTT)
+  EVIDENCE_KIND_DOCUMENT = 7;      // one MAIN PDF, plain text, Markdown or CSV file
+  EVIDENCE_KIND_PREVIEW_LINK = 8;  // no assets; `spec.url` (https)
+  EVIDENCE_KIND_TEST_REPORT = 9;   // `spec.test_report`; optional MAIN document (the full report)
+}
+
+// Where an evidence item came from. UPLOADED is shown as "From the agent" (or the person who
+// uploaded it); CHECK_RUN and WORKFLOW_ARTIFACT are shown as "Verified by CI".
+enum EvidenceSource {
+  EVIDENCE_SOURCE_UNSPECIFIED = 0;
+  EVIDENCE_SOURCE_UPLOADED = 1;          // sent by the caller
+  EVIDENCE_SOURCE_CHECK_RUN = 2;         // sent by a check run's reporter (`check_run_id`)
+  EVIDENCE_SOURCE_WORKFLOW_ARTIFACT = 3; // copied from a workflow artifact (`workflow_artifact_id`)
+}
+
+enum EvidenceState {
+  EVIDENCE_STATE_UNSPECIFIED = 0;
+  EVIDENCE_STATE_PENDING = 1;  // BeginEvidenceUpload ran, FinalizeEvidence has not
+  EVIDENCE_STATE_READY = 2;    // every asset stored and checked
+}
+
+// The part an asset plays in its evidence item.
+enum EvidenceAssetRole {
+  EVIDENCE_ASSET_ROLE_UNSPECIFIED = 0;
+  EVIDENCE_ASSET_ROLE_MAIN = 1;
+  EVIDENCE_ASSET_ROLE_BEFORE = 2;
+  EVIDENCE_ASSET_ROLE_AFTER = 3;
+  EVIDENCE_ASSET_ROLE_POSTER = 4;    // still frame shown before a video loads
+  EVIDENCE_ASSET_ROLE_CAPTIONS = 5;  // WebVTT captions of a video or audio file
+}
+
+// One measured series of a benchmark: the baseline (the target branch) and the change.
+message BenchmarkSeries {
+  string name = 1;              // e.g. "p95 latency"
+  string unit = 2;              // e.g. "ms"
+  double baseline = 3;
+  double value = 4;
+  bool lower_is_better = 5;
+}
+
+// A failed test of a test report.
+message TestFailure {
+  string name = 1;
+  string message = 2;           // first lines of the failure, plain text
+}
+
+// The outcome of a test run, in numbers.
+message TestReport {
+  uint32 passed = 1;
+  uint32 failed = 2;
+  uint32 skipped = 3;
+  uint64 duration_ms = 4;
+  repeated TestFailure failures = 5;  // at most 50
+  string summary = 6;                 // one line in words, e.g. "All 214 billing tests pass"
+}
+
+// What the author says about an evidence item.
+message EvidenceSpec {
+  EvidenceKind kind = 1;
+  string title = 2;                       // 1-120 characters
+  string caption = 3;                     // at most 1000 characters, plain text
+  repeated BenchmarkSeries benchmark = 4; // BENCHMARK only, 1-20 series
+  TestReport test_report = 5;             // TEST_REPORT only
+  string url = 6;                         // PREVIEW_LINK only, https
+  repeated string paths = 7;              // repo paths the item shows (UTF-8), at most 20
+  bool hero = 8;                          // shown first; setting it clears the CR's previous hero
+  int32 order = 9;                        // position in the gallery, ascending
+}
+
+// One stored file of an evidence item.
+message EvidenceAsset {
+  EvidenceAssetRole role = 1;
+  string content_type = 2;                // the sniffed type, e.g. "image/png", "video/webm"
+  string digest = 3;                      // "sha256:<hex>" of the bytes
+  uint64 size_bytes = 4;
+  uint32 width = 5;                       // images (read by the server) and video
+  uint32 height = 6;
+  uint64 duration_ms = 7;                 // video and audio
+  string alt = 8;                         // required for images, 1-1000 characters
+  string url = 9;                         // signed download URL, filled on every read, never stored
+  google.protobuf.Timestamp url_expires_at = 10;
+}
+
+// One piece of evidence attached to a change request.
+message Evidence {
+  string id = 1;
+  string repo_id = 2;
+  string change_request_id = 3;
+  uint32 revision = 4;                    // revision the evidence was captured for
+  ObjectId head = 5;                      // that revision's head changeset
+  EvidenceSpec spec = 6;
+  repeated EvidenceAsset assets = 7;
+  EvidenceSource source = 8;
+  string check_run_id = 9;                // CHECK_RUN (and WORKFLOW_ARTIFACT reported by a check run)
+  string workflow_artifact_id = 10;       // WORKFLOW_ARTIFACT
+  Principal uploader = 11;
+  EvidenceState state = 12;
+  bool stale = 13;                        // computed on read: `revision` is older than the CR's current one
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// A file sent inline with AddEvidence.
+message InlineEvidenceAsset {
+  EvidenceAssetRole role = 1;
+  string content_type = 2;                // declared type; the sniffed bytes must agree
+  bytes data = 3;
+  string alt = 4;
+  uint32 width = 5;                       // video only; images are measured by the server
+  uint32 height = 6;
+  uint64 duration_ms = 7;                 // video and audio
+}
+
+// A file taken from a workflow artifact by AddEvidence.
+message ArtifactEvidenceAsset {
+  EvidenceAssetRole role = 1;
+  string path = 2;                        // file inside a zip artifact; empty for a single-file artifact
+  string alt = 3;
+  uint32 width = 4;
+  uint32 height = 5;
+  uint64 duration_ms = 6;
+}
+
+// Request for SetChangeBrief.
+message SetChangeBriefRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  ChangeBrief brief = 3;                  // fields 7-9 are ignored; the server sets them
+  uint64 expected_version = 4;            // 0 = any; else the change request's `version`
+}
+
+// Response for SetChangeBrief.
+message SetChangeBriefResponse {
+  ChangeBrief brief = 1;
+  BriefChecklist checklist = 2;           // for the current revision, after the change
+  uint64 version = 3;                     // the change request's new `version`
+}
+
+// Request for GetBriefChecklist.
+message GetBriefChecklistRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  uint32 revision = 3;                    // 0 = current
+}
+
+// One thing the brief or evidence should cover.
+message BriefChecklistItem {
+  // "brief" (an outcome and at least one highlight), "brief:risk" (a risk or a rollback plan)
+  // or "evidence:ui" (a screenshot, before and after, or a video).
+  string id = 1;
+  string detail = 2;                      // in words, e.g. "a screenshot of the UI change"
+  repeated EvidenceKind kinds = 3;        // kinds that satisfy an evidence item
+  repeated string paths = 4;              // paths that raised the item, at most 20
+  bool satisfied = 5;
+  repeated string evidence_ids = 6;       // evidence that satisfies it, on this revision
+}
+
+// What a change request's brief and evidence still owe for one revision. Advisory only.
+message BriefChecklist {
+  uint32 revision = 1;
+  bool complete = 2;                      // every item satisfied (true when there are no items)
+  repeated BriefChecklistItem items = 3;
+}
+
+// Request for AddEvidence. At most one of `assets` and `artifact_assets` is set.
+message AddEvidenceRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  EvidenceSpec spec = 3;
+  uint32 revision = 4;                    // 0 = current; with `check_run_id`, the revision whose head the run tested
+  string check_run_id = 5;                // the caller reports this check run (CI evidence)
+  repeated InlineEvidenceAsset assets = 6;
+  string workflow_artifact_id = 7;        // copy files from this artifact of a run on the change
+  repeated ArtifactEvidenceAsset artifact_assets = 8;
+}
+
+// One file BeginEvidenceUpload should expect.
+message EvidenceUploadAsset {
+  EvidenceAssetRole role = 1;
+  string content_type = 2;
+  uint64 size_bytes = 3;
+  string alt = 4;
+  uint32 width = 5;
+  uint32 height = 6;
+  uint64 duration_ms = 7;
+}
+
+// Request for BeginEvidenceUpload.
+message BeginEvidenceUploadRequest {
+  RepoRef repo = 1;
+  string change_id = 2;
+  EvidenceSpec spec = 3;
+  uint32 revision = 4;                    // as in AddEvidenceRequest
+  string check_run_id = 5;
+  repeated EvidenceUploadAsset assets = 6;
+}
+
+// Where to PUT one asset's bytes.
+message EvidenceUploadTarget {
+  EvidenceAssetRole role = 1;
+  string upload_url = 2;                  // signed PUT URL
+  map<string, string> upload_headers = 3; // headers the PUT must send
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Response for BeginEvidenceUpload.
+message BeginEvidenceUploadResponse {
+  Evidence evidence = 1;                  // state PENDING
+  repeated EvidenceUploadTarget uploads = 2;
+}
+
+// The digest the caller computed for one uploaded asset.
+message EvidenceAssetDigest {
+  EvidenceAssetRole role = 1;
+  string sha256 = 2;                      // lowercase hex of the uploaded bytes
+}
+
+// Request for FinalizeEvidence.
+message FinalizeEvidenceRequest {
+  RepoRef repo = 1;
+  string evidence_id = 2;
+  repeated EvidenceAssetDigest digests = 3; // one per asset
+}
+
+// Request for GetEvidence.
+message GetEvidenceRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for ListEvidence.
+message ListEvidenceRequest {
+  RepoRef repo = 1;
+  repeated string change_ids = 2;         // 1-100 change request ids
+  bool hero_only = 3;                     // at most one item per change request: its hero, else its first item
+  PageRequest page = 4;
+}
+
+// Response for ListEvidence.
+message ListEvidenceResponse {
+  repeated Evidence evidence = 1;
+  PageResponse page = 2;
+}
+
+// New alt text for one asset.
+message EvidenceAltText {
+  EvidenceAssetRole role = 1;
+  string alt = 2;
+}
+
+// Request for UpdateEvidence.
+message UpdateEvidenceRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  EvidenceSpec spec = 3;                  // replaces the spec; `kind` must not change
+  repeated EvidenceAltText alt_texts = 4;
+}
+
+// Request for DeleteEvidence.
+message DeleteEvidenceRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Response for DeleteEvidence.
+message DeleteEvidenceResponse {}

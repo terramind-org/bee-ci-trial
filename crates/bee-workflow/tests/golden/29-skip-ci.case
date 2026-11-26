@@ -1,0 +1,19 @@
+event: push refs/heads/main msg="Bump version [skip ci]"
+--- .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test
+--- .github/workflows/on-create.yml
+name: Tag on push
+on:
+  push:
+    tags: ['*']
+jobs:
+  x:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo tag

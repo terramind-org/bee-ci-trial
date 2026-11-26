@@ -1,0 +1,133 @@
+{
+  "format": "sCBOR v1",
+  "frozen": true,
+  "spec": "SPEC.md §3.1, §4",
+  "vectors": [
+    {
+      "description": "The empty root changeset; the same id in every repo.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000580",
+      "id": "c1_baff859e219ee707166151517325f6ab69012d0c5780797ceba1c65d39be984f",
+      "kind": "changeset",
+      "name": "changeset-empty-root",
+      "value": {
+        "change_id": "k_00000000000000000000000000000000",
+        "delta": [],
+        "format_version": 1,
+        "meta": "m1_4d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a",
+        "parents": [],
+        "root": "t1_866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e5355"
+      }
+    },
+    {
+      "description": "A parentless changeset adding two files.",
+      "encoding_hex": "a60001018002582201022a43db8801ce3d154e5c8e9d46ca3bc80c86e4a25c129e4a0e5aa720bb258c720358220104e8dade97b603dd4f0a487d9e040e450a0519cde4236744234ffc67c9ff90789a0450303132333435363738396162636465660582a201416102a301010258220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0306a201416202a301010258220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f0305",
+      "id": "c1_7c53c17598ff25f7fed8939a5f697e008cfa5421dd28b4089601d093a545a420",
+      "kind": "changeset",
+      "name": "changeset-first-commit",
+      "value": {
+        "change_id": "k_30313233343536373839616263646566",
+        "delta": [
+          {
+            "op": {
+              "id": "b1_ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d",
+              "mode": 1,
+              "size": 6
+            },
+            "path": "a"
+          },
+          {
+            "op": {
+              "id": "b1_488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f",
+              "mode": 1,
+              "size": 5
+            },
+            "path": "b"
+          }
+        ],
+        "format_version": 1,
+        "meta": "m1_e8dade97b603dd4f0a487d9e040e450a0519cde4236744234ffc67c9ff90789a",
+        "parents": [],
+        "root": "t1_2a43db8801ce3d154e5c8e9d46ca3bc80c86e4a25c129e4a0e5aa720bb258c72"
+      }
+    },
+    {
+      "description": "One parent; a put, an executable put, a delete, a file replaced by a directory, and a gitlink.",
+      "encoding_hex": "a60001018158220103090e071c152a233831364f445d526b60797e778c859a93a8a1a6bfb4cdc2dbd002582201020a0d041f1629203b32354c475e5168637a7d748f869990aba2a5bcb7cec1d8d303582201040b0c051e1728213a33344d465f5069627b7c758e879891aaa3a4bdb6cfc0d9d204505a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a0586a20144646f63730200a2014d646f63732f696e6465782e6d6402a30101025822010147f51eb4e0ab2ce4b6e4a0d4c9b0169badafc6edb8c898212b17ac643280d7ae0307a201476f6c642e7478740200a2014672756e2e736802a301020258220101bc1f407a11c9377c8b9b13f956b279c8462775105eb958fc9ae3c40de87cc96e030aa2014a7372632f6c69622e727302a30101025822010113c44134a9bc28e5f5fdbe095ece0fca35befd714457e680736d6d4ce5038fd3030ea2014a76656e646f722f64657002a30105025822020001010101010101010101010101010101010101010000000000000000000000000300",
+      "id": "c1_49997d1f37a76b14cc31300026865b99eb672b8cc004aac0438cd724e3503cc7",
+      "kind": "changeset",
+      "name": "changeset-edit",
+      "value": {
+        "change_id": "k_5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "delta": [
+          {
+            "op": "delete",
+            "path": "docs"
+          },
+          {
+            "op": {
+              "id": "b1_47f51eb4e0ab2ce4b6e4a0d4c9b0169badafc6edb8c898212b17ac643280d7ae",
+              "mode": 1,
+              "size": 7
+            },
+            "path": "docs/index.md"
+          },
+          {
+            "op": "delete",
+            "path": "old.txt"
+          },
+          {
+            "op": {
+              "id": "b1_bc1f407a11c9377c8b9b13f956b279c8462775105eb958fc9ae3c40de87cc96e",
+              "mode": 2,
+              "size": 10
+            },
+            "path": "run.sh"
+          },
+          {
+            "op": {
+              "id": "b1_13c44134a9bc28e5f5fdbe095ece0fca35befd714457e680736d6d4ce5038fd3",
+              "mode": 1,
+              "size": 14
+            },
+            "path": "src/lib.rs"
+          },
+          {
+            "op": {
+              "id": "g2_0101010101010101010101010101010101010101000000000000000000000000",
+              "mode": 5,
+              "size": 0
+            },
+            "path": "vendor/dep"
+          }
+        ],
+        "format_version": 1,
+        "meta": "m1_0b0c051e1728213a33344d465f5069627b7c758e879891aaa3a4bdb6cfc0d9d2",
+        "parents": [
+          "c1_090e071c152a233831364f445d526b60797e778c859a93a8a1a6bfb4cdc2dbd0"
+        ],
+        "root": "t1_0a0d041f1629203b32354c475e5168637a7d748f869990aba2a5bcb7cec1d8d3"
+      }
+    },
+    {
+      "description": "Two parents, an empty delta (the merge took the first parent's tree) and an ignorable extension.",
+      "encoding_hex": "a7000101825822010301060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d85822010302050c171e2128333a3d444f5659606b72757c878e9198a3aaadb4bfc6c9d0db025822010203040d161f2029323b3c454e5758616a73747d868f9099a2abacb5bec7c8d1da035822010404030a1118272e353c3b4249505f666d74737a8188979ea5acabb2b9c0cfd6dd0450ffffffffffffffffffffffffffffffff0580184243010203",
+      "id": "c1_9aaee9af883b9d4671e56a7bc5df0ae06a33c74c7c729972a99875b9d8fd09de",
+      "kind": "changeset",
+      "name": "changeset-merge",
+      "value": {
+        "change_id": "k_ffffffffffffffffffffffffffffffff",
+        "delta": [],
+        "extensions": {
+          "66": "43010203"
+        },
+        "format_version": 1,
+        "meta": "m1_04030a1118272e353c3b4249505f666d74737a8188979ea5acabb2b9c0cfd6dd",
+        "parents": [
+          "c1_01060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d8",
+          "c1_02050c171e2128333a3d444f5659606b72757c878e9198a3aaadb4bfc6c9d0db"
+        ],
+        "root": "t1_03040d161f2029323b3c454e5758616a73747d868f9099a2abacb5bec7c8d1da"
+      }
+    }
+  ]
+}

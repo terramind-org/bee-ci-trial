@@ -1,0 +1,25 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CopyProjectRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CopyProject.",
+  "properties": {
+    "includeDraftItems": {
+      "type": "boolean"
+    },
+    "owner": {
+      "description": "owner of the new project",
+      "type": "string"
+    },
+    "public": {
+      "type": "boolean"
+    },
+    "sourceProjectId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CopyProjectRequest",
+  "type": "object"
+}

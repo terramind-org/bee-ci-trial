@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/admin.list-backups.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AdminService/ListBackups: `data` is a bee.v1.ListBackupsResponse in proto3-JSON. `bee admin list-backups --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListBackupsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.admin.list-backups"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee admin list-backups",
+  "type": "object"
+}

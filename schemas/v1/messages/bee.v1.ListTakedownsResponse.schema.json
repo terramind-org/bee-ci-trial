@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    },
+    "bee.v1.Takedown": {
+      "description": "A takedown of a repo or comment.",
+      "properties": {
+        "auditEntryId": {
+          "type": "string"
+        },
+        "complainant": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.TakedownKind"
+        },
+        "noticeText": {
+          "type": "string"
+        },
+        "noticeUrl": {
+          "description": "public copy of the notice, if published",
+          "type": "string"
+        },
+        "reinstateReason": {
+          "type": "string"
+        },
+        "reinstatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "reinstatedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.TakedownState"
+        },
+        "subject": {
+          "$ref": "#/$defs/bee.v1.SubjectRef",
+          "description": "repo or comment"
+        }
+      },
+      "title": "bee.v1.Takedown",
+      "type": "object"
+    },
+    "bee.v1.TakedownKind": {
+      "description": "Basis of a takedown.",
+      "enum": [
+        "TAKEDOWN_KIND_UNSPECIFIED",
+        "TAKEDOWN_KIND_DMCA",
+        "TAKEDOWN_KIND_LEGAL",
+        "TAKEDOWN_KIND_ABUSE",
+        "TAKEDOWN_KIND_MALWARE",
+        "TAKEDOWN_KIND_PRIVACY"
+      ],
+      "title": "bee.v1.TakedownKind",
+      "type": "string"
+    },
+    "bee.v1.TakedownState": {
+      "description": "Takedown lifecycle.",
+      "enum": [
+        "TAKEDOWN_STATE_UNSPECIFIED",
+        "TAKEDOWN_STATE_ACTIVE",
+        "TAKEDOWN_STATE_REINSTATED"
+      ],
+      "title": "bee.v1.TakedownState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTakedownsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListTakedowns.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "takedowns": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Takedown"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListTakedownsResponse",
+  "type": "object"
+}
