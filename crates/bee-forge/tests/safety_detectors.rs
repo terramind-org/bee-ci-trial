@@ -416,7 +416,7 @@ async fn safety_reads_code_scan_alerts_only_on_attributed_changes() {
     let target = work(&world, SafetyWorkKind::Run, &run.id);
     let db = &world.agents.forge.db;
     let state = CodeScanningAlertState::Open as i32;
-    let seed = |number, changeset| {
+    let seed = |number: u64, changeset: ObjectId| {
         (
             CodeAlertRec {
                 alert: Some(CodeScanningAlert {
