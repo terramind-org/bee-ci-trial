@@ -1,0 +1,53 @@
+{
+  "service": "bee.v1.TeamService",
+  "note": "CreateTeam makes `team-fixture`, which later fixtures read and change; destructive fixtures make their own team.",
+  "fixtures": [
+    {"method": "CreateTeam",
+     "request": {"org": "{{org}}", "slug": "team-fixture", "name": "Team fixture", "description": "made by the CreateTeam fixture", "privacy": "TEAM_PRIVACY_VISIBLE", "notificationsEnabled": true}},
+    {"method": "GetTeam", "request": {"org": "{{org}}", "team": "team-fixture"}},
+    {"method": "UpdateTeam", "request": {"org": "{{org}}", "team": "team-fixture", "name": "Team fixture (updated)", "description": "updated by the UpdateTeam fixture"}},
+    {"method": "DeleteTeam",
+     "setup": [{"call": "TeamService/CreateTeam", "request": {"org": "{{org}}", "slug": "delete-team-fixture", "name": "Delete team fixture"}}],
+     "request": {"org": "{{org}}", "team": "delete-team-fixture"}},
+    {"method": "ListTeams", "request": {"org": "{{org}}", "query": "team-fixture"}},
+    {"method": "ListChildTeams",
+     "setup": [{"call": "TeamService/CreateTeam", "request": {"org": "{{org}}", "slug": "list-child-teams-fixture", "name": "List child teams fixture", "parentTeam": "team-fixture"}}],
+     "request": {"org": "{{org}}", "team": "team-fixture", "recursive": true}},
+    {"method": "ListPrincipalTeams", "request": {"org": "{{org}}", "principalId": "{{user}}", "includeInherited": true}},
+    {"method": "AddTeamMember",
+     "setup": [{"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "add-team-member-fixture", "runtime": "claude-code", "purpose": "AddTeamMember fixture", "org": "{{org}}"}},
+               {"call": "OrgService/SetMember", "request": {"org": "{{org}}", "principalId": "{{a.id}}", "role": "ROLE_MEMBER"}}],
+     "request": {"org": "{{org}}", "team": "team-fixture", "principalId": "{{a.id}}", "role": "TEAM_MEMBER_ROLE_MEMBER"}},
+    {"method": "RemoveTeamMember",
+     "setup": [
+       {"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "remove-team-member-fixture", "runtime": "claude-code", "purpose": "RemoveTeamMember fixture", "org": "{{org}}"}},
+       {"call": "OrgService/SetMember", "request": {"org": "{{org}}", "principalId": "{{a.id}}", "role": "ROLE_MEMBER"}},
+       {"call": "TeamService/AddTeamMember", "request": {"org": "{{org}}", "team": "team-fixture", "principalId": "{{a.id}}", "role": "TEAM_MEMBER_ROLE_MEMBER"}}
+     ],
+     "request": {"org": "{{org}}", "team": "team-fixture", "principalId": "{{a.id}}"}},
+    {"method": "ListTeamMembers", "request": {"org": "{{org}}", "team": "team-fixture", "includeChildTeams": true}},
+    {"method": "GetTeamMembership", "request": {"org": "{{org}}", "team": "team-fixture", "principalId": "{{user}}"}},
+    {"method": "ListTeamInvitations",
+     "setup": [{"call": "TeamService/AddTeamMember", "request": {"org": "{{org}}", "team": "team-fixture", "email": "list-team-invitations-fixture@example.com", "role": "TEAM_MEMBER_ROLE_MEMBER"}}],
+     "request": {"org": "{{org}}", "team": "team-fixture"}},
+    {"method": "CancelTeamInvitation",
+     "setup": [{"call": "TeamService/AddTeamMember", "save": "inv", "request": {"org": "{{org}}", "team": "team-fixture", "email": "cancel-team-invitation-fixture@example.com", "role": "TEAM_MEMBER_ROLE_MEMBER"}}],
+     "request": {"org": "{{org}}", "team": "team-fixture", "invitationId": "{{inv.invitation.id}}"}},
+    {"method": "GrantTeamRepoAccess", "request": {"org": "{{org}}", "team": "team-fixture", "repo": {"fullName": "{{repo}}"}, "role": "write"}},
+    {"method": "RevokeTeamRepoAccess",
+     "setup": [
+       {"call": "TeamService/CreateTeam", "request": {"org": "{{org}}", "slug": "revoke-team-repo-access-fixture", "name": "Revoke team repo access fixture"}},
+       {"call": "TeamService/GrantTeamRepoAccess", "request": {"org": "{{org}}", "team": "revoke-team-repo-access-fixture", "repo": {"fullName": "{{repo}}"}, "role": "read"}}
+     ],
+     "request": {"org": "{{org}}", "team": "revoke-team-repo-access-fixture", "repo": {"fullName": "{{repo}}"}}},
+    {"method": "ListTeamRepos", "request": {"org": "{{org}}", "team": "team-fixture", "includeInherited": true}},
+    {"method": "ListRepoTeams", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "GetTeamReviewAssignment", "request": {"org": "{{org}}", "team": "team-fixture"}},
+    {"method": "UpdateTeamReviewAssignment", "request": {"org": "{{org}}", "team": "team-fixture", "enabled": true, "algorithm": "TEAM_REVIEW_ALGORITHM_ROUND_ROBIN", "memberCount": 1, "notifyTeam": true, "skipAgents": false, "countChildTeamMembers": true}},
+    {"method": "LinkTeamExternalGroup", "request": {"org": "{{org}}", "team": "team-fixture", "provider": "okta", "groupId": "link-team-external-group-fixture"}},
+    {"method": "UnlinkTeamExternalGroup",
+     "setup": [{"call": "TeamService/LinkTeamExternalGroup", "request": {"org": "{{org}}", "team": "team-fixture", "provider": "okta", "groupId": "unlink-team-external-group-fixture"}}],
+     "request": {"org": "{{org}}", "team": "team-fixture", "provider": "okta", "groupId": "unlink-team-external-group-fixture"}},
+    {"method": "ListTeamExternalGroups", "request": {"org": "{{org}}", "team": "team-fixture"}}
+  ]
+}

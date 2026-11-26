@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SearchQueryKind": {
+      "description": "Which search grammar a query uses.",
+      "enum": [
+        "SEARCH_QUERY_KIND_UNSPECIFIED",
+        "SEARCH_QUERY_KIND_CODE",
+        "SEARCH_QUERY_KIND_SYMBOLS",
+        "SEARCH_QUERY_KIND_ISSUES",
+        "SEARCH_QUERY_KIND_REPOS",
+        "SEARCH_QUERY_KIND_CHANGESETS",
+        "SEARCH_QUERY_KIND_USERS",
+        "SEARCH_QUERY_KIND_TOPICS",
+        "SEARCH_QUERY_KIND_DISCUSSIONS",
+        "SEARCH_QUERY_KIND_PACKAGES"
+      ],
+      "title": "bee.v1.SearchQueryKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSavedSearchesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListSavedSearches.",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.SearchQueryKind",
+      "description": "UNSPECIFIED = all"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    }
+  },
+  "title": "bee.v1.ListSavedSearchesRequest",
+  "type": "object"
+}

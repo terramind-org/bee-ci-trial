@@ -1,0 +1,8 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteAppPrivateKeyResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for DeleteAppPrivateKey.",
+  "properties": {},
+  "title": "bee.v1.DeleteAppPrivateKeyResponse",
+  "type": "object"
+}

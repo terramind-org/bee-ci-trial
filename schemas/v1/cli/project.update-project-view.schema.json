@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/project.update-project-view.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ProjectService/UpdateProjectView: `data` is a bee.v1.ProjectView in proto3-JSON. `bee project update-project-view --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ProjectView.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.project.update-project-view"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee project update-project-view",
+  "type": "object"
+}

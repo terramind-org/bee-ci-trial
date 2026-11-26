@@ -1,0 +1,18 @@
+# event workflow_dispatch action=-
+run .github/workflows/manual-deploy.yml "Manual deploy"
+  run-name: "Deploy staging by @mona (dry run)"
+  event: workflow_dispatch ref=refs/heads/release/1.x sha=2222222222222222222222222222222222222222
+  inputs: {"environment":"staging","dry-run":true,"replicas":3,"log-level":"info"}
+  permissions: default
+  job deploy decided=true
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      environment: "staging"
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./deploy.sh --replicas 3 --log info --dry=true"
+        run: "./deploy.sh --replicas 3 --log info --dry=true"
+        shell: default -> "bash -e {0}"
+      step 2 "Run ./smoke-test.sh" if="${{ !inputs.dry-run }}"
+        run: "./smoke-test.sh"
+        shell: default -> "bash -e {0}"

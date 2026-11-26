@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "bee.v1.InvitationState": {
+      "description": "State of an invitation.",
+      "enum": [
+        "INVITATION_STATE_UNSPECIFIED",
+        "INVITATION_STATE_PENDING",
+        "INVITATION_STATE_ACCEPTED",
+        "INVITATION_STATE_DECLINED",
+        "INVITATION_STATE_CANCELLED",
+        "INVITATION_STATE_EXPIRED"
+      ],
+      "title": "bee.v1.InvitationState",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.Role": {
+      "enum": [
+        "ROLE_UNSPECIFIED",
+        "ROLE_OWNER",
+        "ROLE_ADMIN",
+        "ROLE_MEMBER",
+        "ROLE_BILLING_MANAGER",
+        "ROLE_SECURITY_MANAGER",
+        "ROLE_MODERATOR",
+        "ROLE_APP_MANAGER"
+      ],
+      "title": "bee.v1.Role",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.OrgInvitation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An invitation to join an org.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "inviteeEmail": {
+      "type": "string"
+    },
+    "inviteeLogin": {
+      "type": "string"
+    },
+    "inviteePrincipalId": {
+      "type": "string"
+    },
+    "inviter": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "orgId": {
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.Role"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.InvitationState"
+    },
+    "teamIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.OrgInvitation",
+  "type": "object"
+}

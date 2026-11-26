@@ -1,0 +1,493 @@
+// Billing for bee.v1: plans, seats, usage metering, budgets and spending limits, invoices and
+// cost centers. Optional: self-hosted installs may leave BillingService unimplemented
+// (UNIMPLEMENTED) and still meter usage for quotas. See PRODUCT.md §4.20. Money is micro-USD.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/enterprise.proto";
+
+// Billing for an org or an enterprise account. Usage is derived from the event log, so a usage
+// query is a pure function of recorded events and prices in force.
+service BillingService {
+  // Lists the plans an account may choose.
+  rpc ListBillingPlans(ListBillingPlansRequest) returns (ListBillingPlansResponse);
+  // Returns an account's current plan, seats and cycle.
+  rpc GetAccountBillingPlan(GetAccountBillingPlanRequest) returns (BillingAccountPlan);
+  // Changes an account's plan, seat count or cycle. Downgrades take effect at the end of the
+  // cycle; fails with INVALID_STATE when fewer seats than consumed are requested.
+  rpc ChangeBillingPlan(ChangeBillingPlanRequest) returns (BillingAccountPlan);
+  // Lists the principals consuming paid seats.
+  rpc ListBillingSeats(ListBillingSeatsRequest) returns (ListBillingSeatsResponse);
+  // Returns metered usage as priced line items, grouped by day, repo, cost center or product.
+  rpc QueryBillingUsage(QueryBillingUsageRequest) returns (QueryBillingUsageResponse);
+
+  // Creates a budget. A budget with hard_stop makes further usage of its product fail with
+  // QUOTA_EXCEEDED once the amount is spent.
+  rpc CreateBillingBudget(CreateBillingBudgetRequest) returns (BillingBudget);
+  // Returns one budget and what has been spent against it.
+  rpc GetBillingBudget(GetBillingBudgetRequest) returns (BillingBudget);
+  // Changes a budget.
+  rpc UpdateBillingBudget(UpdateBillingBudgetRequest) returns (BillingBudget);
+  // Deletes a budget.
+  rpc DeleteBillingBudget(DeleteBillingBudgetRequest) returns (DeleteBillingBudgetResponse);
+  // Lists an account's budgets.
+  rpc ListBillingBudgets(ListBillingBudgetsRequest) returns (ListBillingBudgetsResponse);
+
+  // Lists an account's invoices, newest first.
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+  // Returns one invoice with a short-lived signed URL to its PDF.
+  rpc GetInvoice(GetInvoiceRequest) returns (GetInvoiceResponse);
+
+  // Creates a cost center (enterprise accounts) to attribute usage.
+  rpc CreateCostCenter(CreateCostCenterRequest) returns (CostCenter);
+  // Returns one cost center.
+  rpc GetCostCenter(GetCostCenterRequest) returns (CostCenter);
+  // Renames a cost center.
+  rpc UpdateCostCenter(UpdateCostCenterRequest) returns (CostCenter);
+  // Deletes a cost center; its usage reverts to the account.
+  rpc DeleteCostCenter(DeleteCostCenterRequest) returns (DeleteCostCenterResponse);
+  // Lists cost centers.
+  rpc ListCostCenters(ListCostCentersRequest) returns (ListCostCentersResponse);
+  // Assigns repos, orgs or principals to a cost center (moving them from any other).
+  rpc AddCostCenterResources(AddCostCenterResourcesRequest) returns (CostCenter);
+  // Removes repos, orgs or principals from a cost center.
+  rpc RemoveCostCenterResources(RemoveCostCenterResourcesRequest) returns (CostCenter);
+
+  // Returns a summary of the payment method on file (read only; changed in the billing portal).
+  rpc GetBillingPaymentMethod(GetBillingPaymentMethodRequest) returns (BillingPaymentMethod);
+  // Returns where billing email goes.
+  rpc GetBillingEmailSettings(GetBillingEmailSettingsRequest) returns (BillingEmailSettings);
+  // Changes where billing email goes.
+  rpc UpdateBillingEmailSettings(UpdateBillingEmailSettingsRequest) returns (BillingEmailSettings);
+}
+
+// ---------- Products and plans ----------
+
+// A metered product.
+enum BillingProduct {
+  BILLING_PRODUCT_UNSPECIFIED = 0;
+  BILLING_PRODUCT_ACTIONS_MINUTES = 1; // runner minutes, weighted by runner size
+  BILLING_PRODUCT_STORAGE_GB = 2; // repo, artifact and cache storage, GB-months
+  BILLING_PRODUCT_WORKSPACES_HOURS = 3; // cloud workspace compute hours
+  BILLING_PRODUCT_AGENT_TOKENS = 4; // model gateway tokens used by hosted agents
+  BILLING_PRODUCT_PACKAGES_TRANSFER = 5; // package registry egress, GB
+  BILLING_PRODUCT_LFS = 6; // LFS storage and bandwidth, GB
+  BILLING_PRODUCT_SEATS = 7;
+  BILLING_PRODUCT_MARKETPLACE = 8; // marketplace plan charges
+}
+
+// Length of a billing cycle.
+enum BillingCycle {
+  BILLING_CYCLE_UNSPECIFIED = 0;
+  BILLING_CYCLE_MONTHLY = 1;
+  BILLING_CYCLE_YEARLY = 2;
+}
+
+// Usage included in a plan before metered charges start.
+message BillingIncludedUsage {
+  BillingProduct product = 1;
+  double quantity = 2;
+  string unit = 3; // e.g. "minute", "GB-month", "token"
+}
+
+// A plan an account can be on.
+message BillingPlan {
+  string id = 1; // e.g. "free", "team", "enterprise"
+  string name = 2;
+  string description = 3;
+  uint64 seat_monthly_price_micro_usd = 4;
+  uint64 seat_yearly_price_micro_usd = 5;
+  repeated BillingIncludedUsage included = 6;
+  repeated string features = 7; // feature keys enabled by the plan
+  bool self_serve = 8; // false = contact sales
+}
+
+// An account's plan subscription.
+message BillingAccountPlan {
+  EnterpriseScope scope = 1;
+  BillingPlan plan = 2;
+  BillingCycle cycle = 3;
+  uint32 seats_purchased = 4;
+  uint32 seats_consumed = 5;
+  google.protobuf.Timestamp cycle_started_at = 6;
+  google.protobuf.Timestamp next_billing_at = 7;
+  string pending_plan_id = 8; // scheduled change at the end of the cycle
+  uint32 pending_seats = 9;
+  bool billing_disabled = 10; // self-hosted or comped: nothing is charged
+}
+
+// Request for ListBillingPlans.
+message ListBillingPlansRequest {
+  EnterpriseScope scope = 1; // plans offered to this account
+}
+
+// Response for ListBillingPlans.
+message ListBillingPlansResponse {
+  repeated BillingPlan plans = 1;
+}
+
+// Request for GetAccountBillingPlan.
+message GetAccountBillingPlanRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for ChangeBillingPlan.
+message ChangeBillingPlanRequest {
+  EnterpriseScope scope = 1;
+  string plan_id = 2;
+  uint32 seats = 3; // 0 = keep the current count
+  BillingCycle cycle = 4; // UNSPECIFIED = keep
+}
+
+// A principal consuming a paid seat.
+message BillingSeat {
+  Principal principal = 1;
+  string org = 2; // org through which the seat is consumed
+  bool outside_collaborator = 3;
+  string cost_center_id = 4;
+  google.protobuf.Timestamp consumed_since = 5;
+  google.protobuf.Timestamp last_activity_at = 6;
+}
+
+// Request for ListBillingSeats.
+message ListBillingSeatsRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2; // filter
+  PageRequest page = 3;
+}
+
+// Response for ListBillingSeats.
+message ListBillingSeatsResponse {
+  repeated BillingSeat seats = 1;
+  uint32 total_consumed = 2;
+  PageResponse page = 3;
+}
+
+// ---------- Usage ----------
+
+// A dimension to group usage line items by.
+enum BillingUsageGrouping {
+  BILLING_USAGE_GROUPING_UNSPECIFIED = 0;
+  BILLING_USAGE_GROUPING_DAY = 1;
+  BILLING_USAGE_GROUPING_MONTH = 2;
+  BILLING_USAGE_GROUPING_PRODUCT = 3;
+  BILLING_USAGE_GROUPING_SKU = 4;
+  BILLING_USAGE_GROUPING_REPO = 5;
+  BILLING_USAGE_GROUPING_ORG = 6;
+  BILLING_USAGE_GROUPING_COST_CENTER = 7;
+  BILLING_USAGE_GROUPING_PRINCIPAL = 8; // includes agents, attributed through their owner
+}
+
+// One priced usage line. Fields of dimensions not grouped by are empty.
+message BillingUsageLineItem {
+  string date = 1; // "YYYY-MM-DD" with DAY, "YYYY-MM" with MONTH
+  BillingProduct product = 2;
+  string sku = 3; // e.g. "actions_linux_4core", "agent_tokens_input"
+  RepoRef repo = 4;
+  string org = 5;
+  string cost_center_id = 6;
+  string principal_id = 7;
+  double quantity = 8;
+  string unit = 9;
+  uint64 unit_price_micro_usd = 10;
+  uint64 gross_micro_usd = 11;
+  uint64 discount_micro_usd = 12; // included usage and credits
+  uint64 net_micro_usd = 13;
+}
+
+// Request for QueryBillingUsage.
+message QueryBillingUsageRequest {
+  EnterpriseScope scope = 1;
+  repeated BillingProduct products = 2; // empty = all
+  google.protobuf.Timestamp start_at = 3; // inclusive
+  google.protobuf.Timestamp end_at = 4; // exclusive
+  repeated BillingUsageGrouping group_by = 5; // default DAY, PRODUCT
+  RepoRef repo = 6; // filter
+  string cost_center_id = 7; // filter
+  string org = 8; // filter (enterprise scope)
+  PageRequest page = 9;
+}
+
+// Response for QueryBillingUsage.
+message QueryBillingUsageResponse {
+  repeated BillingUsageLineItem line_items = 1;
+  uint64 total_gross_micro_usd = 2; // across all pages
+  uint64 total_net_micro_usd = 3;
+  google.protobuf.Timestamp data_complete_until = 4; // usage after this may still arrive
+  PageResponse page = 5;
+}
+
+// ---------- Budgets ----------
+
+// What a billing budget applies to.
+message BillingBudgetTarget {
+  oneof target {
+    bool account = 1; // the whole account
+    string org = 2; // one org of an enterprise
+    RepoRef repo = 3;
+    string cost_center_id = 4;
+  }
+}
+
+// A spending budget with alerts and an optional hard stop.
+message BillingBudget {
+  string id = 1; // ULID
+  EnterpriseScope scope = 2;
+  string name = 3;
+  BillingProduct product = 4; // UNSPECIFIED = all metered products
+  BillingBudgetTarget target = 5;
+  uint64 monthly_amount_micro_usd = 6;
+  repeated uint32 alert_threshold_percents = 7; // e.g. 75, 90, 100
+  repeated string alert_recipient_ids = 8; // principals notified at each threshold
+  bool hard_stop = 9; // block further usage at 100% (QUOTA_EXCEEDED)
+  uint64 spent_micro_usd = 10; // this month so far
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Request for CreateBillingBudget.
+message CreateBillingBudgetRequest {
+  EnterpriseScope scope = 1;
+  string name = 2;
+  BillingProduct product = 3;
+  BillingBudgetTarget target = 4;
+  uint64 monthly_amount_micro_usd = 5;
+  repeated uint32 alert_threshold_percents = 6;
+  repeated string alert_recipient_ids = 7;
+  bool hard_stop = 8;
+}
+
+// Request for GetBillingBudget.
+message GetBillingBudgetRequest {
+  EnterpriseScope scope = 1;
+  string budget_id = 2;
+}
+
+// Request for UpdateBillingBudget. Unset fields are unchanged.
+message UpdateBillingBudgetRequest {
+  EnterpriseScope scope = 1;
+  string budget_id = 2;
+  optional string name = 3;
+  optional uint64 monthly_amount_micro_usd = 4;
+  repeated uint32 alert_threshold_percents = 5; // replaces when replace_alerts is set
+  repeated string alert_recipient_ids = 6; // replaces when replace_alerts is set
+  bool replace_alerts = 7;
+  optional bool hard_stop = 8;
+}
+
+// Request for DeleteBillingBudget.
+message DeleteBillingBudgetRequest {
+  EnterpriseScope scope = 1;
+  string budget_id = 2;
+}
+
+// Response for DeleteBillingBudget.
+message DeleteBillingBudgetResponse {}
+
+// Request for ListBillingBudgets.
+message ListBillingBudgetsRequest {
+  EnterpriseScope scope = 1;
+  BillingProduct product = 2; // filter
+  PageRequest page = 3;
+}
+
+// Response for ListBillingBudgets.
+message ListBillingBudgetsResponse {
+  repeated BillingBudget budgets = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Invoices ----------
+
+// Payment state of an invoice.
+enum InvoiceStatus {
+  INVOICE_STATUS_UNSPECIFIED = 0;
+  INVOICE_STATUS_DRAFT = 1;
+  INVOICE_STATUS_OPEN = 2;
+  INVOICE_STATUS_PAID = 3;
+  INVOICE_STATUS_VOID = 4;
+  INVOICE_STATUS_UNCOLLECTIBLE = 5;
+}
+
+// One line on an invoice.
+message InvoiceLineItem {
+  string description = 1;
+  BillingProduct product = 2;
+  string sku = 3;
+  double quantity = 4;
+  string unit = 5;
+  uint64 unit_price_micro_usd = 6;
+  uint64 amount_micro_usd = 7;
+}
+
+// An invoice for one billing period.
+message Invoice {
+  string id = 1; // ULID
+  string number = 2; // human-facing invoice number
+  EnterpriseScope scope = 3;
+  InvoiceStatus status = 4;
+  google.protobuf.Timestamp period_start_at = 5;
+  google.protobuf.Timestamp period_end_at = 6;
+  google.protobuf.Timestamp issued_at = 7;
+  google.protobuf.Timestamp due_at = 8;
+  google.protobuf.Timestamp paid_at = 9;
+  uint64 subtotal_micro_usd = 10;
+  uint64 tax_micro_usd = 11;
+  uint64 total_micro_usd = 12;
+  uint64 amount_paid_micro_usd = 13;
+  repeated InvoiceLineItem line_items = 14; // filled by GetInvoice only
+}
+
+// Request for ListInvoices.
+message ListInvoicesRequest {
+  EnterpriseScope scope = 1;
+  InvoiceStatus status = 2; // filter
+  PageRequest page = 3;
+}
+
+// Response for ListInvoices.
+message ListInvoicesResponse {
+  repeated Invoice invoices = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetInvoice.
+message GetInvoiceRequest {
+  EnterpriseScope scope = 1;
+  string invoice_id = 2;
+}
+
+// Response for GetInvoice.
+message GetInvoiceResponse {
+  Invoice invoice = 1;
+  string pdf_url = 2; // signed, short-lived
+  google.protobuf.Timestamp pdf_url_expires_at = 3;
+}
+
+// ---------- Cost centers ----------
+
+// A named bucket that usage of its repos, orgs and principals is attributed to.
+message CostCenter {
+  string id = 1; // ULID
+  EnterpriseScope scope = 2;
+  string name = 3;
+  repeated RepoRef repos = 4;
+  repeated string orgs = 5;
+  repeated string principal_ids = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Request for CreateCostCenter.
+message CreateCostCenterRequest {
+  EnterpriseScope scope = 1;
+  string name = 2;
+}
+
+// Request for GetCostCenter.
+message GetCostCenterRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2;
+}
+
+// Request for UpdateCostCenter. Unset fields are unchanged.
+message UpdateCostCenterRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2;
+  optional string name = 3;
+}
+
+// Request for DeleteCostCenter.
+message DeleteCostCenterRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2;
+}
+
+// Response for DeleteCostCenter.
+message DeleteCostCenterResponse {}
+
+// Request for ListCostCenters.
+message ListCostCentersRequest {
+  EnterpriseScope scope = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListCostCenters.
+message ListCostCentersResponse {
+  repeated CostCenter cost_centers = 1;
+  PageResponse page = 2;
+}
+
+// Request for AddCostCenterResources.
+message AddCostCenterResourcesRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2;
+  repeated RepoRef repos = 3;
+  repeated string orgs = 4;
+  repeated string principal_ids = 5;
+}
+
+// Request for RemoveCostCenterResources.
+message RemoveCostCenterResourcesRequest {
+  EnterpriseScope scope = 1;
+  string cost_center_id = 2;
+  repeated RepoRef repos = 3;
+  repeated string orgs = 4;
+  repeated string principal_ids = 5;
+}
+
+// ---------- Payment and email ----------
+
+// Kind of payment method on file.
+enum BillingPaymentMethodKind {
+  BILLING_PAYMENT_METHOD_KIND_UNSPECIFIED = 0;
+  BILLING_PAYMENT_METHOD_KIND_NONE = 1;
+  BILLING_PAYMENT_METHOD_KIND_CARD = 2;
+  BILLING_PAYMENT_METHOD_KIND_INVOICE = 3; // pay by invoice (bank transfer)
+}
+
+// Summary of the payment method on file; no card number or bank details.
+message BillingPaymentMethod {
+  EnterpriseScope scope = 1;
+  BillingPaymentMethodKind kind = 2;
+  string card_brand = 3;
+  string card_last4 = 4;
+  uint32 card_exp_month = 5;
+  uint32 card_exp_year = 6;
+  string billing_name = 7;
+  string country = 8; // ISO 3166-1 alpha-2
+  string portal_url = 9; // where to change it
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Request for GetBillingPaymentMethod.
+message GetBillingPaymentMethodRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Where billing email goes.
+message BillingEmailSettings {
+  EnterpriseScope scope = 1;
+  string primary_email = 2;
+  repeated string additional_emails = 3;
+  bool send_receipts = 4;
+  bool send_usage_alerts = 5; // budget threshold alerts also go to these addresses
+}
+
+// Request for GetBillingEmailSettings.
+message GetBillingEmailSettingsRequest {
+  EnterpriseScope scope = 1;
+}
+
+// Request for UpdateBillingEmailSettings. Unset fields are unchanged.
+message UpdateBillingEmailSettingsRequest {
+  EnterpriseScope scope = 1;
+  optional string primary_email = 2;
+  repeated string additional_emails = 3; // replaces when replace_additional_emails is set
+  bool replace_additional_emails = 4;
+  optional bool send_receipts = 5;
+  optional bool send_usage_alerts = 6;
+}

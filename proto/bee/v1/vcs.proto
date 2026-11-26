@@ -1,0 +1,621 @@
+// Version-control services for bee.v1. See SPEC.md §6–§10.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Object reads. Every tier (server, node daemon) serves this service with identical bytes.
+service ObjectService {
+  rpc GetServerInfo(GetServerInfoRequest) returns (ServerInfo);
+  rpc GetObjects(GetObjectsRequest) returns (stream ObjectChunk);
+  rpc HasObjects(HasObjectsRequest) returns (HasObjectsResponse);
+  rpc ResolveRef(ResolveRefRequest) returns (ResolveRefResponse);
+  // Cache statistics of the tier that answers (hits, misses, fail-closed reads, epochs).
+  rpc GetTierStats(GetTierStatsRequest) returns (TierStats);
+  // The newest verified snapshot a node daemon can bootstrap from (PRODUCT §4.5).
+  rpc GetDaemonSnapshot(GetDaemonSnapshotRequest) returns (DaemonSnapshot);
+}
+
+// History queries that never need a clone.
+service QueryService {
+  rpc GetChangesets(GetChangesetsRequest) returns (GetChangesetsResponse);
+  rpc ReadPath(ReadPathRequest) returns (stream ReadPathChunk);
+  rpc ListTree(ListTreeRequest) returns (ListTreeResponse);
+  rpc Log(LogRequest) returns (LogResponse);
+  rpc Blame(BlameRequest) returns (BlameResponse);
+  rpc Diff(DiffRequest) returns (stream DiffItem);
+  rpc IsAncestor(IsAncestorRequest) returns (IsAncestorResponse);
+  rpc MergeBase(MergeBaseRequest) returns (MergeBaseResponse);
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+  // Reads one value of a derived type (SPEC §8) for a changeset or object, deriving it lazily
+  // if needed. Requires read access to the key's repo and paths.
+  rpc GetDerived(GetDerivedRequest) returns (GetDerivedResponse);
+  // Lists the derived types this server computes, with their versions and modes.
+  rpc ListDerivedTypes(ListDerivedTypesRequest) returns (ListDerivedTypesResponse);
+  // Compare view: ahead/behind counts, the changesets in between and a per-path summary.
+  rpc CompareRevisions(CompareRevisionsRequest) returns (CompareRevisionsResponse);
+  // Queries the copy-detection index: where else does this content (or a near copy) live.
+  rpc FindCopies(FindCopiesRequest) returns (FindCopiesResponse);
+}
+
+// Server-side writes. All are deterministic and safe to retry.
+service WriteService {
+  rpc UploadObjects(stream UploadItem) returns (UploadObjectsResponse);
+  rpc CreateChangeset(CreateChangesetRequest) returns (CreateChangesetResponse);
+  // On MERGE_CONFLICT, ErrorDetail.conflicts carries the structured conflicts. Resolve them by
+  // creating a changeset with `onto` as parent and the source changeset's ChangeId, then land it.
+  rpc Rebase(RebaseRequest) returns (RebaseResponse);
+  rpc Merge(MergeRequest) returns (MergeResponse);
+  rpc Land(LandRequest) returns (LandResponse);
+  // Builds a changeset that undoes `changeset` on top of `onto` (manual revert, auto-revert).
+  rpc Revert(RevertRequest) returns (RevertResponse);
+}
+
+service RefService {
+  rpc ListRefs(ListRefsRequest) returns (ListRefsResponse);
+  rpc CreateRef(CreateRefRequest) returns (Ref);
+  rpc UpdateRef(UpdateRefRequest) returns (Ref);
+  rpc DeleteRef(DeleteRefRequest) returns (DeleteRefResponse);
+  rpc GetRefLog(GetRefLogRequest) returns (GetRefLogResponse);
+  // Renames a ref; its version numbering and ref log move with it. Old name redirects.
+  rpc RenameRef(RenameRefRequest) returns (Ref);
+}
+
+message GetServerInfoRequest {
+  // Optional. When set, the caller must be able to read the repo and `policy_epoch` and
+  // `redaction_epoch` are that repo's (SPEC §9.5); without it they are 0.
+  RepoRef repo = 1;
+}
+
+message ServerInfo {
+  string version = 1;
+  string tier = 2; // "server" | "daemon" | "cache"
+  repeated string algorithms = 3;
+  uint64 max_blob_bytes = 4;
+  repeated string protocol_versions = 5; // e.g. "bee.v1"
+  string policy_epoch = 6;               // decimal u64, same as the response trailer (repo given)
+  uint64 redaction_epoch = 7;            // of the requested repo
+  repeated TokenPublicKey token_public_keys = 8; // keys that verify Biscuit tokens
+  ServerLimits limits = 9;
+  string github_client_id = 10;          // for device-flow login, when configured
+  string cell = 11;
+  string region = 12;
+  repeated string features = 13;         // optional capabilities, e.g. "signed_urls", "zstd"
+  string connect_base_url = 14;          // base URL of the HTTP/JSON surface
+  string edition = 15;                   // "cloud" | "enterprise"; the server always fills it
+}
+
+// A public key that verifies tokens (SPEC §9.2). Several keys may be active during rotation;
+// the first signs, all verify.
+message TokenPublicKey {
+  string key_id = 1;
+  string algorithm = 2; // e.g. "ed25519"
+  bytes public_key = 3;
+  google.protobuf.Timestamp not_after = 4;
+}
+
+// Limits from SPEC §4.6 that clients should respect before sending.
+message ServerLimits {
+  uint64 max_path_bytes = 1;
+  uint32 max_path_components = 2;
+  uint32 max_name_bytes = 3;
+  uint64 max_tree_entries = 4;
+  uint32 max_batch_ids = 5;    // ids per GetObjects/HasObjects request
+  uint64 inline_object_bytes = 6;
+  uint32 max_delta_entries = 7;
+}
+
+message GetTierStatsRequest {}
+
+// Cache statistics of one tier since it started.
+message TierStats {
+  string tier = 1;
+  uint64 hits = 2;
+  uint64 misses = 3;
+  uint64 fail_closed = 4;     // reads refused because epochs could not be confirmed
+  uint64 bytes_served = 5;
+  uint64 upstream_requests = 6;
+  string policy_epoch = 7;
+  uint64 redaction_epoch = 8;
+  google.protobuf.Timestamp started_at = 9;
+  uint64 cache_bytes = 10;
+}
+
+message GetDaemonSnapshotRequest {
+  RepoRef repo = 1;
+  repeated bytes sparse_prefixes = 2; // the scope the daemon serves; empty = whole repo
+}
+
+// A verified, periodically refreshed snapshot of objects a daemon can start from.
+message DaemonSnapshot {
+  string id = 1;
+  ObjectId root_changeset = 2;
+  string ref = 3;
+  uint64 ref_version = 4;
+  bytes digest = 5;          // BLAKE3 over the snapshot file; verify before use
+  uint64 size_bytes = 6;
+  string signed_url = 7;
+  int64 signed_url_expires_unix = 8;
+  google.protobuf.Timestamp created_at = 9;
+  uint64 redaction_epoch = 10; // objects redacted after this epoch must be dropped on load
+}
+
+message GetObjectsRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+  // Resume an interrupted stream: skip this many bytes of the first id.
+  uint64 resume_offset = 3;
+  // The client accepts signed CDN URLs in place of bytes (SPEC §10.5).
+  bool allow_signed_urls = 4;
+  // Range read of a single id: at most this many bytes from resume_offset. 0 = to the end.
+  uint64 length = 5;
+  // Encodings the client can decode; the server may then send stored zstd frames unchanged.
+  repeated ObjectEncoding accept_encodings = 6;
+}
+
+message ObjectChunk {
+  ObjectId id = 1;
+  uint64 offset = 2;
+  bytes data = 3;     // bytes in `encoding`; the decoded bytes are verified against id
+  bool last = 4;
+  string error_reason = 5; // per-object failure, e.g. REDACTED, PERMISSION_DENIED
+  // Set instead of data when allow_signed_urls was requested (SPEC §10.5). Verify bytes against id.
+  string signed_url = 6;
+  int64 signed_url_expires_unix = 7;
+  ItemStatus status = 8;           // typed form of error_reason; OK for served objects
+  AccessClass access_class = 9;    // lets caches decide who may be served from cache
+  ObjectEncoding encoding = 10;
+  uint64 total_size = 11;          // decoded size of the whole object
+}
+
+message HasObjectsRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+}
+
+message HasObjectsResponse {
+  repeated bool present = 1; // false for objects the caller cannot read
+}
+
+message ResolveRefRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  // Read-your-writes (SPEC §6.3): serve at least this ref version, waiting or forwarding if needed.
+  uint64 min_version = 3;
+  // Resolve the ref as it was at this version (`name@version`). 0 = current.
+  uint64 at_version = 4;
+}
+
+message ResolveRefResponse {
+  Ref ref = 1;
+  ObjectId root_tree = 2;
+  // True when served from a replica or cache while the primary is unreachable (SPEC §15.1).
+  bool stale = 3;
+  // Set when the requested name was renamed (RenameRef) and no longer exists: `ref` is the
+  // ref it was renamed to.
+  string renamed_to = 4;
+}
+
+message GetChangesetsRequest {
+  RepoRef repo = 1;
+  repeated ObjectId ids = 2;
+  bool include_meta = 3;
+}
+
+message GetChangesetsResponse {
+  repeated Changeset changesets = 1; // the readable changesets, in request order
+  repeated ChangesetResult results = 2; // one per requested id, in request order
+}
+
+// Outcome for one id in GetChangesets.
+message ChangesetResult {
+  ObjectId id = 1;
+  ItemStatus status = 2;
+  Changeset changeset = 3; // set when status is OK
+}
+
+message ReadPathRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+}
+
+message ReadPathChunk {
+  Mode mode = 1;
+  ObjectId blob = 2;
+  uint64 size = 3;
+  bytes data = 4;
+  bool last = 5;
+}
+
+message ListTreeRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+  bool recursive = 4;
+  PageRequest page = 5;
+}
+
+message TreeEntry {
+  bytes path = 1;
+  Mode mode = 2;
+  ObjectId id = 3;
+  uint64 size = 4;
+  bool restricted = 5; // listed but not fetchable by this principal
+}
+
+message ListTreeResponse {
+  repeated TreeEntry entries = 1;
+  PageResponse page = 2;
+}
+
+message LogRequest {
+  RepoRef repo = 1;
+  Revision from = 2;
+  bytes path = 3;          // optional path filter
+  bool first_parent = 4;
+  PageRequest page = 5;
+  bool follow_renames = 6;                 // keep following a path across renames and re-adds
+  google.protobuf.Timestamp since = 7;     // committer time lower bound
+  google.protobuf.Timestamp until = 8;
+  string author = 9;                       // principal id or author name substring
+  bool include_meta = 10;
+  uint64 min_version = 11;                 // read-your-writes (SPEC §6.3)
+}
+
+message LogResponse {
+  repeated Changeset changesets = 1;
+  PageResponse page = 2;
+}
+
+message BlameRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+  repeated ObjectId ignore_revs = 4;  // changesets to look through
+  bool use_ignore_revs_file = 5;      // also honor `.git-blame-ignore-revs` at `at`
+  uint32 start_line = 6;              // 1-based; 0 = from the first line
+  uint32 end_line = 7;                // inclusive; 0 = to the last line
+}
+
+message BlameRange {
+  uint32 start_line = 1;
+  uint32 line_count = 2;
+  ObjectId changeset = 3;
+  uint32 original_start_line = 4;
+}
+
+message BlameResponse {
+  repeated BlameRange ranges = 1;
+}
+
+message DiffRequest {
+  RepoRef repo = 1;
+  Revision from = 2;
+  Revision to = 3;
+  repeated bytes paths = 4;
+  bool include_hunks = 5;
+  uint32 context_lines = 6;
+  bool ignore_whitespace = 7;
+  bool detect_renames = 8;
+  bool detect_copies = 9;
+  uint32 max_files = 10;     // 0 = server default; the last item has truncated = true if cut
+  bool classify = 11;        // compute diff_class per path
+}
+
+// How a path changed between two revisions.
+enum DiffStatus {
+  DIFF_STATUS_UNSPECIFIED = 0;
+  DIFF_STATUS_ADDED = 1;
+  DIFF_STATUS_MODIFIED = 2;
+  DIFF_STATUS_DELETED = 3;
+  DIFF_STATUS_RENAMED = 4;
+  DIFF_STATUS_COPIED = 5;
+  DIFF_STATUS_MODE_CHANGED = 6;
+}
+
+message DiffHunk {
+  uint32 old_start = 1;
+  uint32 old_len = 2;
+  uint32 new_start = 3;
+  uint32 new_len = 4;
+  repeated string lines = 5; // prefixed with ' ', '+', '-'
+}
+
+message DiffItem {
+  bytes path = 1;
+  ConflictSide old = 2;
+  ConflictSide new = 3;
+  bool binary = 4;
+  repeated DiffHunk hunks = 5;
+  string diff_class = 6; // SPEC §11.3, when computed
+  DiffStatus status = 7;
+  bytes old_path = 8;    // renames and copies
+  uint32 similarity = 9; // percent, renames and copies
+  uint32 additions = 10;
+  uint32 deletions = 11;
+  bool truncated = 12;   // the diff was cut at max_files or a size limit after this item
+}
+
+message IsAncestorRequest {
+  RepoRef repo = 1;
+  Revision ancestor = 2;
+  Revision descendant = 3;
+}
+
+message IsAncestorResponse {
+  bool is_ancestor = 1;
+}
+
+message MergeBaseRequest {
+  RepoRef repo = 1;
+  Revision a = 2;
+  Revision b = 3;
+}
+
+message MergeBaseResponse {
+  repeated ObjectId bases = 1; // more than one means ambiguous
+}
+
+message ResolveRequest {
+  RepoRef repo = 1;
+  repeated Revision revisions = 2;
+}
+
+message ResolveResponse {
+  repeated ObjectId ids = 1;
+  repeated ItemStatus statuses = 2; // one per revision; ids[i] is unset unless OK
+}
+
+message GetDerivedRequest {
+  RepoRef repo = 1;
+  string type = 2;     // derived type name, e.g. "blame", "diff_class", "language_stats"
+  uint32 version = 3;  // 0 = the current version
+  ObjectId key = 4;    // changeset or object id the value is keyed by
+  bytes path = 5;      // for per-path types
+  bool derive_if_missing = 6; // lazily derive (SPEC §8); false returns NOT_FOUND when absent
+}
+
+message GetDerivedResponse {
+  string type = 1;
+  uint32 version = 2;
+  ObjectId key = 3;
+  bytes value = 4;        // canonical encoding of the value
+  string value_json = 5;  // proto3-JSON or JSON rendering of the value, when it has one
+  bool derived_now = 6;   // computed by this request rather than read back
+  bool content_bearing = 7; // value contains file content; purged with its source object
+}
+
+message ListDerivedTypesRequest {}
+
+// One derived type (SPEC §8).
+message DerivedType {
+  string name = 1;
+  uint32 version = 2;
+  string mode = 3;       // "eager" | "lazy" | "importer"
+  string key_kind = 4;   // "changeset" | "history_node" (a file history node; per-path types)
+  bool content_bearing = 5;
+  string description = 6;
+}
+
+message ListDerivedTypesResponse {
+  repeated DerivedType types = 1;
+}
+
+message CompareRevisionsRequest {
+  RepoRef repo = 1;
+  Revision base = 2;
+  Revision head = 3;
+  uint32 max_changesets = 4; // 0 = server default
+  bool include_files = 5;    // include a per-path summary without hunks
+}
+
+message CompareRevisionsResponse {
+  repeated ObjectId merge_bases = 1;
+  uint64 ahead_by = 2;   // changesets in head not in base
+  uint64 behind_by = 3;  // changesets in base not in head
+  repeated Changeset changesets = 4;
+  repeated DiffItem files = 5;
+  bool truncated = 6;
+}
+
+message FindCopiesRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;          // the file whose copies to find
+  uint32 min_similarity = 4; // percent; 100 = exact content
+  bool across_org = 5;     // search every repo in the org the caller can read
+  PageRequest page = 6;
+}
+
+// A place where the same or similar content lives.
+message CopyLocation {
+  string repo_id = 1;
+  bytes path = 2;
+  ObjectId blob = 3;
+  uint32 similarity = 4;
+  ObjectId first_seen = 5; // changeset that introduced it there
+}
+
+message FindCopiesResponse {
+  repeated CopyLocation copies = 1;
+  PageResponse page = 2;
+}
+
+message UploadItem {
+  RepoRef repo = 1; // set on the first item only
+  ObjectId id = 2;
+  uint64 offset = 3;
+  bytes data = 4;
+  bool last = 5;
+}
+
+message UploadObjectsResponse {
+  repeated ObjectId stored = 1;
+  repeated ObjectId already_present = 2;
+}
+
+message CreateChangesetRequest {
+  RepoRef repo = 1;
+  repeated ObjectId parents = 2;
+  repeated DeltaEntry delta = 3;
+  ChangeId change_id = 4;
+  string author = 5;
+  Signature author_time = 6;
+  string message = 7;
+  Provenance provenance = 8;
+  bool allow_empty = 9;
+  // When set, the computed root tree must equal this id or the RPC fails with ROOT_TREE_MISMATCH.
+  ObjectId expected_root_tree = 10;
+  string committer = 11;            // defaults to the author
+  Signature committer_time = 12;
+  repeated MetaExtension extensions = 13;
+  // Importer mode (SPEC §17.4): keeps the supplied meta verbatim. Needs ref-admin and write on `/`.
+  bool import_mode = 14;
+}
+
+message CreateChangesetResponse {
+  Changeset changeset = 1;
+}
+
+message RebaseRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  Revision onto = 3;
+  bool allow_empty = 4;
+}
+
+message RebaseResponse {
+  Changeset changeset = 1; // on conflict the RPC fails with ErrorDetail.conflicts
+}
+
+message MergeRequest {
+  RepoRef repo = 1;
+  Revision ours = 2;
+  Revision theirs = 3;
+  string message = 4;
+  ChangeId change_id = 5;
+  string author = 6;
+  Signature author_time = 7;
+  Provenance provenance = 8;
+  bool allow_empty = 9;
+}
+
+message MergeResponse {
+  Changeset changeset = 1;
+}
+
+// How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).
+enum LandMethod {
+  LAND_METHOD_UNSPECIFIED = 0; // same as REBASE
+  LAND_METHOD_REBASE = 1;      // rebase each changeset of the stack onto the tip
+  LAND_METHOD_SQUASH = 2;      // one changeset with the stack's combined delta
+  LAND_METHOD_MERGE_COMMIT = 3; // a merge changeset with the stack head as second parent
+}
+
+message LandRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  ObjectId head = 3;
+  uint64 expected_version = 4; // 0 = any
+  bool allow_empty = 5;
+  string change_request_id = 6; // optional; lands on behalf of a CR
+  LandMethod method = 7;
+  string message = 8;           // squash or merge-commit message; empty = generated
+  ChangeId change_id = 9;       // ChangeId for the squash or merge changeset
+}
+
+message LandedChange {
+  ChangeId change_id = 1;
+  ObjectId source = 2;
+  ObjectId result = 3;
+  bool skipped = 4; // already landed from the same source
+}
+
+message LandResponse {
+  Ref ref = 1;
+  repeated LandedChange landed = 2;
+  uint32 attempts = 3;
+  uint64 event_seq = 4; // repo event sequence of the land, for read-your-writes
+}
+
+message RevertRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;  // the changeset to undo
+  Revision onto = 3;       // where the revert goes; usually the ref tip
+  string message = 4;      // empty = "Revert <subject>"
+  ChangeId change_id = 5;  // empty = a fresh ChangeId
+  Provenance provenance = 6;
+}
+
+message RevertResponse {
+  Changeset changeset = 1; // on conflict the RPC fails with ErrorDetail.conflicts
+}
+
+message ListRefsRequest {
+  RepoRef repo = 1;
+  string prefix = 2;
+  PageRequest page = 3;
+}
+
+message ListRefsResponse {
+  repeated Ref refs = 1;
+  PageResponse page = 2;
+}
+
+message CreateRefRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  ObjectId target = 3;
+  string reason = 4; // recorded in the ref log and audit log
+}
+
+message UpdateRefRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  ObjectId target = 3;
+  uint64 expected_version = 4;
+  // Permit a non-fast-forward update; needs the `force` permission (else NOT_FAST_FORWARD).
+  bool allow_non_fast_forward = 5;
+  string reason = 6;
+}
+
+message DeleteRefRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  uint64 expected_version = 3;
+  string reason = 4;
+}
+
+message RenameRefRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  string new_name = 3;
+  uint64 expected_version = 4;
+  string reason = 5;
+}
+
+message DeleteRefResponse {}
+
+message GetRefLogRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  uint64 from_version = 3;
+  PageRequest page = 4;
+}
+
+message RefLogEntry {
+  uint64 version = 1;
+  ObjectId old = 2;
+  ObjectId new = 3;
+  string principal = 4;
+  google.protobuf.Timestamp time = 5;
+  repeated LandedChange landed = 6;
+}
+
+message GetRefLogResponse {
+  repeated RefLogEntry entries = 1;
+  PageResponse page = 2;
+}

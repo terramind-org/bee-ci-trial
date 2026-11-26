@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/safety.spot-check.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SafetyService/SpotCheck: `data` is a bee.v1.SpotCheckResponse in proto3-JSON. `bee safety spot-check --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SpotCheckResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.safety.spot-check"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee safety spot-check",
+  "type": "object"
+}

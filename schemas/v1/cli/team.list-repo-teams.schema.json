@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/team.list-repo-teams.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.TeamService/ListRepoTeams: `data` is a bee.v1.ListRepoTeamsResponse in proto3-JSON. `bee team list-repo-teams --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListRepoTeamsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.team.list-repo-teams"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee team list-repo-teams",
+  "type": "object"
+}

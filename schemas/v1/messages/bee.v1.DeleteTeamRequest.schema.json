@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteTeamRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteTeam.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteTeamRequest",
+  "type": "object"
+}

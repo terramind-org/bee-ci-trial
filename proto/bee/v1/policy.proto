@@ -1,0 +1,909 @@
+// Policy as code for bee.v1: effective policy, validation, hypothetical evaluation,
+// rulesets with evaluate mode, custom roles, the permission catalog, CODEOWNERS, required
+// signatures and policy epochs. See SPEC.md §9.4, §9.5 and PRODUCT.md §4.9.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Reads and evaluates policy. The source of truth is `.bee/policy.toml` at the tip of the
+// target ref overlaid on org and enterprise defaults (SPEC §9.4); rulesets are server-side
+// policy managed through this service and folded into the same effective policy. Every
+// response that depends on policy reports the repo's policy epoch (SPEC §9.5).
+service PolicyService {
+  // Returns the normalized effective policy for a repo and ref, with its epoch and sources.
+  rpc GetEffectivePolicy(GetEffectivePolicyRequest) returns (PolicyDocument);
+  // Validates a policy document without landing it and returns every error with its
+  // location. Land itself refuses any change that would make the effective policy invalid
+  // (INVALID_ARGUMENT, subcode `invalid_policy`), so invalid policy never takes effect.
+  rpc ValidatePolicy(ValidatePolicyRequest) returns (ValidatePolicyResponse);
+  // Evaluates a hypothetical action (principal, action, ref, paths, diff class) and returns
+  // allow or deny with the rules that matched and what is missing, in the same format as the
+  // POLICY_DENIED payload.
+  rpc EvaluatePolicyAction(EvaluatePolicyActionRequest) returns (EvaluatePolicyActionResponse);
+  // Returns a repo's current policy epoch.
+  rpc GetPolicyEpoch(GetPolicyEpochRequest) returns (GetPolicyEpochResponse);
+
+  // Creates a ruleset on a repo, org or enterprise.
+  rpc CreateRuleset(CreateRulesetRequest) returns (Ruleset);
+  // Returns one ruleset.
+  rpc GetRuleset(GetRulesetRequest) returns (Ruleset);
+  // Changes a ruleset with compare-and-swap on its version (VERSION_MISMATCH when stale).
+  rpc UpdateRuleset(UpdateRulesetRequest) returns (Ruleset);
+  // Deletes a ruleset.
+  rpc DeleteRuleset(DeleteRulesetRequest) returns (DeleteRulesetResponse);
+  // Lists rulesets defined on a repo, org or enterprise, optionally with inherited ones.
+  rpc ListRulesets(ListRulesetsRequest) returns (ListRulesetsResponse);
+  // Lists every rule that applies to one ref of a repo, from all rulesets at every level.
+  rpc ListRulesetRulesForRef(ListRulesetRulesForRefRequest) returns (ListRulesetRulesForRefResponse);
+  // Lists recorded rule evaluations (rule insights). Filter by EVALUATE enforcement to see
+  // which lands and pushes an evaluate-mode ruleset would have blocked.
+  rpc ListRulesetEvaluations(ListRulesetEvaluationsRequest) returns (ListRulesetEvaluationsResponse);
+  // Replays recent lands and pushes against an existing or draft ruleset and reports which
+  // would have been blocked, rule by rule, without changing anything (PRODUCT AS-AUTH-02).
+  rpc SimulateRuleset(SimulateRulesetRequest) returns (SimulateRulesetResponse);
+
+  // Creates a custom repo or org role.
+  rpc CreateCustomRole(CreateCustomRoleRequest) returns (CustomRole);
+  // Returns one custom role.
+  rpc GetCustomRole(GetCustomRoleRequest) returns (CustomRole);
+  // Changes a custom role; holders' access changes with the next policy epoch.
+  rpc UpdateCustomRole(UpdateCustomRoleRequest) returns (CustomRole);
+  // Deletes a custom role; its holders fall back to its base role.
+  rpc DeleteCustomRole(DeleteCustomRoleRequest) returns (DeleteCustomRoleResponse);
+  // Lists an org's custom roles.
+  rpc ListCustomRoles(ListCustomRolesRequest) returns (ListCustomRolesResponse);
+  // Lists the built-in roles and the permissions each one grants.
+  rpc ListBuiltinRoles(ListBuiltinRolesRequest) returns (ListBuiltinRolesResponse);
+  // Lists the full permission catalog.
+  rpc ListPolicyPermissions(ListPolicyPermissionsRequest) returns (ListPolicyPermissionsResponse);
+  // Assigns a custom org role to a principal or team (built-in org roles: OrgService.AssignOrgRole).
+  rpc AssignCustomOrgRole(AssignCustomOrgRoleRequest) returns (PolicyOrgRoleAssignment);
+  // Removes a custom org role assignment.
+  rpc UnassignCustomOrgRole(UnassignCustomOrgRoleRequest) returns (UnassignCustomOrgRoleResponse);
+  // Lists custom org role assignments.
+  rpc ListCustomOrgRoleAssignments(ListCustomOrgRoleAssignmentsRequest) returns (ListCustomOrgRoleAssignmentsResponse);
+
+  // Returns the owners of paths at a revision, from policy owners and CODEOWNERS.
+  rpc GetCodeowners(GetCodeownersRequest) returns (GetCodeownersResponse);
+  // Validates a CODEOWNERS file (at a revision or inline) and lists its errors.
+  rpc ValidateCodeowners(ValidateCodeownersRequest) returns (ValidateCodeownersResponse);
+  // Returns whether a ref requires signed commits and the signature state of given changesets.
+  rpc GetRequiredSignaturesStatus(GetRequiredSignaturesStatusRequest) returns (GetRequiredSignaturesStatusResponse);
+}
+
+// ---------- Effective policy ----------
+
+// Where a piece of effective policy comes from.
+enum PolicySourceKind {
+  POLICY_SOURCE_KIND_UNSPECIFIED = 0;
+  POLICY_SOURCE_KIND_ENTERPRISE_DEFAULT = 1;
+  POLICY_SOURCE_KIND_ORG_DEFAULT = 2;
+  POLICY_SOURCE_KIND_REPO_FILE = 3; // .bee/policy.toml at the tip of the target ref
+  POLICY_SOURCE_KIND_RULESET = 4;
+  POLICY_SOURCE_KIND_BUILTIN = 5; // built-in roles and defaults
+}
+
+// One input to the effective policy.
+message PolicySource {
+  PolicySourceKind kind = 1;
+  string id = 2; // org, enterprise or ruleset id; empty for the repo file
+  string path = 3; // repo file path
+  ObjectId blob = 4; // repo file blob
+  ObjectId changeset = 5; // tip the repo file was read from
+}
+
+// The normalized effective policy for a repo and ref.
+message PolicyDocument {
+  RepoRef repo = 1;
+  string ref = 2;
+  string epoch = 3; // decimal u64, as in the response trailer (SPEC §9.5)
+  // Normalized policy as JSON: access, groups, land rules, owners, leases and active rules.
+  // Deterministic: the same inputs give byte-identical output.
+  string normalized_json = 4;
+  repeated PolicySource sources = 5;
+  // True when the repo file at the tip is invalid and the last good policy is in force.
+  bool last_good_fallback = 6;
+  uint64 revocation_counter = 7;
+}
+
+// Request for GetEffectivePolicy.
+message GetEffectivePolicyRequest {
+  RepoRef repo = 1;
+  string ref = 2; // empty = default ref
+  Revision at = 3; // evaluate the repo file at this revision instead of the tip
+}
+
+// How serious a validation finding is.
+enum PolicyIssueSeverity {
+  POLICY_ISSUE_SEVERITY_UNSPECIFIED = 0;
+  POLICY_ISSUE_SEVERITY_ERROR = 1; // the document cannot take effect
+  POLICY_ISSUE_SEVERITY_WARNING = 2; // valid, but probably not what was meant
+}
+
+// One policy validation finding with its location.
+message PolicyValidationIssue {
+  PolicyIssueSeverity severity = 1;
+  string file = 2; // e.g. ".bee/policy.toml"
+  uint32 line = 3; // 1-based; 0 when not tied to a line
+  uint32 column = 4;
+  string key_path = 5; // e.g. "land.main.approvals[1].diff_class"
+  string subcode = 6; // snake_case rule, e.g. "unknown_group", "group_cycle", "bad_glob"
+  string message = 7;
+}
+
+// Request for ValidatePolicy.
+message ValidatePolicyRequest {
+  RepoRef repo = 1;
+  oneof document {
+    string toml = 2; // a candidate .bee/policy.toml
+    Revision revision = 3; // validate the file as of this revision
+  }
+  string ref = 4; // target ref the document would govern
+  // Replay this many recent change requests under the proposed policy (gap G3); 0 = none.
+  uint32 replay_sample = 5;
+}
+
+// Response for ValidatePolicy.
+message ValidatePolicyResponse {
+  bool valid = 1;
+  repeated PolicyValidationIssue issues = 2;
+  string normalized_json = 3; // effective policy if it landed (when valid)
+  string resulting_epoch = 4;
+  // One plain-language line per rule in the proposed policy (gap G3).
+  repeated string rule_summaries = 5;
+  // How recent change requests would be decided under the proposed policy.
+  repeated PolicyReplayDecision replay = 6;
+}
+
+// Effect of a matched rule.
+enum PolicyEffect {
+  POLICY_EFFECT_UNSPECIFIED = 0;
+  POLICY_EFFECT_ALLOW = 1;
+  POLICY_EFFECT_DENY = 2;
+  POLICY_EFFECT_REQUIRE = 3; // allows only once its requirements are met
+}
+
+// A rule that matched an evaluated action.
+message PolicyRuleMatch {
+  string rule = 1; // key path or "ruleset:<id>/<rule_type>"
+  PolicySourceKind source = 2;
+  string source_id = 3;
+  PolicyEffect effect = 4;
+  bool satisfied = 5;
+  string detail = 6;
+}
+
+// Request for EvaluatePolicyAction.
+message EvaluatePolicyActionRequest {
+  RepoRef repo = 1;
+  string principal_id = 2; // empty = caller
+  // read, commit, land, review, lease, push, force_push, create_ref, delete_ref, redact, admin
+  string action = 3;
+  string ref = 4;
+  repeated bytes paths = 5;
+  string diff_class = 6; // SPEC §11.3, e.g. "docs", "logic", "sensitive"
+  ObjectId changeset = 7; // optional: take paths and diff class from a real changeset
+  repeated string approver_ids = 8; // hypothetical approvals
+  repeated string passed_checks = 9; // hypothetical passing checks
+  bool via_change_request = 10; // the action happens through a change request
+}
+
+// Response for EvaluatePolicyAction.
+message EvaluatePolicyActionResponse {
+  bool allowed = 1;
+  repeated PolicyRuleMatch matched_rules = 2;
+  repeated string missing = 3; // e.g. "approval:owner:src/auth", "check:test"
+  bool bypass_available = 4; // the principal is a bypass actor for every blocking rule
+  repeated RulesetRuleResult evaluate_mode_results = 5; // rules in EVALUATE mode, not enforced
+  string epoch = 6;
+}
+
+// Request for GetPolicyEpoch.
+message GetPolicyEpochRequest {
+  RepoRef repo = 1;
+}
+
+// Response for GetPolicyEpoch.
+message GetPolicyEpochResponse {
+  string epoch = 1; // decimal u64: BLAKE3 of normalized policy plus revocation counter
+  uint64 revocation_counter = 2;
+  google.protobuf.Timestamp changed_at = 3;
+}
+
+// ---------- Rulesets ----------
+
+// What a ruleset governs.
+enum RulesetTarget {
+  RULESET_TARGET_UNSPECIFIED = 0;
+  RULESET_TARGET_BRANCH = 1;
+  RULESET_TARGET_TAG = 2;
+  RULESET_TARGET_PUSH = 3; // content rules applied to every write into the repo
+}
+
+// Whether a ruleset is enforced.
+enum RulesetEnforcement {
+  RULESET_ENFORCEMENT_UNSPECIFIED = 0;
+  RULESET_ENFORCEMENT_ACTIVE = 1;
+  RULESET_ENFORCEMENT_EVALUATE = 2; // evaluated and recorded, never blocks
+  RULESET_ENFORCEMENT_DISABLED = 3;
+}
+
+// Matches repos by a custom or system property.
+message RulesetPropertyMatcher {
+  string name = 1;
+  repeated string values = 2;
+  string source = 3; // "custom" or "system"
+}
+
+// Which refs and repos a ruleset applies to.
+message RulesetConditions {
+  // Ref patterns (fnmatch). "~DEFAULT_BRANCH" and "~ALL" are special values.
+  repeated string ref_name_includes = 1;
+  repeated string ref_name_excludes = 2;
+  // Org and enterprise rulesets only: repo name patterns.
+  repeated string repo_name_includes = 3;
+  repeated string repo_name_excludes = 4;
+  repeated RulesetPropertyMatcher repo_property_includes = 5;
+  repeated RulesetPropertyMatcher repo_property_excludes = 6;
+  repeated string org_name_includes = 7; // enterprise rulesets only
+}
+
+// Requires approvals, optionally only for some diff classes or paths.
+message RulesetRuleRequiredApprovals {
+  uint32 count = 1;
+  repeated string diff_classes = 2; // applies when the change has one of these; empty = all
+  repeated bytes path_prefixes = 3; // applies when the change touches these; empty = all
+  uint32 human_count = 4; // of `count`, how many must be humans
+  bool require_owner_approval = 5;
+  repeated string required_reviewer_groups = 6; // e.g. "@acme/security"
+  bool dismiss_stale_on_push = 7;
+  bool require_last_push_approval = 8; // someone other than the last pusher approves
+  bool require_conversation_resolution = 9;
+  bool agents_may_approve = 10;
+}
+
+// A status check that must pass.
+message RulesetRequiredCheck {
+  string name = 1;
+  string app_id = 2; // only this app's report counts; empty = any
+}
+
+// Requires checks to pass before landing.
+message RulesetRuleRequiredChecks {
+  repeated RulesetRequiredCheck checks = 1;
+  bool strict = 2; // must pass on the change rebased onto the current tip
+  bool skip_on_create = 3; // do not require on ref creation
+}
+
+// Requires every changeset to carry a verified signature.
+message RulesetRuleRequiredSignatures {}
+
+// Forbids merge changesets on the ref.
+message RulesetRuleLinearHistory {}
+
+// Forbids deleting matching refs.
+message RulesetRuleNoDeletion {}
+
+// Forbids non-fast-forward updates (NOT_FAST_FORWARD).
+message RulesetRuleNoForcePush {}
+
+// Restricts creating matching refs to bypass actors.
+message RulesetRuleNoCreation {}
+
+// Requires a successful deployment to environments before landing.
+message RulesetRuleRequiredDeployments {
+  repeated string environments = 1;
+}
+
+// A workflow that must run and pass.
+message RulesetWorkflowRef {
+  RepoRef repo = 1;
+  string path = 2; // e.g. ".bee/workflows/ci.yml"
+  string ref = 3; // ref or changeset id to pin
+}
+
+// Requires workflows to pass before landing.
+message RulesetRuleRequiredWorkflows {
+  repeated RulesetWorkflowRef workflows = 1;
+}
+
+// One code scanning tool and the alert levels that block.
+message RulesetCodeScanningTool {
+  string tool = 1;
+  string alerts_threshold = 2; // "none", "errors", "errors_and_warnings", "all"
+  string security_alerts_threshold = 3; // "none", "critical", "high_or_higher", "medium_or_higher", "all"
+}
+
+// Requires code scanning results before landing.
+message RulesetRuleRequiredCodeScanning {
+  repeated RulesetCodeScanningTool tools = 1;
+}
+
+// Push rule: refuses writes that touch these path globs.
+message RulesetRuleRestrictedPaths {
+  repeated string path_globs = 1;
+}
+
+// Push rule: refuses writes that add files with these extensions.
+message RulesetRuleRestrictedExtensions {
+  repeated string extensions = 1; // e.g. ".exe", ".pem"
+}
+
+// Push rule: refuses files larger than a size (TOO_LARGE).
+message RulesetRuleMaxFileSize {
+  uint64 max_bytes = 1;
+}
+
+// Push rule: refuses paths longer than a length.
+message RulesetRuleMaxPathLength {
+  uint32 max_bytes = 1;
+}
+
+// What a pattern rule matches against.
+enum RulesetPatternSubject {
+  RULESET_PATTERN_SUBJECT_UNSPECIFIED = 0;
+  RULESET_PATTERN_SUBJECT_COMMIT_MESSAGE = 1;
+  RULESET_PATTERN_SUBJECT_AUTHOR_EMAIL = 2;
+  RULESET_PATTERN_SUBJECT_COMMITTER_EMAIL = 3;
+  RULESET_PATTERN_SUBJECT_REF_NAME = 4;
+}
+
+// How a pattern rule compares.
+enum RulesetPatternOperator {
+  RULESET_PATTERN_OPERATOR_UNSPECIFIED = 0;
+  RULESET_PATTERN_OPERATOR_STARTS_WITH = 1;
+  RULESET_PATTERN_OPERATOR_ENDS_WITH = 2;
+  RULESET_PATTERN_OPERATOR_CONTAINS = 3;
+  RULESET_PATTERN_OPERATOR_REGEX = 4; // RE2 syntax
+}
+
+// Requires commit messages (or emails, or ref names) to match a pattern.
+message RulesetRulePattern {
+  RulesetPatternSubject subject = 1;
+  RulesetPatternOperator operator = 2;
+  string pattern = 3;
+  bool negate = 4; // the value must NOT match
+  string name = 5; // shown in errors
+}
+
+// A way a change request may land.
+enum RulesetMergeMethod {
+  RULESET_MERGE_METHOD_UNSPECIFIED = 0;
+  RULESET_MERGE_METHOD_MERGE = 1;
+  RULESET_MERGE_METHOD_SQUASH = 2;
+  RULESET_MERGE_METHOD_REBASE = 3;
+}
+
+// Limits the land methods allowed.
+message RulesetRuleMergeMethods {
+  repeated RulesetMergeMethod allowed = 1;
+}
+
+// Requires landing through the merge queue (land train).
+message RulesetRuleMergeQueue {
+  RulesetMergeMethod merge_method = 1;
+  uint32 max_entries_to_build = 2;
+  uint32 min_entries_to_merge = 3;
+  uint32 max_entries_to_merge = 4;
+  uint32 min_entries_wait_seconds = 5;
+  uint32 check_timeout_seconds = 6;
+  bool all_entries_must_pass = 7; // false = entries are tested independently
+}
+
+// One typed rule in a ruleset.
+message RulesetRule {
+  string id = 1; // stable within the ruleset, assigned by the server when empty
+  oneof rule {
+    RulesetRuleRequiredApprovals required_approvals = 2;
+    RulesetRuleRequiredChecks required_checks = 3;
+    RulesetRuleRequiredSignatures required_signatures = 4;
+    RulesetRuleLinearHistory linear_history = 5;
+    RulesetRuleNoDeletion no_deletion = 6;
+    RulesetRuleNoForcePush no_force_push = 7;
+    RulesetRuleNoCreation no_creation = 8;
+    RulesetRuleRequiredDeployments required_deployments = 9;
+    RulesetRuleRequiredWorkflows required_workflows = 10;
+    RulesetRuleRequiredCodeScanning required_code_scanning = 11;
+    RulesetRuleRestrictedPaths restricted_paths = 12;
+    RulesetRuleRestrictedExtensions restricted_extensions = 13;
+    RulesetRuleMaxFileSize max_file_size = 14;
+    RulesetRuleMaxPathLength max_path_length = 15;
+    RulesetRulePattern pattern = 16;
+    RulesetRuleMergeMethods merge_methods = 17;
+    RulesetRuleMergeQueue merge_queue = 18;
+  }
+}
+
+// Kind of actor that may bypass a ruleset.
+enum RulesetBypassActorKind {
+  RULESET_BYPASS_ACTOR_KIND_UNSPECIFIED = 0;
+  RULESET_BYPASS_ACTOR_KIND_PRINCIPAL = 1; // a human, agent or service
+  RULESET_BYPASS_ACTOR_KIND_TEAM = 2;
+  RULESET_BYPASS_ACTOR_KIND_ROLE = 3; // built-in role name or custom role id
+  RULESET_BYPASS_ACTOR_KIND_APP = 4;
+}
+
+// When a bypass actor may bypass.
+enum RulesetBypassMode {
+  RULESET_BYPASS_MODE_UNSPECIFIED = 0;
+  RULESET_BYPASS_MODE_ALWAYS = 1;
+  // Only when landing a change request, never by direct push (GitHub "pull_request").
+  RULESET_BYPASS_MODE_CHANGE_REQUEST_ONLY = 2;
+}
+
+// An actor allowed to bypass a ruleset.
+message RulesetBypassActor {
+  RulesetBypassActorKind kind = 1;
+  string actor_id = 2; // principal id, team id, role name or custom role id, app id
+  RulesetBypassMode mode = 3;
+}
+
+// A named set of rules applied to matching refs.
+message Ruleset {
+  string id = 1; // ULID
+  string name = 2;
+  oneof owner {
+    RepoRef repo = 3;
+    string org = 4;
+    string enterprise = 5;
+  }
+  RulesetTarget target = 6;
+  RulesetEnforcement enforcement = 7;
+  RulesetConditions conditions = 8;
+  repeated RulesetRule rules = 9;
+  repeated RulesetBypassActor bypass_actors = 10;
+  uint64 version = 11; // compare-and-swap token for UpdateRuleset
+  Principal created_by = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Request for CreateRuleset.
+message CreateRulesetRequest {
+  oneof owner {
+    RepoRef repo = 1;
+    string org = 2;
+    string enterprise = 3;
+  }
+  string name = 4;
+  RulesetTarget target = 5;
+  RulesetEnforcement enforcement = 6;
+  RulesetConditions conditions = 7;
+  repeated RulesetRule rules = 8;
+  repeated RulesetBypassActor bypass_actors = 9;
+}
+
+// Request for GetRuleset.
+message GetRulesetRequest {
+  string ruleset_id = 1;
+}
+
+// Request for UpdateRuleset. Unset fields are unchanged.
+message UpdateRulesetRequest {
+  string ruleset_id = 1;
+  uint64 expected_version = 2; // 0 = skip the check
+  optional string name = 3;
+  optional RulesetTarget target = 4;
+  optional RulesetEnforcement enforcement = 5;
+  RulesetConditions conditions = 6; // replaces the conditions when set
+  repeated RulesetRule rules = 7; // replaces the rules when replace_rules is set
+  bool replace_rules = 8;
+  repeated RulesetBypassActor bypass_actors = 9; // replaces when replace_bypass_actors is set
+  bool replace_bypass_actors = 10;
+}
+
+// Request for DeleteRuleset.
+message DeleteRulesetRequest {
+  string ruleset_id = 1;
+}
+
+// Response for DeleteRuleset.
+message DeleteRulesetResponse {}
+
+// Request for ListRulesets.
+message ListRulesetsRequest {
+  oneof owner {
+    RepoRef repo = 1;
+    string org = 2;
+    string enterprise = 3;
+  }
+  bool include_inherited = 4; // also rulesets from the org and enterprise above
+  RulesetTarget target = 5; // filter
+  PageRequest page = 6;
+}
+
+// Response for ListRulesets.
+message ListRulesetsResponse {
+  repeated Ruleset rulesets = 1;
+  PageResponse page = 2;
+}
+
+// A rule in force on a ref, with the ruleset it comes from.
+message RulesetActiveRule {
+  string ruleset_id = 1;
+  string ruleset_name = 2;
+  PolicySourceKind source = 3; // RULESET levels report the owner via source_owner
+  string source_owner = 4; // repo full name, org or enterprise slug
+  RulesetEnforcement enforcement = 5;
+  RulesetRule rule = 6;
+}
+
+// Request for ListRulesetRulesForRef.
+message ListRulesetRulesForRefRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  bool include_evaluate_mode = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListRulesetRulesForRef.
+message ListRulesetRulesForRefResponse {
+  repeated RulesetActiveRule rules = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Rule insights ----------
+
+// The operation a ruleset was evaluated against.
+enum RulesetEvaluationAction {
+  RULESET_EVALUATION_ACTION_UNSPECIFIED = 0;
+  RULESET_EVALUATION_ACTION_LAND = 1;
+  RULESET_EVALUATION_ACTION_PUSH = 2; // git push or direct ref update
+  RULESET_EVALUATION_ACTION_REF_CREATE = 3;
+  RULESET_EVALUATION_ACTION_REF_DELETE = 4;
+  RULESET_EVALUATION_ACTION_WRITE = 5; // object upload / changeset creation (push rules)
+}
+
+// Outcome of evaluating a rule or a whole ruleset.
+enum RulesetEvaluationResult {
+  RULESET_EVALUATION_RESULT_UNSPECIFIED = 0;
+  RULESET_EVALUATION_RESULT_PASS = 1;
+  RULESET_EVALUATION_RESULT_FAIL = 2;
+  RULESET_EVALUATION_RESULT_BYPASSED = 3;
+}
+
+// The result of one rule in an evaluation.
+message RulesetRuleResult {
+  string ruleset_id = 1;
+  string rule_id = 2;
+  string rule_type = 3; // the RulesetRule oneof field name, e.g. "required_approvals"
+  RulesetEvaluationResult result = 4;
+  string message = 5;
+  repeated string missing = 6; // e.g. "approval:human", "check:test"
+}
+
+// One evaluation of the rulesets covering an operation.
+message RulesetEvaluation {
+  string id = 1; // ULID; empty for simulated evaluations
+  RepoRef repo = 2;
+  string ref = 3;
+  RulesetEvaluationAction action = 4;
+  ObjectId changeset = 5;
+  string git_oid = 6; // set when the operation came through the git gateway
+  uint64 change_request_number = 7;
+  Principal actor = 8;
+  RulesetEnforcement enforcement = 9; // enforcement of the evaluated rulesets
+  RulesetEvaluationResult result = 10;
+  bool blocked = 11; // the operation was actually refused
+  bool would_block = 12; // an EVALUATE-mode ruleset would have refused it
+  repeated RulesetRuleResult rule_results = 13;
+  google.protobuf.Timestamp evaluated_at = 14;
+}
+
+// Request for ListRulesetEvaluations.
+message ListRulesetEvaluationsRequest {
+  oneof owner {
+    RepoRef repo = 1;
+    string org = 2;
+  }
+  string ruleset_id = 3; // filter
+  string ref = 4; // filter
+  string actor_id = 5; // filter
+  RulesetEvaluationResult result = 6; // filter
+  RulesetEnforcement enforcement = 7; // filter; EVALUATE = would-have-blocked report
+  google.protobuf.Timestamp since_at = 8;
+  google.protobuf.Timestamp until_at = 9;
+  PageRequest page = 10;
+}
+
+// Response for ListRulesetEvaluations.
+message ListRulesetEvaluationsResponse {
+  repeated RulesetEvaluation evaluations = 1;
+  PageResponse page = 2;
+}
+
+// Request for SimulateRuleset.
+message SimulateRulesetRequest {
+  oneof subject {
+    string ruleset_id = 1; // an existing ruleset
+    Ruleset draft = 2; // a ruleset not saved yet, or edited; id, version and times are ignored
+  }
+  RepoRef repo = 3; // limit the replay to one repo
+  google.protobuf.Timestamp since_at = 4; // default: 7 days ago
+  google.protobuf.Timestamp until_at = 5; // default: now
+  repeated RulesetEvaluationAction actions = 6; // default LAND and PUSH
+  uint32 max_operations = 7; // default 500, maximum 5000
+}
+
+// Response for SimulateRuleset.
+message SimulateRulesetResponse {
+  repeated RulesetEvaluation evaluations = 1; // only operations that would have been blocked
+  uint64 operations_replayed = 2;
+  uint64 would_block_count = 3;
+  bool truncated = 4; // max_operations was reached
+}
+
+// ---------- Roles and permissions ----------
+
+// Whether a role applies to repos or to an org.
+enum PolicyRoleKind {
+  POLICY_ROLE_KIND_UNSPECIFIED = 0;
+  POLICY_ROLE_KIND_REPO = 1;
+  POLICY_ROLE_KIND_ORG = 2;
+}
+
+// A named permission bundle defined by an org.
+message CustomRole {
+  string id = 1; // ULID
+  string org = 2;
+  PolicyRoleKind kind = 3;
+  string name = 4;
+  string description = 5;
+  // Built-in role this one extends: read, triage, write, maintain (repo roles) or none,
+  // member (org roles).
+  string base_role = 6;
+  repeated string permissions = 7; // names from ListPolicyPermissions, added to the base role
+  uint32 assignment_count = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// A built-in role.
+message PolicyBuiltinRole {
+  string name = 1; // e.g. "read", "triage", "write", "maintain", "admin", "billing_manager"
+  PolicyRoleKind kind = 2;
+  string description = 3;
+  repeated string permissions = 4;
+  string inherits = 5; // the next weaker built-in role
+}
+
+// One entry in the permission catalog.
+message PolicyPermission {
+  string name = 1; // e.g. "land", "force_push", "manage_rulesets", "redact", "bypass_push_protection"
+  PolicyRoleKind kind = 2;
+  string category = 3; // e.g. "code", "change_requests", "security", "admin"
+  string description = 4;
+  bool allowed_in_custom_roles = 5;
+  repeated string included_in_roles = 6; // built-in roles that grant it
+}
+
+// An org-level role held by a principal or team.
+message PolicyOrgRoleAssignment {
+  string org = 1;
+  string role = 2; // custom org role id
+  oneof assignee {
+    string principal_id = 3;
+    string team_id = 4;
+  }
+  Principal assigned_by = 5;
+  google.protobuf.Timestamp assigned_at = 6;
+}
+
+// Request for CreateCustomRole.
+message CreateCustomRoleRequest {
+  string org = 1;
+  PolicyRoleKind kind = 2;
+  string name = 3;
+  string description = 4;
+  string base_role = 5;
+  repeated string permissions = 6;
+}
+
+// Request for GetCustomRole.
+message GetCustomRoleRequest {
+  string org = 1;
+  string role_id = 2;
+}
+
+// Request for UpdateCustomRole. Unset fields are unchanged.
+message UpdateCustomRoleRequest {
+  string org = 1;
+  string role_id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional string base_role = 5;
+  repeated string permissions = 6; // replaces when replace_permissions is set
+  bool replace_permissions = 7;
+}
+
+// Request for DeleteCustomRole.
+message DeleteCustomRoleRequest {
+  string org = 1;
+  string role_id = 2;
+}
+
+// Response for DeleteCustomRole.
+message DeleteCustomRoleResponse {}
+
+// Request for ListCustomRoles.
+message ListCustomRolesRequest {
+  string org = 1;
+  PolicyRoleKind kind = 2; // filter
+  PageRequest page = 3;
+}
+
+// Response for ListCustomRoles.
+message ListCustomRolesResponse {
+  repeated CustomRole roles = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListBuiltinRoles.
+message ListBuiltinRolesRequest {
+  PolicyRoleKind kind = 1; // filter
+}
+
+// Response for ListBuiltinRoles.
+message ListBuiltinRolesResponse {
+  repeated PolicyBuiltinRole roles = 1;
+}
+
+// Request for ListPolicyPermissions.
+message ListPolicyPermissionsRequest {
+  PolicyRoleKind kind = 1; // filter
+}
+
+// Response for ListPolicyPermissions.
+message ListPolicyPermissionsResponse {
+  repeated PolicyPermission permissions = 1;
+}
+
+// Request for AssignCustomOrgRole.
+message AssignCustomOrgRoleRequest {
+  string org = 1;
+  string role = 2; // custom org role id
+  oneof assignee {
+    string principal_id = 3;
+    string team_id = 4;
+  }
+}
+
+// Request for UnassignCustomOrgRole.
+message UnassignCustomOrgRoleRequest {
+  string org = 1;
+  string role = 2;
+  oneof assignee {
+    string principal_id = 3;
+    string team_id = 4;
+  }
+}
+
+// Response for UnassignCustomOrgRole.
+message UnassignCustomOrgRoleResponse {}
+
+// Request for ListCustomOrgRoleAssignments.
+message ListCustomOrgRoleAssignmentsRequest {
+  string org = 1;
+  string role = 2; // filter
+  string principal_id = 3; // filter
+  PageRequest page = 4;
+}
+
+// Response for ListCustomOrgRoleAssignments.
+message ListCustomOrgRoleAssignmentsResponse {
+  repeated PolicyOrgRoleAssignment assignments = 1;
+  PageResponse page = 2;
+}
+
+// ---------- CODEOWNERS ----------
+
+// The CODEOWNERS or policy-owners rule that matched a path.
+message CodeownersRule {
+  string pattern = 1;
+  repeated string owners = 2; // principals, "@org/team" groups or emails
+  string file = 3; // "CODEOWNERS", ".bee/CODEOWNERS" or ".bee/policy.toml"
+  uint32 line = 4;
+  string section = 5; // optional section name
+}
+
+// The owners of one path.
+message CodeownersPathOwners {
+  bytes path = 1;
+  repeated string owners = 2;
+  CodeownersRule rule = 3; // unset when the path has no owner
+}
+
+// Request for GetCodeowners.
+message GetCodeownersRequest {
+  RepoRef repo = 1;
+  Revision revision = 2; // default: tip of the default ref
+  repeated bytes paths = 3;
+}
+
+// Response for GetCodeowners.
+message GetCodeownersResponse {
+  ObjectId changeset = 1; // the revision resolved
+  repeated CodeownersPathOwners paths = 2;
+  uint32 error_count = 3; // see ValidateCodeowners for details
+}
+
+// One problem in a CODEOWNERS file.
+message CodeownersError {
+  uint32 line = 1;
+  uint32 column = 2;
+  // "bad_pattern", "unknown_owner", "owner_without_write_access", "invalid_owner_syntax",
+  // "secret_team"
+  string subcode = 3;
+  string message = 4;
+  string source_line = 5;
+  string suggestion = 6;
+}
+
+// Request for ValidateCodeowners.
+message ValidateCodeownersRequest {
+  RepoRef repo = 1;
+  oneof source {
+    Revision revision = 2; // validate the file at this revision
+    string content = 3; // validate inline content
+  }
+}
+
+// Response for ValidateCodeowners.
+message ValidateCodeownersResponse {
+  bool valid = 1;
+  string file = 2; // which CODEOWNERS file was validated
+  repeated CodeownersError errors = 3;
+}
+
+// ---------- Signatures ----------
+
+// Verification state of a changeset's signature.
+enum PolicySignatureState {
+  POLICY_SIGNATURE_STATE_UNSPECIFIED = 0;
+  POLICY_SIGNATURE_STATE_VERIFIED = 1;
+  POLICY_SIGNATURE_STATE_UNSIGNED = 2;
+  POLICY_SIGNATURE_STATE_UNKNOWN_KEY = 3;
+  POLICY_SIGNATURE_STATE_BAD_SIGNATURE = 4;
+  POLICY_SIGNATURE_STATE_EXPIRED_KEY = 5;
+  POLICY_SIGNATURE_STATE_REVOKED_KEY = 6;
+  POLICY_SIGNATURE_STATE_UNVERIFIED_EMAIL = 7; // key valid, signer email not verified
+}
+
+// Signature state of one changeset.
+message PolicySignatureCheck {
+  ObjectId changeset = 1;
+  string git_oid = 2;
+  PolicySignatureState state = 3;
+  string format = 4; // "gpg", "ssh", "x509", "sigstore"
+  string key_id = 5;
+  string signer_principal_id = 6;
+}
+
+// Request for GetRequiredSignaturesStatus.
+message GetRequiredSignaturesStatusRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  repeated ObjectId changesets = 3; // empty = only report whether signatures are required
+}
+
+// Response for GetRequiredSignaturesStatus.
+message GetRequiredSignaturesStatusResponse {
+  bool required = 1;
+  repeated string required_by_ruleset_ids = 2;
+  bool required_by_policy_file = 3;
+  repeated PolicySignatureCheck checks = 4;
+}
+
+// How one recent change request would be decided under a proposed policy (gap G3).
+message PolicyReplayDecision {
+  string change_request_id = 1;
+  string title = 2;
+  string diff_class = 3;
+  bool current_allowed = 4;
+  bool proposed_allowed = 5;
+  // What the proposed policy would still require.
+  repeated string missing = 6;
+}

@@ -1,0 +1,6 @@
+manifest requirements-dev.txt pip lock=true count=1
+manifest requirements.txt pip lock=false count=3
+requirements-dev.txt pip pytest@8.1.1 dev direct req===8.1.1 pkg:pypi/pytest@8.1.1
+requirements.txt pip Django@3.2 runtime direct unresolved req=>=3.2,<4.0 pkg:pypi/django@3.2
+requirements.txt pip requests@2.25.0 runtime direct req===2.25.0 pkg:pypi/requests@2.25.0
+requirements.txt pip urllib3@1.26.4 runtime direct req===1.26.4 pkg:pypi/urllib3@1.26.4

@@ -1,0 +1,500 @@
+// Cloud workspaces for bee.v1: devcontainer-based environments for humans and agents,
+// with prebuilds, ports, dotfiles and sandbox egress policy. See docs/PRODUCT.md §4.19.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Workspaces run a devcontainer against a sparse working copy plus a node cache. Workspace
+// secrets are managed by SecretService and injected at start; this service never returns them.
+service WorkspaceService {
+  // Lists machine types available to a repo or org, with prices.
+  rpc ListWorkspaceMachineTypes(ListWorkspaceMachineTypesRequest) returns (ListWorkspaceMachineTypesResponse);
+  // Creates and starts a workspace. QUOTA_EXCEEDED past the owner's workspace or spending
+  // limit; POLICY_DENIED when org policy forbids the machine type or region.
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (Workspace);
+  // Fetches one workspace.
+  rpc GetWorkspace(GetWorkspaceRequest) returns (Workspace);
+  // Lists workspaces of the caller, an agent it owns, a repo or an org.
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+  // Updates idle timeout, retention, machine type or display name. A machine type change
+  // applies at next start.
+  rpc UpdateWorkspace(UpdateWorkspaceRequest) returns (Workspace);
+  // Starts a stopped workspace. INVALID_STATE when it is not stopped.
+  rpc StartWorkspace(StartWorkspaceRequest) returns (Workspace);
+  // Stops a running workspace; its disk is retained.
+  rpc StopWorkspace(StopWorkspaceRequest) returns (Workspace);
+  // Deletes a workspace and its disk. Unexported changes are lost unless exported first.
+  rpc DeleteWorkspace(DeleteWorkspaceRequest) returns (DeleteWorkspaceResponse);
+  // Rebuilds the container from the devcontainer config, keeping the working copy.
+  rpc RebuildWorkspace(RebuildWorkspaceRequest) returns (Workspace);
+  // Snapshots the working copy into a changeset on the workspace ref `ws/<principal>/<name>`.
+  // EMPTY_CHANGE when nothing changed; SECRET_DETECTED when push protection blocks it.
+  rpc ExportWorkspaceChanges(ExportWorkspaceChangesRequest) returns (ExportWorkspaceChangesResponse);
+  // Returns how to connect: web IDE URL, SSH endpoint and a short-lived connection token.
+  rpc GetWorkspaceConnection(GetWorkspaceConnectionRequest) returns (WorkspaceConnection);
+
+  // Creates a prebuild configuration for a repo, ref and devcontainer.
+  rpc CreateWorkspacePrebuildConfig(CreateWorkspacePrebuildConfigRequest) returns (WorkspacePrebuildConfig);
+  // Fetches one prebuild configuration.
+  rpc GetWorkspacePrebuildConfig(GetWorkspacePrebuildConfigRequest) returns (WorkspacePrebuildConfig);
+  // Lists a repo's prebuild configurations.
+  rpc ListWorkspacePrebuildConfigs(ListWorkspacePrebuildConfigsRequest) returns (ListWorkspacePrebuildConfigsResponse);
+  // Updates a prebuild configuration.
+  rpc UpdateWorkspacePrebuildConfig(UpdateWorkspacePrebuildConfigRequest) returns (WorkspacePrebuildConfig);
+  // Deletes a prebuild configuration and its prebuilt images.
+  rpc DeleteWorkspacePrebuildConfig(DeleteWorkspacePrebuildConfigRequest) returns (DeleteWorkspacePrebuildConfigResponse);
+  // Starts a prebuild now.
+  rpc TriggerWorkspacePrebuild(TriggerWorkspacePrebuildRequest) returns (WorkspacePrebuild);
+  // Lists prebuilds for a configuration, newest first.
+  rpc ListWorkspacePrebuilds(ListWorkspacePrebuildsRequest) returns (ListWorkspacePrebuildsResponse);
+
+  // Lists forwarded ports of a running workspace.
+  rpc ListWorkspacePorts(ListWorkspacePortsRequest) returns (ListWorkspacePortsResponse);
+  // Sets a port's visibility. POLICY_DENIED when org policy forbids public ports.
+  rpc SetWorkspacePortVisibility(SetWorkspacePortVisibilityRequest) returns (WorkspacePort);
+
+  // Returns the caller's dotfiles repository setting.
+  rpc GetWorkspaceDotfiles(GetWorkspaceDotfilesRequest) returns (WorkspaceDotfiles);
+  // Sets the caller's dotfiles repository setting.
+  rpc SetWorkspaceDotfiles(SetWorkspaceDotfilesRequest) returns (WorkspaceDotfiles);
+
+  // Returns the egress policy in force at org, repo or workspace scope, with the effective
+  // merged policy.
+  rpc GetWorkspaceEgressPolicy(GetWorkspaceEgressPolicyRequest) returns (WorkspaceEgressPolicy);
+  // Sets the egress policy at one scope. A narrower scope can only restrict a wider one.
+  rpc SetWorkspaceEgressPolicy(SetWorkspaceEgressPolicyRequest) returns (WorkspaceEgressPolicy);
+
+  // Returns compute and storage usage for an org or principal over a window.
+  rpc GetWorkspaceUsage(GetWorkspaceUsageRequest) returns (WorkspaceUsage);
+}
+
+// A machine size.
+message WorkspaceMachineType {
+  string name = 1;            // e.g. "standard-4"
+  string display_name = 2;
+  uint32 cpus = 3;
+  uint64 memory_bytes = 4;
+  uint64 storage_bytes = 5;
+  bool gpu = 6;
+  uint64 usd_micros_per_hour = 7;
+  bool prebuild_available = 8; // a ready prebuild exists for the requested repo/ref
+  repeated string regions = 9;
+}
+
+// Request for ListWorkspaceMachineTypes.
+message ListWorkspaceMachineTypesRequest {
+  RepoRef repo = 1;           // unset = org-wide list
+  string org = 2;
+  string ref = 3;             // for prebuild_available
+  string devcontainer_path = 4;
+}
+
+// Response for ListWorkspaceMachineTypes.
+message ListWorkspaceMachineTypesResponse {
+  repeated WorkspaceMachineType machine_types = 1;
+}
+
+// Workspace lifecycle.
+enum WorkspaceState {
+  WORKSPACE_STATE_UNSPECIFIED = 0;
+  WORKSPACE_STATE_QUEUED = 1;
+  WORKSPACE_STATE_PROVISIONING = 2;
+  WORKSPACE_STATE_STARTING = 3;
+  WORKSPACE_STATE_AVAILABLE = 4;
+  WORKSPACE_STATE_STOPPING = 5;
+  WORKSPACE_STATE_STOPPED = 6;
+  WORKSPACE_STATE_REBUILDING = 7;
+  WORKSPACE_STATE_FAILED = 8;
+  WORKSPACE_STATE_DELETED = 9;
+}
+
+// A cloud workspace.
+message Workspace {
+  string id = 1;
+  string name = 2;            // unique per owner; used in the workspace ref
+  string display_name = 3;
+  RepoRef repo = 4;
+  string ref = 5;             // ref checked out at creation
+  ObjectId base_changeset = 6;
+  string workspace_ref = 7;   // "ws/<principal>/<name>"
+  string devcontainer_path = 8;
+  string machine_type = 9;
+  string region = 10;
+  WorkspaceState state = 11;
+  Principal owner = 12;       // human or agent principal
+  Principal created_by = 13;
+  repeated bytes sparse_paths = 14; // empty = full checkout
+  uint64 idle_timeout_seconds = 15;
+  uint64 retention_seconds = 16; // stopped workspaces are deleted after this
+  string prebuild_id = 17;    // prebuild it started from, if any
+  string agent_run_id = 18;   // set when serving an agent run
+  bool has_unexported_changes = 19;
+  string failure_reason = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp last_used_at = 22;
+  google.protobuf.Timestamp stopped_at = 23;
+  google.protobuf.Timestamp retention_expires_at = 24;
+}
+
+// Request for CreateWorkspace.
+message CreateWorkspaceRequest {
+  RepoRef repo = 1;
+  string name = 2;            // empty = generated
+  string ref = 3;             // empty = default branch
+  string devcontainer_path = 4; // empty = ".devcontainer/devcontainer.json"
+  string machine_type = 5;
+  uint64 idle_timeout_seconds = 6;
+  uint64 retention_seconds = 7;
+  string region = 8;
+  string owner_principal_id = 9; // agent owned by the caller; empty = caller
+  repeated bytes sparse_paths = 10;
+  bool use_prebuild = 11;
+  string idempotency_key = 12;
+}
+
+// Request for GetWorkspace.
+message GetWorkspaceRequest {
+  string id = 1;
+}
+
+// Request for ListWorkspaces.
+message ListWorkspacesRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  string owner_id = 3;
+  repeated WorkspaceState states = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListWorkspaces.
+message ListWorkspacesResponse {
+  repeated Workspace workspaces = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateWorkspace.
+message UpdateWorkspaceRequest {
+  string id = 1;
+  optional string display_name = 2;
+  optional string machine_type = 3;
+  optional uint64 idle_timeout_seconds = 4;
+  optional uint64 retention_seconds = 5;
+}
+
+// Request for StartWorkspace.
+message StartWorkspaceRequest {
+  string id = 1;
+}
+
+// Request for StopWorkspace.
+message StopWorkspaceRequest {
+  string id = 1;
+}
+
+// Request for DeleteWorkspace.
+message DeleteWorkspaceRequest {
+  string id = 1;
+  bool force = 2;             // delete even with unexported changes
+}
+
+// Response for DeleteWorkspace.
+message DeleteWorkspaceResponse {}
+
+// Request for RebuildWorkspace.
+message RebuildWorkspaceRequest {
+  string id = 1;
+  bool full = 2;              // ignore the build cache
+}
+
+// Request for ExportWorkspaceChanges.
+message ExportWorkspaceChangesRequest {
+  string id = 1;
+  string message = 2;
+  Provenance provenance = 3;  // agent claims recorded in Meta
+  bool open_change_request = 4;
+  string target_ref = 5;      // CR target; empty = workspace's base ref
+}
+
+// Response for ExportWorkspaceChanges.
+message ExportWorkspaceChangesResponse {
+  ObjectId changeset = 1;
+  Ref ref = 2;                // the updated workspace ref
+  string change_request = 3;  // CR number, when opened
+}
+
+// How to reach a running workspace.
+message WorkspaceConnection {
+  string workspace_id = 1;
+  string web_ide_url = 2;
+  string ssh_host = 3;
+  uint32 ssh_port = 4;
+  string ssh_user = 5;
+  string connection_token = 6; // short-lived; do not log
+  google.protobuf.Timestamp token_expires_at = 7;
+}
+
+// Request for GetWorkspaceConnection.
+message GetWorkspaceConnectionRequest {
+  string id = 1;
+}
+
+// ---------- Prebuilds ----------
+
+// When prebuilds run.
+enum WorkspacePrebuildTrigger {
+  WORKSPACE_PREBUILD_TRIGGER_UNSPECIFIED = 0;
+  WORKSPACE_PREBUILD_TRIGGER_EVERY_LAND = 1;
+  WORKSPACE_PREBUILD_TRIGGER_CONFIG_CHANGE = 2;
+  WORKSPACE_PREBUILD_TRIGGER_SCHEDULED = 3;
+  WORKSPACE_PREBUILD_TRIGGER_MANUAL = 4;
+}
+
+// A prebuild configuration.
+message WorkspacePrebuildConfig {
+  string id = 1;
+  RepoRef repo = 2;
+  string ref = 3;
+  string devcontainer_path = 4;
+  repeated string regions = 5;
+  repeated string machine_types = 6;
+  WorkspacePrebuildTrigger trigger = 7;
+  string schedule = 8;        // cron, for SCHEDULED
+  uint32 retained_versions = 9;
+  bool enabled = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Request for CreateWorkspacePrebuildConfig.
+message CreateWorkspacePrebuildConfigRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  string devcontainer_path = 3;
+  repeated string regions = 4;
+  repeated string machine_types = 5;
+  WorkspacePrebuildTrigger trigger = 6;
+  string schedule = 7;
+  uint32 retained_versions = 8;
+}
+
+// Request for GetWorkspacePrebuildConfig.
+message GetWorkspacePrebuildConfigRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for ListWorkspacePrebuildConfigs.
+message ListWorkspacePrebuildConfigsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListWorkspacePrebuildConfigs.
+message ListWorkspacePrebuildConfigsResponse {
+  repeated WorkspacePrebuildConfig configs = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateWorkspacePrebuildConfig.
+message UpdateWorkspacePrebuildConfigRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated string regions = 3;       // non-empty replaces
+  repeated string machine_types = 4; // non-empty replaces
+  optional WorkspacePrebuildTrigger trigger = 5;
+  optional string schedule = 6;
+  optional uint32 retained_versions = 7;
+  optional bool enabled = 8;
+}
+
+// Request for DeleteWorkspacePrebuildConfig.
+message DeleteWorkspacePrebuildConfigRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Response for DeleteWorkspacePrebuildConfig.
+message DeleteWorkspacePrebuildConfigResponse {}
+
+// Prebuild lifecycle.
+enum WorkspacePrebuildState {
+  WORKSPACE_PREBUILD_STATE_UNSPECIFIED = 0;
+  WORKSPACE_PREBUILD_STATE_QUEUED = 1;
+  WORKSPACE_PREBUILD_STATE_RUNNING = 2;
+  WORKSPACE_PREBUILD_STATE_READY = 3;
+  WORKSPACE_PREBUILD_STATE_FAILED = 4;
+  WORKSPACE_PREBUILD_STATE_SUPERSEDED = 5;
+}
+
+// One prebuild.
+message WorkspacePrebuild {
+  string id = 1;
+  string config_id = 2;
+  RepoRef repo = 3;
+  ObjectId changeset = 4;
+  string region = 5;
+  WorkspacePrebuildState state = 6;
+  string log_url = 7;
+  string failure_reason = 8;
+  uint64 duration_seconds = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp finished_at = 11;
+}
+
+// Request for TriggerWorkspacePrebuild.
+message TriggerWorkspacePrebuildRequest {
+  RepoRef repo = 1;
+  string config_id = 2;
+}
+
+// Request for ListWorkspacePrebuilds.
+message ListWorkspacePrebuildsRequest {
+  RepoRef repo = 1;
+  string config_id = 2;
+  WorkspacePrebuildState state = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListWorkspacePrebuilds.
+message ListWorkspacePrebuildsResponse {
+  repeated WorkspacePrebuild prebuilds = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Ports ----------
+
+// Who can reach a forwarded port.
+enum WorkspacePortVisibility {
+  WORKSPACE_PORT_VISIBILITY_UNSPECIFIED = 0;
+  WORKSPACE_PORT_VISIBILITY_PRIVATE = 1;  // the owner only
+  WORKSPACE_PORT_VISIBILITY_ORG = 2;      // members of the repo's org
+  WORKSPACE_PORT_VISIBILITY_PUBLIC = 3;
+}
+
+// A forwarded port.
+message WorkspacePort {
+  uint32 port = 1;
+  string label = 2;
+  string protocol = 3;        // "http" or "https"
+  WorkspacePortVisibility visibility = 4;
+  string forward_url = 5;
+}
+
+// Request for ListWorkspacePorts.
+message ListWorkspacePortsRequest {
+  string workspace_id = 1;
+}
+
+// Response for ListWorkspacePorts.
+message ListWorkspacePortsResponse {
+  repeated WorkspacePort ports = 1;
+}
+
+// Request for SetWorkspacePortVisibility.
+message SetWorkspacePortVisibilityRequest {
+  string workspace_id = 1;
+  uint32 port = 2;
+  WorkspacePortVisibility visibility = 3;
+}
+
+// ---------- Dotfiles ----------
+
+// A principal's dotfiles setting.
+message WorkspaceDotfiles {
+  string principal_id = 1;
+  RepoRef repo = 2;           // unset = no dotfiles
+  string install_command = 3; // empty = auto-detect install script
+  bool enabled = 4;
+}
+
+// Request for GetWorkspaceDotfiles.
+message GetWorkspaceDotfilesRequest {
+  string principal_id = 1;    // empty = caller
+}
+
+// Request for SetWorkspaceDotfiles.
+message SetWorkspaceDotfilesRequest {
+  string principal_id = 1;    // empty = caller; or an agent the caller owns
+  RepoRef repo = 2;
+  string install_command = 3;
+  bool enabled = 4;
+}
+
+// ---------- Egress ----------
+
+// Default action for traffic matching no rule.
+enum WorkspaceEgressDefault {
+  WORKSPACE_EGRESS_DEFAULT_UNSPECIFIED = 0;
+  WORKSPACE_EGRESS_DEFAULT_DENY = 1;
+  WORKSPACE_EGRESS_DEFAULT_ALLOW = 2;
+}
+
+// Where an egress policy is set.
+message WorkspaceEgressScope {
+  oneof scope {
+    string org = 1;
+    RepoRef repo = 2;
+    string workspace_id = 3;
+  }
+}
+
+// Outbound network policy for sandboxes.
+message WorkspaceEgressPolicy {
+  WorkspaceEgressScope scope = 1;
+  WorkspaceEgressDefault default_action = 2;
+  repeated string allowed_domains = 3; // exact or "*.example.com"
+  repeated string allowed_cidrs = 4;
+  repeated string denied_domains = 5;
+  bool allow_package_registries = 6;   // the curated registry allow-list
+  bool log_denied = 7;
+  WorkspaceEgressPolicy effective = 8; // merged policy in force (Get only)
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// Request for GetWorkspaceEgressPolicy.
+message GetWorkspaceEgressPolicyRequest {
+  WorkspaceEgressScope scope = 1;
+}
+
+// Request for SetWorkspaceEgressPolicy.
+message SetWorkspaceEgressPolicyRequest {
+  WorkspaceEgressScope scope = 1;
+  WorkspaceEgressDefault default_action = 2;
+  repeated string allowed_domains = 3;
+  repeated string allowed_cidrs = 4;
+  repeated string denied_domains = 5;
+  bool allow_package_registries = 6;
+  bool log_denied = 7;
+}
+
+// ---------- Usage ----------
+
+// Usage for one machine type.
+message WorkspaceUsageLine {
+  string machine_type = 1;
+  uint64 core_seconds = 2;
+  uint64 storage_byte_hours = 3;
+  uint64 usd_micros = 4;
+}
+
+// Compute and storage usage.
+message WorkspaceUsage {
+  string org = 1;
+  string principal_id = 2;
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+  repeated WorkspaceUsageLine lines = 5;
+  uint64 total_usd_micros = 6;
+  uint64 prebuild_usd_micros = 7;
+}
+
+// Request for GetWorkspaceUsage.
+message GetWorkspaceUsageRequest {
+  string org = 1;
+  string principal_id = 2;    // empty = whole org
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+}

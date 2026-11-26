@@ -1,0 +1,5 @@
+manifest poetry.lock pip lock=true count=3
+manifest pyproject.toml pip lock=false count=2
+poetry.lock pip click@8.1.7 runtime indirect req=- pkg:pypi/click@8.1.7
+poetry.lock pip flask@2.0.1 runtime direct req=>=2.0,<3 pkg:pypi/flask@2.0.1 -> pypi/click@8.1.7
+poetry.lock pip pytest@8.1.1 dev direct req=>=8.0,<9 pkg:pypi/pytest@8.1.1

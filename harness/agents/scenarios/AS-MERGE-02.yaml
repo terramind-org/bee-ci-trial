@@ -1,0 +1,88 @@
+id: AS-MERGE-02
+area: "4.2"
+title: Land a change across a rename made by another agent without a conflict
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: base version
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add util module"
+      files:
+        lib/util.py: |
+          def clamp(x, lo, hi):
+              return max(lo, min(x, hi))
+  - name: the agent's unlanded change to lib/util.py
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      land: false
+      ref_name: ws/retry-helper
+      change: retry-helper
+      message: "Add retry helper"
+      files:
+        lib/util.py: |
+          def clamp(x, lo, hi):
+              return max(lo, min(x, hi))
+
+
+          def retry(fn, attempts=3):
+              for i in range(attempts):
+                  try:
+                      return fn()
+                  except Exception:
+                      if i == attempts - 1:
+                          raise
+    save: mine
+  - name: register the other agent
+    call: AuthService/CreateAgent
+    request: { display: "reorg-bot-${run.ns}", runtime: claude-code, purpose: "module reorganisation", org: "${run.ns}" }
+    save: { reorg: "$" }
+  - name: let reorg join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${reorg.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${reorg.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request: { principalId: "${reorg.id}", scope: { repos: ["${repo.fullName}"], actions: [read, commit, land] } }
+    save: { reorgToken: token }
+  - name: the other agent renames lib/util.py to lib/helpers.py on main
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      as: "${reorgToken}"
+      message: "Rename util to helpers"
+      files:
+        lib/util.py: null
+        lib/helpers.py: |
+          def clamp(x, lo, hi):
+              return max(lo, min(x, hi))
+    save: rename
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, the change on the workspace ref `ws/retry-helper` adds
+  a `retry` helper. Land it on main. Another agent has reorganised modules on main since the
+  change was written; the helper must end up wherever that module lives now.
+assertions:
+  - name: the helper landed in the renamed file
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:lib/helpers.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "def retry\\(fn, attempts=3\\):" }
+      - { path: "messages[*].data", decode: base64, matches: "def clamp\\(x, lo, hi\\):" }
+  - name: the old path was not resurrected
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:lib/util.py}" }
+    expect_error: { reason: NOT_FOUND }
+  - name: the tip is the agent's change, rebased onto the rename, touching only the new path
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 1 } }
+    expect:
+      - { path: "changesets[0].changeId", eq: "${mine.changeId}" }
+      - { path: "changesets[0].parents[0].raw", eq: "${rename.result.raw}" }
+      - { path: "changesets[0].delta", len: 1 }
+      - { path: "changesets[0].delta[0].path", decode: base64, eq: lib/helpers.py }

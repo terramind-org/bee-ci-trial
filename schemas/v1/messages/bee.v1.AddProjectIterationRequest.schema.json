@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddProjectIterationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AddProjectIteration.",
+  "properties": {
+    "durationDays": {
+      "description": "0 = the field's default",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fieldId": {
+      "type": "string"
+    },
+    "isBreak": {
+      "type": "boolean"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "startOn": {
+      "description": "unset = right after the last iteration",
+      "format": "date-time",
+      "type": "string"
+    },
+    "title": {
+      "description": "empty = \"Iteration N\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AddProjectIterationRequest",
+  "type": "object"
+}

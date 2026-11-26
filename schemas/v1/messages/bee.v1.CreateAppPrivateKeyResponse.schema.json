@@ -1,0 +1,39 @@
+{
+  "$defs": {
+    "bee.v1.AppPrivateKey": {
+      "description": "Summary of an app private key (never the key itself).",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fingerprint": {
+          "description": "SHA-256 of the public key, base64",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPrivateKey",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateAppPrivateKeyResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateAppPrivateKey. The PEM appears only here.",
+  "properties": {
+    "key": {
+      "$ref": "#/$defs/bee.v1.AppPrivateKey"
+    },
+    "privateKeyPem": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateAppPrivateKeyResponse",
+  "type": "object"
+}

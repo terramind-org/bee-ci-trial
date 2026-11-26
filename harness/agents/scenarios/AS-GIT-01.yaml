@@ -1,0 +1,59 @@
+id: AS-GIT-01
+area: "4.11"
+title: Using plain git, clone, branch, commit and push a change that lands under policy
+surfaces: cli
+timeout: 900
+budget: { max_turns: 60 }
+requires: ["bin:git"]
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        secrets/README.md: "never commit here\n"
+    save: seed
+  - name: policy on main - nothing under secrets/ may change
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: protect-secrets
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_ACTIVE
+      conditions: { refNameIncludes: ["~DEFAULT_BRANCH"] }
+      rules: [{ restrictedPaths: { pathGlobs: ["secrets/**"] } }]
+    save: { ruleset: "$" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  Using plain `git` (no other version-control client), clone the repository
+  ${run.server.url}/${repo.fullName}.git into `./app`, create a branch, and commit a new file
+  `CONTRIBUTING.md` that says "Run the tests before pushing." Then get that commit onto `main`
+  on the server by pushing it. The server's credentials for you are in the BEE_TOKEN
+  environment variable.
+assertions:
+  - name: main has CONTRIBUTING.md
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:CONTRIBUTING.md}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "Run the tests before pushing" }
+  - name: the tip came from the worker on top of the seed
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 1 }, includeMeta: true }
+    expect:
+      - { path: "changesets[0].meta.creator", eq: "${worker.id}" }
+      - { path: "changesets[0].parents[0].raw", eq: "${seed.result.raw}" }
+      - path: "changesets[0].delta"
+        every:
+          - { path: path, decode: base64, matches: "^(?!secrets/)" }
+  - name: the push was evaluated against the ruleset and passed
+    call: PolicyService/ListRulesetEvaluations
+    request: { repo: { fullName: "${repo.fullName}" }, ref: main, actorId: "${worker.id}" }
+    expect:
+      - path: evaluations
+        some:
+          - { path: result, eq: RULESET_EVALUATION_RESULT_PASS }
+          - { path: blocked, absent: true }
+  - name: the clone exists locally
+    workdir: { glob: "app/CONTRIBUTING.md", min: 1 }

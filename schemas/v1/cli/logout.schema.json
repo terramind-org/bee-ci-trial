@@ -1,0 +1,34 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/logout.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee logout --json`: one such document with `schema` = bee.v1.logout. Delete the stored credentials. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "credentialsPath": {
+          "type": "string"
+        },
+        "removed": {
+          "description": "False if there was nothing to remove.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "credentialsPath",
+        "removed"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.logout"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee logout",
+  "type": "object"
+}

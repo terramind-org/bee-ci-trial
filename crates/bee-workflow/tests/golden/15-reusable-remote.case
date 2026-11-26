@@ -1,0 +1,17 @@
+event: pr opened base=main
+--- .github/workflows/org-checks.yml
+name: Org checks
+on: pull_request
+jobs:
+  security:
+    uses: octo-org/shared-workflows/.github/workflows/security-scan.yml@v3
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      fail-on: high
+      scan-path: ${{ github.event.pull_request.head.ref }}
+    secrets:
+      SCANNER_TOKEN: ${{ secrets.SCANNER_TOKEN }}
+  license:
+    uses: octo-org/shared-workflows/.github/workflows/license.yaml@0123456789abcdef0123456789abcdef01234567

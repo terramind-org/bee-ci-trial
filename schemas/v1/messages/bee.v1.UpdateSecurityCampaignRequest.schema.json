@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "bee.v1.SecurityCampaignState": {
+      "description": "State of a campaign.",
+      "enum": [
+        "SECURITY_CAMPAIGN_STATE_UNSPECIFIED",
+        "SECURITY_CAMPAIGN_STATE_ACTIVE",
+        "SECURITY_CAMPAIGN_STATE_COMPLETED",
+        "SECURITY_CAMPAIGN_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.SecurityCampaignState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateSecurityCampaignRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateSecurityCampaign.",
+  "properties": {
+    "assigneePrincipalIds": {
+      "description": "replaces when replace_assignees",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "assigneeTeamIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "dueAt": {
+      "description": "unset = unchanged",
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "replaceAssignees": {
+      "type": "boolean"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SecurityCampaignState"
+    }
+  },
+  "title": "bee.v1.UpdateSecurityCampaignRequest",
+  "type": "object"
+}

@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    },
+    "bee.v1.PackageUploadFile": {
+      "description": "A file the caller intends to upload in a native publish.",
+      "properties": {
+        "digest": {
+          "description": "\"sha256:<hex>\"",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.PackageUploadFile",
+      "type": "object"
+    },
+    "bee.v1.PackageVisibility": {
+      "description": "Who can read a package.",
+      "enum": [
+        "PACKAGE_VISIBILITY_UNSPECIFIED",
+        "PACKAGE_VISIBILITY_PRIVATE",
+        "PACKAGE_VISIBILITY_INTERNAL",
+        "PACKAGE_VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.PackageVisibility",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginPackageUploadRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for BeginPackageUpload.",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PackageUploadFile"
+      },
+      "type": "array"
+    },
+    "linkRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "link the package to this repo on first publish"
+    },
+    "metadataJson": {
+      "description": "ecosystem manifest, JSON",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.PackageVisibility",
+      "description": "first publish only; UNSPECIFIED = inherit"
+    }
+  },
+  "title": "bee.v1.BeginPackageUploadRequest",
+  "type": "object"
+}

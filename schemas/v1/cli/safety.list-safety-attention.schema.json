@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/safety.list-safety-attention.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SafetyService/ListSafetyAttention: `data` is a bee.v1.ListSafetyAttentionResponse in proto3-JSON. `bee safety list-safety-attention --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListSafetyAttentionResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.safety.list-safety-attention"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee safety list-safety-attention",
+  "type": "object"
+}

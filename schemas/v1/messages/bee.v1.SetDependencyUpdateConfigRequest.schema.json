@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetDependencyUpdateConfigRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetDependencyUpdateConfig.",
+  "properties": {
+    "actorPrincipalId": {
+      "type": "string"
+    },
+    "groupedSecurityUpdates": {
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "securityUpdatesEnabled": {
+      "type": "boolean"
+    },
+    "versionUpdatesEnabled": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.SetDependencyUpdateConfigRequest",
+  "type": "object"
+}

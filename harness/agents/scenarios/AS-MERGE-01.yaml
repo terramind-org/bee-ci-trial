@@ -1,0 +1,67 @@
+id: AS-MERGE-01
+area: "4.2"
+title: Rebase a change onto a moved main, resolve the structured conflict, and land
+surfaces: both
+timeout: 1200
+budget: { max_turns: 80 }
+fixtures: [base]
+setup:
+  - name: base version of pricing
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add pricing"
+      files:
+        src/pricing.py: |
+          CURRENCY = "EUR"
+          DISCOUNT = 0.10
+          VAT = 0.21
+    save: base
+  - name: the agent's unlanded change, parked on a workspace ref
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      land: false
+      ref_name: ws/discount
+      change: discount-15
+      message: "Raise discount to 15%"
+      files:
+        src/pricing.py: |
+          CURRENCY = "EUR"
+          DISCOUNT = 0.15
+          VAT = 0.21
+    save: mine
+  - name: meanwhile main changes the same line
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Tag the discount for the Q3 promo"
+      files:
+        src/pricing.py: |
+          CURRENCY = "EUR"
+          DISCOUNT = 0.12  # Q3 promo
+          VAT = 0.21
+    save: theirs
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, the change on the workspace ref `ws/discount` raises
+  the discount to 15%, but main has moved on since it was written. Bring that change up to date
+  with main and land it. Keep both intents: the discount must end up at 0.15, and the
+  `# Q3 promo` comment that main added must stay on that line.
+assertions:
+  - name: main has the resolved line, without conflict markers
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/pricing.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "DISCOUNT = 0\\.15\\s+# Q3 promo" }
+      - { path: "messages[*].data", decode: base64, matches: "CURRENCY = \"EUR\"\\nDISCOUNT" }
+      - { path: "messages[*].data", decode: base64, matches: "\\nVAT = 0\\.21\\n?$" }
+      - { path: "messages[0].data", decode: base64, not_contains: "<<<<<<<" }
+      - { path: "messages[0].data", decode: base64, not_contains: ">>>>>>>" }
+  - name: the landed tip is the same piece of work (rebased, same ChangeId)
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 1 } }
+    expect:
+      - { path: "changesets[0].changeId", eq: "${mine.changeId}" }
+      - { path: "changesets[0].parents[0].raw", eq: "${theirs.result.raw}" }

@@ -1,0 +1,4 @@
+manifest .github/workflows/ci.yml actions lock=false count=3
+.github/workflows/ci.yml actions acme/shared/.github/workflows/release.yml@v2 runtime direct req=v2 pkg:githubactions/acme/shared@v2#.github/workflows/release.yml
+.github/workflows/ci.yml actions actions/checkout@v3 runtime direct req=v3 pkg:githubactions/actions/checkout@v3
+.github/workflows/ci.yml actions actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 runtime direct req=8f152de45cc393bb48ce5d89d36b731f54556e65 pkg:githubactions/actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65

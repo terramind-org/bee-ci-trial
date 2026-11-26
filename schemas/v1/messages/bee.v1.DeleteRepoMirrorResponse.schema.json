@@ -1,0 +1,7 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteRepoMirrorResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {},
+  "title": "bee.v1.DeleteRepoMirrorResponse",
+  "type": "object"
+}

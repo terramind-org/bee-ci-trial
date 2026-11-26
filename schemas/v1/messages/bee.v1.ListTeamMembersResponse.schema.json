@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.TeamMember": {
+      "description": "One principal's membership in a team.",
+      "properties": {
+        "addedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "externalGroupId": {
+          "description": "set when the membership comes from IdP team sync",
+          "type": "string"
+        },
+        "inherited": {
+          "description": "member through a child team, not directly",
+          "type": "boolean"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.TeamMemberRole"
+        },
+        "teamId": {
+          "type": "string"
+        },
+        "viaTeamId": {
+          "description": "set when inherited",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TeamMember",
+      "type": "object"
+    },
+    "bee.v1.TeamMemberRole": {
+      "description": "A principal's role inside a team.",
+      "enum": [
+        "TEAM_MEMBER_ROLE_UNSPECIFIED",
+        "TEAM_MEMBER_ROLE_MEMBER",
+        "TEAM_MEMBER_ROLE_MAINTAINER"
+      ],
+      "title": "bee.v1.TeamMemberRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTeamMembersResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListTeamMembers.",
+  "properties": {
+    "members": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.TeamMember"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListTeamMembersResponse",
+  "type": "object"
+}

@@ -1,0 +1,108 @@
+{
+  "format": "sCBOR v1",
+  "frozen": true,
+  "spec": "SPEC.md §3.1, §4",
+  "vectors": [
+    {
+      "description": "The fixed meta of every repo's empty root changeset.",
+      "encoding_hex": "a5000101600282000005600660",
+      "id": "m1_4d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a",
+      "kind": "meta",
+      "name": "meta-empty-root",
+      "value": {
+        "author": "",
+        "author_time": [
+          0,
+          0
+        ],
+        "creator": "",
+        "format_version": 1,
+        "message": ""
+      }
+    },
+    {
+      "description": "An agent's change with full provenance.",
+      "encoding_hex": "a6000101781e416461204c6f76656c616365203c616461406578616d706c652e636f6d3e02821a68e77800187805781a30314a413242334334443545364637473848394a304b4d4e505106782546697820746865207061727365720a0a48616e646c657320656d70747920696e7075742e0a07a70182781a30314a4147454e54303030303030303030303030303030303041781a30314a48554d414e303030303030303030303030303030303048026f636c617564652d636f64652f332e32036d6d6f64656c2d323032362d30310467736573732d34320558202475d072f735591421fb744587b271d8234f9e40935a4b79a254a03a2ec84cdc0682a3016a636172676f20746573740264706173730319bc52a30166636c697070790264706173730319232907a2011a0001d4c002191068",
+      "id": "m1_e8dade97b603dd4f0a487d9e040e450a0519cde4236744234ffc67c9ff90789a",
+      "kind": "meta",
+      "name": "meta-agent-provenance",
+      "value": {
+        "author": "Ada Lovelace <ada@example.com>",
+        "author_time": [
+          1760000000,
+          120
+        ],
+        "creator": "01JA2B3C4D5E6F7G8H9J0KMNPQ",
+        "format_version": 1,
+        "message": "Fix the parser\n\nHandles empty input.\n",
+        "provenance": {
+          "checks_run": [
+            {
+              "duration_ms": 48210,
+              "name": "cargo test",
+              "result": "pass"
+            },
+            {
+              "duration_ms": 9001,
+              "name": "clippy",
+              "result": "pass"
+            }
+          ],
+          "cost": {
+            "input_tokens": 120000,
+            "output_tokens": 4200
+          },
+          "model": "model-2026-01",
+          "principal_chain": [
+            "01JAGENT00000000000000000A",
+            "01JHUMAN00000000000000000H"
+          ],
+          "prompt_digest_hex": "2475d072f735591421fb744587b271d8234f9e40935a4b79a254a03a2ec84cdc",
+          "runtime": "claude-code/3.2",
+          "session": "sess-42"
+        }
+      }
+    },
+    {
+      "description": "An imported git commit with committer fields and the git extension (key 64).",
+      "encoding_hex": "a800010178194c696e7573203c6c696e7573406578616d706c652e6f72673e02821a4255b0793901a30378194c696e7573203c6c696e7573406578616d706c652e6f72673e04821a4255b0793901a305781a30314a494d504f525445523030303030303030303030303030300671496e697469616c207265766973696f6e0a18405867617574686f72204c696e7573203c6c696e7573406578616d706c652e6f72673e2031313132393131393933202d303730300a636f6d6d6974746572204c696e7573203c6c696e7573406578616d706c652e6f72673e2031313132393131393933202d303730300a",
+      "id": "m1_8d87d14b55f33bf3a8369c98159c54cf95e1a675e357097fd57b301d93748005",
+      "kind": "meta",
+      "name": "meta-imported-git",
+      "value": {
+        "author": "Linus <linus@example.org>",
+        "author_time": [
+          1112911993,
+          -420
+        ],
+        "committer": "Linus <linus@example.org>",
+        "committer_time": [
+          1112911993,
+          -420
+        ],
+        "creator": "01JIMPORTER000000000000000",
+        "format_version": 1,
+        "git_hex": "617574686f72204c696e7573203c6c696e7573406578616d706c652e6f72673e2031313132393131393933202d303730300a636f6d6d6974746572204c696e7573203c6c696e7573406578616d706c652e6f72673e2031313132393131393933202d303730300a",
+        "message": "Initial revision\n"
+      }
+    },
+    {
+      "description": "Negative seconds and timezone offset (major type 1) and an empty provenance map.",
+      "encoding_hex": "a6000101634f6c6402823a0001517f3902cf056430314a58066b6265666f7265203139373007a0",
+      "id": "m1_e739f9dab41db419bf47bf9a9d85ce251e62094096840c14f0ece28768739223",
+      "kind": "meta",
+      "name": "meta-negative-time",
+      "value": {
+        "author": "Old",
+        "author_time": [
+          -86400,
+          -720
+        ],
+        "creator": "01JX",
+        "format_version": 1,
+        "message": "before 1970",
+        "provenance": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,2292 @@
+// Beehive forge services for bee.v1. See SPEC.md §11.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+import "bee/v1/posts.proto";
+import "bee/v1/vcs.proto";
+
+service OrgService {
+  rpc CreateOrg(CreateOrgRequest) returns (Org);
+  rpc GetOrg(GetOrgRequest) returns (Org);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+  rpc SetMember(SetMemberRequest) returns (Member);
+  // Lists orgs the caller (or a given principal) belongs to.
+  rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse);
+  // Updates display name, description, profile fields.
+  rpc UpdateOrg(UpdateOrgRequest) returns (Org);
+  // Renames an org. Ids and keys are untouched; the old name redirects for 90 days.
+  rpc RenameOrg(RenameOrgRequest) returns (Org);
+  // Soft-deletes an org and all its repos; restorable for 90 days.
+  rpc DeleteOrg(DeleteOrgRequest) returns (DeleteOrgResponse);
+  // Restores a soft-deleted org within the restore window.
+  rpc RestoreOrg(RestoreOrgRequest) returns (Org);
+  // Reads org settings: base permissions, member privileges, profile.
+  rpc GetOrgSettings(GetOrgSettingsRequest) returns (OrgSettings);
+  rpc UpdateOrgSettings(UpdateOrgSettingsRequest) returns (OrgSettings);
+  // Invites a person by login, email or principal id with a role and optional teams.
+  rpc CreateOrgInvitation(CreateOrgInvitationRequest) returns (OrgInvitation);
+  rpc ListOrgInvitations(ListOrgInvitationsRequest) returns (ListOrgInvitationsResponse);
+  rpc CancelOrgInvitation(CancelOrgInvitationRequest) returns (CancelOrgInvitationResponse);
+  // Accepts an invitation addressed to the caller.
+  rpc AcceptOrgInvitation(AcceptOrgInvitationRequest) returns (Member);
+  rpc DeclineOrgInvitation(DeclineOrgInvitationRequest) returns (DeclineOrgInvitationResponse);
+  // Assigns a built-in or custom org role (custom roles are defined in PolicyService).
+  rpc AssignOrgRole(AssignOrgRoleRequest) returns (Member);
+  rpc RevokeOrgRole(RevokeOrgRoleRequest) returns (Member);
+  // Lists outside collaborators: people with repo access who are not members.
+  rpc ListOutsideCollaborators(ListOutsideCollaboratorsRequest) returns (ListOutsideCollaboratorsResponse);
+  // Turns a member into an outside collaborator, keeping their repo grants.
+  rpc ConvertToOutsideCollaborator(ConvertToOutsideCollaboratorRequest) returns (ConvertToOutsideCollaboratorResponse);
+}
+
+service RepoService {
+  rpc CreateRepo(CreateRepoRequest) returns (Repo);
+  rpc GetRepo(GetRepoRequest) returns (Repo);
+  rpc ListRepos(ListReposRequest) returns (ListReposResponse);
+  rpc UpdateRepo(UpdateRepoRequest) returns (Repo);
+  rpc GetContext(GetContextRequest) returns (RepoContext);
+  // Soft-deletes a repo; restorable for 90 days.
+  rpc DeleteRepo(DeleteRepoRequest) returns (DeleteRepoResponse);
+  rpc RestoreRepo(RestoreRepoRequest) returns (Repo);
+  // Lists soft-deleted repos of an org that can still be restored.
+  rpc ListDeletedRepos(ListDeletedReposRequest) returns (ListDeletedReposResponse);
+  // Archives a repo: every write, land and lease then fails with ARCHIVED.
+  rpc ArchiveRepo(ArchiveRepoRequest) returns (Repo);
+  rpc UnarchiveRepo(UnarchiveRepoRequest) returns (Repo);
+  // Transfers a repo to another org. The repo id stays; objects are copied into the target
+  // org's store (deduplicated) before the old name starts redirecting.
+  rpc TransferRepo(TransferRepoRequest) returns (Repo);
+  // Creates a repo from a template repo's tip with a fresh root changeset.
+  rpc CreateRepoFromTemplate(CreateRepoFromTemplateRequest) returns (Repo);
+  // Forks a repo. Content that exists only in the fork is never readable through the parent.
+  rpc ForkRepo(ForkRepoRequest) returns (Repo);
+  rpc ListForks(ListForksRequest) returns (ListForksResponse);
+  // Brings a fork's ref up to date with its upstream ref (rebase or merge under policy).
+  rpc SyncFork(SyncForkRequest) returns (SyncForkResponse);
+  // Replaces the repo's topics.
+  rpc SetRepoTopics(SetRepoTopicsRequest) returns (SetRepoTopicsResponse);
+  rpc GetRepoSettings(GetRepoSettingsRequest) returns (RepoSettings);
+  rpc UpdateRepoSettings(UpdateRepoSettingsRequest) returns (RepoSettings);
+  // Autolinks turn references like `JIRA-123` into URLs when rendering.
+  rpc CreateAutolink(CreateAutolinkRequest) returns (Autolink);
+  rpc ListAutolinks(ListAutolinksRequest) returns (ListAutolinksResponse);
+  rpc DeleteAutolink(DeleteAutolinkRequest) returns (DeleteAutolinkResponse);
+  // Org-defined repo metadata schema that policy can match on.
+  rpc ListCustomPropertyDefinitions(ListCustomPropertyDefinitionsRequest) returns (ListCustomPropertyDefinitionsResponse);
+  rpc SetCustomPropertyDefinition(SetCustomPropertyDefinitionRequest) returns (CustomPropertyDefinition);
+  rpc DeleteCustomPropertyDefinition(DeleteCustomPropertyDefinitionRequest) returns (DeleteCustomPropertyDefinitionResponse);
+  rpc GetRepoCustomProperties(GetRepoCustomPropertiesRequest) returns (GetRepoCustomPropertiesResponse);
+  rpc SetRepoCustomProperties(SetRepoCustomPropertiesRequest) returns (SetRepoCustomPropertiesResponse);
+  // Collaborators: direct repo grants to principals (members or outside collaborators).
+  rpc AddCollaborator(AddCollaboratorRequest) returns (AddCollaboratorResponse);
+  rpc RemoveCollaborator(RemoveCollaboratorRequest) returns (RemoveCollaboratorResponse);
+  rpc ListCollaborators(ListCollaboratorsRequest) returns (ListCollaboratorsResponse);
+  // The effective repo role of one principal, with where it comes from.
+  rpc GetCollaboratorPermission(GetCollaboratorPermissionRequest) returns (CollaboratorPermission);
+  rpc ListRepoInvitations(ListRepoInvitationsRequest) returns (ListRepoInvitationsResponse);
+  rpc AcceptRepoInvitation(AcceptRepoInvitationRequest) returns (AcceptRepoInvitationResponse);
+  rpc DeclineRepoInvitation(DeclineRepoInvitationRequest) returns (DeclineRepoInvitationResponse);
+  // Registers the repo's resolver endpoint (SPEC §11.6); empty url removes it.
+  rpc SetResolverHook(SetResolverHookRequest) returns (ResolverHook);
+  rpc GetResolverHook(GetResolverHookRequest) returns (ResolverHook);
+  // Push mirrors to any git remote, in either direction.
+  rpc CreateRepoMirror(CreateRepoMirrorRequest) returns (RepoMirror);
+  rpc ListRepoMirrors(ListRepoMirrorsRequest) returns (ListRepoMirrorsResponse);
+  rpc DeleteRepoMirror(DeleteRepoMirrorRequest) returns (DeleteRepoMirrorResponse);
+  rpc SyncRepoMirror(SyncRepoMirrorRequest) returns (RepoMirror);
+  // SSH deploy keys, kept for git compatibility; they map to service principals.
+  rpc AddDeployKey(AddDeployKeyRequest) returns (DeployKey);
+  rpc ListDeployKeys(ListDeployKeysRequest) returns (ListDeployKeysResponse);
+  rpc DeleteDeployKey(DeleteDeployKeyRequest) returns (DeleteDeployKeyResponse);
+  // Signed upload URL for the repo's social preview image.
+  rpc CreateSocialPreviewUpload(CreateSocialPreviewUploadRequest) returns (CreateSocialPreviewUploadResponse);
+}
+
+service ChangeService {
+  rpc OpenChange(OpenChangeRequest) returns (ChangeRequest);
+  rpc GetChange(GetChangeRequest) returns (ChangeRequest);
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+  rpc ReviseChange(ReviseChangeRequest) returns (ChangeRequest);
+  rpc CloseChange(CloseChangeRequest) returns (ChangeRequest);
+  rpc SubmitReview(SubmitReviewRequest) returns (Review);
+  rpc ListReviews(ListReviewsRequest) returns (ListReviewsResponse);
+  rpc EvaluateLanding(EvaluateLandingRequest) returns (LandingEvaluation);
+  // Fetches a CR by its per-repo number (shared with issues, GitHub-compatible).
+  rpc GetChangeByNumber(GetChangeByNumberRequest) returns (ChangeRequest);
+  // Reopens a closed CR. Fails with INVALID_STATE for landed CRs.
+  rpc ReopenChange(ReopenChangeRequest) returns (ChangeRequest);
+  // Edits title, body, target ref or parent CR.
+  rpc EditChange(EditChangeRequest) returns (ChangeRequest);
+  // Marks a draft CR ready for review.
+  rpc MarkChangeReady(MarkChangeReadyRequest) returns (ChangeRequest);
+  // Turns a CR back into a draft; drafts cannot land (DRAFT).
+  rpc ConvertChangeToDraft(ConvertChangeToDraftRequest) returns (ChangeRequest);
+  // Requests reviews from principals or teams; auto-assignment may expand teams.
+  rpc RequestReviewers(RequestReviewersRequest) returns (ChangeRequest);
+  rpc RemoveReviewRequests(RemoveReviewRequestsRequest) returns (ChangeRequest);
+  // Dismisses a review so it no longer counts toward policy.
+  rpc DismissReview(DismissReviewRequest) returns (Review);
+  // Diff between two revisions of one CR ("changes since my review").
+  rpc DiffChangeRevisions(DiffChangeRevisionsRequest) returns (stream DiffItem);
+  // Adds a conversation, file-level or line comment. Line comments start a review thread.
+  rpc CreateChangeComment(CreateChangeCommentRequest) returns (Comment);
+  rpc ListChangeComments(ListChangeCommentsRequest) returns (ListChangeCommentsResponse);
+  // Lists review threads with their comments, resolution and outdated state.
+  rpc ListReviewThreads(ListReviewThreadsRequest) returns (ListReviewThreadsResponse);
+  rpc ReplyToReviewThread(ReplyToReviewThreadRequest) returns (ReviewComment);
+  rpc ResolveReviewThread(ResolveReviewThreadRequest) returns (ReviewThread);
+  rpc UnresolveReviewThread(UnresolveReviewThreadRequest) returns (ReviewThread);
+  // Applies one or more suggestions as a new revision of the CR (batch apply).
+  rpc ApplySuggestions(ApplySuggestionsRequest) returns (ChangeRequest);
+  // Marks a file viewed or not viewed for the caller on the current revision.
+  rpc SetFileViewed(SetFileViewedRequest) returns (SetFileViewedResponse);
+  rpc ListViewedFiles(ListViewedFilesRequest) returns (ListViewedFilesResponse);
+  rpc SetChangeLabels(SetChangeLabelsRequest) returns (ChangeRequest);
+  rpc SetChangeAssignees(SetChangeAssigneesRequest) returns (ChangeRequest);
+  rpc SetChangeMilestone(SetChangeMilestoneRequest) returns (ChangeRequest);
+  // Links issues the CR implements; closing keywords in the body link them automatically.
+  rpc LinkChangeIssues(LinkChangeIssuesRequest) returns (ChangeRequest);
+  // CR templates read from the target ref (`.github/pull_request_template.md` and friends).
+  rpc ListChangeTemplates(ListChangeTemplatesRequest) returns (ListChangeTemplatesResponse);
+  // Lands the CR's current revision now through Land under policy.
+  rpc LandChange(LandChangeRequest) returns (LandChangeResponse);
+  // Lands automatically once policy is satisfied (fires on check and review events).
+  rpc EnableAutoMerge(EnableAutoMergeRequest) returns (ChangeRequest);
+  rpc DisableAutoMerge(DisableAutoMergeRequest) returns (ChangeRequest);
+  // Adds the CR to the target ref's merge queue (served by the land coalescer, SPEC §7.4).
+  rpc EnqueueChange(EnqueueChangeRequest) returns (MergeQueueEntry);
+  rpc DequeueChange(DequeueChangeRequest) returns (DequeueChangeResponse);
+  // Merge queue for a ref: entries in order, their state and estimated time to land.
+  rpc GetMergeQueue(GetMergeQueueRequest) returns (GetMergeQueueResponse);
+  // Opens a CR that reverts a landed CR.
+  rpc RevertChange(RevertChangeRequest) returns (ChangeRequest);
+  // Rebases the CR onto the current tip of its target ("update branch").
+  rpc UpdateChangeBase(UpdateChangeBaseRequest) returns (ChangeRequest);
+  // The CRs of a stack, bottom first.
+  rpc ListChangeStack(ListChangeStackRequest) returns (ListChangeStackResponse);
+  // Sets the agent- or human-authored summary of a CR.
+  rpc SetChangeSummary(SetChangeSummaryRequest) returns (ChangeRequest);
+  // Comments anchored to a changeset outside any CR (commit comments).
+  rpc CreateChangesetComment(CreateChangesetCommentRequest) returns (Comment);
+  rpc ListChangesetComments(ListChangesetCommentsRequest) returns (ListChangesetCommentsResponse);
+  // A conflict a land or rebase hit, as structured data (SPEC §7.3.2), for resolvers.
+  rpc GetLandConflict(GetLandConflictRequest) returns (LandConflict);
+  rpc ListLandConflicts(ListLandConflictsRequest) returns (ListLandConflictsResponse);
+  // Submits a resolution changeset; it goes through the same checks and policy as any change.
+  rpc SubmitConflictResolution(SubmitConflictResolutionRequest) returns (LandConflict);
+
+  // Adds the caller's reaction to a change request, or to one of its comments when
+  // comment_id is set. Needs `read`; moderation applies.
+  rpc AddChangeReaction(AddChangeReactionRequest) returns (ChangeReactionResponse);
+  // Removes the caller's reaction from a change request or one of its comments.
+  rpc RemoveChangeReaction(RemoveChangeReactionRequest) returns (ChangeReactionResponse);
+  // Locks or unlocks a change request's conversation: while locked only people with
+  // `triage` comment. Needs `triage`.
+  rpc SetChangeLocked(SetChangeLockedRequest) returns (ChangeRequest);
+}
+
+service CheckService {
+  rpc ReportCheck(ReportCheckRequest) returns (CheckRun);
+  rpc ListChecks(ListChecksRequest) returns (ListChecksResponse);
+  rpc GetCheckRun(GetCheckRunRequest) returns (CheckRun);
+  // Updates status, output and annotations of an existing run.
+  rpc UpdateCheckRun(UpdateCheckRunRequest) returns (CheckRun);
+  rpc ListCheckAnnotations(ListCheckAnnotationsRequest) returns (ListCheckAnnotationsResponse);
+  // Asks the reporter (app or workflow) to run one check again.
+  rpc RerequestCheckRun(RerequestCheckRunRequest) returns (CheckRun);
+  rpc CreateCheckSuite(CreateCheckSuiteRequest) returns (CheckSuite);
+  rpc ListCheckSuites(ListCheckSuitesRequest) returns (ListCheckSuitesResponse);
+  rpc RerequestCheckSuite(RerequestCheckSuiteRequest) returns (CheckSuite);
+  // Legacy commit statuses (`state` + `context`), stored as check runs.
+  rpc CreateCommitStatus(CreateCommitStatusRequest) returns (CommitStatus);
+  rpc ListCommitStatuses(ListCommitStatusesRequest) returns (ListCommitStatusesResponse);
+  rpc GetCombinedStatus(GetCombinedStatusRequest) returns (CombinedStatus);
+  // Starts a bisect of a landed range for a failing post-land check (SPEC §11.6).
+  rpc StartBisect(StartBisectRequest) returns (Bisect);
+  rpc GetBisect(GetBisectRequest) returns (Bisect);
+  rpc ListBisects(ListBisectsRequest) returns (ListBisectsResponse);
+  // A bisect session in full: candidates, probes and marks, rounds and notes. Needs `read`.
+  rpc GetBisectSession(GetBisectSessionRequest) returns (BisectSession);
+  // The changeset a manual session should test next; empty once decided. Needs `read`.
+  rpc GetBisectNextCandidate(GetBisectNextCandidateRequest) returns (GetBisectNextCandidateResponse);
+  // Marks a candidate of a manual session good, bad or untestable and advances it. Needs
+  // `commit`. Errors: INVALID_STATE (finished, or driven by CI probes), INVALID_ARGUMENT
+  // (`not_a_candidate`).
+  rpc MarkBisect(MarkBisectRequest) returns (Bisect);
+  // Cancels a running session and its probes. Needs `commit`. Errors: INVALID_STATE.
+  rpc CancelBisect(CancelBisectRequest) returns (Bisect);
+}
+
+service LeaseService {
+  rpc AcquireLease(AcquireLeaseRequest) returns (AcquireLeaseResponse);
+  rpc RenewLease(RenewLeaseRequest) returns (Lease);
+  rpc ReleaseLease(ReleaseLeaseRequest) returns (ReleaseLeaseResponse);
+  rpc ListLeases(ListLeasesRequest) returns (ListLeasesResponse);
+  rpc GetLease(GetLeaseRequest) returns (Lease);
+}
+
+service EventService {
+  rpc Subscribe(SubscribeRequest) returns (stream Event);
+  rpc CreateWebhook(CreateWebhookRequest) returns (Webhook);
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc GetWebhook(GetWebhookRequest) returns (Webhook);
+  rpc UpdateWebhook(UpdateWebhookRequest) returns (Webhook);
+  // Sends a `ping` event to the webhook now.
+  rpc PingWebhook(PingWebhookRequest) returns (WebhookDelivery);
+  rpc ListWebhookDeliveries(ListWebhookDeliveriesRequest) returns (ListWebhookDeliveriesResponse);
+  // One delivery with its request and response.
+  rpc GetWebhookDelivery(GetWebhookDeliveryRequest) returns (WebhookDelivery);
+  rpc RedeliverWebhook(RedeliverWebhookRequest) returns (WebhookDelivery);
+  // Pages through the retained event log without streaming.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  // Oldest retained and latest sequence numbers of a repo or org log.
+  rpc GetEventLogInfo(GetEventLogInfoRequest) returns (EventLogInfo);
+}
+
+// ---------- Orgs and repos ----------
+
+message Org {
+  string id = 1;
+  string name = 2;
+  string display = 3;
+  google.protobuf.Timestamp created_at = 4;
+  string description = 5;
+  string avatar_url = 6;
+  string website = 7;
+  string email = 8;
+  string location = 9;
+  string enterprise_id = 10;
+  uint64 version = 11;
+  google.protobuf.Timestamp deleted_at = 12; // set while soft-deleted
+  repeated string verified_domains = 13;
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_OWNER = 1;
+  ROLE_ADMIN = 2;
+  ROLE_MEMBER = 3;
+  ROLE_BILLING_MANAGER = 4;
+  ROLE_SECURITY_MANAGER = 5;
+  ROLE_MODERATOR = 6;
+  ROLE_APP_MANAGER = 7;
+}
+
+message Member {
+  Principal principal = 1;
+  Role role = 2;
+  repeated string custom_role_ids = 3; // custom org roles (PolicyService)
+  google.protobuf.Timestamp joined_at = 4;
+  bool two_factor_enabled = 5;
+  bool public_membership = 6;
+}
+
+message ListOrgsRequest {
+  string principal_id = 1; // empty = caller
+  PageRequest page = 2;
+}
+
+message ListOrgsResponse {
+  repeated Org orgs = 1;
+  PageResponse page = 2;
+}
+
+message UpdateOrgRequest {
+  string org = 1;
+  optional string display = 2;
+  optional string description = 3;
+  optional string website = 4;
+  optional string email = 5;
+  optional string location = 6;
+  uint64 expected_version = 7;
+}
+
+message RenameOrgRequest {
+  string org = 1;
+  string new_name = 2;
+}
+
+message DeleteOrgRequest {
+  string org = 1;
+  string confirm_name = 2; // must equal the org name
+}
+
+message DeleteOrgResponse {
+  google.protobuf.Timestamp restorable_until = 1;
+}
+
+message RestoreOrgRequest {
+  string org_id = 1;
+}
+
+// Repo role names shared by orgs, teams and collaborators.
+enum RepoRole {
+  REPO_ROLE_UNSPECIFIED = 0;
+  REPO_ROLE_NONE = 1;
+  REPO_ROLE_READ = 2;
+  REPO_ROLE_TRIAGE = 3;
+  REPO_ROLE_WRITE = 4;
+  REPO_ROLE_MAINTAIN = 5;
+  REPO_ROLE_ADMIN = 6;
+}
+
+// Org-wide settings: base permissions and member privileges.
+message OrgSettings {
+  string org_id = 1;
+  RepoRole base_repo_role = 2;              // what every member gets on every repo
+  bool members_can_create_repos = 3;
+  bool members_can_create_public_repos = 4;
+  bool members_can_fork_private_repos = 5;
+  bool members_can_delete_repos = 6;
+  bool members_can_invite_outside_collaborators = 7;
+  bool members_can_create_teams = 8;
+  bool web_commit_signoff_required = 9;
+  string readme_repo_id = 10;               // org profile README
+  repeated string pinned_repo_ids = 11;
+  uint32 max_open_changes_per_agent = 12;   // agent flood defense default (PRODUCT §4.21)
+  uint64 version = 13;
+}
+
+message GetOrgSettingsRequest {
+  string org = 1;
+}
+
+message UpdateOrgSettingsRequest {
+  string org = 1;
+  optional RepoRole base_repo_role = 2;
+  optional bool members_can_create_repos = 3;
+  optional bool members_can_create_public_repos = 4;
+  optional bool members_can_fork_private_repos = 5;
+  optional bool members_can_delete_repos = 6;
+  optional bool members_can_invite_outside_collaborators = 7;
+  optional bool members_can_create_teams = 8;
+  optional bool web_commit_signoff_required = 9;
+  optional string readme_repo_id = 10;
+  repeated string pinned_repo_ids = 11;
+  bool set_pinned_repo_ids = 12; // pinned_repo_ids replaces the list only when true
+  optional uint32 max_open_changes_per_agent = 13;
+  uint64 expected_version = 14;
+}
+
+// State of an invitation.
+enum InvitationState {
+  INVITATION_STATE_UNSPECIFIED = 0;
+  INVITATION_STATE_PENDING = 1;
+  INVITATION_STATE_ACCEPTED = 2;
+  INVITATION_STATE_DECLINED = 3;
+  INVITATION_STATE_CANCELLED = 4;
+  INVITATION_STATE_EXPIRED = 5;
+}
+
+// An invitation to join an org.
+message OrgInvitation {
+  string id = 1;
+  string org_id = 2;
+  string invitee_login = 3;
+  string invitee_email = 4;
+  string invitee_principal_id = 5;
+  Role role = 6;
+  repeated string team_ids = 7;
+  Principal inviter = 8;
+  InvitationState state = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp expires_at = 11;
+}
+
+message CreateOrgInvitationRequest {
+  string org = 1;
+  string invitee_login = 2;      // one of login, email or principal id
+  string invitee_email = 3;
+  string invitee_principal_id = 4;
+  Role role = 5;
+  repeated string team_ids = 6;
+}
+
+message ListOrgInvitationsRequest {
+  string org = 1;
+  InvitationState state = 2;
+  PageRequest page = 3;
+}
+
+message ListOrgInvitationsResponse {
+  repeated OrgInvitation invitations = 1;
+  PageResponse page = 2;
+}
+
+message CancelOrgInvitationRequest {
+  string org = 1;
+  string invitation_id = 2;
+}
+
+message CancelOrgInvitationResponse {}
+
+message AcceptOrgInvitationRequest {
+  string invitation_id = 1;
+}
+
+message DeclineOrgInvitationRequest {
+  string invitation_id = 1;
+}
+
+message DeclineOrgInvitationResponse {}
+
+message AssignOrgRoleRequest {
+  string org = 1;
+  string principal_id = 2;
+  Role role = 3;            // built-in role, or
+  string custom_role_id = 4; // a custom org role
+}
+
+message RevokeOrgRoleRequest {
+  string org = 1;
+  string principal_id = 2;
+  string custom_role_id = 3;
+}
+
+message ListOutsideCollaboratorsRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// A person with access to some repos of an org without being a member.
+message OutsideCollaborator {
+  Principal principal = 1;
+  repeated string repo_ids = 2;
+}
+
+message ListOutsideCollaboratorsResponse {
+  repeated OutsideCollaborator collaborators = 1;
+  PageResponse page = 2;
+}
+
+message ConvertToOutsideCollaboratorRequest {
+  string org = 1;
+  string principal_id = 2;
+}
+
+message ConvertToOutsideCollaboratorResponse {
+  OutsideCollaborator collaborator = 1;
+}
+
+message CreateOrgRequest {
+  string name = 1;
+  string display = 2;
+}
+
+message GetOrgRequest {
+  string name_or_id = 1;
+}
+
+message ListMembersRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+  PageResponse page = 2;
+}
+
+message SetMemberRequest {
+  string org = 1;
+  string principal_id = 2;
+  Role role = 3; // ROLE_UNSPECIFIED removes the member
+}
+
+enum Visibility {
+  VISIBILITY_UNSPECIFIED = 0;
+  VISIBILITY_PRIVATE = 1;
+  VISIBILITY_INTERNAL = 2;
+  VISIBILITY_PUBLIC = 3;
+}
+
+message Repo {
+  string id = 1;
+  string org_id = 2;
+  string name = 3;
+  string full_name = 4;
+  Visibility visibility = 5;
+  string default_ref = 6;
+  string description = 7;
+  google.protobuf.Timestamp created_at = 8;
+  bool archived = 9;
+  bool is_template = 10;
+  string template_repo_id = 11;   // repo this one was created from
+  string fork_parent_id = 12;     // set for forks
+  repeated string topics = 13;
+  string homepage = 14;
+  string social_preview_url = 15;
+  google.protobuf.Timestamp deleted_at = 16; // set while soft-deleted
+  uint64 version = 17;
+  repeated KeyValue custom_properties = 18;
+  uint64 size_bytes = 19;
+  google.protobuf.Timestamp pushed_at = 20;  // last ref update
+  uint64 stars = 21;
+  uint64 forks = 22;
+  uint64 open_issues = 23;
+  uint64 open_changes = 24;
+  string license_spdx = 25;       // detected license
+  string primary_language = 26;
+}
+
+// Per-repo settings (SPEC §11.1).
+message RepoSettings {
+  string repo_id = 1;
+  repeated LandMethod allowed_land_methods = 2;
+  LandMethod default_land_method = 3;
+  string squash_message_template = 4;    // "title", "title_and_body", "changesets"
+  bool allow_auto_merge = 5;
+  bool merge_queue_required = 6;
+  bool suggest_update_base = 7;          // show "update base" when a CR is behind
+  bool delete_workspace_ref_on_land = 8;
+  bool has_issues = 9;
+  bool has_projects = 10;
+  bool has_wiki = 11;
+  bool has_discussions = 12;
+  bool allow_forking = 13;
+  bool web_commit_signoff_required = 14;
+  uint32 draft_retention_days = 15;      // SPEC §6.4, default 30
+  uint32 cold_after_days = 16;           // SPEC §6.5, default 90
+  bool push_auto_change = 17;            // a pushed new branch opens a CR (SPEC §17.4)
+  bool git_enabled = 18;                 // serve git smart HTTP/SSH
+  uint32 land_attempt_budget = 19;       // SPEC §7.4; 0 = default
+  bool auto_revert = 20;                 // land revert CRs for failed post-land checks
+  uint64 version = 21;
+  // The merge queue tests the combined result before landing (SPEC §11.6): the head entry is
+  // rebased onto the target tip, required checks run on that speculative changeset
+  // (`merge_group`), and only a passing result lands; a failing entry is ejected.
+  bool merge_queue_check_combined = 22;
+}
+
+message CreateRepoRequest {
+  string org = 1;
+  string name = 2;
+  Visibility visibility = 3;
+  string description = 4;
+  bool is_template = 5;
+  repeated string topics = 6;
+  string homepage = 7;
+  bool auto_init = 8;     // add a README in the root changeset
+  string license_template = 9; // SPDX id of a license file to add
+}
+
+message GetRepoRequest {
+  RepoRef repo = 1;
+}
+
+message ListReposRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+message ListReposResponse {
+  repeated Repo repos = 1;
+  PageResponse page = 2;
+}
+
+message UpdateRepoRequest {
+  RepoRef repo = 1;
+  string name = 2;        // rename; empty = unchanged
+  Visibility visibility = 3;
+  string description = 4;
+  optional string homepage = 5;
+  optional string default_ref = 6;
+  optional bool is_template = 7;
+  uint64 expected_version = 8;
+}
+
+message DeleteRepoRequest {
+  RepoRef repo = 1;
+  string confirm_full_name = 2; // must equal "org/name"
+}
+
+message DeleteRepoResponse {
+  google.protobuf.Timestamp restorable_until = 1;
+}
+
+message RestoreRepoRequest {
+  string repo_id = 1;
+}
+
+message ListDeletedReposRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+message ListDeletedReposResponse {
+  repeated Repo repos = 1;
+  PageResponse page = 2;
+}
+
+message ArchiveRepoRequest {
+  RepoRef repo = 1;
+}
+
+message UnarchiveRepoRequest {
+  RepoRef repo = 1;
+}
+
+message TransferRepoRequest {
+  RepoRef repo = 1;
+  string new_org = 2;
+  string new_name = 3;          // empty = keep the name
+  repeated string team_ids = 4; // teams in the new org that get access
+}
+
+message CreateRepoFromTemplateRequest {
+  RepoRef template = 1;
+  string org = 2;
+  string name = 3;
+  Visibility visibility = 4;
+  string description = 5;
+  bool include_all_refs = 6; // copy every ref's tip, not only the default ref
+}
+
+message ForkRepoRequest {
+  RepoRef repo = 1;
+  string org = 2;            // destination org; empty = the caller's personal org
+  string name = 3;           // empty = same name
+  bool default_ref_only = 4;
+}
+
+message ListForksRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+message ListForksResponse {
+  repeated Repo forks = 1;
+  PageResponse page = 2;
+}
+
+message SyncForkRequest {
+  RepoRef repo = 1;  // the fork
+  string ref = 2;    // fork ref to update; empty = default ref
+}
+
+message SyncForkResponse {
+  Ref ref = 1;
+  uint64 changesets_pulled = 2;
+}
+
+message SetRepoTopicsRequest {
+  RepoRef repo = 1;
+  repeated string topics = 2;
+}
+
+message SetRepoTopicsResponse {
+  repeated string topics = 1;
+}
+
+message GetRepoSettingsRequest {
+  RepoRef repo = 1;
+}
+
+message UpdateRepoSettingsRequest {
+  RepoRef repo = 1;
+  repeated LandMethod allowed_land_methods = 2;
+  bool set_allowed_land_methods = 3; // replace allowed_land_methods only when true
+  optional LandMethod default_land_method = 4;
+  optional string squash_message_template = 5;
+  optional bool allow_auto_merge = 6;
+  optional bool merge_queue_required = 7;
+  optional bool suggest_update_base = 8;
+  optional bool delete_workspace_ref_on_land = 9;
+  optional bool has_issues = 10;
+  optional bool has_projects = 11;
+  optional bool has_wiki = 12;
+  optional bool has_discussions = 13;
+  optional bool allow_forking = 14;
+  optional bool web_commit_signoff_required = 15;
+  optional uint32 draft_retention_days = 16;
+  optional uint32 cold_after_days = 17;
+  optional bool push_auto_change = 18;
+  optional bool git_enabled = 19;
+  optional uint32 land_attempt_budget = 20;
+  optional bool auto_revert = 21;
+  uint64 expected_version = 22;
+  optional bool merge_queue_check_combined = 23;
+}
+
+// Turns `<key_prefix><number>` in text into a link.
+message Autolink {
+  string id = 1;
+  string key_prefix = 2;   // e.g. "JIRA-"
+  string url_template = 3; // must contain "<num>"
+  bool alphanumeric = 4;   // the reference may contain letters
+}
+
+message CreateAutolinkRequest {
+  RepoRef repo = 1;
+  string key_prefix = 2;
+  string url_template = 3;
+  bool alphanumeric = 4;
+}
+
+message ListAutolinksRequest {
+  RepoRef repo = 1;
+}
+
+message ListAutolinksResponse {
+  repeated Autolink autolinks = 1;
+}
+
+message DeleteAutolinkRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message DeleteAutolinkResponse {}
+
+// Value type of a custom property.
+enum CustomPropertyType {
+  CUSTOM_PROPERTY_TYPE_UNSPECIFIED = 0;
+  CUSTOM_PROPERTY_TYPE_STRING = 1;
+  CUSTOM_PROPERTY_TYPE_SINGLE_SELECT = 2;
+  CUSTOM_PROPERTY_TYPE_MULTI_SELECT = 3;
+  CUSTOM_PROPERTY_TYPE_TRUE_FALSE = 4;
+}
+
+// An org-defined repo property.
+message CustomPropertyDefinition {
+  string name = 1;
+  CustomPropertyType type = 2;
+  bool required = 3;
+  string default_value = 4;
+  string description = 5;
+  repeated string allowed_values = 6;
+  bool editable_by_repo_admins = 7;
+}
+
+message ListCustomPropertyDefinitionsRequest {
+  string org = 1;
+}
+
+message ListCustomPropertyDefinitionsResponse {
+  repeated CustomPropertyDefinition definitions = 1;
+}
+
+message SetCustomPropertyDefinitionRequest {
+  string org = 1;
+  CustomPropertyDefinition definition = 2; // created or replaced by name
+}
+
+message DeleteCustomPropertyDefinitionRequest {
+  string org = 1;
+  string name = 2;
+}
+
+message DeleteCustomPropertyDefinitionResponse {}
+
+message GetRepoCustomPropertiesRequest {
+  RepoRef repo = 1;
+}
+
+message GetRepoCustomPropertiesResponse {
+  repeated KeyValue properties = 1; // multi-select values are comma-separated
+}
+
+message SetRepoCustomPropertiesRequest {
+  RepoRef repo = 1;
+  repeated KeyValue properties = 2; // an empty value clears the property
+}
+
+message SetRepoCustomPropertiesResponse {
+  repeated KeyValue properties = 1;
+}
+
+// A principal with a direct grant on a repo.
+message Collaborator {
+  Principal principal = 1;
+  RepoRole role = 2;
+  string custom_role_id = 3;
+  bool outside_collaborator = 4;
+}
+
+message AddCollaboratorRequest {
+  RepoRef repo = 1;
+  string principal_id = 2; // or invitee_login
+  string invitee_login = 3;
+  RepoRole role = 4;
+  string custom_role_id = 5;
+}
+
+message AddCollaboratorResponse {
+  Collaborator collaborator = 1;    // set when the grant applied immediately (members)
+  RepoInvitation invitation = 2;    // set when an invitation was sent
+}
+
+message RemoveCollaboratorRequest {
+  RepoRef repo = 1;
+  string principal_id = 2;
+}
+
+message RemoveCollaboratorResponse {}
+
+message ListCollaboratorsRequest {
+  RepoRef repo = 1;
+  bool direct_only = 2; // exclude access through org base role and teams
+  PageRequest page = 3;
+}
+
+message ListCollaboratorsResponse {
+  repeated Collaborator collaborators = 1;
+  PageResponse page = 2;
+}
+
+message GetCollaboratorPermissionRequest {
+  RepoRef repo = 1;
+  string principal_id = 2;
+}
+
+// Effective access of one principal and every source that contributes to it.
+message CollaboratorPermission {
+  Principal principal = 1;
+  RepoRole role = 2;
+  repeated string sources = 3; // e.g. "org:base", "team:core", "direct", "app:ci"
+}
+
+// An invitation to collaborate on one repo.
+message RepoInvitation {
+  string id = 1;
+  string repo_id = 2;
+  Principal invitee = 3;
+  Principal inviter = 4;
+  RepoRole role = 5;
+  InvitationState state = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+}
+
+message ListRepoInvitationsRequest {
+  RepoRef repo = 1; // empty = invitations addressed to the caller
+  PageRequest page = 2;
+}
+
+message ListRepoInvitationsResponse {
+  repeated RepoInvitation invitations = 1;
+  PageResponse page = 2;
+}
+
+message AcceptRepoInvitationRequest {
+  string invitation_id = 1;
+}
+
+message AcceptRepoInvitationResponse {
+  Collaborator collaborator = 1;
+}
+
+message DeclineRepoInvitationRequest {
+  string invitation_id = 1;
+}
+
+message DeclineRepoInvitationResponse {}
+
+// The repo's conflict resolver endpoint (SPEC §11.6).
+message ResolverHook {
+  string repo_id = 1;
+  string url = 2;                 // HTTPS endpoint, or empty when none
+  string agent_principal_id = 3;  // alternatively an agent that receives conflicts as events
+  bool auto_land = 4;             // land accepted resolutions when policy allows
+  uint32 timeout_seconds = 5;
+}
+
+message SetResolverHookRequest {
+  RepoRef repo = 1;
+  string url = 2;
+  string secret = 3; // HMAC key for deliveries; write-only
+  string agent_principal_id = 4;
+  bool auto_land = 5;
+  uint32 timeout_seconds = 6;
+}
+
+message GetResolverHookRequest {
+  RepoRef repo = 1;
+}
+
+// Direction of a repo mirror.
+enum MirrorDirection {
+  MIRROR_DIRECTION_UNSPECIFIED = 0;
+  MIRROR_DIRECTION_PUSH = 1; // Beehive → remote
+  MIRROR_DIRECTION_PULL = 2; // remote → Beehive
+}
+
+// A git mirror to or from another remote.
+message RepoMirror {
+  string id = 1;
+  string repo_id = 2;
+  string remote_url = 3;
+  MirrorDirection direction = 4;
+  repeated string ref_patterns = 5;
+  google.protobuf.Timestamp last_sync_at = 6;
+  string last_error = 7;
+  uint32 interval_seconds = 8;
+}
+
+message CreateRepoMirrorRequest {
+  RepoRef repo = 1;
+  string remote_url = 2;
+  string credential = 3; // write-only
+  MirrorDirection direction = 4;
+  repeated string ref_patterns = 5;
+  uint32 interval_seconds = 6;
+}
+
+message ListRepoMirrorsRequest {
+  RepoRef repo = 1;
+}
+
+message ListRepoMirrorsResponse {
+  repeated RepoMirror mirrors = 1;
+}
+
+message DeleteRepoMirrorRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message DeleteRepoMirrorResponse {}
+
+message SyncRepoMirrorRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// An SSH key that can read (or write) one repo over git.
+message DeployKey {
+  string id = 1;
+  string title = 2;
+  string public_key = 3;
+  bool read_only = 4;
+  string principal_id = 5; // the service principal the key acts as
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+}
+
+message AddDeployKeyRequest {
+  RepoRef repo = 1;
+  string title = 2;
+  string public_key = 3;
+  bool read_only = 4;
+}
+
+message ListDeployKeysRequest {
+  RepoRef repo = 1;
+}
+
+message ListDeployKeysResponse {
+  repeated DeployKey keys = 1;
+}
+
+message DeleteDeployKeyRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message DeleteDeployKeyResponse {}
+
+message CreateSocialPreviewUploadRequest {
+  RepoRef repo = 1;
+  string content_type = 2; // image/png or image/jpeg
+  uint64 size_bytes = 3;
+}
+
+message CreateSocialPreviewUploadResponse {
+  string upload_url = 1;
+  int64 upload_url_expires_unix = 2;
+}
+
+// Everything an agent should know before editing paths (SPEC §11, "repo context API").
+message GetContextRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  repeated bytes paths = 3;
+}
+
+message RepoContext {
+  repeated PathOwners owners = 1;
+  repeated Lease active_leases = 2;
+  repeated ChangeRequest open_changes_touching = 3;
+  repeated CheckRun failing_checks = 4;
+  repeated string land_rules = 5; // human-readable summary of rules that apply
+  // Agent instructions that apply to the paths (AGENTS.md, CLAUDE.md, .github/agents/*.md).
+  repeated ContextInstruction instructions = 6;
+  string policy_epoch = 7;
+  repeated string sensitive_paths = 8; // paths policy marks sensitive among those asked about
+}
+
+// One agent instruction file found in the repo for the requested paths.
+message ContextInstruction {
+  bytes path = 1;
+  ObjectId blob = 2;
+  string content = 3; // included up to a size limit
+  bool truncated = 4;
+}
+
+message PathOwners {
+  bytes path = 1;
+  repeated string owners = 2;
+}
+
+// ---------- Change requests and reviews ----------
+
+enum ChangeState {
+  CHANGE_STATE_UNSPECIFIED = 0;
+  CHANGE_STATE_OPEN = 1;
+  CHANGE_STATE_LANDED = 2;
+  CHANGE_STATE_CLOSED = 3;
+}
+
+message ChangeRevision {
+  uint32 n = 1;
+  ObjectId head = 2;
+  ObjectId base = 3;
+  string diff_class = 4; // highest-risk class in this revision
+  google.protobuf.Timestamp created_at = 5;
+  Principal pusher = 6;  // who pushed this revision
+}
+
+message ChangeRequest {
+  string id = 1;
+  string repo_id = 2;
+  string target_ref = 3;
+  repeated ChangeId change_ids = 4;
+  ChangeState state = 5;
+  Principal author = 6;
+  string title = 7;
+  string body = 8;
+  repeated ChangeRevision revisions = 9;
+  string depends_on = 10; // parent CR id for stacked CRs
+  google.protobuf.Timestamp created_at = 11;
+  uint64 number = 12;     // per-repo number shared with issues
+  bool draft = 13;
+  repeated Label labels = 14;
+  repeated Principal assignees = 15;
+  Milestone milestone = 16;
+  repeated ReviewRequest review_requests = 17;
+  bool locked = 18;
+  AutoMerge auto_merge = 19;            // set while auto-merge is enabled
+  MergeQueueEntry merge_queue_entry = 20; // set while queued
+  google.protobuf.Timestamp updated_at = 21;
+  google.protobuf.Timestamp closed_at = 22;
+  google.protobuf.Timestamp landed_at = 23;
+  string close_reason = 24;
+  uint64 version = 25;
+  string summary = 26;                  // agent- or human-authored summary
+  Principal summary_author = 27;
+  repeated uint64 linked_issues = 28;   // issue numbers this CR implements
+  Ref landed_ref = 29;                  // ref and version the CR landed at
+  uint32 comment_count = 30;
+  repeated ReactionGroup reactions = 31;
+  string revert_of = 32;                // CR id this CR reverts
+  string head_repo_id = 33;             // fork the head comes from; empty = this repo
+  string head_ref = 34;                 // ref (in head_repo_id, else this repo) the CR was opened from
+  bool allow_maintainer_edits = 35;     // fork CRs: target-repo writers may push to head_ref
+  // The linked issues that close when the CR lands (closing keywords, plus manual links
+  // made with close_on_land), sorted; a subset of linked_issues.
+  repeated uint64 closing_issues = 36;
+  Post post = 37;                       // the CR's post, read-only summary; unset when it has none
+  PostRef inspired_by = 38;             // the post that inspired it; empty when its repo is unreadable
+  ChangeBrief brief = 39;               // what it does, in words (SPEC §11.9); unset until written
+}
+
+// A change request's brief (SPEC §11.9): what a busy person reads first. Set through
+// BriefService.SetChangeBrief or OpenChangeRequest.brief; fields 7-9 are set by the server.
+message ChangeBrief {
+  string outcome = 1;                     // one line: what is different for users, at most 280 characters
+  repeated BriefHighlight highlights = 2; // at most 20
+  repeated BriefAsk asks = 3;             // decisions the author wants from a person, at most 20
+  repeated BriefRisk risks = 4;           // at most 20
+  string rollback = 5;                    // how to undo it, in words
+  string try_it_url = 6;                  // https URL where the change can be tried
+  uint32 written_for_revision = 7;        // the current revision when the brief was set
+  Principal author = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// One thing the change does, with the paths that do it.
+message BriefHighlight {
+  string text = 1;                        // at most 280 characters
+  repeated string paths = 2;              // repo paths (UTF-8), at most 20
+}
+
+// A decision the author asks a person to make. Answering posts a comment
+// `Decision on "<question>": <option>` that agents read.
+message BriefAsk {
+  string question = 1;                    // at most 280 characters
+  repeated string options = 2;            // 2-6 options, each at most 80 characters
+}
+
+// A risk the author sees, and what mitigates it.
+message BriefRisk {
+  string text = 1;                        // at most 280 characters
+  string mitigation = 2;                  // at most 280 characters
+}
+
+// A pending review request for a principal or a team.
+message ReviewRequest {
+  Principal reviewer = 1; // set for principals
+  string team_id = 2;     // set for teams
+  Principal requested_by = 3;
+  google.protobuf.Timestamp requested_at = 4;
+  bool auto_assigned = 5;
+}
+
+// Auto-merge settings on a CR.
+message AutoMerge {
+  Principal enabled_by = 1;
+  LandMethod method = 2;
+  string commit_message = 3;
+  google.protobuf.Timestamp enabled_at = 4;
+  // Delegation chain the land is evaluated for (enabled_by first, the root last).
+  repeated string on_behalf_of = 5;
+}
+
+// State of a CR in a merge queue.
+enum MergeQueueState {
+  MERGE_QUEUE_STATE_UNSPECIFIED = 0;
+  MERGE_QUEUE_STATE_QUEUED = 1;
+  MERGE_QUEUE_STATE_CHECKING = 2;  // pre-land checks running on the queued result
+  MERGE_QUEUE_STATE_LANDING = 3;
+  MERGE_QUEUE_STATE_LANDED = 4;
+  MERGE_QUEUE_STATE_EJECTED = 5;   // removed after a conflict or failing check
+}
+
+// One CR's place in a ref's merge queue.
+message MergeQueueEntry {
+  string change_request_id = 1;
+  uint64 change_number = 2;
+  string ref = 3;
+  uint32 position = 4;          // 1 = next
+  MergeQueueState state = 5;
+  Principal enqueued_by = 6;
+  google.protobuf.Timestamp enqueued_at = 7;
+  google.protobuf.Timestamp estimated_land_at = 8;
+  uint32 priority = 9;          // higher jumps ahead within policy limits
+  string eject_reason = 10;     // ErrorReason name when EJECTED
+  ObjectId speculative_head = 11; // the queued result being checked
+  // Title of the change request in the queue (gap G9).
+  string title = 12;
+  LandMethod land_method = 13;  // how the entry lands (UNSPECIFIED = the repo default)
+  // Delegation chain the land is evaluated for (enqueued_by first, the root last).
+  repeated string on_behalf_of = 14;
+}
+
+message OpenChangeRequest {
+  RepoRef repo = 1;
+  string target_ref = 2;
+  ObjectId head = 3;
+  string title = 4;
+  string body = 5;
+  string depends_on = 6;
+  bool draft = 7;
+  repeated string reviewer_ids = 8;      // principals to request reviews from
+  repeated string reviewer_team_ids = 9;
+  repeated string labels = 10;           // label names
+  repeated string assignee_ids = 11;
+  string milestone_id = 12;
+  repeated uint64 linked_issues = 13;
+  string template = 14;                  // template name; its body is used when body is empty
+  RepoRef head_repo = 15;                // fork holding head (same fork network); empty = repo
+  string head_ref = 16;                  // ref the CR comes from (recorded, followed by maintainers' edits)
+  bool allow_maintainer_edits = 17;      // fork CRs: let target-repo writers update head_ref
+  string post_text = 18;                 // draft post text for the CR (PostService rules apply)
+  // A published post the caller can read that inspired this CR; else INVALID_ARGUMENT
+  // (subcode `post_not_readable`).
+  string inspired_by_post_id = 19;
+  // The brief to set with the change (BriefService.SetChangeBrief rules apply; fields 7-9 are
+  // set by the server).
+  ChangeBrief brief = 20;
+}
+
+message GetChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message ListChangesRequest {
+  RepoRef repo = 1;
+  ChangeState state = 2;
+  string author_id = 3;
+  PageRequest page = 4;
+  string target_ref = 5;
+  repeated string labels = 6;
+  string review_requested_id = 7; // principal or team id with a pending review request
+  string assignee_id = 8;
+  optional bool draft = 9;
+  bytes path_prefix = 10;         // CRs touching paths under this prefix
+  string query = 11;              // GitHub-compatible qualifiers, e.g. "is:open review:required"
+}
+
+message ListChangesResponse {
+  repeated ChangeRequest changes = 1;
+  PageResponse page = 2;
+}
+
+message ReviseChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  ObjectId head = 3;
+}
+
+message CloseChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string reason = 3;
+}
+
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_APPROVE = 1;
+  VERDICT_REQUEST_CHANGES = 2;
+  VERDICT_COMMENT = 3;
+}
+
+message ReviewComment {
+  string id = 1;
+  bytes path = 2;
+  string side = 3; // "old" | "new"
+  uint32 start_line = 4;
+  uint32 end_line = 5;
+  string body = 6;
+  uint32 revision = 7; // revision the anchor was last valid on
+  string thread_id = 8;
+  string in_reply_to = 9;      // comment id this replies to
+  Suggestion suggestion = 10;  // a suggested replacement for the anchored lines
+  bool file_level = 11;        // anchored to the file, not to lines
+  bool outdated = 12;          // the anchored lines changed in a later revision
+  Principal author = 13;
+  google.protobuf.Timestamp created_at = 14;
+  repeated ReactionGroup reactions = 15;
+  MinimizedReason minimized_reason = 16;
+}
+
+// Replacement text for the lines a review comment anchors to.
+message Suggestion {
+  string replacement = 1; // new content for start_line..end_line, without trailing newline
+  bool applied = 2;
+  ObjectId applied_in = 3; // changeset that applied it
+}
+
+// A review thread: a line or file comment and its replies.
+message ReviewThread {
+  string id = 1;
+  string change_request_id = 2;
+  bytes path = 3;
+  string side = 4;
+  uint32 start_line = 5;
+  uint32 end_line = 6;
+  uint32 revision = 7;
+  bool resolved = 8;
+  Principal resolved_by = 9;
+  bool outdated = 10;
+  repeated ReviewComment comments = 11;
+}
+
+message Review {
+  string id = 1;
+  string change_id = 2; // change request id
+  uint32 revision = 3;
+  Principal reviewer = 4;
+  Verdict verdict = 5;
+  string body = 6;
+  repeated ReviewComment comments = 7;
+  google.protobuf.Timestamp created_at = 8;
+  bool dismissed = 9;
+  string dismiss_reason = 10;
+  Principal dismissed_by = 11;
+  bool stale = 12;              // made on an older revision and policy marks it stale
+  bool counts_toward_policy = 13; // e.g. false for agent approvals where policy says so
+}
+
+message SubmitReviewRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  uint32 revision = 3;
+  Verdict verdict = 4;
+  string body = 5;
+  repeated ReviewComment comments = 6;
+}
+
+message ListReviewsRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+}
+
+message ListReviewsResponse {
+  repeated Review reviews = 1;
+}
+
+message EvaluateLandingRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+}
+
+// What policy says about landing the current revision right now.
+message LandingEvaluation {
+  bool allowed = 1;
+  repeated string satisfied = 2;
+  repeated string missing = 3;
+  string diff_class = 4;
+  uint32 revision = 5;
+  repeated string unresolved_thread_ids = 6; // when policy requires resolved threads
+  bool mergeable = 7;                        // no conflict with the target tip
+  string rule = 8;    // the policy rule that decided (e.g. a [[land]] rule's id), when any
+  // When not allowed: the ErrorReason name LandChange would fail with now ("POLICY_DENIED",
+  // "LEASED", "DRAFT", "INVALID_STATE").
+  string reason = 9;
+}
+
+message GetChangeByNumberRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+message ReopenChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message EditChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  optional string title = 3;
+  optional string body = 4;
+  optional string target_ref = 5;
+  optional string depends_on = 6;
+  uint64 expected_version = 7;
+  optional bool allow_maintainer_edits = 8; // fork CRs only; set by the CR's author
+}
+
+message MarkChangeReadyRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message ConvertChangeToDraftRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message RequestReviewersRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated string reviewer_ids = 3;
+  repeated string team_ids = 4;
+}
+
+message RemoveReviewRequestsRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated string reviewer_ids = 3;
+  repeated string team_ids = 4;
+}
+
+message DismissReviewRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  string review_id = 3;
+  string reason = 4;
+}
+
+message DiffChangeRevisionsRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  uint32 from_revision = 3; // 0 = the revision the caller last reviewed
+  uint32 to_revision = 4;   // 0 = current
+  bool include_hunks = 5;
+  uint32 context_lines = 6;
+  repeated bytes paths = 7;  // only these paths and the paths under them; empty = all
+  bool ignore_whitespace = 8; // whitespace-only line changes are not reported
+}
+
+message CreateChangeCommentRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  string body = 3;
+  // Optional anchor; without one the comment is a conversation comment.
+  bytes path = 4;
+  string side = 5;
+  uint32 start_line = 6;
+  uint32 end_line = 7;
+  bool file_level = 8;
+  uint32 revision = 9;   // 0 = current
+  Suggestion suggestion = 10;
+}
+
+message ListChangeCommentsRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  PageRequest page = 3;
+}
+
+message ListChangeCommentsResponse {
+  repeated Comment comments = 1;
+  PageResponse page = 2;
+}
+
+message ListReviewThreadsRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  optional bool resolved = 3;
+  PageRequest page = 4;
+}
+
+message ListReviewThreadsResponse {
+  repeated ReviewThread threads = 1;
+  PageResponse page = 2;
+}
+
+message ReplyToReviewThreadRequest {
+  RepoRef repo = 1;
+  string thread_id = 2;
+  string body = 3;
+  Suggestion suggestion = 4;
+}
+
+message ResolveReviewThreadRequest {
+  RepoRef repo = 1;
+  string thread_id = 2;
+}
+
+message UnresolveReviewThreadRequest {
+  RepoRef repo = 1;
+  string thread_id = 2;
+}
+
+message ApplySuggestionsRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  repeated string comment_ids = 3; // review comments carrying suggestions
+  string message = 4;              // message of the new changeset
+}
+
+message SetFileViewedRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  bytes path = 3;
+  bool viewed = 4;
+}
+
+message SetFileViewedResponse {}
+
+message ListViewedFilesRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+}
+
+// A file the caller marked viewed, and whether it changed since.
+message ViewedFile {
+  bytes path = 1;
+  uint32 revision = 2;
+  bool changed_since = 3;
+}
+
+message ListViewedFilesResponse {
+  repeated ViewedFile files = 1;
+}
+
+message SetChangeLabelsRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated string labels = 3; // replaces the set; names
+}
+
+message SetChangeAssigneesRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated string assignee_ids = 3; // replaces the set
+}
+
+message SetChangeMilestoneRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string milestone_id = 3; // empty clears
+}
+
+message LinkChangeIssuesRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  repeated uint64 add_issues = 3;
+  repeated uint64 remove_issues = 4;
+  bool close_on_land = 5; // close linked issues when the CR lands
+}
+
+message ListChangeTemplatesRequest {
+  RepoRef repo = 1;
+  string target_ref = 2;
+}
+
+// A CR template from the repo.
+message ChangeTemplate {
+  string name = 1;
+  bytes path = 2;
+  string body = 3;
+}
+
+message ListChangeTemplatesResponse {
+  repeated ChangeTemplate templates = 1;
+}
+
+message LandChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  LandMethod method = 3;
+  string message = 4;
+  uint32 expected_revision = 5; // 0 = any; else fails with VERSION_MISMATCH when stale
+}
+
+message LandChangeResponse {
+  ChangeRequest change = 1;
+  LandResponse land = 2;
+}
+
+message EnableAutoMergeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  LandMethod method = 3;
+  string message = 4;
+}
+
+message DisableAutoMergeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message EnqueueChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  LandMethod method = 3;
+  uint32 priority = 4; // needs the merge-queue jump permission above 0
+}
+
+message DequeueChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message DequeueChangeResponse {}
+
+message GetMergeQueueRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+}
+
+message GetMergeQueueResponse {
+  repeated MergeQueueEntry entries = 1;
+  uint32 lands_per_minute = 2; // recent throughput
+}
+
+message RevertChangeRequest {
+  RepoRef repo = 1;
+  string id = 2;    // the landed CR
+  string title = 3; // empty = "Revert <title>"
+  string body = 4;
+  bool draft = 5;
+}
+
+message UpdateChangeBaseRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  LandMethod method = 3; // REBASE (default) or MERGE_COMMIT
+}
+
+message ListChangeStackRequest {
+  RepoRef repo = 1;
+  string id = 2; // any CR in the stack
+}
+
+message ListChangeStackResponse {
+  repeated ChangeRequest changes = 1; // bottom first
+}
+
+message SetChangeSummaryRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string summary = 3;
+}
+
+message CreateChangesetCommentRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string body = 3;
+  bytes path = 4;     // optional anchor
+  uint32 line = 5;
+}
+
+message ListChangesetCommentsRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  PageRequest page = 3;
+}
+
+message ListChangesetCommentsResponse {
+  repeated Comment comments = 1;
+  PageResponse page = 2;
+}
+
+// State of a conflict waiting for a resolver.
+enum LandConflictState {
+  LAND_CONFLICT_STATE_UNSPECIFIED = 0;
+  LAND_CONFLICT_STATE_OPEN = 1;
+  LAND_CONFLICT_STATE_RESOLUTION_SUBMITTED = 2;
+  LAND_CONFLICT_STATE_RESOLVED = 3;   // the resolution landed
+  LAND_CONFLICT_STATE_ABANDONED = 4;
+}
+
+// A conflict from a land, rebase or merge queue run, held for a resolver (SPEC §11.6).
+message LandConflict {
+  string id = 1;
+  string repo_id = 2;
+  string change_request_id = 3;
+  string ref = 4;
+  ConflictSet conflicts = 5;
+  LandConflictState state = 6;
+  ObjectId resolution = 7;
+  Principal resolver = 8;
+  google.protobuf.Timestamp created_at = 9;
+  string error_reason = 10; // set when a submitted resolution was refused
+}
+
+message GetLandConflictRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message ListLandConflictsRequest {
+  RepoRef repo = 1;
+  LandConflictState state = 2;
+  PageRequest page = 3;
+}
+
+message ListLandConflictsResponse {
+  repeated LandConflict conflicts = 1;
+  PageResponse page = 2;
+}
+
+message SubmitConflictResolutionRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  ObjectId resolution = 3; // a changeset whose parents are ours and theirs, or a rebased head
+  bool land = 4;           // land it once policy allows
+}
+
+// ---------- Checks ----------
+
+enum CheckStatus {
+  CHECK_STATUS_UNSPECIFIED = 0;
+  CHECK_STATUS_QUEUED = 1;
+  CHECK_STATUS_RUNNING = 2;
+  CHECK_STATUS_PASSED = 3;
+  CHECK_STATUS_FAILED = 4;
+  CHECK_STATUS_SKIPPED = 5;
+  CHECK_STATUS_CANCELLED = 6;
+  CHECK_STATUS_TIMED_OUT = 7;
+  CHECK_STATUS_NEUTRAL = 8;
+  CHECK_STATUS_ACTION_REQUIRED = 9;
+  CHECK_STATUS_STALE = 10;
+}
+
+// Severity of a check annotation.
+enum AnnotationLevel {
+  ANNOTATION_LEVEL_UNSPECIFIED = 0;
+  ANNOTATION_LEVEL_NOTICE = 1;
+  ANNOTATION_LEVEL_WARNING = 2;
+  ANNOTATION_LEVEL_FAILURE = 3;
+}
+
+// A finding attached to a line range of a file.
+message CheckAnnotation {
+  bytes path = 1;
+  uint32 start_line = 2;
+  uint32 end_line = 3;
+  uint32 start_column = 4;
+  uint32 end_column = 5;
+  AnnotationLevel level = 6;
+  string message = 7;
+  string title = 8;
+  string raw_details = 9;
+}
+
+// An image shown in a check's output.
+message CheckImage {
+  string alt = 1;
+  string image_url = 2;
+  string caption = 3;
+}
+
+// Rich output of a check run (Markdown).
+message CheckOutput {
+  string title = 1;
+  string summary = 2;
+  string text = 3;
+  repeated CheckAnnotation annotations = 4; // appended on each report, up to the limit
+  repeated CheckImage images = 5;
+}
+
+// A button the reporter offers on a check run; pressing it sends a `check_run.requested_action` event.
+message CheckAction {
+  string label = 1;
+  string description = 2;
+  string identifier = 3;
+}
+
+message CheckRun {
+  string id = 1;
+  string repo_id = 2;
+  ObjectId changeset = 3;
+  string name = 4;
+  CheckStatus status = 5;
+  string url = 6;
+  string summary = 7;
+  bool post_land = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp finished_at = 10;
+  string external_id = 11;
+  CheckOutput output = 12;
+  string suite_id = 13;
+  Principal reporter = 14;      // app, workflow or agent that reported it
+  repeated CheckAction actions = 15;
+  uint32 annotations_count = 16;
+  string workflow_job_id = 17;  // set when a Beehive workflow job produced it
+}
+
+message ReportCheckRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string name = 3;
+  CheckStatus status = 4;
+  string url = 5;
+  string summary = 6;
+  bool post_land = 7;
+  string external_id = 8;
+  CheckOutput output = 9;
+  string suite_id = 10;
+  repeated CheckAction actions = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp finished_at = 13;
+}
+
+message ListChecksRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string name = 3;      // filter by check name
+  string suite_id = 4;
+  bool latest_only = 5; // only the newest run per name
+}
+
+message ListChecksResponse {
+  repeated CheckRun checks = 1;
+}
+
+message GetCheckRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message UpdateCheckRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  optional CheckStatus status = 3;
+  optional string url = 4;
+  optional string summary = 5;
+  CheckOutput output = 6;   // annotations are appended; other fields replace when set
+  repeated CheckAction actions = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+message ListCheckAnnotationsRequest {
+  RepoRef repo = 1;
+  string check_run_id = 2;
+  PageRequest page = 3;
+}
+
+message ListCheckAnnotationsResponse {
+  repeated CheckAnnotation annotations = 1;
+  PageResponse page = 2;
+}
+
+message RerequestCheckRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Checks reported by one app or workflow for one changeset.
+message CheckSuite {
+  string id = 1;
+  string repo_id = 2;
+  ObjectId changeset = 3;
+  string app_id = 4;
+  CheckStatus status = 5;    // aggregate of its runs
+  string head_ref = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  uint32 runs_count = 9;
+}
+
+message CreateCheckSuiteRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string head_ref = 3;
+}
+
+message ListCheckSuitesRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string app_id = 3;
+}
+
+message ListCheckSuitesResponse {
+  repeated CheckSuite suites = 1;
+}
+
+message RerequestCheckSuiteRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// State of a legacy commit status.
+enum CommitStatusState {
+  COMMIT_STATUS_STATE_UNSPECIFIED = 0;
+  COMMIT_STATUS_STATE_PENDING = 1;
+  COMMIT_STATUS_STATE_SUCCESS = 2;
+  COMMIT_STATUS_STATE_FAILURE = 3;
+  COMMIT_STATUS_STATE_ERROR = 4;
+}
+
+// A legacy commit status (GitHub's statuses API), mapped onto a check run.
+message CommitStatus {
+  string id = 1;
+  ObjectId changeset = 2;
+  string context = 3;
+  CommitStatusState state = 4;
+  string target_url = 5;
+  string description = 6;
+  Principal creator = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateCommitStatusRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  string context = 3;
+  CommitStatusState state = 4;
+  string target_url = 5;
+  string description = 6;
+}
+
+message ListCommitStatusesRequest {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  PageRequest page = 3;
+}
+
+message ListCommitStatusesResponse {
+  repeated CommitStatus statuses = 1;
+  PageResponse page = 2;
+}
+
+message GetCombinedStatusRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+}
+
+// The latest status per context and their combination.
+message CombinedStatus {
+  ObjectId changeset = 1;
+  CommitStatusState state = 2;
+  repeated CommitStatus statuses = 3;
+}
+
+// State of a bisect.
+enum BisectState {
+  BISECT_STATE_UNSPECIFIED = 0;
+  BISECT_STATE_RUNNING = 1;
+  BISECT_STATE_FOUND = 2;     // first failing changeset identified
+  BISECT_STATE_INCONCLUSIVE = 3;
+  BISECT_STATE_CANCELLED = 4;
+  BISECT_STATE_FLAKY = 5;     // the failing check passed when re-run at the failing changeset
+}
+
+// A bisect of a landed range for a failing post-land check (SPEC §11.6).
+message Bisect {
+  string id = 1;
+  string repo_id = 2;
+  string ref = 3;
+  string check_name = 4;
+  ObjectId good = 5;
+  ObjectId bad = 6;
+  BisectState state = 7;
+  ObjectId first_bad = 8;
+  repeated ObjectId tested = 9;
+  string revert_change_request_id = 10; // revert CR opened (or landed) for first_bad
+  google.protobuf.Timestamp started_at = 11;
+  google.protobuf.Timestamp finished_at = 12;
+}
+
+message StartBisectRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  string check_name = 3;
+  ObjectId good = 4;  // empty = the last changeset where the check passed
+  ObjectId bad = 5;   // empty = the ref tip
+  bool open_revert = 6;
+  bool manual = 7;    // driven by MarkBisect instead of CI probes
+}
+
+message GetBisectRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message ListBisectsRequest {
+  RepoRef repo = 1;
+  BisectState state = 2;
+  PageRequest page = 3;
+}
+
+message ListBisectsResponse {
+  repeated Bisect bisects = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Leases ----------
+
+enum LeaseMode {
+  LEASE_MODE_UNSPECIFIED = 0;
+  LEASE_MODE_ADVISORY = 1;
+  LEASE_MODE_EXCLUSIVE = 2;
+}
+
+message Lease {
+  string id = 1;
+  string repo_id = 2;
+  string ref = 3;
+  repeated bytes paths = 4;
+  Principal holder = 5;
+  ChangeId change_id = 6;
+  LeaseMode mode = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  string note = 9;
+}
+
+message AcquireLeaseRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  repeated bytes paths = 3;
+  LeaseMode mode = 4;
+  uint32 ttl_seconds = 5; // 0 = default (2 hours)
+  ChangeId change_id = 6;
+  string note = 7;
+}
+
+message AcquireLeaseResponse {
+  Lease lease = 1;
+  repeated Lease overlapping = 2; // advisory overlaps the caller should know about
+}
+
+message RenewLeaseRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  uint32 ttl_seconds = 3;
+}
+
+message ReleaseLeaseRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+message ReleaseLeaseResponse {}
+
+message ListLeasesRequest {
+  RepoRef repo = 1;
+  repeated bytes paths = 2; // filter: leases overlapping these paths
+  // List leases across every repo of this org (gap G10); repo may then be empty.
+  string org = 3;
+}
+
+message ListLeasesResponse {
+  repeated Lease leases = 1;
+}
+
+message GetLeaseRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// ---------- Events ----------
+
+message Event {
+  uint64 seq = 1;
+  string repo_id = 2;
+  string kind = 3; // e.g. "ref.updated", "lease.acquired"
+  google.protobuf.Timestamp time = 4;
+  string principal = 5;
+  oneof body {
+    Ref ref_updated = 10;
+    ChangeRequest change = 11;
+    Review review = 12;
+    CheckRun check = 13;
+    Lease lease = 14;
+    string policy_epoch = 15;
+    string revoked_token = 16;
+    Post post = 17;                 // "post.*" events
+  }
+  // Every event names its subject. Events of areas without a typed body above (issues,
+  // discussions, workflows, releases, ...) carry the subject's resource as proto3-JSON in
+  // `payload_json`, for example kind "issue.opened" with a bee.v1.Issue.
+  SubjectRef subject = 20;
+  string payload_json = 21;
+  string org_id = 22;
+  repeated string on_behalf_of = 23; // delegation chain of `principal`
+}
+
+message SubscribeRequest {
+  RepoRef repo = 1;
+  uint64 from_seq = 2;
+  repeated string kinds = 3; // empty = all; a trailing ".*" matches a prefix, e.g. "cr.*"
+  string org = 4;            // subscribe to an org's log instead of one repo's
+}
+
+// Payload format of webhook deliveries.
+enum WebhookFormat {
+  WEBHOOK_FORMAT_UNSPECIFIED = 0; // same as BEE
+  WEBHOOK_FORMAT_BEE = 1;       // bee.v1.Event as proto3-JSON
+  WEBHOOK_FORMAT_GITHUB = 2;      // GitHub-compatible payloads and X-GitHub-Event headers
+}
+
+message Webhook {
+  string id = 1;
+  string repo_id = 2;
+  string url = 3;
+  repeated string kinds = 4;
+  string org_id = 5;   // set for org-level webhooks
+  string app_id = 6;   // set for app-level webhooks
+  WebhookFormat format = 7;
+  bool active = 8;
+  google.protobuf.Timestamp created_at = 9;
+  WebhookDelivery last_delivery = 10;
+  bool insecure_ssl = 11;
+}
+
+message CreateWebhookRequest {
+  RepoRef repo = 1;
+  string url = 2;
+  repeated string kinds = 3;
+  string secret = 4; // HMAC key; write-only
+  string org = 5;    // create an org-level webhook instead of a repo one
+  WebhookFormat format = 6;
+  bool inactive = 7; // create disabled
+  bool insecure_ssl = 8;
+}
+
+message DeleteWebhookRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string org = 3;
+}
+
+message DeleteWebhookResponse {}
+
+message ListWebhooksRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  PageRequest page = 3;
+}
+
+message ListWebhooksResponse {
+  repeated Webhook webhooks = 1;
+  PageResponse page = 2;
+}
+
+message GetWebhookRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string org = 3;
+}
+
+message UpdateWebhookRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string org = 3;
+  optional string url = 4;
+  repeated string kinds = 5;
+  bool set_kinds = 6;            // kinds replaces the list only when true
+  optional string secret = 7;
+  optional WebhookFormat format = 8;
+  optional bool active = 9;
+  optional bool insecure_ssl = 10;
+}
+
+message PingWebhookRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  string org = 3;
+}
+
+// One delivery attempt of an event to a webhook.
+message WebhookDelivery {
+  string id = 1;
+  string webhook_id = 2;
+  uint64 event_seq = 3;
+  string event_kind = 4;
+  google.protobuf.Timestamp delivered_at = 5;
+  uint32 status_code = 6;     // HTTP status from the receiver; 0 when unreachable
+  uint32 duration_ms = 7;
+  bool success = 8;
+  bool redelivery = 9;
+  uint32 attempt = 10;
+  string request_headers_json = 11;  // only in GetWebhookDelivery
+  string request_body = 12;          // only in GetWebhookDelivery
+  string response_headers_json = 13; // only in GetWebhookDelivery
+  string response_body = 14;         // only in GetWebhookDelivery, truncated
+  string error = 15;
+}
+
+message ListWebhookDeliveriesRequest {
+  RepoRef repo = 1;
+  string webhook_id = 2;
+  string org = 3;
+  optional bool success = 4;
+  PageRequest page = 5;
+}
+
+message ListWebhookDeliveriesResponse {
+  repeated WebhookDelivery deliveries = 1;
+  PageResponse page = 2;
+}
+
+message GetWebhookDeliveryRequest {
+  RepoRef repo = 1;
+  string webhook_id = 2;
+  string delivery_id = 3;
+  string org = 4;
+}
+
+message RedeliverWebhookRequest {
+  RepoRef repo = 1;
+  string webhook_id = 2;
+  string delivery_id = 3;
+  string org = 4;
+}
+
+message ListEventsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  uint64 from_seq = 3;
+  repeated string kinds = 4;
+  uint32 limit = 5; // 0 = server default
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+  uint64 next_seq = 2; // pass as from_seq to continue
+}
+
+message GetEventLogInfoRequest {
+  RepoRef repo = 1;
+  string org = 2;
+}
+
+// Retention window of an event log.
+message EventLogInfo {
+  uint64 oldest_seq = 1;
+  uint64 latest_seq = 2;
+  uint32 retention_days = 3;
+}
+
+// Request for AddChangeReaction.
+message AddChangeReactionRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  string comment_id = 3;      // empty = the change request itself
+  ReactionContent content = 4;
+}
+
+// Request for RemoveChangeReaction.
+message RemoveChangeReactionRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  string comment_id = 3;      // empty = the change request itself
+  ReactionContent content = 4;
+}
+
+// The reactions of the subject after the change.
+message ChangeReactionResponse {
+  repeated ReactionGroup reactions = 1;
+}
+
+// Request for SetChangeLocked.
+message SetChangeLockedRequest {
+  RepoRef repo = 1;
+  string change_request_id = 2;
+  bool locked = 3;
+}
+
+// Request for GetBisectSession.
+message GetBisectSessionRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// A manual mark or a probe's result.
+enum BisectOutcome {
+  BISECT_OUTCOME_UNSPECIFIED = 0; // still running (probes)
+  BISECT_OUTCOME_GOOD = 1;        // the check passed: the culprit is later
+  BISECT_OUTCOME_BAD = 2;         // the check failed: the culprit is this or earlier
+  BISECT_OUTCOME_SKIP = 3;        // could not be tested
+}
+
+// One probe or mark of a session.
+message BisectProbe {
+  ObjectId changeset = 1;
+  BisectOutcome outcome = 2;
+  uint32 round = 3;     // 0 = history or a mark
+  string probe_id = 4;  // the prober's handle (a workflow run id for CI probes)
+  string source = 5;    // "probe", "history" or the principal that marked it
+}
+
+// A bisect session in full.
+message BisectSession {
+  Bisect bisect = 1;
+  repeated ObjectId candidates = 2; // oldest first; the last is the failing changeset
+  repeated BisectProbe probes = 3;
+  uint32 rounds = 4;
+  string mode = 5;                  // "auto" or "manual"
+  string note = 6;                  // why it ended as it did, and what happened to the revert
+  string culprit_change_request_id = 7;
+  string culprit_author = 8;
+  bool revert_landed = 9;
+  string failing_url = 10;
+}
+
+// Request for GetBisectNextCandidate.
+message GetBisectNextCandidateRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Response for GetBisectNextCandidate.
+message GetBisectNextCandidateResponse {
+  ObjectId changeset = 1; // unset once the session is decided or finished
+}
+
+// Request for MarkBisect.
+message MarkBisectRequest {
+  RepoRef repo = 1;
+  string id = 2;
+  ObjectId changeset = 3;
+  BisectOutcome outcome = 4;
+}
+
+// Request for CancelBisect.
+message CancelBisectRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}

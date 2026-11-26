@@ -1,0 +1,189 @@
+{
+  "$defs": {
+    "bee.v1.BriefAsk": {
+      "description": "A decision the author asks a person to make. Answering posts a comment\n`Decision on \"<question>\": <option>` that agents read.",
+      "properties": {
+        "options": {
+          "description": "2-6 options, each at most 80 characters",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "question": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefAsk",
+      "type": "object"
+    },
+    "bee.v1.BriefHighlight": {
+      "description": "One thing the change does, with the paths that do it.",
+      "properties": {
+        "paths": {
+          "description": "repo paths (UTF-8), at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefHighlight",
+      "type": "object"
+    },
+    "bee.v1.BriefRisk": {
+      "description": "A risk the author sees, and what mitigates it.",
+      "properties": {
+        "mitigation": {
+          "description": "at most 280 characters",
+          "type": "string"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefRisk",
+      "type": "object"
+    },
+    "bee.v1.ChangeBrief": {
+      "description": "A change request's brief (SPEC §11.9): what a busy person reads first. Set through\nBriefService.SetChangeBrief or OpenChangeRequest.brief; fields 7-9 are set by the server.",
+      "properties": {
+        "asks": {
+          "description": "decisions the author wants from a person, at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefAsk"
+          },
+          "type": "array"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "highlights": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefHighlight"
+          },
+          "type": "array"
+        },
+        "outcome": {
+          "description": "one line: what is different for users, at most 280 characters",
+          "type": "string"
+        },
+        "risks": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefRisk"
+          },
+          "type": "array"
+        },
+        "rollback": {
+          "description": "how to undo it, in words",
+          "type": "string"
+        },
+        "tryItUrl": {
+          "description": "https URL where the change can be tried",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "writtenForRevision": {
+          "description": "the current revision when the brief was set",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.ChangeBrief",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetChangeBriefRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetChangeBrief.",
+  "properties": {
+    "brief": {
+      "$ref": "#/$defs/bee.v1.ChangeBrief",
+      "description": "fields 7-9 are ignored; the server sets them"
+    },
+    "changeId": {
+      "type": "string"
+    },
+    "expectedVersion": {
+      "description": "0 = any; else the change request's `version`",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.SetChangeBriefRequest",
+  "type": "object"
+}

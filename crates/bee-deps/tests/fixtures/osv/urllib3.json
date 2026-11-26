@@ -1,0 +1,35 @@
+{
+  "id": "GHSA-q2q7-5pp4-w6pg",
+  "modified": "2021-06-01T00:00:00Z",
+  "aliases": [
+    "CVE-2021-33503"
+  ],
+  "summary": "Catastrophic backtracking in URL authority parser",
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    }
+  ],
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "PyPI",
+        "name": "urllib3"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.25.4"
+            },
+            {
+              "fixed": "1.26.5"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

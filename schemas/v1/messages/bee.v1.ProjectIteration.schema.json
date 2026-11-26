@@ -1,0 +1,34 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ProjectIteration.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One iteration (sprint) of an iteration field.",
+  "properties": {
+    "completed": {
+      "type": "boolean"
+    },
+    "durationDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fieldId": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "isBreak": {
+      "description": "a gap between iterations",
+      "type": "boolean"
+    },
+    "startOn": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ProjectIteration",
+  "type": "object"
+}

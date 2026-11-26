@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/admin.start-restore.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AdminService/StartRestore: `data` is a bee.v1.Restore in proto3-JSON. `bee admin start-restore --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Restore.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.admin.start-restore"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee admin start-restore",
+  "type": "object"
+}

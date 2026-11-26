@@ -1,0 +1,65 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/oplog.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee oplog --json`: one such document with `schema` = bee.v1.oplog. List the working copy's operation log (what `bee undo` would revert). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "ops": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "type": "string"
+              },
+              "seq": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "undoable": {
+                "type": "boolean"
+              },
+              "undoes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "undone": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "seq",
+              "op",
+              "summary",
+              "undoable",
+              "undoes",
+              "undone"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ops"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.oplog"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee oplog",
+  "type": "object"
+}

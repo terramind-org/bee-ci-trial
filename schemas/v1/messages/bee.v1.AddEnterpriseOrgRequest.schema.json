@@ -1,0 +1,24 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddEnterpriseOrgRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AddEnterpriseOrg.",
+  "properties": {
+    "create": {
+      "description": "create a new org with this name",
+      "type": "boolean"
+    },
+    "display": {
+      "description": "new org only",
+      "type": "string"
+    },
+    "enterprise": {
+      "type": "string"
+    },
+    "org": {
+      "description": "existing org name, or the name of a new org",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AddEnterpriseOrgRequest",
+  "type": "object"
+}

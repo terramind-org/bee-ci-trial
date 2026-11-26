@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "bee.v1.LandMethod": {
+      "description": "How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).",
+      "enum": [
+        "LAND_METHOD_UNSPECIFIED",
+        "LAND_METHOD_REBASE",
+        "LAND_METHOD_SQUASH",
+        "LAND_METHOD_MERGE_COMMIT"
+      ],
+      "title": "bee.v1.LandMethod",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RepoSettings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Per-repo settings (SPEC §11.1).",
+  "properties": {
+    "allowAutoMerge": {
+      "type": "boolean"
+    },
+    "allowForking": {
+      "type": "boolean"
+    },
+    "allowedLandMethods": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.LandMethod"
+      },
+      "type": "array"
+    },
+    "autoRevert": {
+      "description": "land revert CRs for failed post-land checks",
+      "type": "boolean"
+    },
+    "coldAfterDays": {
+      "description": "SPEC §6.5, default 90",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "defaultLandMethod": {
+      "$ref": "#/$defs/bee.v1.LandMethod"
+    },
+    "deleteWorkspaceRefOnLand": {
+      "type": "boolean"
+    },
+    "draftRetentionDays": {
+      "description": "SPEC §6.4, default 30",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "gitEnabled": {
+      "description": "serve git smart HTTP/SSH",
+      "type": "boolean"
+    },
+    "hasDiscussions": {
+      "type": "boolean"
+    },
+    "hasIssues": {
+      "type": "boolean"
+    },
+    "hasProjects": {
+      "type": "boolean"
+    },
+    "hasWiki": {
+      "type": "boolean"
+    },
+    "landAttemptBudget": {
+      "description": "SPEC §7.4; 0 = default",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "mergeQueueCheckCombined": {
+      "description": "The merge queue tests the combined result before landing (SPEC §11.6): the head entry is\nrebased onto the target tip, required checks run on that speculative changeset\n(`merge_group`), and only a passing result lands; a failing entry is ejected.",
+      "type": "boolean"
+    },
+    "mergeQueueRequired": {
+      "type": "boolean"
+    },
+    "pushAutoChange": {
+      "description": "a pushed new branch opens a CR (SPEC §17.4)",
+      "type": "boolean"
+    },
+    "repoId": {
+      "type": "string"
+    },
+    "squashMessageTemplate": {
+      "description": "\"title\", \"title_and_body\", \"changesets\"",
+      "type": "string"
+    },
+    "suggestUpdateBase": {
+      "description": "show \"update base\" when a CR is behind",
+      "type": "boolean"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "webCommitSignoffRequired": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.RepoSettings",
+  "type": "object"
+}

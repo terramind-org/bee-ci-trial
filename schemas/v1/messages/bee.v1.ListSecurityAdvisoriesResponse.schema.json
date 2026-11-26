@@ -1,0 +1,236 @@
+{
+  "$defs": {
+    "bee.v1.AdvisoryAffectedPackage": {
+      "description": "A range of affected versions for one package.",
+      "properties": {
+        "ecosystem": {
+          "type": "string"
+        },
+        "firstPatchedVersion": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vulnerableFunctions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "vulnerableRange": {
+          "description": "e.g. \">= 1.0, < 1.4.2\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AdvisoryAffectedPackage",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecurityAdvisoryCredit": {
+      "description": "A principal or team credited on, or collaborating on, an advisory.",
+      "properties": {
+        "principalId": {
+          "type": "string"
+        },
+        "role": {
+          "description": "\"finder\", \"reporter\", \"remediation_developer\", \"collaborator\"",
+          "type": "string"
+        },
+        "teamId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecurityAdvisoryCredit",
+      "type": "object"
+    },
+    "bee.v1.SecurityAdvisoryState": {
+      "description": "Lifecycle of a repo advisory.",
+      "enum": [
+        "SECURITY_ADVISORY_STATE_UNSPECIFIED",
+        "SECURITY_ADVISORY_STATE_TRIAGE",
+        "SECURITY_ADVISORY_STATE_DRAFT",
+        "SECURITY_ADVISORY_STATE_PUBLISHED",
+        "SECURITY_ADVISORY_STATE_CLOSED",
+        "SECURITY_ADVISORY_STATE_WITHDRAWN"
+      ],
+      "title": "bee.v1.SecurityAdvisoryState",
+      "type": "string"
+    },
+    "bee.v1.SecurityRepoAdvisory": {
+      "description": "A security advisory owned by a repo.",
+      "properties": {
+        "affected": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.AdvisoryAffectedPackage"
+          },
+          "type": "array"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "collaborators": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SecurityAdvisoryCredit"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "credits": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SecurityAdvisoryCredit"
+          },
+          "type": "array"
+        },
+        "cveId": {
+          "type": "string"
+        },
+        "cveRequested": {
+          "type": "boolean"
+        },
+        "cvssVector": {
+          "type": "string"
+        },
+        "cweIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "ghsaId": {
+          "type": "string"
+        },
+        "privateFork": {
+          "$ref": "#/$defs/bee.v1.RepoRef",
+          "description": "temporary private fork for the fix, if any"
+        },
+        "publishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "reporter": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "set for private vulnerability reports"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.SecuritySeverity"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SecurityAdvisoryState"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecurityRepoAdvisory",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSecurityAdvisoriesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListSecurityAdvisories.",
+  "properties": {
+    "advisories": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecurityRepoAdvisory"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListSecurityAdvisoriesResponse",
+  "type": "object"
+}

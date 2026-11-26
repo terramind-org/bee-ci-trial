@@ -1,0 +1,6 @@
+feature_id,test
+F419-017,crates/bee-forge/tests/swarms.rs::sqlite_swarm_coordinates_tasks_and_cancels_members
+F419-017,crates/bee-forge/tests/swarms.rs::postgres_swarm_coordinates_tasks_and_cancels_members_when_configured
+F419-017,crates/bee-conformance/tests/three_forms/main.rs::three_forms_agree (SwarmService)
+F419-018,crates/bee-forge/tests/swarms.rs::repo_work_lists_swarms_and_single_runs_by_latest_activity_and_links_outcomes
+F419-018,crates/bee-conformance/tests/swarms.rs::swarm_and_independent_run_record_their_pull_requests

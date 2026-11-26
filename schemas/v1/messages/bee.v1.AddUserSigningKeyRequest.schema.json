@@ -1,0 +1,30 @@
+{
+  "$defs": {
+    "bee.v1.UserSigningKeyKind": {
+      "description": "Kind of signing key.",
+      "enum": [
+        "USER_SIGNING_KEY_KIND_UNSPECIFIED",
+        "USER_SIGNING_KEY_KIND_GPG",
+        "USER_SIGNING_KEY_KIND_SSH"
+      ],
+      "title": "bee.v1.UserSigningKeyKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddUserSigningKeyRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AddUserSigningKey.",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/bee.v1.UserSigningKeyKind"
+    },
+    "publicKey": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AddUserSigningKeyRequest",
+  "type": "object"
+}

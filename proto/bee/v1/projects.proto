@@ -1,0 +1,953 @@
+// Beehive projects for bee.v1 (GitHub Projects v2 equivalent): projects owned by an org or
+// user, items (issues, change requests, drafts), typed fields, views, iterations, built-in
+// workflows, insights charts and status updates. Every operation is available over the API
+// and MCP; nothing is UI-only. See docs/PRODUCT.md §4.15.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Projects v2: planning boards that span repos.
+service ProjectService {
+  // ---------- Projects ----------
+
+  // Creates a project owned by an org or user. Fails with PERMISSION_DENIED when the caller may
+  // not create projects for the owner.
+  rpc CreateProject(CreateProjectRequest) returns (Project);
+  // Fetches a project by id.
+  rpc GetProject(GetProjectRequest) returns (Project);
+  // Fetches a project by owner and per-owner number.
+  rpc GetProjectByNumber(GetProjectByNumberRequest) returns (Project);
+  // Lists an owner's projects, or the projects linked to a repo.
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  // Edits a project's title, description, readme, visibility, closed or template flag. Fails
+  // with VERSION_MISMATCH when `expected_version` is stale.
+  rpc UpdateProject(UpdateProjectRequest) returns (Project);
+  // Deletes a project with its fields, views and draft items. Issues and CRs are untouched.
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+  // Creates a new project by copying a template or any readable project: fields, views,
+  // workflows, charts and optionally draft items.
+  rpc CopyProject(CopyProjectRequest) returns (Project);
+
+  // ---------- Items ----------
+
+  // Adds an existing issue or change request to a project. Adding an item that is already
+  // present returns the existing item. Fails with RESOURCE_EXHAUSTED at the item limit.
+  rpc AddProjectItem(AddProjectItemRequest) returns (ProjectItem);
+  // Creates a draft item that lives only in the project.
+  rpc CreateProjectDraftItem(CreateProjectDraftItemRequest) returns (ProjectItem);
+  // Edits a draft item's title, body or assignees. Fails with INVALID_STATE for non-drafts.
+  rpc UpdateProjectDraftItem(UpdateProjectDraftItemRequest) returns (ProjectItem);
+  // Converts a draft item into an issue in a repo, keeping its field values.
+  rpc ConvertProjectDraftItem(ConvertProjectDraftItemRequest) returns (ProjectItem);
+  // Fetches one item with its field values.
+  rpc GetProjectItem(GetProjectItemRequest) returns (ProjectItem);
+  // Lists items, filtered by a project filter query or a saved view.
+  rpc ListProjectItems(ListProjectItemsRequest) returns (ListProjectItemsResponse);
+  // Moves an item within the project's manual order (board columns and unsorted tables).
+  rpc MoveProjectItem(MoveProjectItemRequest) returns (ProjectItem);
+  // Archives an item. Archived items keep their values and can be restored.
+  rpc ArchiveProjectItem(ArchiveProjectItemRequest) returns (ProjectItem);
+  // Restores an archived item.
+  rpc UnarchiveProjectItem(UnarchiveProjectItemRequest) returns (ProjectItem);
+  // Removes an item from the project. Draft items are deleted; issues and CRs are untouched.
+  rpc DeleteProjectItem(DeleteProjectItemRequest) returns (DeleteProjectItemResponse);
+
+  // ---------- Fields ----------
+
+  // Adds a custom field. Fails with ALREADY_EXISTS on a duplicate name and RESOURCE_EXHAUSTED
+  // at the field limit.
+  rpc CreateProjectField(CreateProjectFieldRequest) returns (ProjectField);
+  // Renames a field or edits its options or iteration configuration. Built-in fields can only
+  // be renamed where allowed; the kind never changes.
+  rpc UpdateProjectField(UpdateProjectFieldRequest) returns (ProjectField);
+  // Deletes a custom field and all its values. Fails with INVALID_ARGUMENT for built-in fields.
+  rpc DeleteProjectField(DeleteProjectFieldRequest) returns (DeleteProjectFieldResponse);
+  // Lists a project's fields, built-in and custom.
+  rpc ListProjectFields(ListProjectFieldsRequest) returns (ListProjectFieldsResponse);
+
+  // ---------- Field values ----------
+
+  // Sets an item's value for a custom field. Fails with INVALID_ARGUMENT when the value does not
+  // match the field kind or names an unknown option or iteration.
+  rpc SetProjectItemFieldValue(SetProjectItemFieldValueRequest) returns (ProjectItem);
+  // Clears an item's value for a custom field.
+  rpc ClearProjectItemFieldValue(ClearProjectItemFieldValueRequest) returns (ProjectItem);
+
+  // ---------- Views ----------
+
+  // Creates a saved view (table, board or roadmap).
+  rpc CreateProjectView(CreateProjectViewRequest) returns (ProjectView);
+  // Fetches a view.
+  rpc GetProjectView(GetProjectViewRequest) returns (ProjectView);
+  // Edits a view's name, layout, filter, grouping, sorting or visible fields.
+  rpc UpdateProjectView(UpdateProjectViewRequest) returns (ProjectView);
+  // Deletes a view. Fails with INVALID_STATE when it is the project's last view.
+  rpc DeleteProjectView(DeleteProjectViewRequest) returns (DeleteProjectViewResponse);
+  // Lists a project's views in tab order.
+  rpc ListProjectViews(ListProjectViewsRequest) returns (ListProjectViewsResponse);
+
+  // ---------- Iterations ----------
+
+  // Lists the iterations of an iteration field, active and completed.
+  rpc ListProjectIterations(ListProjectIterationsRequest) returns (ListProjectIterationsResponse);
+  // Appends an iteration (or a break) to an iteration field.
+  rpc AddProjectIteration(AddProjectIterationRequest) returns (ProjectIteration);
+  // Marks an iteration completed, optionally moving its unfinished items to another iteration.
+  rpc CompleteProjectIteration(CompleteProjectIterationRequest) returns (ProjectIteration);
+
+  // ---------- Workflows ----------
+
+  // Lists a project's built-in workflows and their configuration.
+  rpc ListProjectWorkflows(ListProjectWorkflowsRequest) returns (ListProjectWorkflowsResponse);
+  // Adds a workflow instance. Only kinds that allow several instances (auto-add) may be
+  // created more than once; others fail with ALREADY_EXISTS.
+  rpc CreateProjectWorkflow(CreateProjectWorkflowRequest) returns (ProjectWorkflow);
+  // Edits a workflow's filter, target value or archive settings.
+  rpc UpdateProjectWorkflow(UpdateProjectWorkflowRequest) returns (ProjectWorkflow);
+  // Turns a workflow on.
+  rpc EnableProjectWorkflow(EnableProjectWorkflowRequest) returns (ProjectWorkflow);
+  // Turns a workflow off.
+  rpc DisableProjectWorkflow(DisableProjectWorkflowRequest) returns (ProjectWorkflow);
+  // Deletes a created workflow instance. Default workflows can only be disabled.
+  rpc DeleteProjectWorkflow(DeleteProjectWorkflowRequest) returns (DeleteProjectWorkflowResponse);
+
+  // ---------- Insights ----------
+
+  // Creates an insights chart.
+  rpc CreateProjectChart(CreateProjectChartRequest) returns (ProjectChart);
+  // Edits an insights chart.
+  rpc UpdateProjectChart(UpdateProjectChartRequest) returns (ProjectChart);
+  // Deletes an insights chart.
+  rpc DeleteProjectChart(DeleteProjectChartRequest) returns (DeleteProjectChartResponse);
+  // Lists a project's insights charts.
+  rpc ListProjectCharts(ListProjectChartsRequest) returns (ListProjectChartsResponse);
+  // Computes a chart's series, either a saved chart or an ad-hoc definition.
+  rpc QueryProjectChart(QueryProjectChartRequest) returns (QueryProjectChartResponse);
+
+  // ---------- Status updates ----------
+
+  // Posts a status update. The newest update sets the project's current status.
+  rpc CreateProjectStatusUpdate(CreateProjectStatusUpdateRequest) returns (ProjectStatusUpdate);
+  // Edits a status update.
+  rpc UpdateProjectStatusUpdate(UpdateProjectStatusUpdateRequest) returns (ProjectStatusUpdate);
+  // Deletes a status update.
+  rpc DeleteProjectStatusUpdate(DeleteProjectStatusUpdateRequest) returns (DeleteProjectStatusUpdateResponse);
+  // Lists status updates, newest first.
+  rpc ListProjectStatusUpdates(ListProjectStatusUpdatesRequest) returns (ListProjectStatusUpdatesResponse);
+
+  // ---------- Links ----------
+
+  // Links a repo so the project shows in the repo's Projects tab. Fails with INVALID_ARGUMENT
+  // when the repo's owner differs from the project's owner.
+  rpc LinkProjectRepo(LinkProjectRepoRequest) returns (Project);
+  // Unlinks a repo.
+  rpc UnlinkProjectRepo(UnlinkProjectRepoRequest) returns (Project);
+  // Links a team, granting it the given role on the project.
+  rpc LinkProjectTeam(LinkProjectTeamRequest) returns (Project);
+  // Unlinks a team.
+  rpc UnlinkProjectTeam(UnlinkProjectTeamRequest) returns (Project);
+}
+
+// ---------- Projects ----------
+
+// Whether a project belongs to an org or a user.
+enum ProjectOwnerKind {
+  PROJECT_OWNER_KIND_UNSPECIFIED = 0;
+  PROJECT_OWNER_KIND_ORG = 1;
+  PROJECT_OWNER_KIND_USER = 2;
+}
+
+// Health reported by a status update.
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_INACTIVE = 1;
+  PROJECT_STATUS_ON_TRACK = 2;
+  PROJECT_STATUS_AT_RISK = 3;
+  PROJECT_STATUS_OFF_TRACK = 4;
+  PROJECT_STATUS_COMPLETE = 5;
+}
+
+// Role a linked team has on a project.
+enum ProjectTeamRole {
+  PROJECT_TEAM_ROLE_UNSPECIFIED = 0;
+  PROJECT_TEAM_ROLE_READ = 1;
+  PROJECT_TEAM_ROLE_WRITE = 2;
+  PROJECT_TEAM_ROLE_ADMIN = 3;
+}
+
+// A team linked to a project.
+message ProjectTeamLink {
+  string team_id = 1;
+  string team_slug = 2;
+  ProjectTeamRole role = 3;
+}
+
+// A project.
+message Project {
+  string id = 1;
+  string owner_id = 2;
+  string owner_login = 3;
+  ProjectOwnerKind owner_kind = 4;
+  uint64 number = 5;                        // per owner
+  string title = 6;
+  string short_description = 7;
+  string readme = 8;                        // Markdown
+  bool public = 9;
+  bool closed = 10;
+  bool is_template = 11;
+  Principal creator = 12;
+  uint32 item_count = 13;
+  repeated string linked_repo_ids = 14;
+  repeated ProjectTeamLink linked_teams = 15;
+  ProjectStatusUpdate latest_status_update = 16;
+  string copied_from_project_id = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  google.protobuf.Timestamp closed_at = 20;
+  uint64 version = 21;
+  string url = 22;
+}
+
+// Request for CreateProject.
+message CreateProjectRequest {
+  string owner = 1;                         // org or user name or id
+  string title = 2;
+  string short_description = 3;
+  string readme = 4;
+  bool public = 5;
+  repeated RepoRef link_repos = 6;
+}
+
+// Request for GetProject.
+message GetProjectRequest {
+  string project_id = 1;
+}
+
+// Request for GetProjectByNumber.
+message GetProjectByNumberRequest {
+  string owner = 1;
+  uint64 number = 2;
+}
+
+// Request for ListProjects.
+message ListProjectsRequest {
+  string owner = 1;                         // set owner or repo
+  RepoRef repo = 2;                         // projects linked to this repo
+  string query = 3;                         // title search plus qualifiers, e.g. "is:open is:template"
+  bool include_closed = 4;
+  bool templates_only = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListProjects.
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateProject.
+message UpdateProjectRequest {
+  string project_id = 1;
+  optional string title = 2;
+  optional string short_description = 3;
+  optional string readme = 4;
+  optional bool public = 5;
+  optional bool closed = 6;
+  optional bool is_template = 7;
+  uint64 expected_version = 8;              // 0 = any; otherwise VERSION_MISMATCH when stale
+}
+
+// Request for DeleteProject.
+message DeleteProjectRequest {
+  string project_id = 1;
+}
+
+// Response for DeleteProject.
+message DeleteProjectResponse {}
+
+// Request for CopyProject.
+message CopyProjectRequest {
+  string source_project_id = 1;
+  string owner = 2;                         // owner of the new project
+  string title = 3;
+  bool include_draft_items = 4;
+  bool public = 5;
+}
+
+// ---------- Items ----------
+
+// What an item points at.
+enum ProjectItemKind {
+  PROJECT_ITEM_KIND_UNSPECIFIED = 0;
+  PROJECT_ITEM_KIND_ISSUE = 1;
+  PROJECT_ITEM_KIND_CHANGE_REQUEST = 2;
+  PROJECT_ITEM_KIND_DRAFT = 3;
+  PROJECT_ITEM_KIND_REDACTED = 4;           // content the caller cannot read
+}
+
+// A row on a project.
+message ProjectItem {
+  string id = 1;
+  string project_id = 2;
+  ProjectItemKind kind = 3;
+  SubjectRef content = 4;                   // issue or CR; unset for drafts
+  string title = 5;                         // content title, or the draft title
+  string body = 6;                          // drafts only
+  string repo_full_name = 7;                // issues and CRs
+  uint64 number = 8;                        // issues and CRs
+  string content_state = 9;                 // "open", "closed", "landed", "draft"
+  repeated Principal assignees = 10;
+  repeated ProjectFieldValue field_values = 11;
+  bool archived = 12;
+  string position = 13;                     // opaque manual-order key; compare as bytes
+  Principal creator = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp archived_at = 17;
+  uint64 version = 18;
+}
+
+// Request for AddProjectItem.
+message AddProjectItemRequest {
+  string project_id = 1;
+  SubjectRef content = 2;                   // kind ISSUE or CHANGE_REQUEST
+}
+
+// Request for CreateProjectDraftItem.
+message CreateProjectDraftItemRequest {
+  string project_id = 1;
+  string title = 2;
+  string body = 3;
+  repeated string assignees = 4;            // principal ids or handles
+}
+
+// Request for UpdateProjectDraftItem.
+message UpdateProjectDraftItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+  optional string title = 3;
+  optional string body = 4;
+  repeated string assignees = 5;            // replaces assignees when `set_assignees`
+  bool set_assignees = 6;
+  uint64 expected_version = 7;
+}
+
+// Request for ConvertProjectDraftItem.
+message ConvertProjectDraftItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+  RepoRef repo = 3;                         // repo to create the issue in
+}
+
+// Request for GetProjectItem.
+message GetProjectItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+}
+
+// Request for ListProjectItems.
+message ListProjectItemsRequest {
+  string project_id = 1;
+  string query = 2;                         // project filter syntax, e.g. "status:Done assignee:@me is:issue"
+  string view_id = 3;                       // apply this view's filter and sort, then `query`
+  bool include_archived = 4;
+  bool archived_only = 5;
+  repeated string field_ids = 6;            // values to include; empty = all
+  PageRequest page = 7;
+}
+
+// Response for ListProjectItems.
+message ListProjectItemsResponse {
+  repeated ProjectItem items = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for MoveProjectItem.
+message MoveProjectItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+  string after_item_id = 3;                 // empty = move to the top
+}
+
+// Request for ArchiveProjectItem.
+message ArchiveProjectItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+}
+
+// Request for UnarchiveProjectItem.
+message UnarchiveProjectItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+}
+
+// Request for DeleteProjectItem.
+message DeleteProjectItemRequest {
+  string project_id = 1;
+  string item_id = 2;
+}
+
+// Response for DeleteProjectItem.
+message DeleteProjectItemResponse {}
+
+// ---------- Fields ----------
+
+// Type of a project field. Custom fields use TEXT through ITERATION; the rest are built-in
+// fields derived from the item's content.
+enum ProjectFieldKind {
+  PROJECT_FIELD_KIND_UNSPECIFIED = 0;
+  PROJECT_FIELD_KIND_TEXT = 1;
+  PROJECT_FIELD_KIND_NUMBER = 2;
+  PROJECT_FIELD_KIND_DATE = 3;
+  PROJECT_FIELD_KIND_SINGLE_SELECT = 4;
+  PROJECT_FIELD_KIND_ITERATION = 5;
+  PROJECT_FIELD_KIND_TITLE = 6;
+  PROJECT_FIELD_KIND_ASSIGNEES = 7;
+  PROJECT_FIELD_KIND_LABELS = 8;
+  PROJECT_FIELD_KIND_MILESTONE = 9;
+  PROJECT_FIELD_KIND_REPOSITORY = 10;
+  PROJECT_FIELD_KIND_LINKED_CHANGES = 11;
+  PROJECT_FIELD_KIND_REVIEWERS = 12;
+  PROJECT_FIELD_KIND_PARENT_ISSUE = 13;
+  PROJECT_FIELD_KIND_SUB_ISSUES_PROGRESS = 14;
+  PROJECT_FIELD_KIND_ISSUE_TYPE = 15;
+}
+
+// One choice of a single-select field.
+message ProjectFieldOption {
+  string id = 1;                            // server-assigned; send empty to create
+  string name = 2;
+  string color = 3;                         // e.g. "GREEN", "RED", or six hex digits
+  string description = 4;
+}
+
+// One iteration (sprint) of an iteration field.
+message ProjectIteration {
+  string id = 1;
+  string field_id = 2;
+  string title = 3;
+  google.protobuf.Timestamp start_on = 4;
+  uint32 duration_days = 5;
+  bool completed = 6;
+  bool is_break = 7;                        // a gap between iterations
+}
+
+// Configuration of an iteration field.
+message ProjectIterationConfig {
+  google.protobuf.Timestamp start_on = 1;   // first iteration's start
+  uint32 duration_days = 2;                 // default length of new iterations
+  repeated ProjectIteration iterations = 3; // active and upcoming
+  repeated ProjectIteration completed_iterations = 4;
+}
+
+// A project field.
+message ProjectField {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  ProjectFieldKind kind = 4;
+  bool built_in = 5;
+  repeated ProjectFieldOption options = 6;  // SINGLE_SELECT
+  ProjectIterationConfig iteration_config = 7; // ITERATION
+  google.protobuf.Timestamp created_at = 8;
+  uint64 version = 9;
+}
+
+// An item's value for one field. Custom fields set exactly one typed value; built-in fields
+// are read-only and set `display_value`.
+message ProjectFieldValue {
+  string field_id = 1;
+  string field_name = 2;                    // filled by the server
+  ProjectFieldKind kind = 3;                // filled by the server
+  oneof value {
+    string text = 4;
+    double number = 5;
+    google.protobuf.Timestamp date_on = 6;
+    string option_id = 7;
+    string iteration_id = 8;
+  }
+  string display_value = 9;                 // human-readable rendering of any field
+}
+
+// Request for CreateProjectField.
+message CreateProjectFieldRequest {
+  string project_id = 1;
+  string name = 2;
+  ProjectFieldKind kind = 3;                // TEXT, NUMBER, DATE, SINGLE_SELECT or ITERATION
+  repeated ProjectFieldOption options = 4;
+  ProjectIterationConfig iteration_config = 5;
+}
+
+// Request for UpdateProjectField.
+message UpdateProjectFieldRequest {
+  string project_id = 1;
+  string field_id = 2;
+  optional string name = 3;
+  repeated ProjectFieldOption options = 4;  // replaces the option list when `set_options`
+  bool set_options = 5;
+  ProjectIterationConfig iteration_config = 6; // unset = unchanged
+  uint64 expected_version = 7;
+}
+
+// Request for DeleteProjectField.
+message DeleteProjectFieldRequest {
+  string project_id = 1;
+  string field_id = 2;
+}
+
+// Response for DeleteProjectField.
+message DeleteProjectFieldResponse {}
+
+// Request for ListProjectFields.
+message ListProjectFieldsRequest {
+  string project_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListProjectFields.
+message ListProjectFieldsResponse {
+  repeated ProjectField fields = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetProjectItemFieldValue.
+message SetProjectItemFieldValueRequest {
+  string project_id = 1;
+  string item_id = 2;
+  ProjectFieldValue value = 3;
+  uint64 expected_version = 4;              // the item's version
+}
+
+// Request for ClearProjectItemFieldValue.
+message ClearProjectItemFieldValueRequest {
+  string project_id = 1;
+  string item_id = 2;
+  string field_id = 3;
+}
+
+// ---------- Views ----------
+
+// How a view lays out items.
+enum ProjectViewLayout {
+  PROJECT_VIEW_LAYOUT_UNSPECIFIED = 0;
+  PROJECT_VIEW_LAYOUT_TABLE = 1;
+  PROJECT_VIEW_LAYOUT_BOARD = 2;
+  PROJECT_VIEW_LAYOUT_ROADMAP = 3;
+}
+
+// Time scale of a roadmap view.
+enum ProjectRoadmapZoom {
+  PROJECT_ROADMAP_ZOOM_UNSPECIFIED = 0;
+  PROJECT_ROADMAP_ZOOM_MONTH = 1;
+  PROJECT_ROADMAP_ZOOM_QUARTER = 2;
+  PROJECT_ROADMAP_ZOOM_YEAR = 3;
+}
+
+// One sort key of a view.
+message ProjectViewSort {
+  string field_id = 1;
+  bool descending = 2;
+}
+
+// A saved view of a project.
+message ProjectView {
+  string id = 1;
+  string project_id = 2;
+  uint64 number = 3;
+  string name = 4;
+  ProjectViewLayout layout = 5;
+  string filter = 6;                        // project filter syntax
+  repeated string group_by_field_ids = 7;   // table and roadmap grouping
+  string column_field_id = 8;               // board columns (single-select or iteration field)
+  string slice_by_field_id = 9;
+  repeated ProjectViewSort sort_by = 10;
+  repeated string visible_field_ids = 11;   // table columns and card fields, in order
+  repeated string sum_field_ids = 12;       // number fields summed in group headers
+  string start_date_field_id = 13;          // roadmap
+  string target_date_field_id = 14;         // roadmap
+  ProjectRoadmapZoom roadmap_zoom = 15;
+  uint32 position = 16;                     // tab order
+  google.protobuf.Timestamp created_at = 17;
+  uint64 version = 18;
+}
+
+// Request for CreateProjectView.
+message CreateProjectViewRequest {
+  string project_id = 1;
+  string name = 2;
+  ProjectViewLayout layout = 3;
+  string filter = 4;
+  repeated string group_by_field_ids = 5;
+  string column_field_id = 6;
+  string slice_by_field_id = 7;
+  repeated ProjectViewSort sort_by = 8;
+  repeated string visible_field_ids = 9;
+  repeated string sum_field_ids = 10;
+  string start_date_field_id = 11;
+  string target_date_field_id = 12;
+  ProjectRoadmapZoom roadmap_zoom = 13;
+}
+
+// Request for GetProjectView.
+message GetProjectViewRequest {
+  string project_id = 1;
+  string view_id = 2;                       // id or number in decimal
+}
+
+// Request for UpdateProjectView. Repeated settings replace the current list only when their
+// `set_*` flag is true.
+message UpdateProjectViewRequest {
+  string project_id = 1;
+  string view_id = 2;
+  optional string name = 3;
+  ProjectViewLayout layout = 4;             // UNSPECIFIED = unchanged
+  optional string filter = 5;
+  repeated string group_by_field_ids = 6;
+  bool set_group_by = 7;
+  optional string column_field_id = 8;
+  optional string slice_by_field_id = 9;
+  repeated ProjectViewSort sort_by = 10;
+  bool set_sort_by = 11;
+  repeated string visible_field_ids = 12;
+  bool set_visible_fields = 13;
+  repeated string sum_field_ids = 14;
+  bool set_sum_fields = 15;
+  optional string start_date_field_id = 16;
+  optional string target_date_field_id = 17;
+  ProjectRoadmapZoom roadmap_zoom = 18;     // UNSPECIFIED = unchanged
+  optional uint32 position = 19;
+  uint64 expected_version = 20;
+}
+
+// Request for DeleteProjectView.
+message DeleteProjectViewRequest {
+  string project_id = 1;
+  string view_id = 2;
+}
+
+// Response for DeleteProjectView.
+message DeleteProjectViewResponse {}
+
+// Request for ListProjectViews.
+message ListProjectViewsRequest {
+  string project_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListProjectViews.
+message ListProjectViewsResponse {
+  repeated ProjectView views = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Iterations ----------
+
+// Request for ListProjectIterations.
+message ListProjectIterationsRequest {
+  string project_id = 1;
+  string field_id = 2;
+  bool include_completed = 3;
+}
+
+// Response for ListProjectIterations.
+message ListProjectIterationsResponse {
+  repeated ProjectIteration iterations = 1;
+}
+
+// Request for AddProjectIteration.
+message AddProjectIterationRequest {
+  string project_id = 1;
+  string field_id = 2;
+  string title = 3;                         // empty = "Iteration N"
+  google.protobuf.Timestamp start_on = 4;   // unset = right after the last iteration
+  uint32 duration_days = 5;                 // 0 = the field's default
+  bool is_break = 6;
+}
+
+// Request for CompleteProjectIteration.
+message CompleteProjectIterationRequest {
+  string project_id = 1;
+  string field_id = 2;
+  string iteration_id = 3;
+  string move_open_items_to_iteration_id = 4; // empty = leave items where they are
+}
+
+// ---------- Workflows ----------
+
+// Built-in automation kinds.
+enum ProjectWorkflowKind {
+  PROJECT_WORKFLOW_KIND_UNSPECIFIED = 0;
+  PROJECT_WORKFLOW_KIND_ITEM_ADDED = 1;          // set a field when an item is added
+  PROJECT_WORKFLOW_KIND_ITEM_REOPENED = 2;       // set a field when an issue or CR reopens
+  PROJECT_WORKFLOW_KIND_ITEM_CLOSED = 3;         // set a field when an issue or CR closes
+  PROJECT_WORKFLOW_KIND_CHANGE_LANDED = 4;       // set a field when a CR lands
+  PROJECT_WORKFLOW_KIND_CHANGES_REQUESTED = 5;   // set a field when a review requests changes
+  PROJECT_WORKFLOW_KIND_CHANGE_APPROVED = 6;     // set a field when a CR is approved
+  PROJECT_WORKFLOW_KIND_AUTO_ARCHIVE = 7;        // archive items matching a filter
+  PROJECT_WORKFLOW_KIND_AUTO_ADD = 8;            // add new repo items matching a filter
+  PROJECT_WORKFLOW_KIND_AUTO_CLOSE_ISSUE = 9;    // close the issue when status reaches a value
+  PROJECT_WORKFLOW_KIND_AUTO_ADD_SUB_ISSUES = 10; // add sub-issues of items already present
+}
+
+// A built-in workflow on a project.
+message ProjectWorkflow {
+  string id = 1;
+  string project_id = 2;
+  ProjectWorkflowKind kind = 3;
+  string name = 4;
+  bool enabled = 5;
+  string filter = 6;                        // AUTO_ADD, AUTO_ARCHIVE: which items match
+  RepoRef source_repo = 7;                  // AUTO_ADD: repo to watch
+  string field_id = 8;                      // field to set, or to watch for AUTO_CLOSE_ISSUE
+  string option_id = 9;                     // value to set, or to watch for AUTO_CLOSE_ISSUE
+  uint32 archive_after_days = 10;           // AUTO_ARCHIVE: inactivity before archiving
+  bool is_default = 11;                     // created with the project; can be disabled, not deleted
+  google.protobuf.Timestamp updated_at = 12;
+  uint64 version = 13;
+}
+
+// Request for ListProjectWorkflows.
+message ListProjectWorkflowsRequest {
+  string project_id = 1;
+}
+
+// Response for ListProjectWorkflows.
+message ListProjectWorkflowsResponse {
+  repeated ProjectWorkflow workflows = 1;
+}
+
+// Request for CreateProjectWorkflow.
+message CreateProjectWorkflowRequest {
+  string project_id = 1;
+  ProjectWorkflowKind kind = 2;
+  string name = 3;
+  string filter = 4;
+  RepoRef source_repo = 5;
+  string field_id = 6;
+  string option_id = 7;
+  uint32 archive_after_days = 8;
+  bool enabled = 9;
+}
+
+// Request for UpdateProjectWorkflow.
+message UpdateProjectWorkflowRequest {
+  string project_id = 1;
+  string workflow_id = 2;
+  optional string name = 3;
+  optional string filter = 4;
+  RepoRef source_repo = 5;                  // unset = unchanged
+  optional string field_id = 6;
+  optional string option_id = 7;
+  optional uint32 archive_after_days = 8;
+  uint64 expected_version = 9;
+}
+
+// Request for EnableProjectWorkflow.
+message EnableProjectWorkflowRequest {
+  string project_id = 1;
+  string workflow_id = 2;
+}
+
+// Request for DisableProjectWorkflow.
+message DisableProjectWorkflowRequest {
+  string project_id = 1;
+  string workflow_id = 2;
+}
+
+// Request for DeleteProjectWorkflow.
+message DeleteProjectWorkflowRequest {
+  string project_id = 1;
+  string workflow_id = 2;
+}
+
+// Response for DeleteProjectWorkflow.
+message DeleteProjectWorkflowResponse {}
+
+// ---------- Insights ----------
+
+// Visual form of an insights chart.
+enum ProjectChartLayout {
+  PROJECT_CHART_LAYOUT_UNSPECIFIED = 0;
+  PROJECT_CHART_LAYOUT_BAR = 1;
+  PROJECT_CHART_LAYOUT_COLUMN = 2;
+  PROJECT_CHART_LAYOUT_LINE = 3;
+  PROJECT_CHART_LAYOUT_STACKED_AREA = 4;
+  PROJECT_CHART_LAYOUT_STACKED_BAR = 5;
+  PROJECT_CHART_LAYOUT_STACKED_COLUMN = 6;
+}
+
+// How a chart aggregates its Y axis.
+enum ProjectChartAggregate {
+  PROJECT_CHART_AGGREGATE_UNSPECIFIED = 0;  // same as COUNT
+  PROJECT_CHART_AGGREGATE_COUNT = 1;
+  PROJECT_CHART_AGGREGATE_SUM = 2;
+  PROJECT_CHART_AGGREGATE_AVERAGE = 3;
+  PROJECT_CHART_AGGREGATE_MIN = 4;
+  PROJECT_CHART_AGGREGATE_MAX = 5;
+}
+
+// An insights chart definition. A historical chart plots over time (burn-up); a current chart
+// groups the items as they are now.
+message ProjectChart {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  ProjectChartLayout layout = 4;
+  string filter = 5;                        // project filter syntax
+  bool historical = 6;                      // X axis is time
+  string x_axis_field_id = 7;               // current charts: field to bucket by
+  string group_by_field_id = 8;             // series split
+  ProjectChartAggregate aggregate = 9;
+  string y_axis_field_id = 10;              // number field for SUM/AVERAGE/MIN/MAX
+  google.protobuf.Timestamp start_on = 11;  // historical range; unset = project start
+  google.protobuf.Timestamp end_on = 12;    // unset = now
+  uint64 version = 13;
+}
+
+// One data point of a chart series.
+message ProjectChartPoint {
+  string label = 1;                         // bucket label for current charts
+  google.protobuf.Timestamp at = 2;         // bucket time for historical charts
+  double value = 3;
+}
+
+// One series of a computed chart.
+message ProjectChartSeries {
+  string name = 1;                          // group value, or "" without grouping
+  repeated ProjectChartPoint points = 2;
+}
+
+// Request for CreateProjectChart.
+message CreateProjectChartRequest {
+  string project_id = 1;
+  ProjectChart chart = 2;                   // id and version are ignored
+}
+
+// Request for UpdateProjectChart.
+message UpdateProjectChartRequest {
+  string project_id = 1;
+  string chart_id = 2;
+  ProjectChart chart = 3;                   // replaces the definition; id is ignored
+  uint64 expected_version = 4;
+}
+
+// Request for DeleteProjectChart.
+message DeleteProjectChartRequest {
+  string project_id = 1;
+  string chart_id = 2;
+}
+
+// Response for DeleteProjectChart.
+message DeleteProjectChartResponse {}
+
+// Request for ListProjectCharts.
+message ListProjectChartsRequest {
+  string project_id = 1;
+}
+
+// Response for ListProjectCharts.
+message ListProjectChartsResponse {
+  repeated ProjectChart charts = 1;
+}
+
+// Request for QueryProjectChart. Set `chart_id` for a saved chart or `definition` for an
+// ad-hoc one.
+message QueryProjectChartRequest {
+  string project_id = 1;
+  string chart_id = 2;
+  ProjectChart definition = 3;
+}
+
+// Response for QueryProjectChart.
+message QueryProjectChartResponse {
+  repeated ProjectChartSeries series = 1;
+  google.protobuf.Timestamp computed_at = 2;
+}
+
+// ---------- Status updates ----------
+
+// A status update posted on a project.
+message ProjectStatusUpdate {
+  string id = 1;
+  string project_id = 2;
+  ProjectStatus status = 3;
+  google.protobuf.Timestamp start_on = 4;
+  google.protobuf.Timestamp target_on = 5;
+  string body = 6;                          // Markdown
+  Principal creator = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  uint64 version = 10;
+}
+
+// Request for CreateProjectStatusUpdate.
+message CreateProjectStatusUpdateRequest {
+  string project_id = 1;
+  ProjectStatus status = 2;
+  google.protobuf.Timestamp start_on = 3;
+  google.protobuf.Timestamp target_on = 4;
+  string body = 5;
+}
+
+// Request for UpdateProjectStatusUpdate.
+message UpdateProjectStatusUpdateRequest {
+  string project_id = 1;
+  string status_update_id = 2;
+  ProjectStatus status = 3;                 // UNSPECIFIED = unchanged
+  google.protobuf.Timestamp start_on = 4;   // unset = unchanged
+  google.protobuf.Timestamp target_on = 5;  // unset = unchanged
+  optional string body = 6;
+  uint64 expected_version = 7;
+}
+
+// Request for DeleteProjectStatusUpdate.
+message DeleteProjectStatusUpdateRequest {
+  string project_id = 1;
+  string status_update_id = 2;
+}
+
+// Response for DeleteProjectStatusUpdate.
+message DeleteProjectStatusUpdateResponse {}
+
+// Request for ListProjectStatusUpdates.
+message ListProjectStatusUpdatesRequest {
+  string project_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListProjectStatusUpdates.
+message ListProjectStatusUpdatesResponse {
+  repeated ProjectStatusUpdate status_updates = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Links ----------
+
+// Request for LinkProjectRepo.
+message LinkProjectRepoRequest {
+  string project_id = 1;
+  RepoRef repo = 2;
+}
+
+// Request for UnlinkProjectRepo.
+message UnlinkProjectRepoRequest {
+  string project_id = 1;
+  RepoRef repo = 2;
+}
+
+// Request for LinkProjectTeam.
+message LinkProjectTeamRequest {
+  string project_id = 1;
+  string team = 2;                          // team slug or id in the project's org
+  ProjectTeamRole role = 3;                 // UNSPECIFIED = READ
+}
+
+// Request for UnlinkProjectTeam.
+message UnlinkProjectTeamRequest {
+  string project_id = 1;
+  string team = 2;
+}

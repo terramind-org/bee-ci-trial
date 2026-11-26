@@ -1,0 +1,30 @@
+[package]
+name = "bee-search"
+description = "Code search and query languages: trigram index over content-addressed blobs, path-ACL aware, plus forge query syntax (PRODUCT 4.4)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+bee-store = { path = "../bee-store" }
+regex = { version = "=1.13.1", default-features = false, features = ["std", "perf", "unicode"] }
+regex-syntax = { version = "=0.8.11", default-features = false, features = ["std", "unicode"] }
+
+[dev-dependencies]
+bee-testkit = { path = "../bee-testkit" }
+proptest = "=1.12.0"
+tempfile = "=3.27.0"
+tokio = { version = "=1.53.3", features = ["rt", "macros"] }
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

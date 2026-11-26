@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "bee.v1.App": {
+      "description": "An app registered on Beehive.",
+      "properties": {
+        "callbackUrls": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "events": {
+          "description": "subscribed webhook event names",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "homepageUrl": {
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "installationCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "description": "org name or user login",
+          "type": "string"
+        },
+        "permissions": {
+          "description": "requested permissions",
+          "items": {
+            "$ref": "#/$defs/bee.v1.AppPermission"
+          },
+          "type": "array"
+        },
+        "principalId": {
+          "description": "the app's service principal",
+          "type": "string"
+        },
+        "privateKeys": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.AppPrivateKey"
+          },
+          "type": "array"
+        },
+        "public": {
+          "description": "installable by any account, not only the owner",
+          "type": "boolean"
+        },
+        "requestOauthOnInstall": {
+          "type": "boolean"
+        },
+        "setupUrl": {
+          "description": "shown after install",
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "webhookActive": {
+          "type": "boolean"
+        },
+        "webhookUrl": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.App",
+      "type": "object"
+    },
+    "bee.v1.AppPermission": {
+      "description": "One resource permission, e.g. contents:write or issues:read.",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/bee.v1.AppPermissionLevel"
+        },
+        "resource": {
+          "description": "Resource name from the permission catalog, e.g. \"contents\", \"metadata\", \"issues\",\n\"change_requests\", \"checks\", \"workflows\", \"members\", \"administration\".",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPermission",
+      "type": "object"
+    },
+    "bee.v1.AppPermissionLevel": {
+      "description": "Access level an app requests or holds on one resource.",
+      "enum": [
+        "APP_PERMISSION_LEVEL_UNSPECIFIED",
+        "APP_PERMISSION_LEVEL_READ",
+        "APP_PERMISSION_LEVEL_WRITE",
+        "APP_PERMISSION_LEVEL_ADMIN"
+      ],
+      "title": "bee.v1.AppPermissionLevel",
+      "type": "string"
+    },
+    "bee.v1.AppPrivateKey": {
+      "description": "Summary of an app private key (never the key itself).",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fingerprint": {
+          "description": "SHA-256 of the public key, base64",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPrivateKey",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAppsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListApps.",
+  "properties": {
+    "apps": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.App"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListAppsResponse",
+  "type": "object"
+}

@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "bee.v1.AdvisoryAffectedPackage": {
+      "description": "A range of affected versions for one package.",
+      "properties": {
+        "ecosystem": {
+          "type": "string"
+        },
+        "firstPatchedVersion": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vulnerableFunctions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "vulnerableRange": {
+          "description": "e.g. \">= 1.0, < 1.4.2\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AdvisoryAffectedPackage",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecurityAdvisoryState": {
+      "description": "Lifecycle of a repo advisory.",
+      "enum": [
+        "SECURITY_ADVISORY_STATE_UNSPECIFIED",
+        "SECURITY_ADVISORY_STATE_TRIAGE",
+        "SECURITY_ADVISORY_STATE_DRAFT",
+        "SECURITY_ADVISORY_STATE_PUBLISHED",
+        "SECURITY_ADVISORY_STATE_CLOSED",
+        "SECURITY_ADVISORY_STATE_WITHDRAWN"
+      ],
+      "title": "bee.v1.SecurityAdvisoryState",
+      "type": "string"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateSecurityAdvisoryRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateSecurityAdvisory.",
+  "properties": {
+    "affected": {
+      "description": "empty = unchanged",
+      "items": {
+        "$ref": "#/$defs/bee.v1.AdvisoryAffectedPackage"
+      },
+      "type": "array"
+    },
+    "cvssVector": {
+      "type": "string"
+    },
+    "cweIds": {
+      "description": "empty = unchanged",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "ghsaId": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "severity": {
+      "$ref": "#/$defs/bee.v1.SecuritySeverity"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SecurityAdvisoryState",
+      "description": "DRAFT, CLOSED or WITHDRAWN"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateSecurityAdvisoryRequest",
+  "type": "object"
+}

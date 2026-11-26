@@ -1,0 +1,40 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SafetyStop.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "frozen": {
+      "type": "boolean"
+    },
+    "org": {
+      "type": "string"
+    },
+    "pausedSwarmCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "pausedSwarmIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "stoppedRunCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "stoppedRunIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SafetyStop",
+  "type": "object"
+}

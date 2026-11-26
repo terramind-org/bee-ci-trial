@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RulesetEnforcement": {
+      "description": "Whether a ruleset is enforced.",
+      "enum": [
+        "RULESET_ENFORCEMENT_UNSPECIFIED",
+        "RULESET_ENFORCEMENT_ACTIVE",
+        "RULESET_ENFORCEMENT_EVALUATE",
+        "RULESET_ENFORCEMENT_DISABLED"
+      ],
+      "title": "bee.v1.RulesetEnforcement",
+      "type": "string"
+    },
+    "bee.v1.RulesetEvaluationResult": {
+      "description": "Outcome of evaluating a rule or a whole ruleset.",
+      "enum": [
+        "RULESET_EVALUATION_RESULT_UNSPECIFIED",
+        "RULESET_EVALUATION_RESULT_PASS",
+        "RULESET_EVALUATION_RESULT_FAIL",
+        "RULESET_EVALUATION_RESULT_BYPASSED"
+      ],
+      "title": "bee.v1.RulesetEvaluationResult",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRulesetEvaluationsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListRulesetEvaluations.\n\nOneof `owner`: at most one of `repo`, `org` is set.",
+  "properties": {
+    "actorId": {
+      "description": "filter",
+      "type": "string"
+    },
+    "enforcement": {
+      "$ref": "#/$defs/bee.v1.RulesetEnforcement",
+      "description": "filter; EVALUATE = would-have-blocked report"
+    },
+    "org": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "ref": {
+      "description": "filter",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "result": {
+      "$ref": "#/$defs/bee.v1.RulesetEvaluationResult",
+      "description": "filter"
+    },
+    "rulesetId": {
+      "description": "filter",
+      "type": "string"
+    },
+    "sinceAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "untilAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListRulesetEvaluationsRequest",
+  "type": "object"
+}

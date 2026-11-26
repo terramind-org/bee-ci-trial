@@ -1,0 +1,14 @@
+event: push refs/heads/feature/search created files=src/search.rs
+--- .github/workflows/ci.yml
+name: CI
+on: [push, pull_request, create]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event_name }} on ${{ github.ref_name }} created=${{ github.event.created }}"
+  only-on-create:
+    if: github.event_name == 'create' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "new branch ${{ github.event.ref }}"

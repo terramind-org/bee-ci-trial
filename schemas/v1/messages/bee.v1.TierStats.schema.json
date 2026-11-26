@@ -1,0 +1,76 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TierStats.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Cache statistics of one tier since it started.",
+  "properties": {
+    "bytesServed": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "cacheBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "failClosed": {
+      "description": "reads refused because epochs could not be confirmed",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "hits": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "misses": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "policyEpoch": {
+      "type": "string"
+    },
+    "redactionEpoch": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "startedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "tier": {
+      "type": "string"
+    },
+    "upstreamRequests": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.TierStats",
+  "type": "object"
+}

@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "bee.v1.ReleaseMakeLatest": {
+      "description": "Whether a release should become the repo's latest release.",
+      "enum": [
+        "RELEASE_MAKE_LATEST_UNSPECIFIED",
+        "RELEASE_MAKE_LATEST_TRUE",
+        "RELEASE_MAKE_LATEST_FALSE",
+        "RELEASE_MAKE_LATEST_LEGACY"
+      ],
+      "title": "bee.v1.ReleaseMakeLatest",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateReleaseRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateRelease.",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "discussionCategoryId": {
+      "description": "create a linked discussion in this category",
+      "type": "string"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "generateNotes": {
+      "description": "prepend generated notes to `body`",
+      "type": "boolean"
+    },
+    "immutable": {
+      "type": "boolean"
+    },
+    "makeLatest": {
+      "$ref": "#/$defs/bee.v1.ReleaseMakeLatest"
+    },
+    "name": {
+      "type": "string"
+    },
+    "prerelease": {
+      "type": "boolean"
+    },
+    "previousTagName": {
+      "description": "base for generated notes; default the previous release tag",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "tagName": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/bee.v1.Revision",
+      "description": "used when the tag does not exist; default the default ref"
+    }
+  },
+  "title": "bee.v1.CreateReleaseRequest",
+  "type": "object"
+}

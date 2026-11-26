@@ -1,0 +1,26 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ExchangeOAuthCodeRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ExchangeOAuthCode.",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientSecret": {
+      "description": "confidential clients",
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "codeVerifier": {
+      "description": "PKCE",
+      "type": "string"
+    },
+    "redirectUri": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ExchangeOAuthCodeRequest",
+  "type": "object"
+}

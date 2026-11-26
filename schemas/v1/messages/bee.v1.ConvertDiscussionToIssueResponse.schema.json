@@ -1,0 +1,466 @@
+{
+  "$defs": {
+    "bee.v1.Discussion": {
+      "description": "A discussion.",
+      "properties": {
+        "answerChosenAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "answerChosenBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "answerCommentId": {
+          "description": "Q&A: the marked answer",
+          "type": "string"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "authorAssociation": {
+          "type": "string"
+        },
+        "body": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "bodyHtml": {
+          "description": "sanitized rendering, when requested",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/bee.v1.DiscussionCategory"
+        },
+        "closed": {
+          "type": "boolean"
+        },
+        "closedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "commentCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "convertedFrom": {
+          "$ref": "#/$defs/bee.v1.SubjectRef",
+          "description": "the issue this was converted from, if any"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Label"
+          },
+          "type": "array"
+        },
+        "linkedIssues": {
+          "description": "issues opened from this discussion",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SubjectRef"
+          },
+          "type": "array"
+        },
+        "lockReason": {
+          "$ref": "#/$defs/bee.v1.DiscussionLockReason"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "number": {
+          "description": "per home",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "orgId": {
+          "description": "set for org discussions",
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "poll": {
+          "$ref": "#/$defs/bee.v1.DiscussionPoll",
+          "description": "poll categories only"
+        },
+        "reactions": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ReactionGroup"
+          },
+          "type": "array"
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "repoId": {
+          "description": "set for repo discussions",
+          "type": "string"
+        },
+        "stateReason": {
+          "$ref": "#/$defs/bee.v1.DiscussionStateReason"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "upvoteCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "viewerUpvoted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.Discussion",
+      "type": "object"
+    },
+    "bee.v1.DiscussionCategory": {
+      "description": "A discussion category.",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "discussionCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "emoji": {
+          "description": "e.g. \":speech_balloon:\"",
+          "type": "string"
+        },
+        "formPath": {
+          "description": "discussion form file on the default ref, if any",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/bee.v1.DiscussionCategoryFormat"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "orgId": {
+          "description": "set for org categories",
+          "type": "string"
+        },
+        "position": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "repoId": {
+          "description": "set for repo categories",
+          "type": "string"
+        },
+        "section": {
+          "description": "optional grouping heading",
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.DiscussionCategory",
+      "type": "object"
+    },
+    "bee.v1.DiscussionCategoryFormat": {
+      "description": "The kind of conversation a category hosts.",
+      "enum": [
+        "DISCUSSION_CATEGORY_FORMAT_UNSPECIFIED",
+        "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED",
+        "DISCUSSION_CATEGORY_FORMAT_QUESTION_ANSWER",
+        "DISCUSSION_CATEGORY_FORMAT_ANNOUNCEMENT",
+        "DISCUSSION_CATEGORY_FORMAT_POLL"
+      ],
+      "title": "bee.v1.DiscussionCategoryFormat",
+      "type": "string"
+    },
+    "bee.v1.DiscussionLockReason": {
+      "description": "Why a discussion was locked.",
+      "enum": [
+        "DISCUSSION_LOCK_REASON_UNSPECIFIED",
+        "DISCUSSION_LOCK_REASON_OFF_TOPIC",
+        "DISCUSSION_LOCK_REASON_TOO_HEATED",
+        "DISCUSSION_LOCK_REASON_RESOLVED",
+        "DISCUSSION_LOCK_REASON_SPAM"
+      ],
+      "title": "bee.v1.DiscussionLockReason",
+      "type": "string"
+    },
+    "bee.v1.DiscussionPoll": {
+      "description": "A poll attached to a discussion in a poll category.",
+      "properties": {
+        "closed": {
+          "description": "closed or locked discussions accept no votes",
+          "type": "boolean"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.DiscussionPollOption"
+          },
+          "type": "array"
+        },
+        "question": {
+          "type": "string"
+        },
+        "totalVotes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "viewerHasVoted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.DiscussionPoll",
+      "type": "object"
+    },
+    "bee.v1.DiscussionPollOption": {
+      "description": "One option of a poll with its tally.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "viewerVoted": {
+          "type": "boolean"
+        },
+        "voteCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.DiscussionPollOption",
+      "type": "object"
+    },
+    "bee.v1.DiscussionStateReason": {
+      "description": "Why a discussion was closed, or that it was reopened.",
+      "enum": [
+        "DISCUSSION_STATE_REASON_UNSPECIFIED",
+        "DISCUSSION_STATE_REASON_RESOLVED",
+        "DISCUSSION_STATE_REASON_OUTDATED",
+        "DISCUSSION_STATE_REASON_DUPLICATE",
+        "DISCUSSION_STATE_REASON_REOPENED"
+      ],
+      "title": "bee.v1.DiscussionStateReason",
+      "type": "string"
+    },
+    "bee.v1.Label": {
+      "description": "A repo label shared by issues, change requests and discussions.",
+      "properties": {
+        "color": {
+          "description": "six hex digits, no '#'",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDefault": {
+          "description": "part of the repo's default label set",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Label",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.ReactionContent": {
+      "description": "Reaction emoji, matching GitHub's fixed set.",
+      "enum": [
+        "REACTION_CONTENT_UNSPECIFIED",
+        "REACTION_CONTENT_THUMBS_UP",
+        "REACTION_CONTENT_THUMBS_DOWN",
+        "REACTION_CONTENT_LAUGH",
+        "REACTION_CONTENT_HOORAY",
+        "REACTION_CONTENT_CONFUSED",
+        "REACTION_CONTENT_HEART",
+        "REACTION_CONTENT_ROCKET",
+        "REACTION_CONTENT_EYES"
+      ],
+      "title": "bee.v1.ReactionContent",
+      "type": "string"
+    },
+    "bee.v1.ReactionGroup": {
+      "description": "Count of one reaction on a subject, and whether the caller is among them.",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/bee.v1.ReactionContent"
+        },
+        "count": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "viewerReacted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.ReactionGroup",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ConvertDiscussionToIssueResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ConvertDiscussionToIssue.",
+  "properties": {
+    "discussion": {
+      "$ref": "#/$defs/bee.v1.Discussion"
+    },
+    "issue": {
+      "$ref": "#/$defs/bee.v1.SubjectRef",
+      "description": "kind ISSUE, id = the new issue number"
+    }
+  },
+  "title": "bee.v1.ConvertDiscussionToIssueResponse",
+  "type": "object"
+}

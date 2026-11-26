@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Redaction": {
+      "properties": {
+        "epoch": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "principal": {
+          "type": "string"
+        },
+        "purgeAt": {
+          "description": "scheduled purge for quarantined objects",
+          "format": "date-time",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.RedactionState"
+        },
+        "time": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Redaction",
+      "type": "object"
+    },
+    "bee.v1.RedactionState": {
+      "description": "Lifecycle of a redacted object (SPEC §13): live → quarantined → purged.",
+      "enum": [
+        "REDACTION_STATE_UNSPECIFIED",
+        "REDACTION_STATE_QUARANTINED",
+        "REDACTION_STATE_PURGED",
+        "REDACTION_STATE_UNREDACTED"
+      ],
+      "title": "bee.v1.RedactionState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRedactionsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "currentEpoch": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "redactions": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Redaction"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListRedactionsResponse",
+  "type": "object"
+}

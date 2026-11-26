@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "bee.v1.IssueFieldKind": {
+      "description": "Value type of a custom issue field.",
+      "enum": [
+        "ISSUE_FIELD_KIND_UNSPECIFIED",
+        "ISSUE_FIELD_KIND_TEXT",
+        "ISSUE_FIELD_KIND_NUMBER",
+        "ISSUE_FIELD_KIND_DATE",
+        "ISSUE_FIELD_KIND_SINGLE_SELECT",
+        "ISSUE_FIELD_KIND_ITERATION"
+      ],
+      "title": "bee.v1.IssueFieldKind",
+      "type": "string"
+    },
+    "bee.v1.IssueFieldValue": {
+      "description": "A field value on an issue. Exactly one value matching the field's kind is set.\n\nOneof `value`: at most one of `text`, `number`, `dateOn`, `optionId`, `iterationId` is set.",
+      "properties": {
+        "dateOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "fieldName": {
+          "description": "filled by the server; may be used instead of id on input",
+          "type": "string"
+        },
+        "iterationId": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.IssueFieldKind",
+          "description": "filled by the server"
+        },
+        "number": {
+          "type": "number"
+        },
+        "optionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueFieldValue",
+      "type": "object"
+    },
+    "bee.v1.IssueRef": {
+      "description": "Names an issue by id, or by repo and number. Used for cross-repo relations.",
+      "properties": {
+        "id": {
+          "description": "alternative to repo + number",
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.IssueRef",
+      "type": "object"
+    },
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateIssueRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateIssue.",
+  "properties": {
+    "assignees": {
+      "description": "principal ids or handles; agents allowed",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "body": {
+      "type": "string"
+    },
+    "fieldValues": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueFieldValue"
+      },
+      "type": "array"
+    },
+    "formResponses": {
+      "description": "form field id -> answer; rendered into the body",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "inspiredByPostId": {
+      "description": "A published post the caller can read that inspired this issue; else INVALID_ARGUMENT\n(subcode `post_not_readable`).",
+      "type": "string"
+    },
+    "issueType": {
+      "description": "type name or id; empty = none",
+      "type": "string"
+    },
+    "labels": {
+      "description": "label names",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "milestoneNumber": {
+      "description": "0 = none",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "parent": {
+      "$ref": "#/$defs/bee.v1.IssueRef",
+      "description": "optional parent for a new sub-issue"
+    },
+    "projectIds": {
+      "description": "projects to add the new issue to",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "template": {
+      "description": "template file name the issue was filed from",
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateIssueRequest",
+  "type": "object"
+}

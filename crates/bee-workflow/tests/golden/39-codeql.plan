@@ -1,0 +1,67 @@
+# event schedule action=-
+run .github/workflows/codeql.yml "CodeQL"
+  run-name: "CodeQL"
+  event: schedule ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  schedule: "23 17 * * 0"
+  permissions: default
+  job analyze decided=true
+    instance "Analyze (go)"
+      matrix: {"language":"go","build-mode":"autobuild"}
+      strategy: index=0 total=3 fail-fast=false max-parallel=3
+      runs-on: ["ubuntu-latest"]
+      permissions: security-events=write, packages=read, actions=read, contents=read
+      timeout-minutes: 360
+      step 1 "Checkout repository"
+        uses: actions/checkout@v4
+      step 2 "Initialize CodeQL"
+        uses: github/codeql-action/init@v3
+        with:
+          languages: "go"
+          build-mode: "autobuild"
+      step 3 "Run echo 'Replace this with the commands to build your code'" if="matrix.build-mode == 'manual'"
+        run: "echo 'Replace this with the commands to build your code'\nmake bootstrap\n"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 4 "Perform CodeQL Analysis"
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:go"
+    instance "Analyze (javascript-typescript)"
+      matrix: {"language":"javascript-typescript","build-mode":"none"}
+      strategy: index=1 total=3 fail-fast=false max-parallel=3
+      runs-on: ["ubuntu-latest"]
+      permissions: security-events=write, packages=read, actions=read, contents=read
+      timeout-minutes: 360
+      step 1 "Checkout repository"
+        uses: actions/checkout@v4
+      step 2 "Initialize CodeQL"
+        uses: github/codeql-action/init@v3
+        with:
+          languages: "javascript-typescript"
+          build-mode: "none"
+      step 3 "Run echo 'Replace this with the commands to build your code'" if="matrix.build-mode == 'manual'"
+        run: "echo 'Replace this with the commands to build your code'\nmake bootstrap\n"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 4 "Perform CodeQL Analysis"
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+    instance "Analyze (swift)"
+      matrix: {"language":"swift","build-mode":"manual"}
+      strategy: index=2 total=3 fail-fast=false max-parallel=3
+      runs-on: ["macos-latest"]
+      permissions: security-events=write, packages=read, actions=read, contents=read
+      timeout-minutes: 120
+      step 1 "Checkout repository"
+        uses: actions/checkout@v4
+      step 2 "Initialize CodeQL"
+        uses: github/codeql-action/init@v3
+        with:
+          languages: "swift"
+          build-mode: "manual"
+      step 3 "Run echo 'Replace this with the commands to build your code'" if="matrix.build-mode == 'manual'"
+        run: "echo 'Replace this with the commands to build your code'\nmake bootstrap\n"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 4 "Perform CodeQL Analysis"
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:swift"

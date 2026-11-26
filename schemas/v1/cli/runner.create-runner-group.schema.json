@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/runner.create-runner-group.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RunnerService/CreateRunnerGroup: `data` is a bee.v1.RunnerGroup in proto3-JSON. `bee runner create-runner-group --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.RunnerGroup.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.runner.create-runner-group"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee runner create-runner-group",
+  "type": "object"
+}

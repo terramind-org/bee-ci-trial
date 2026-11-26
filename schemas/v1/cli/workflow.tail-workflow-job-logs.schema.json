@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/workflow.tail-workflow-job-logs.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WorkflowService/TailWorkflowJobLogs: `data` is a bee.v1.WorkflowLogChunk in proto3-JSON. `bee workflow tail-workflow-job-logs --json` prints one such document per streamed message, one per line (NDJSON); a failure ends the stream with an error document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowLogChunk.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.workflow.tail-workflow-job-logs"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee workflow tail-workflow-job-logs",
+  "type": "object"
+}

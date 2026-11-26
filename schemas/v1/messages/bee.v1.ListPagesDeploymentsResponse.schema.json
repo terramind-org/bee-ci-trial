@@ -1,0 +1,201 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.PagesBuildType": {
+      "description": "How a site's content is produced.",
+      "enum": [
+        "PAGES_BUILD_TYPE_UNSPECIFIED",
+        "PAGES_BUILD_TYPE_REF",
+        "PAGES_BUILD_TYPE_WORKFLOW"
+      ],
+      "title": "bee.v1.PagesBuildType",
+      "type": "string"
+    },
+    "bee.v1.PagesDeployment": {
+      "description": "One build or deployment of a site.",
+      "properties": {
+        "artifactId": {
+          "description": "build type WORKFLOW",
+          "type": "string"
+        },
+        "buildType": {
+          "$ref": "#/$defs/bee.v1.PagesBuildType"
+        },
+        "changeRequestNumber": {
+          "description": "per change request previews",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "creator": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "deploymentId": {
+          "description": "DeploymentService deployment to the Pages environment",
+          "type": "string"
+        },
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "description": "previews only",
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pageUrl": {
+          "type": "string"
+        },
+        "preview": {
+          "description": "a preview (does not replace the live site)",
+          "type": "boolean"
+        },
+        "previewUrl": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.PagesDeploymentState"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "workflowRunId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PagesDeployment",
+      "type": "object"
+    },
+    "bee.v1.PagesDeploymentState": {
+      "description": "Progress of a site build or deployment.",
+      "enum": [
+        "PAGES_DEPLOYMENT_STATE_UNSPECIFIED",
+        "PAGES_DEPLOYMENT_STATE_QUEUED",
+        "PAGES_DEPLOYMENT_STATE_BUILDING",
+        "PAGES_DEPLOYMENT_STATE_DEPLOYING",
+        "PAGES_DEPLOYMENT_STATE_SUCCEEDED",
+        "PAGES_DEPLOYMENT_STATE_FAILED",
+        "PAGES_DEPLOYMENT_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.PagesDeploymentState",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPagesDeploymentsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListPagesDeployments.",
+  "properties": {
+    "deployments": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PagesDeployment"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListPagesDeploymentsResponse",
+  "type": "object"
+}

@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "bee.v1.TrafficPopularPath": {
+      "description": "A popular path in the web app.",
+      "properties": {
+        "count": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "path": {
+          "description": "URL path, e.g. \"/org/repo/tree/main/docs\"",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "uniques": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.TrafficPopularPath",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListTrafficPopularPathsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListTrafficPopularPaths.",
+  "properties": {
+    "paths": {
+      "description": "top 10",
+      "items": {
+        "$ref": "#/$defs/bee.v1.TrafficPopularPath"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListTrafficPopularPathsResponse",
+  "type": "object"
+}

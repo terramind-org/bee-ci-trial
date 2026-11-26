@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "bee.v1.OpsTraceSummary": {
+      "description": "A trace search hit.",
+      "properties": {
+        "durationUs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "error": {
+          "type": "boolean"
+        },
+        "rootOperation": {
+          "type": "string"
+        },
+        "rootService": {
+          "type": "string"
+        },
+        "spanCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsTraceSummary",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SearchOpsTracesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for SearchOpsTraces.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "traces": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsTraceSummary"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.SearchOpsTracesResponse",
+  "type": "object"
+}

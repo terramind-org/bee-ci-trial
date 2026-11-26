@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "bee.v1.TeamReviewAlgorithm": {
+      "description": "How a review request to a team is turned into individual reviewers.",
+      "enum": [
+        "TEAM_REVIEW_ALGORITHM_UNSPECIFIED",
+        "TEAM_REVIEW_ALGORITHM_ROUND_ROBIN",
+        "TEAM_REVIEW_ALGORITHM_LOAD_BALANCE"
+      ],
+      "title": "bee.v1.TeamReviewAlgorithm",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateTeamReviewAssignmentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateTeamReviewAssignment. Unset fields are unchanged.",
+  "properties": {
+    "algorithm": {
+      "$ref": "#/$defs/bee.v1.TeamReviewAlgorithm"
+    },
+    "countChildTeamMembers": {
+      "type": "boolean"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "excludedMemberIds": {
+      "description": "replaces the list when replace_excluded is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "memberCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "notifyTeam": {
+      "type": "boolean"
+    },
+    "org": {
+      "type": "string"
+    },
+    "replaceExcluded": {
+      "type": "boolean"
+    },
+    "skipAgents": {
+      "type": "boolean"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateTeamReviewAssignmentRequest",
+  "type": "object"
+}

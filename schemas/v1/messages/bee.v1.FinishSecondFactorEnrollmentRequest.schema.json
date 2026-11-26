@@ -1,0 +1,17 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.FinishSecondFactorEnrollmentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "enrollmentId": {
+      "type": "string"
+    },
+    "totpCode": {
+      "type": "string"
+    },
+    "webauthnAttestationJson": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.FinishSecondFactorEnrollmentRequest",
+  "type": "object"
+}

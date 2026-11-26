@@ -1,0 +1,86 @@
+id: AS-MERGE-03
+area: "4.2"
+title: "Act as a registered resolver: receive a conflict, submit a resolution, see it land"
+surfaces: both
+timeout: 1200
+budget: { max_turns: 80 }
+fixtures: [base]
+setup:
+  - name: register the worker as the repo's conflict resolver
+    call: RepoService/SetResolverHook
+    request: { repo: { fullName: "${repo.fullName}" }, agentPrincipalId: "${worker.id}", autoLand: true, timeoutSeconds: 1800 }
+  - name: base config
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add service config"
+      files:
+        config/service.yaml: |
+          name: api
+          timeout: 30
+          retries: 3
+  - name: a CR raising the timeout
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      land: false
+      ref_name: ws/timeout
+      change: timeout-45
+      message: "Raise timeout to 45s"
+      files:
+        config/service.yaml: |
+          name: api
+          timeout: 45
+          retries: 3
+    save: crHead
+  - call: ChangeService/OpenChange
+    request: { repo: { fullName: "${repo.fullName}" }, targetRef: main, head: "${crHead.id}", title: "Raise timeout to 45s", body: "Upstream is slow." }
+    save: { cr: "$" }
+  - name: main documents the unit on the same line
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Document timeout unit"
+      files:
+        config/service.yaml: |
+          name: api
+          timeout: 30  # seconds
+          retries: 3
+  - name: landing the CR now conflicts and is routed to the resolver
+    call: ChangeService/LandChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr.id}" }
+    expect_error: { reason: MERGE_CONFLICT }
+  - name: the conflict is open
+    call: ChangeService/ListLandConflicts
+    request: { repo: { fullName: "${repo.fullName}" }, state: LAND_CONFLICT_STATE_OPEN }
+    retry: { attempts: 10, interval_ms: 500 }
+    expect:
+      - { path: conflicts, len: 1 }
+    save: { conflictId: "conflicts[0].id" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  You are the registered conflict resolver for the bee repository ${repo.fullName}. A change
+  request could not land because of a conflict, and it has been handed to you. Resolve it so that
+  both sides' intent is kept, submit your resolution, and make sure the change request lands.
+assertions:
+  - name: the conflict is resolved by the worker
+    call: ChangeService/GetLandConflict
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${conflictId}" }
+    retry: { attempts: 20, interval_ms: 1000 }
+    expect:
+      - { path: state, eq: LAND_CONFLICT_STATE_RESOLVED }
+      - { path: resolver.id, eq: "${worker.id}" }
+  - name: the change request landed
+    call: ChangeService/GetChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr.id}" }
+    retry: { attempts: 20, interval_ms: 1000 }
+    expect:
+      - { path: state, eq: CHANGE_STATE_LANDED }
+  - name: main keeps both intents
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:config/service.yaml}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "timeout: 45\\s+# seconds" }
+      - { path: "messages[*].data", decode: base64, matches: "retries: 3" }
+      - { path: "messages[0].data", decode: base64, not_contains: "<<<<<<<" }

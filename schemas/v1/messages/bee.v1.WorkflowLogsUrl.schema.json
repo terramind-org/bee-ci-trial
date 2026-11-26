@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowLogsUrl.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A short-lived signed URL for log download.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WorkflowLogsUrl",
+  "type": "object"
+}

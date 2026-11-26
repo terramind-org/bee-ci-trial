@@ -1,0 +1,269 @@
+{
+  "$defs": {
+    "bee.v1.AgentRunBudget": {
+      "description": "Spending and time limits for a run.",
+      "properties": {
+        "maxChangesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxDurationSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxInputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxOutputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxUsdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentRunBudget",
+      "type": "object"
+    },
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Watcher": {
+      "description": "An agent scoped to one component.",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "autoOpenIssues": {
+          "type": "boolean"
+        },
+        "budget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget",
+          "description": "per day"
+        },
+        "checkIntervalSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "component": {
+          "description": "human name of the component",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "instructions": {
+          "description": "extra guidance, Markdown",
+          "type": "string"
+        },
+        "labels": {
+          "description": "labels for issues it opens",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "paths": {
+          "description": "code owned by the component",
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "runtimeId": {
+          "type": "string"
+        },
+        "serviceName": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.WatcherState"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/bee.v1.WatcherTelemetrySelector"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Watcher",
+      "type": "object"
+    },
+    "bee.v1.WatcherState": {
+      "description": "Watcher lifecycle.",
+      "enum": [
+        "WATCHER_STATE_UNSPECIFIED",
+        "WATCHER_STATE_ACTIVE",
+        "WATCHER_STATE_PAUSED",
+        "WATCHER_STATE_ERROR"
+      ],
+      "title": "bee.v1.WatcherState",
+      "type": "string"
+    },
+    "bee.v1.WatcherTelemetrySelector": {
+      "description": "Telemetry a watcher reads. Selectors use OpsService metric names and label matchers.",
+      "properties": {
+        "labelMatchers": {
+          "description": "exact matches, e.g. service=checkout",
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "logComponents": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "metricNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "traceService": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.WatcherTelemetrySelector",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListComponentWatchersResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListComponentWatchers.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "watchers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Watcher"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListComponentWatchersResponse",
+  "type": "object"
+}

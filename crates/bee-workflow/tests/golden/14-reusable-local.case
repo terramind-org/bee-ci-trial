@@ -1,0 +1,60 @@
+event: push refs/heads/main
+--- .github/workflows/ci.yml
+name: CI
+on: push
+env:
+  CALLER_ONLY: not-propagated
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make lint
+  test:
+    needs: lint
+    uses: ./.github/workflows/test-reusable.yml
+    with:
+      node-version: 20
+      coverage: true
+    secrets: inherit
+--- .github/workflows/test-reusable.yml
+name: Reusable tests
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: true
+      coverage:
+        type: boolean
+        default: false
+      shards:
+        type: number
+        default: 2
+      ref:
+        type: string
+        default: ${{ github.ref_name }}
+    outputs:
+      report:
+        description: Coverage report URL
+        value: ${{ jobs.unit.outputs.report }}
+env:
+  CALLEE_ENV: from-callee
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: [1, 2]
+    outputs:
+      report: ${{ steps.cov.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm test -- --shard=${{ matrix.shard }}/${{ inputs.shards }}
+      - id: cov
+        if: inputs.coverage
+        run: echo "url=https://cov.example/${{ github.sha }}" >> "$GITHUB_OUTPUT"

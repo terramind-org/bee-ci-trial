@@ -1,0 +1,1834 @@
+// Beehive workflow engine and runners for bee.v1 (PRODUCT §4.14).
+// Workflows are `.github/workflows` YAML files run compatibly. Each job reports a CheckRun
+// through CheckService, which carries annotations and output; this file references check runs
+// by id only. The stock actions/runner protocol, the upload-artifact and actions/cache HTTP
+// APIs used inside jobs are HTTP surfaces and are not modelled here; native bee runners use
+// the RunnerService job RPCs below.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/deployments.proto";
+
+// Workflows, runs, jobs, logs, artifacts, caches, policies, OIDC and attestations.
+service WorkflowService {
+  // ----- Workflows -----
+
+  // Lists workflows parsed from `.github/workflows` at a ref (default ref when unset).
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
+  // Returns one workflow by id or path, optionally with its YAML source. Errors: NOT_FOUND.
+  rpc GetWorkflow(GetWorkflowRequest) returns (Workflow);
+  // Parses and checks workflow YAML without landing it; returns diagnostics.
+  rpc ValidateWorkflow(ValidateWorkflowRequest) returns (ValidateWorkflowResponse);
+  // Enables a disabled workflow. Errors: NOT_FOUND.
+  rpc EnableWorkflow(EnableWorkflowRequest) returns (Workflow);
+  // Disables a workflow so no trigger starts it. Errors: NOT_FOUND.
+  rpc DisableWorkflow(DisableWorkflowRequest) returns (Workflow);
+  // Billable and wall time of a workflow's runs over the current billing period.
+  rpc GetWorkflowUsage(GetWorkflowUsageRequest) returns (WorkflowUsage);
+
+  // ----- Dispatch -----
+
+  // Starts a workflow with a `workflow_dispatch` trigger. Errors: INVALID_ARGUMENT (subcode
+  // `bad_input` for an undeclared or ill-typed input), INVALID_STATE (workflow disabled or no
+  // workflow_dispatch trigger at the ref), QUOTA_EXCEEDED (minutes or concurrency limit).
+  rpc DispatchWorkflow(DispatchWorkflowRequest) returns (DispatchWorkflowResponse);
+  // Fires a `repository_dispatch` event that starts every workflow listening for its type.
+  rpc CreateRepositoryDispatchEvent(CreateRepositoryDispatchEventRequest) returns (CreateRepositoryDispatchEventResponse);
+
+  // ----- Runs -----
+
+  // Lists runs, newest first, filtered by workflow, ref, event, status, actor or changeset.
+  rpc ListWorkflowRuns(ListWorkflowRunsRequest) returns (ListWorkflowRunsResponse);
+  // Returns the latest attempt of a run. Errors: NOT_FOUND.
+  rpc GetWorkflowRun(GetWorkflowRunRequest) returns (WorkflowRun);
+  // Returns one specific attempt of a run. Errors: NOT_FOUND.
+  rpc GetWorkflowRunAttempt(GetWorkflowRunAttemptRequest) returns (WorkflowRun);
+  // Streams state changes of a run and its jobs until the run completes.
+  rpc WatchWorkflowRun(WatchWorkflowRunRequest) returns (stream WorkflowRunUpdate);
+  // Cancels a run, honouring `if: always()` and cancellation steps. Errors: INVALID_STATE (completed).
+  rpc CancelWorkflowRun(CancelWorkflowRunRequest) returns (CancelWorkflowRunResponse);
+  // Cancels a run immediately, skipping `always()` conditions. Errors: INVALID_STATE.
+  rpc ForceCancelWorkflowRun(ForceCancelWorkflowRunRequest) returns (ForceCancelWorkflowRunResponse);
+  // Re-runs every job of a completed run as a new attempt. Errors: INVALID_STATE (not completed,
+  // or older than the re-run window).
+  rpc RerunWorkflowRun(RerunWorkflowRunRequest) returns (WorkflowRun);
+  // Re-runs failed and cancelled jobs (and their dependents) as a new attempt. Errors: INVALID_STATE.
+  rpc RerunFailedWorkflowJobs(RerunFailedWorkflowJobsRequest) returns (WorkflowRun);
+  // Re-runs one job (and its dependents) as a new attempt. Errors: INVALID_STATE.
+  rpc RerunWorkflowJob(RerunWorkflowJobRequest) returns (WorkflowRun);
+  // Deletes a completed run with its logs and artifacts. Errors: INVALID_STATE (still running).
+  rpc DeleteWorkflowRun(DeleteWorkflowRunRequest) returns (DeleteWorkflowRunResponse);
+  // Approves a run held for a first-time contributor, fork change request or agent author.
+  // Errors: INVALID_STATE (run not awaiting approval), PERMISSION_DENIED.
+  rpc ApproveWorkflowRun(ApproveWorkflowRunRequest) returns (WorkflowRun);
+  // Lists past run approvals and environment review decisions on a run.
+  rpc ListWorkflowRunApprovals(ListWorkflowRunApprovalsRequest) returns (ListWorkflowRunApprovalsResponse);
+  // Lists environments a run's jobs are waiting on for deployment review.
+  rpc ListWorkflowRunPendingDeployments(ListWorkflowRunPendingDeploymentsRequest) returns (ListWorkflowRunPendingDeploymentsResponse);
+  // Approves or rejects a run's pending deployments for the named environments.
+  // Errors: PERMISSION_DENIED (not a required reviewer), INVALID_STATE (nothing pending).
+  rpc ReviewWorkflowRunPendingDeployments(ReviewWorkflowRunPendingDeploymentsRequest) returns (ReviewWorkflowRunPendingDeploymentsResponse);
+  // Billable and wall time of one run, per runner class and per job.
+  rpc GetWorkflowRunUsage(GetWorkflowRunUsageRequest) returns (WorkflowRunUsage);
+
+  // ----- Jobs -----
+
+  // Lists the jobs of a run (latest attempt, or one attempt, or all attempts).
+  rpc ListWorkflowJobs(ListWorkflowJobsRequest) returns (ListWorkflowJobsResponse);
+  // Returns one job with its steps. Errors: NOT_FOUND.
+  rpc GetWorkflowJob(GetWorkflowJobRequest) returns (WorkflowJob);
+  // Returns a job's summary markdown (GITHUB_STEP_SUMMARY). Errors: NOT_FOUND.
+  rpc GetWorkflowJobSummary(GetWorkflowJobSummaryRequest) returns (WorkflowJobSummary);
+
+  // ----- Logs -----
+
+  // Streams a job's log from a byte offset; follows live output until the job ends.
+  // Reconnect with the last offset received to resume without gaps. Errors: NOT_FOUND,
+  // REDACTED (logs deleted or expired).
+  rpc TailWorkflowJobLogs(TailWorkflowJobLogsRequest) returns (stream WorkflowLogChunk);
+  // Returns a short-lived signed URL for one job's complete log. Errors: NOT_FOUND, REDACTED.
+  rpc GetWorkflowJobLogsUrl(GetWorkflowJobLogsUrlRequest) returns (WorkflowLogsUrl);
+  // Returns a short-lived signed URL for a zip of all job logs of a run attempt.
+  rpc GetWorkflowRunLogsUrl(GetWorkflowRunLogsUrlRequest) returns (WorkflowLogsUrl);
+  // Deletes all logs of a run. Errors: INVALID_STATE (still running).
+  rpc DeleteWorkflowRunLogs(DeleteWorkflowRunLogsRequest) returns (DeleteWorkflowRunLogsResponse);
+
+  // ----- Artifacts -----
+
+  // Lists artifacts of a repo or of one run, optionally by name.
+  rpc ListWorkflowArtifacts(ListWorkflowArtifactsRequest) returns (ListWorkflowArtifactsResponse);
+  // Returns one artifact's metadata. Errors: NOT_FOUND.
+  rpc GetWorkflowArtifact(GetWorkflowArtifactRequest) returns (WorkflowArtifact);
+  // Deletes an artifact. Errors: NOT_FOUND.
+  rpc DeleteWorkflowArtifact(DeleteWorkflowArtifactRequest) returns (DeleteWorkflowArtifactResponse);
+  // Returns a short-lived signed download URL. Errors: NOT_FOUND, INVALID_STATE (expired).
+  rpc GetWorkflowArtifactDownloadUrl(GetWorkflowArtifactDownloadUrlRequest) returns (GetWorkflowArtifactDownloadUrlResponse);
+  // Runner side: reserves an artifact for a job and returns a signed upload URL.
+  // Errors: ALREADY_EXISTS (name taken in this run), QUOTA_EXCEEDED (storage).
+  rpc CreateWorkflowArtifactUpload(CreateWorkflowArtifactUploadRequest) returns (CreateWorkflowArtifactUploadResponse);
+  // Runner side: seals an uploaded artifact after checking size and digest. Errors: INTEGRITY.
+  rpc FinalizeWorkflowArtifact(FinalizeWorkflowArtifactRequest) returns (WorkflowArtifact);
+
+  // ----- Caches -----
+
+  // Lists cache entries of a repo, filtered by key prefix or ref.
+  rpc ListWorkflowCaches(ListWorkflowCachesRequest) returns (ListWorkflowCachesResponse);
+  // Deletes cache entries by id, or by key (optionally limited to one ref).
+  rpc DeleteWorkflowCaches(DeleteWorkflowCachesRequest) returns (DeleteWorkflowCachesResponse);
+  // Cache storage used by one repo against its limit.
+  rpc GetWorkflowCacheUsage(GetWorkflowCacheUsageRequest) returns (WorkflowCacheUsage);
+  // Cache storage used by each repo of an org.
+  rpc ListWorkflowCacheUsageByRepo(ListWorkflowCacheUsageByRepoRequest) returns (ListWorkflowCacheUsageByRepoResponse);
+  // Runner side: finds the best cache entry for a key, version and restore keys, searching the
+  // job's ref, then the base ref, then the default ref. Errors: NOT_FOUND (miss).
+  rpc LookupWorkflowCache(LookupWorkflowCacheRequest) returns (LookupWorkflowCacheResponse);
+  // Runner side: reserves a key+version on the job's ref and returns a signed upload URL.
+  // Errors: ALREADY_EXISTS (entry exists or is being written), QUOTA_EXCEEDED.
+  rpc ReserveWorkflowCache(ReserveWorkflowCacheRequest) returns (ReserveWorkflowCacheResponse);
+  // Runner side: commits a reserved entry after upload. Errors: INTEGRITY, INVALID_STATE.
+  rpc CommitWorkflowCache(CommitWorkflowCacheRequest) returns (WorkflowCache);
+
+  // ----- Policies -----
+
+  // Returns the actions policy of an org or repo, with values inherited from the org.
+  rpc GetActionsPolicy(GetActionsPolicyRequest) returns (ActionsPolicy);
+  // Updates an actions policy; unset fields are unchanged. Errors: POLICY_DENIED (a repo may
+  // not loosen what its org enforces).
+  rpc SetActionsPolicy(SetActionsPolicyRequest) returns (ActionsPolicy);
+  // Lists repos where actions are enabled when the org policy uses SELECTED.
+  rpc ListActionsPolicyEnabledRepos(ListActionsPolicyEnabledReposRequest) returns (ListActionsPolicyEnabledReposResponse);
+  // Replaces the set of repos where actions are enabled. Errors: INVALID_STATE (not SELECTED).
+  rpc SetActionsPolicyEnabledRepos(SetActionsPolicyEnabledReposRequest) returns (SetActionsPolicyEnabledReposResponse);
+
+  // ----- Required workflows -----
+
+  // Lists an org's required workflows.
+  rpc ListRequiredWorkflows(ListRequiredWorkflowsRequest) returns (ListRequiredWorkflowsResponse);
+  // Requires a workflow from a source repo to run on a set of repos. Errors: NOT_FOUND (file).
+  rpc CreateRequiredWorkflow(CreateRequiredWorkflowRequest) returns (WorkflowRequirement);
+  // Updates a required workflow. Errors: NOT_FOUND.
+  rpc UpdateRequiredWorkflow(UpdateRequiredWorkflowRequest) returns (WorkflowRequirement);
+  // Removes a required workflow. Errors: NOT_FOUND.
+  rpc DeleteRequiredWorkflow(DeleteRequiredWorkflowRequest) returns (DeleteRequiredWorkflowResponse);
+
+  // ----- OIDC -----
+
+  // Issues an OIDC JWT for the calling job with GitHub-compatible claims. Callable only with
+  // the job's token when the job has `id-token: write`. Errors: PERMISSION_DENIED.
+  rpc CreateWorkflowOidcToken(CreateWorkflowOidcTokenRequest) returns (CreateWorkflowOidcTokenResponse);
+  // Returns the OIDC subject claim template of an org or repo.
+  rpc GetWorkflowOidcClaimTemplate(GetWorkflowOidcClaimTemplateRequest) returns (WorkflowOidcClaimTemplate);
+  // Sets the OIDC subject claim template. Errors: INVALID_ARGUMENT (unknown claim key).
+  rpc SetWorkflowOidcClaimTemplate(SetWorkflowOidcClaimTemplateRequest) returns (WorkflowOidcClaimTemplate);
+
+  // ----- Attestations -----
+
+  // Signs and stores an attestation for artifacts built by the calling job. Callable only with
+  // the job's token when the job has `attestations: write`. Errors: PERMISSION_DENIED.
+  rpc CreateAttestation(CreateAttestationRequest) returns (Attestation);
+  // Lists attestations in a repo or org by subject digest.
+  rpc ListAttestations(ListAttestationsRequest) returns (ListAttestationsResponse);
+  // Verifies the attestations of a digest against expected signer and source.
+  rpc VerifyAttestation(VerifyAttestationRequest) returns (VerifyAttestationResponse);
+  // Deletes an attestation. Errors: NOT_FOUND.
+  rpc DeleteAttestation(DeleteAttestationRequest) returns (DeleteAttestationResponse);
+
+  // ----- Log search and badges -----
+
+  // Lines of a run's job logs (latest attempt) containing a phrase, case-insensitive, in job
+  // and line order. Needs `read`.
+  rpc SearchWorkflowRunLogs(SearchWorkflowRunLogsRequest) returns (SearchWorkflowRunLogsResponse);
+  // A workflow's status badge: the latest completed run on a branch, as text and SVG. Needs
+  // `read`. Errors: NOT_FOUND (workflow).
+  rpc GetWorkflowBadge(GetWorkflowBadgeRequest) returns (WorkflowBadge);
+}
+
+// Self-hosted and hosted runners, runner groups, machine classes, and the native job protocol.
+service RunnerService {
+  // ----- Registration -----
+
+  // Creates a short-lived token a runner uses to register at a repo or org. Expires in 1 hour.
+  rpc CreateRunnerRegistrationToken(CreateRunnerRegistrationTokenRequest) returns (RunnerToken);
+  // Creates a short-lived token a runner uses to remove itself.
+  rpc CreateRunnerRemoveToken(CreateRunnerRemoveTokenRequest) returns (RunnerToken);
+  // Creates a just-in-time config for one ephemeral runner that takes a single job.
+  rpc CreateRunnerJitConfig(CreateRunnerJitConfigRequest) returns (CreateRunnerJitConfigResponse);
+  // Native runners: exchanges a registration token for a runner identity and credential.
+  // Errors: TOKEN_EXPIRED, ALREADY_EXISTS (name taken in the scope).
+  rpc RegisterRunner(RegisterRunnerRequest) returns (RegisterRunnerResponse);
+
+  // ----- Runners -----
+
+  // Lists runners at a repo or org, optionally by group, label or status.
+  rpc ListRunners(ListRunnersRequest) returns (ListRunnersResponse);
+  // Returns one runner. Errors: NOT_FOUND.
+  rpc GetRunner(GetRunnerRequest) returns (Runner);
+  // Force-removes a runner. Errors: NOT_FOUND, INVALID_STATE (busy, unless `force`).
+  rpc DeleteRunner(DeleteRunnerRequest) returns (DeleteRunnerResponse);
+  // Adds custom labels to a runner. Errors: NOT_FOUND.
+  rpc AddRunnerLabels(AddRunnerLabelsRequest) returns (Runner);
+  // Removes one custom label from a runner. Errors: NOT_FOUND.
+  rpc RemoveRunnerLabel(RemoveRunnerLabelRequest) returns (Runner);
+  // Replaces a runner's custom labels; default labels are kept.
+  rpc SetRunnerLabels(SetRunnerLabelsRequest) returns (Runner);
+
+  // ----- Groups -----
+
+  // Creates a runner group in an org. Errors: ALREADY_EXISTS.
+  rpc CreateRunnerGroup(CreateRunnerGroupRequest) returns (RunnerGroup);
+  // Returns one runner group. Errors: NOT_FOUND.
+  rpc GetRunnerGroup(GetRunnerGroupRequest) returns (RunnerGroup);
+  // Lists an org's runner groups, optionally those a repo may use.
+  rpc ListRunnerGroups(ListRunnerGroupsRequest) returns (ListRunnerGroupsResponse);
+  // Updates a runner group's access rules. Errors: NOT_FOUND.
+  rpc UpdateRunnerGroup(UpdateRunnerGroupRequest) returns (RunnerGroup);
+  // Deletes a runner group; its runners move to the default group. Errors: INVALID_STATE (default group).
+  rpc DeleteRunnerGroup(DeleteRunnerGroupRequest) returns (DeleteRunnerGroupResponse);
+  // Lists repos allowed to use a group whose visibility is SELECTED.
+  rpc ListRunnerGroupRepos(ListRunnerGroupReposRequest) returns (ListRunnerGroupReposResponse);
+  // Replaces the repos allowed to use a group. Errors: INVALID_STATE (visibility not SELECTED).
+  rpc SetRunnerGroupRepos(SetRunnerGroupReposRequest) returns (SetRunnerGroupReposResponse);
+  // Replaces the runners in a group.
+  rpc SetRunnerGroupRunners(SetRunnerGroupRunnersRequest) returns (SetRunnerGroupRunnersResponse);
+
+  // ----- Hosted classes and images -----
+
+  // Lists hosted runner machine classes available to an org.
+  rpc ListRunnerMachineClasses(ListRunnerMachineClassesRequest) returns (ListRunnerMachineClassesResponse);
+  // Lists runner images: platform images plus the org's custom images.
+  rpc ListRunnerImages(ListRunnerImagesRequest) returns (ListRunnerImagesResponse);
+  // Registers a custom runner image from an OCI reference. Errors: NOT_FOUND (image), QUOTA_EXCEEDED.
+  rpc CreateRunnerCustomImage(CreateRunnerCustomImageRequest) returns (RunnerImage);
+  // Deletes a custom runner image. Errors: INVALID_STATE (in use by a hosted pool).
+  rpc DeleteRunnerCustomImage(DeleteRunnerCustomImageRequest) returns (DeleteRunnerCustomImageResponse);
+
+  // ----- Native job protocol -----
+
+  // Native runners: long-lived stream of job assignments for the calling runner. The server
+  // sends an assignment when a matching job is queued; the runner must renew it before
+  // `lease_expires_at`. Idle keep-alives arrive as messages with no job.
+  rpc AcquireRunnerJob(AcquireRunnerJobRequest) returns (stream RunnerJobAssignment);
+  // Native runners: heartbeat that extends the job lease and reports whether it was cancelled.
+  // Errors: INVALID_STATE (lease lost; the runner must stop the job).
+  rpc RenewRunnerJob(RenewRunnerJobRequest) returns (RenewRunnerJobResponse);
+  // Native runners: reports a step's status change.
+  rpc UpdateRunnerJobStep(UpdateRunnerJobStepRequest) returns (UpdateRunnerJobStepResponse);
+  // Native runners: appends a log chunk (at most 1 MiB) at a byte offset; idempotent per offset.
+  // Errors: INVALID_ARGUMENT (subcode `offset_gap` when offset is past the stored end), TOO_LARGE.
+  rpc AppendRunnerJobLog(AppendRunnerJobLogRequest) returns (AppendRunnerJobLogResponse);
+  // Native runners: completes a job with its conclusion and outputs.
+  rpc CompleteRunnerJob(CompleteRunnerJobRequest) returns (CompleteRunnerJobResponse);
+  // Native runners: the leased job's secrets, once (the RPC form of `secrets_url`). Errors:
+  // PERMISSION_DENIED (already fetched, or the job is not running), INVALID_STATE (lease lost).
+  rpc FetchRunnerJobSecrets(FetchRunnerJobSecretsRequest) returns (FetchRunnerJobSecretsResponse);
+}
+
+// ---------- Shared status ----------
+
+// Lifecycle status of a run, job or step.
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_REQUESTED = 1;
+  WORKFLOW_STATUS_PENDING = 2;          // waiting on a concurrency group
+  WORKFLOW_STATUS_WAITING = 3;          // waiting on environment protection
+  WORKFLOW_STATUS_ACTION_REQUIRED = 4;  // waiting on run approval
+  WORKFLOW_STATUS_QUEUED = 5;
+  WORKFLOW_STATUS_IN_PROGRESS = 6;
+  WORKFLOW_STATUS_COMPLETED = 7;
+}
+
+// Outcome of a completed run, job or step.
+enum WorkflowConclusion {
+  WORKFLOW_CONCLUSION_UNSPECIFIED = 0; // not completed
+  WORKFLOW_CONCLUSION_SUCCESS = 1;
+  WORKFLOW_CONCLUSION_FAILURE = 2;
+  WORKFLOW_CONCLUSION_NEUTRAL = 3;
+  WORKFLOW_CONCLUSION_CANCELLED = 4;
+  WORKFLOW_CONCLUSION_SKIPPED = 5;
+  WORKFLOW_CONCLUSION_TIMED_OUT = 6;
+  WORKFLOW_CONCLUSION_ACTION_REQUIRED = 7;
+  WORKFLOW_CONCLUSION_STALE = 8;
+  WORKFLOW_CONCLUSION_STARTUP_FAILURE = 9;
+}
+
+// ---------- Workflows ----------
+
+// Whether a workflow can be triggered.
+enum WorkflowState {
+  WORKFLOW_STATE_UNSPECIFIED = 0;
+  WORKFLOW_STATE_ACTIVE = 1;
+  WORKFLOW_STATE_DISABLED_MANUALLY = 2;
+  WORKFLOW_STATE_DISABLED_INACTIVITY = 3; // scheduled workflow in an inactive repo
+  WORKFLOW_STATE_DISABLED_FORK = 4;
+  WORKFLOW_STATE_DELETED = 5;             // file removed from the ref
+}
+
+// A declared `workflow_dispatch` input.
+message WorkflowDispatchInput {
+  string name = 1;
+  string description = 2;
+  string type = 3;            // "string", "boolean", "number", "choice" or "environment"
+  bool required = 4;
+  string default_value = 5;
+  repeated string options = 6; // for "choice"
+}
+
+// A workflow file and what it declares.
+message Workflow {
+  string id = 1;
+  RepoRef repo = 2;
+  string name = 3;
+  string path = 4;  // e.g. ".github/workflows/ci.yml"
+  WorkflowState state = 5;
+  string ref = 6;   // ref the definition was read from
+  ObjectId blob = 7; // blob id of the YAML at that ref
+  repeated string triggers = 8; // event names under `on:`
+  repeated WorkflowDispatchInput dispatch_inputs = 9;
+  string source = 10; // YAML text, when requested
+  string badge_url = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// Request for ListWorkflows.
+message ListWorkflowsRequest {
+  RepoRef repo = 1;
+  string ref = 2; // empty = default ref
+  PageRequest page = 3;
+}
+
+// Response for ListWorkflows.
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWorkflow.
+message GetWorkflowRequest {
+  RepoRef repo = 1;
+  string workflow = 2; // id, path, or file name such as "ci.yml"
+  string ref = 3;
+  bool include_source = 4;
+}
+
+// Severity of a workflow validation finding.
+enum WorkflowDiagnosticSeverity {
+  WORKFLOW_DIAGNOSTIC_SEVERITY_UNSPECIFIED = 0;
+  WORKFLOW_DIAGNOSTIC_SEVERITY_ERROR = 1;
+  WORKFLOW_DIAGNOSTIC_SEVERITY_WARNING = 2;
+  WORKFLOW_DIAGNOSTIC_SEVERITY_NOTICE = 3;
+}
+
+// One problem found in workflow YAML.
+message WorkflowDiagnostic {
+  WorkflowDiagnosticSeverity severity = 1;
+  uint32 line = 2;
+  uint32 column = 3;
+  string message = 4;
+  string rule = 5; // e.g. "unknown_action", "bad_expression", "disallowed_action"
+}
+
+// Request for ValidateWorkflow.
+message ValidateWorkflowRequest {
+  RepoRef repo = 1;
+  string path = 2;   // path the file would live at
+  string source = 3; // YAML text
+  string ref = 4;    // resolve reusable workflows and policies as of this ref
+}
+
+// Response for ValidateWorkflow.
+message ValidateWorkflowResponse {
+  bool valid = 1;
+  repeated WorkflowDiagnostic diagnostics = 2;
+  repeated string triggers = 3;
+}
+
+// Request for EnableWorkflow.
+message EnableWorkflowRequest {
+  RepoRef repo = 1;
+  string workflow = 2;
+}
+
+// Request for DisableWorkflow.
+message DisableWorkflowRequest {
+  RepoRef repo = 1;
+  string workflow = 2;
+}
+
+// Usage of one runner class.
+message WorkflowRunnerUsage {
+  string machine_class = 1; // e.g. "linux-x64-4", or "self-hosted"
+  uint64 billable_ms = 2;
+  uint64 job_count = 3;
+}
+
+// Request for GetWorkflowUsage.
+message GetWorkflowUsageRequest {
+  RepoRef repo = 1;
+  string workflow = 2;
+}
+
+// Time used by a workflow's runs in the current billing period.
+message WorkflowUsage {
+  string workflow_id = 1;
+  repeated WorkflowRunnerUsage runners = 2;
+  uint64 run_duration_ms = 3;
+  google.protobuf.Timestamp period_start_at = 4;
+}
+
+// ---------- Dispatch ----------
+
+// Request for DispatchWorkflow.
+message DispatchWorkflowRequest {
+  RepoRef repo = 1;
+  string workflow = 2;            // id, path or file name
+  string ref = 3;                 // ref whose workflow definition runs
+  repeated KeyValue inputs = 4;   // values are strings; booleans "true"/"false"
+}
+
+// Response for DispatchWorkflow.
+message DispatchWorkflowResponse {
+  string run_id = 1;
+  uint64 run_number = 2;
+}
+
+// Request for CreateRepositoryDispatchEvent.
+message CreateRepositoryDispatchEventRequest {
+  RepoRef repo = 1;
+  string event_type = 2;           // matched against `on.repository_dispatch.types`
+  string client_payload_json = 3;  // JSON object, at most 10 top-level keys
+}
+
+// Response for CreateRepositoryDispatchEvent.
+message CreateRepositoryDispatchEventResponse {
+  repeated string run_ids = 1; // runs started, if known synchronously
+}
+
+// ---------- Runs ----------
+
+// Concurrency group state of a run (`concurrency:` key).
+message WorkflowRunConcurrency {
+  string group = 1;               // evaluated group name
+  bool cancel_in_progress = 2;
+  uint32 queue_position = 3;      // 0 = running or not queued
+  repeated string blocking_run_ids = 4; // runs holding the group
+}
+
+// A reusable workflow a run called.
+message WorkflowReference {
+  string path = 1; // "org/repo/.github/workflows/x.yml"
+  string ref = 2;
+  ObjectId changeset = 3;
+}
+
+// One attempt of a workflow run.
+message WorkflowRun {
+  string id = 1;
+  RepoRef repo = 2;
+  string workflow_id = 3;
+  string workflow_path = 4;
+  string name = 5;
+  string display_title = 6;
+  uint64 run_number = 7;  // per workflow, GitHub-compatible
+  uint32 run_attempt = 8;
+  string event = 9;       // triggering event, e.g. "push", "pull_request", "workflow_dispatch"
+  WorkflowStatus status = 10;
+  WorkflowConclusion conclusion = 11;
+  string head_ref = 12;
+  ObjectId head_changeset = 13;
+  RepoRef head_repo = 14; // differs from repo for fork change requests
+  repeated uint64 change_request_numbers = 15;
+  Principal actor = 16;            // who caused the first attempt
+  Principal triggering_actor = 17; // who caused this attempt
+  WorkflowRunConcurrency concurrency = 18;
+  repeated WorkflowReference referenced_workflows = 19;
+  string check_suite_id = 20;
+  bool debug_logging = 21;
+  bool approval_required = 22; // held for first-time contributor, fork or agent approval
+  string previous_attempt_id = 23;
+  google.protobuf.Timestamp created_at = 24;
+  google.protobuf.Timestamp run_started_at = 25;
+  google.protobuf.Timestamp updated_at = 26;
+  google.protobuf.Timestamp completed_at = 27;
+  string html_url = 28;
+  // Jobs of the run, set when include_jobs was requested (gap G7).
+  repeated WorkflowJob jobs = 29;
+  // Change requests whose revisions this run checked (gap G8).
+  repeated string change_request_ids = 30;
+  // The numeric run id (`github.run_id`, the REST compatibility id), unique per server.
+  uint64 numeric_id = 31;
+}
+
+// Request for ListWorkflowRuns.
+message ListWorkflowRunsRequest {
+  RepoRef repo = 1;
+  string workflow = 2;  // id, path or file name; empty = all
+  string ref = 3;       // head ref
+  string event = 4;
+  WorkflowStatus status = 5;
+  WorkflowConclusion conclusion = 6;
+  string actor_id = 7;
+  ObjectId head_changeset = 8;
+  uint64 change_request_number = 9;
+  google.protobuf.Timestamp created_after = 10;
+  google.protobuf.Timestamp created_before = 11;
+  bool exclude_change_requests = 12;
+  PageRequest page = 13;
+  // Include each run's jobs inline (gap G7).
+  bool include_jobs = 14;
+}
+
+// Response for ListWorkflowRuns.
+message ListWorkflowRunsResponse {
+  repeated WorkflowRun runs = 1;
+  PageResponse page = 2;
+  uint64 total_count = 3;
+}
+
+// Request for GetWorkflowRun.
+message GetWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Request for GetWorkflowRunAttempt.
+message GetWorkflowRunAttemptRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  uint32 attempt = 3;
+}
+
+// Request for WatchWorkflowRun.
+message WatchWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// A change to a watched run; the first message carries the current snapshot.
+message WorkflowRunUpdate {
+  WorkflowRun run = 1;
+  repeated WorkflowJob changed_jobs = 2;
+  bool final = 3; // the run completed; the stream ends after this message
+}
+
+// Request for CancelWorkflowRun.
+message CancelWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Response for CancelWorkflowRun.
+message CancelWorkflowRunResponse {}
+
+// Request for ForceCancelWorkflowRun.
+message ForceCancelWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Response for ForceCancelWorkflowRun.
+message ForceCancelWorkflowRunResponse {}
+
+// Request for RerunWorkflowRun.
+message RerunWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  bool enable_debug_logging = 3;
+}
+
+// Request for RerunFailedWorkflowJobs.
+message RerunFailedWorkflowJobsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  bool enable_debug_logging = 3;
+}
+
+// Request for RerunWorkflowJob.
+message RerunWorkflowJobRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  bool enable_debug_logging = 3;
+}
+
+// Request for DeleteWorkflowRun.
+message DeleteWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Response for DeleteWorkflowRun.
+message DeleteWorkflowRunResponse {}
+
+// Request for ApproveWorkflowRun.
+message ApproveWorkflowRunRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// What a recorded run approval approved.
+enum WorkflowApprovalKind {
+  WORKFLOW_APPROVAL_KIND_UNSPECIFIED = 0;
+  WORKFLOW_APPROVAL_KIND_RUN = 1;         // first-time contributor, fork or agent run approval
+  WORKFLOW_APPROVAL_KIND_ENVIRONMENT = 2; // deployment review for an environment
+}
+
+// One approval or environment review recorded on a run.
+message WorkflowRunApproval {
+  WorkflowApprovalKind kind = 1;
+  Principal approver = 2;
+  DeploymentReviewDecision decision = 3; // APPROVED for kind RUN
+  repeated string environments = 4;      // kind ENVIRONMENT
+  string comment = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// Request for ListWorkflowRunApprovals.
+message ListWorkflowRunApprovalsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListWorkflowRunApprovals.
+message ListWorkflowRunApprovalsResponse {
+  repeated WorkflowRunApproval approvals = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListWorkflowRunPendingDeployments.
+message ListWorkflowRunPendingDeploymentsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Response for ListWorkflowRunPendingDeployments.
+message ListWorkflowRunPendingDeploymentsResponse {
+  repeated DeploymentPendingReview pending = 1;
+}
+
+// Request for ReviewWorkflowRunPendingDeployments.
+message ReviewWorkflowRunPendingDeploymentsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  repeated string environments = 3;
+  DeploymentReviewDecision decision = 4;
+  string comment = 5;
+}
+
+// Response for ReviewWorkflowRunPendingDeployments.
+message ReviewWorkflowRunPendingDeploymentsResponse {
+  repeated Deployment deployments = 1;
+}
+
+// Request for GetWorkflowRunUsage.
+message GetWorkflowRunUsageRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Time one job used.
+message WorkflowJobUsage {
+  string job_id = 1;
+  string machine_class = 2;
+  uint64 duration_ms = 3;
+  uint64 billable_ms = 4;
+}
+
+// Time used by one run.
+message WorkflowRunUsage {
+  string run_id = 1;
+  uint64 run_duration_ms = 2;
+  repeated WorkflowRunnerUsage runners = 3;
+  repeated WorkflowJobUsage jobs = 4;
+}
+
+// ---------- Jobs ----------
+
+// One step of a job.
+message WorkflowStep {
+  uint32 number = 1;
+  string name = 2;
+  WorkflowStatus status = 3;
+  WorkflowConclusion conclusion = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  uint64 log_offset = 7; // byte offset in the job log where this step starts
+}
+
+// One job of a run attempt.
+message WorkflowJob {
+  string id = 1;
+  string run_id = 2;
+  uint32 run_attempt = 3;
+  string name = 4;           // includes matrix values, e.g. "test (ubuntu, 22)"
+  string workflow_name = 5;
+  WorkflowStatus status = 6;
+  WorkflowConclusion conclusion = 7;
+  repeated WorkflowStep steps = 8;
+  repeated string labels = 9; // `runs-on` labels
+  string runner_id = 10;
+  string runner_name = 11;
+  string runner_group_id = 12;
+  string machine_class = 13;  // hosted class, empty for self-hosted
+  string check_run_id = 14;   // CheckService run carrying annotations and output
+  string head_ref = 15;
+  ObjectId head_changeset = 16;
+  string matrix_json = 17;    // JSON object of this job's matrix values
+  repeated string needs = 18;
+  string environment = 19;
+  uint64 log_size_bytes = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp started_at = 22;
+  google.protobuf.Timestamp completed_at = 23;
+}
+
+// Which attempts ListWorkflowJobs returns.
+enum WorkflowJobAttemptFilter {
+  WORKFLOW_JOB_ATTEMPT_FILTER_UNSPECIFIED = 0; // same as LATEST
+  WORKFLOW_JOB_ATTEMPT_FILTER_LATEST = 1;
+  WORKFLOW_JOB_ATTEMPT_FILTER_ALL = 2;
+}
+
+// Request for ListWorkflowJobs.
+message ListWorkflowJobsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  uint32 attempt = 3; // 0 = use `filter`
+  WorkflowJobAttemptFilter filter = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListWorkflowJobs.
+message ListWorkflowJobsResponse {
+  repeated WorkflowJob jobs = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWorkflowJob.
+message GetWorkflowJobRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+}
+
+// Request for GetWorkflowJobSummary.
+message GetWorkflowJobSummaryRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+}
+
+// Markdown a job wrote to its step summary.
+message WorkflowJobSummary {
+  string job_id = 1;
+  string markdown = 2;
+  bool truncated = 3; // over the 1 MiB summary limit
+}
+
+// ---------- Logs ----------
+
+// Request for TailWorkflowJobLogs.
+message TailWorkflowJobLogsRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  uint64 offset = 3;    // resume from this byte offset
+  bool follow = 4;      // keep the stream open for live output until the job ends
+  uint32 step_number = 5; // 0 = whole job
+}
+
+// A slice of a job log.
+message WorkflowLogChunk {
+  uint64 offset = 1; // byte offset of `data` in the job log
+  bytes data = 2;    // UTF-8 text, at most 1 MiB
+  uint32 step_number = 3;
+  bool eof = 4;      // the job completed and no more bytes will follow
+}
+
+// Request for GetWorkflowJobLogsUrl.
+message GetWorkflowJobLogsUrlRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+}
+
+// Request for GetWorkflowRunLogsUrl.
+message GetWorkflowRunLogsUrlRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  uint32 attempt = 3; // 0 = latest
+}
+
+// A short-lived signed URL for log download.
+message WorkflowLogsUrl {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// Request for DeleteWorkflowRunLogs.
+message DeleteWorkflowRunLogsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+}
+
+// Response for DeleteWorkflowRunLogs.
+message DeleteWorkflowRunLogsResponse {}
+
+// ---------- Artifacts ----------
+
+// A file or archive a job uploaded.
+message WorkflowArtifact {
+  string id = 1;
+  RepoRef repo = 2;
+  string name = 3;
+  uint64 size_bytes = 4;
+  string digest = 5;   // "sha256:<hex>"
+  bool archive = 6;    // true = zip archive; false = a single unzipped file
+  string content_type = 7;
+  string run_id = 8;
+  string job_id = 9;
+  string head_ref = 10;
+  ObjectId head_changeset = 11;
+  uint32 retention_days = 12;
+  bool expired = 13;
+  bool finalized = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp expires_at = 17;
+}
+
+// Request for ListWorkflowArtifacts.
+message ListWorkflowArtifactsRequest {
+  RepoRef repo = 1;
+  string run_id = 2; // empty = whole repo
+  string name = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListWorkflowArtifacts.
+message ListWorkflowArtifactsResponse {
+  repeated WorkflowArtifact artifacts = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWorkflowArtifact.
+message GetWorkflowArtifactRequest {
+  RepoRef repo = 1;
+  string artifact_id = 2;
+}
+
+// Request for DeleteWorkflowArtifact.
+message DeleteWorkflowArtifactRequest {
+  RepoRef repo = 1;
+  string artifact_id = 2;
+}
+
+// Response for DeleteWorkflowArtifact.
+message DeleteWorkflowArtifactResponse {}
+
+// Request for GetWorkflowArtifactDownloadUrl.
+message GetWorkflowArtifactDownloadUrlRequest {
+  RepoRef repo = 1;
+  string artifact_id = 2;
+}
+
+// Response for GetWorkflowArtifactDownloadUrl.
+message GetWorkflowArtifactDownloadUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// Request for CreateWorkflowArtifactUpload.
+message CreateWorkflowArtifactUploadRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  string name = 3;
+  bool archive = 4;
+  string content_type = 5;
+  uint32 retention_days = 6; // 0 = repo default; capped by policy
+}
+
+// Response for CreateWorkflowArtifactUpload.
+message CreateWorkflowArtifactUploadResponse {
+  string artifact_id = 1;
+  string upload_url = 2;
+  repeated KeyValue upload_headers = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for FinalizeWorkflowArtifact.
+message FinalizeWorkflowArtifactRequest {
+  RepoRef repo = 1;
+  string artifact_id = 2;
+  uint64 size_bytes = 3;
+  string digest = 4; // "sha256:<hex>"
+}
+
+// ---------- Caches ----------
+
+// One `actions/cache` entry. Entries are scoped by ref: a job reads its own ref's entries,
+// then its base ref's, then the default ref's.
+message WorkflowCache {
+  string id = 1;
+  string key = 2;
+  string version = 3; // hash of paths and compression, set by the cache client
+  string ref = 4;
+  uint64 size_bytes = 5;
+  bool committed = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_accessed_at = 8;
+}
+
+// Sort order for ListWorkflowCaches.
+enum WorkflowCacheSort {
+  WORKFLOW_CACHE_SORT_UNSPECIFIED = 0; // last accessed, newest first
+  WORKFLOW_CACHE_SORT_LAST_ACCESSED = 1;
+  WORKFLOW_CACHE_SORT_CREATED = 2;
+  WORKFLOW_CACHE_SORT_SIZE = 3;
+}
+
+// Request for ListWorkflowCaches.
+message ListWorkflowCachesRequest {
+  RepoRef repo = 1;
+  string key_prefix = 2;
+  string ref = 3;
+  WorkflowCacheSort sort = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListWorkflowCaches.
+message ListWorkflowCachesResponse {
+  repeated WorkflowCache caches = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteWorkflowCaches.
+message DeleteWorkflowCachesRequest {
+  RepoRef repo = 1;
+  string cache_id = 2; // delete one entry, or
+  string key = 3;      // delete every entry with this key
+  string ref = 4;      // with `key`: only on this ref
+}
+
+// Response for DeleteWorkflowCaches.
+message DeleteWorkflowCachesResponse {
+  uint32 deleted_count = 1;
+}
+
+// Request for GetWorkflowCacheUsage.
+message GetWorkflowCacheUsageRequest {
+  RepoRef repo = 1;
+}
+
+// Cache storage of one repo.
+message WorkflowCacheUsage {
+  RepoRef repo = 1;
+  uint64 active_size_bytes = 2;
+  uint64 active_count = 3;
+  uint64 limit_bytes = 4;
+}
+
+// Request for ListWorkflowCacheUsageByRepo.
+message ListWorkflowCacheUsageByRepoRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListWorkflowCacheUsageByRepo.
+message ListWorkflowCacheUsageByRepoResponse {
+  repeated WorkflowCacheUsage usages = 1;
+  PageResponse page = 2;
+  uint64 total_size_bytes = 3;
+}
+
+// Request for LookupWorkflowCache.
+message LookupWorkflowCacheRequest {
+  RepoRef repo = 1;
+  string job_id = 2;  // determines the ref scope searched
+  string key = 3;
+  string version = 4;
+  repeated string restore_keys = 5; // prefix fallbacks, in order
+}
+
+// Response for LookupWorkflowCache.
+message LookupWorkflowCacheResponse {
+  WorkflowCache cache = 1;
+  bool exact_match = 2; // matched `key` rather than a restore key
+  string download_url = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for ReserveWorkflowCache.
+message ReserveWorkflowCacheRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  string key = 3;
+  string version = 4;
+  uint64 size_bytes = 5; // expected size, for quota
+}
+
+// Response for ReserveWorkflowCache.
+message ReserveWorkflowCacheResponse {
+  string cache_id = 1;
+  string upload_url = 2;
+  repeated KeyValue upload_headers = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for CommitWorkflowCache.
+message CommitWorkflowCacheRequest {
+  RepoRef repo = 1;
+  string cache_id = 2;
+  uint64 size_bytes = 3;
+  string digest = 4; // "sha256:<hex>"
+}
+
+// ---------- Actions policies ----------
+
+// Whether a policy is read or written at org or repo level.
+enum ActionsPolicyScopeKind {
+  ACTIONS_POLICY_SCOPE_KIND_UNSPECIFIED = 0;
+  ACTIONS_POLICY_SCOPE_KIND_ORG = 1;
+  ACTIONS_POLICY_SCOPE_KIND_REPO = 2;
+}
+
+// Names the org or repo an actions policy applies to.
+message ActionsPolicyScope {
+  ActionsPolicyScopeKind kind = 1;
+  string org = 2;
+  RepoRef repo = 3;
+}
+
+// Which repos of an org may run workflows.
+enum ActionsPolicyEnabledRepos {
+  ACTIONS_POLICY_ENABLED_REPOS_UNSPECIFIED = 0;
+  ACTIONS_POLICY_ENABLED_REPOS_ALL = 1;
+  ACTIONS_POLICY_ENABLED_REPOS_SELECTED = 2;
+  ACTIONS_POLICY_ENABLED_REPOS_NONE = 3;
+}
+
+// Which `uses:` actions and reusable workflows may run.
+enum ActionsPolicyAllowedActions {
+  ACTIONS_POLICY_ALLOWED_ACTIONS_UNSPECIFIED = 0;
+  ACTIONS_POLICY_ALLOWED_ACTIONS_ALL = 1;
+  ACTIONS_POLICY_ALLOWED_ACTIONS_LOCAL_ONLY = 2; // actions in the same org only
+  ACTIONS_POLICY_ALLOWED_ACTIONS_SELECTED = 3;   // local plus the allow rules below
+}
+
+// Which outside contributors need approval before their runs start.
+enum ActionsPolicyForkApproval {
+  ACTIONS_POLICY_FORK_APPROVAL_UNSPECIFIED = 0;
+  ACTIONS_POLICY_FORK_APPROVAL_FIRST_TIME_NEW_ACCOUNTS = 1; // first-time contributors new to the forge
+  ACTIONS_POLICY_FORK_APPROVAL_FIRST_TIME_CONTRIBUTORS = 2;
+  ACTIONS_POLICY_FORK_APPROVAL_ALL_EXTERNAL = 3;
+}
+
+// Default permission of the job token.
+enum ActionsPolicyTokenPermission {
+  ACTIONS_POLICY_TOKEN_PERMISSION_UNSPECIFIED = 0;
+  ACTIONS_POLICY_TOKEN_PERMISSION_READ = 1;
+  ACTIONS_POLICY_TOKEN_PERMISSION_WRITE = 2;
+}
+
+// A list of action patterns, wrapped so an update can tell "unchanged" from "empty".
+message ActionsPolicyPatterns {
+  repeated string patterns = 1; // e.g. "octo-org/*", "actions/checkout@*"
+}
+
+// Actions settings of an org or repo. On a repo, fields the org enforces are reported as the
+// effective value and `org_enforced` lists their names.
+message ActionsPolicy {
+  ActionsPolicyScope scope = 1;
+  bool enabled = 2;                             // repo: workflows may run
+  ActionsPolicyEnabledRepos enabled_repos = 3;  // org only
+  ActionsPolicyAllowedActions allowed_actions = 4;
+  bool verified_creators_allowed = 5;           // with SELECTED: actions by verified creators
+  repeated string allowed_patterns = 6;         // with SELECTED
+  bool sha_pinning_required = 7;                // `uses:` must pin a full commit id
+  ActionsPolicyForkApproval fork_approval = 8;
+  bool agent_runs_require_approval = 9;         // runs for agent-authored CRs need a human approval
+  bool fork_runs_on_private = 10;               // run workflows from fork CRs on private repos
+  bool fork_send_write_tokens = 11;
+  bool fork_send_secrets = 12;
+  bool fork_require_approval_private = 13;
+  ActionsPolicyTokenPermission default_token_permission = 14;
+  bool token_can_approve_change_requests = 15;
+  uint32 artifact_retention_days = 16;
+  uint32 log_retention_days = 17;
+  uint64 cache_max_size_bytes = 18;
+  uint32 cache_retention_days = 19;
+  repeated string org_enforced = 20;            // output only
+}
+
+// Request for GetActionsPolicy.
+message GetActionsPolicyRequest {
+  ActionsPolicyScope scope = 1;
+}
+
+// Request for SetActionsPolicy.
+message SetActionsPolicyRequest {
+  ActionsPolicyScope scope = 1;
+  optional bool enabled = 2;
+  optional ActionsPolicyEnabledRepos enabled_repos = 3;
+  optional ActionsPolicyAllowedActions allowed_actions = 4;
+  optional bool verified_creators_allowed = 5;
+  ActionsPolicyPatterns allowed_patterns = 6; // unset = unchanged
+  optional bool sha_pinning_required = 7;
+  optional ActionsPolicyForkApproval fork_approval = 8;
+  optional bool agent_runs_require_approval = 9;
+  optional bool fork_runs_on_private = 10;
+  optional bool fork_send_write_tokens = 11;
+  optional bool fork_send_secrets = 12;
+  optional bool fork_require_approval_private = 13;
+  optional ActionsPolicyTokenPermission default_token_permission = 14;
+  optional bool token_can_approve_change_requests = 15;
+  optional uint32 artifact_retention_days = 16;
+  optional uint32 log_retention_days = 17;
+  optional uint64 cache_max_size_bytes = 18;
+  optional uint32 cache_retention_days = 19;
+}
+
+// Request for ListActionsPolicyEnabledRepos.
+message ListActionsPolicyEnabledReposRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListActionsPolicyEnabledRepos.
+message ListActionsPolicyEnabledReposResponse {
+  repeated RepoRef repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetActionsPolicyEnabledRepos.
+message SetActionsPolicyEnabledReposRequest {
+  string org = 1;
+  repeated RepoRef repos = 2;
+}
+
+// Response for SetActionsPolicyEnabledRepos.
+message SetActionsPolicyEnabledReposResponse {}
+
+// ---------- Required workflows ----------
+
+// Which repos a required workflow applies to.
+enum WorkflowRequirementScope {
+  WORKFLOW_REQUIREMENT_SCOPE_UNSPECIFIED = 0;
+  WORKFLOW_REQUIREMENT_SCOPE_ALL = 1;
+  WORKFLOW_REQUIREMENT_SCOPE_SELECTED = 2;
+}
+
+// A workflow an org requires to run, and pass, on its repos' change requests.
+message WorkflowRequirement {
+  string id = 1;
+  string org = 2;
+  string name = 3;
+  RepoRef source_repo = 4;
+  string source_path = 5;
+  string source_ref = 6; // empty = source repo's default ref
+  WorkflowRequirementScope scope = 7;
+  repeated RepoRef selected_repos = 8;
+  bool enforced = 9;     // false = evaluate only
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Request for ListRequiredWorkflows.
+message ListRequiredWorkflowsRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRequiredWorkflows.
+message ListRequiredWorkflowsResponse {
+  repeated WorkflowRequirement workflows = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateRequiredWorkflow.
+message CreateRequiredWorkflowRequest {
+  string org = 1;
+  string name = 2;
+  RepoRef source_repo = 3;
+  string source_path = 4;
+  string source_ref = 5;
+  WorkflowRequirementScope scope = 6;
+  repeated RepoRef selected_repos = 7;
+  bool enforced = 8;
+}
+
+// The full selected repo set, wrapped so an update can tell "unchanged" from "empty".
+message WorkflowRequirementRepos {
+  repeated RepoRef repos = 1;
+}
+
+// Request for UpdateRequiredWorkflow.
+message UpdateRequiredWorkflowRequest {
+  string org = 1;
+  string required_workflow_id = 2;
+  optional string name = 3;
+  optional string source_path = 4;
+  optional string source_ref = 5;
+  optional WorkflowRequirementScope scope = 6;
+  WorkflowRequirementRepos selected_repos = 7; // unset = unchanged
+  optional bool enforced = 8;
+}
+
+// Request for DeleteRequiredWorkflow.
+message DeleteRequiredWorkflowRequest {
+  string org = 1;
+  string required_workflow_id = 2;
+}
+
+// Response for DeleteRequiredWorkflow.
+message DeleteRequiredWorkflowResponse {}
+
+// ---------- OIDC ----------
+
+// Request for CreateWorkflowOidcToken.
+message CreateWorkflowOidcTokenRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  string audience = 3; // `aud` claim; empty = the repo owner's URL
+}
+
+// Response for CreateWorkflowOidcToken.
+message CreateWorkflowOidcTokenResponse {
+  string token = 1; // signed JWT
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// Request for GetWorkflowOidcClaimTemplate.
+message GetWorkflowOidcClaimTemplateRequest {
+  ActionsPolicyScope scope = 1;
+}
+
+// How the OIDC `sub` claim is composed.
+message WorkflowOidcClaimTemplate {
+  ActionsPolicyScope scope = 1;
+  bool use_default = 2;                    // repo: inherit from org or platform default
+  repeated string include_claim_keys = 3;  // e.g. "repo", "context", "job_workflow_ref"
+}
+
+// Request for SetWorkflowOidcClaimTemplate.
+message SetWorkflowOidcClaimTemplateRequest {
+  ActionsPolicyScope scope = 1;
+  bool use_default = 2;
+  repeated string include_claim_keys = 3;
+}
+
+// ---------- Attestations ----------
+
+// An artifact an attestation is about.
+message AttestationSubject {
+  string name = 1;   // e.g. image reference or file name
+  string digest = 2; // "sha256:<hex>"
+}
+
+// A signed in-toto statement about built artifacts (Sigstore bundle).
+message Attestation {
+  string id = 1;
+  RepoRef repo = 2;
+  repeated AttestationSubject subjects = 3;
+  string predicate_type = 4; // e.g. "https://slsa.dev/provenance/v1"
+  string predicate_json = 5; // JSON
+  string bundle_json = 6;    // Sigstore bundle, JSON
+  string workflow_run_id = 7;
+  string job_id = 8;
+  string workflow_path = 9;
+  string source_ref = 10;
+  ObjectId source_changeset = 11;
+  string signer_identity = 12; // certificate SAN, e.g. the signer workflow ref
+  Provenance provenance = 13;  // agent provenance of the source changeset, when present
+  google.protobuf.Timestamp created_at = 14;
+}
+
+// Request for CreateAttestation.
+message CreateAttestationRequest {
+  RepoRef repo = 1;
+  string job_id = 2;
+  repeated AttestationSubject subjects = 3;
+  string predicate_type = 4;
+  string predicate_json = 5; // JSON; empty with SLSA type = server-generated build provenance
+}
+
+// Request for ListAttestations.
+message ListAttestationsRequest {
+  RepoRef repo = 1;     // or
+  string org = 2;       // list across an org
+  string subject_digest = 3;
+  string predicate_type = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListAttestations.
+message ListAttestationsResponse {
+  repeated Attestation attestations = 1;
+  PageResponse page = 2;
+}
+
+// Request for VerifyAttestation.
+message VerifyAttestationRequest {
+  RepoRef repo = 1;     // or
+  string org = 2;
+  string subject_digest = 3;
+  string predicate_type = 4;
+  string expected_signer_workflow = 5; // e.g. "org/repo/.github/workflows/release.yml"
+  string expected_source_ref = 6;
+}
+
+// Response for VerifyAttestation.
+message VerifyAttestationResponse {
+  bool verified = 1;
+  repeated Attestation attestations = 2; // the ones that verified
+  repeated string failures = 3;          // why others did not
+}
+
+// Request for DeleteAttestation.
+message DeleteAttestationRequest {
+  RepoRef repo = 1;
+  string attestation_id = 2;
+}
+
+// Response for DeleteAttestation.
+message DeleteAttestationResponse {}
+
+// ---------- Runners ----------
+
+// Whether a runner resource belongs to a repo or an org.
+enum RunnerScopeKind {
+  RUNNER_SCOPE_KIND_UNSPECIFIED = 0;
+  RUNNER_SCOPE_KIND_REPO = 1;
+  RUNNER_SCOPE_KIND_ORG = 2;
+}
+
+// Names the repo or org that owns runners.
+message RunnerScope {
+  RunnerScopeKind kind = 1;
+  string org = 2;
+  RepoRef repo = 3;
+}
+
+// Connection state of a runner.
+enum RunnerStatus {
+  RUNNER_STATUS_UNSPECIFIED = 0;
+  RUNNER_STATUS_ONLINE = 1;
+  RUNNER_STATUS_OFFLINE = 2;
+}
+
+// Operating system of a runner or machine class.
+enum RunnerOs {
+  RUNNER_OS_UNSPECIFIED = 0;
+  RUNNER_OS_LINUX = 1;
+  RUNNER_OS_MACOS = 2;
+  RUNNER_OS_WINDOWS = 3;
+}
+
+// CPU architecture of a runner or machine class.
+enum RunnerArch {
+  RUNNER_ARCH_UNSPECIFIED = 0;
+  RUNNER_ARCH_X64 = 1;
+  RUNNER_ARCH_ARM64 = 2;
+}
+
+// Whether a label was set by the runner software or by a user.
+enum RunnerLabelKind {
+  RUNNER_LABEL_KIND_UNSPECIFIED = 0;
+  RUNNER_LABEL_KIND_DEFAULT = 1; // e.g. "self-hosted", "linux", "x64"
+  RUNNER_LABEL_KIND_CUSTOM = 2;
+}
+
+// A label `runs-on` can match.
+message RunnerLabel {
+  string name = 1;
+  RunnerLabelKind kind = 2;
+}
+
+// A self-hosted or hosted runner.
+message Runner {
+  string id = 1;
+  RunnerScope scope = 2;
+  string name = 3;
+  RunnerOs os = 4;
+  RunnerArch arch = 5;
+  RunnerStatus status = 6;
+  bool busy = 7;
+  bool ephemeral = 8;
+  bool hosted = 9;
+  bool native = 10;           // speaks the bee job protocol rather than actions/runner
+  repeated RunnerLabel labels = 11;
+  string runner_group_id = 12;
+  string version = 13;        // runner software version
+  string current_job_id = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp last_seen_at = 16;
+}
+
+// A short-lived runner registration or removal token.
+message RunnerToken {
+  string token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// Request for CreateRunnerRegistrationToken.
+message CreateRunnerRegistrationTokenRequest {
+  RunnerScope scope = 1;
+}
+
+// Request for CreateRunnerRemoveToken.
+message CreateRunnerRemoveTokenRequest {
+  RunnerScope scope = 1;
+}
+
+// Request for CreateRunnerJitConfig.
+message CreateRunnerJitConfigRequest {
+  RunnerScope scope = 1;
+  string name = 2;
+  string runner_group_id = 3;
+  repeated string labels = 4;
+  string work_folder = 5;
+}
+
+// Response for CreateRunnerJitConfig.
+message CreateRunnerJitConfigResponse {
+  Runner runner = 1;
+  string encoded_jit_config = 2; // pass to the runner's --jitconfig flag
+}
+
+// Request for RegisterRunner.
+message RegisterRunnerRequest {
+  string registration_token = 1;
+  string name = 2;
+  RunnerOs os = 3;
+  RunnerArch arch = 4;
+  repeated string labels = 5;
+  string runner_group_id = 6;
+  bool ephemeral = 7;
+  string version = 8;
+}
+
+// Response for RegisterRunner.
+message RegisterRunnerResponse {
+  Runner runner = 1;
+  string credential = 2; // runner-scoped token for the job protocol; keep secret
+}
+
+// Request for ListRunners.
+message ListRunnersRequest {
+  RunnerScope scope = 1;
+  string runner_group_id = 2;
+  string label = 3;
+  RunnerStatus status = 4;
+  string name = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListRunners.
+message ListRunnersResponse {
+  repeated Runner runners = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetRunner.
+message GetRunnerRequest {
+  RunnerScope scope = 1;
+  string runner_id = 2;
+}
+
+// Request for DeleteRunner.
+message DeleteRunnerRequest {
+  RunnerScope scope = 1;
+  string runner_id = 2;
+  bool force = 3; // remove even while busy; the running job fails
+}
+
+// Response for DeleteRunner.
+message DeleteRunnerResponse {}
+
+// Request for AddRunnerLabels.
+message AddRunnerLabelsRequest {
+  RunnerScope scope = 1;
+  string runner_id = 2;
+  repeated string labels = 3;
+}
+
+// Request for RemoveRunnerLabel.
+message RemoveRunnerLabelRequest {
+  RunnerScope scope = 1;
+  string runner_id = 2;
+  string label = 3;
+}
+
+// Request for SetRunnerLabels.
+message SetRunnerLabelsRequest {
+  RunnerScope scope = 1;
+  string runner_id = 2;
+  repeated string labels = 3;
+}
+
+// ---------- Runner groups ----------
+
+// Which repos may use a runner group.
+enum RunnerGroupVisibility {
+  RUNNER_GROUP_VISIBILITY_UNSPECIFIED = 0;
+  RUNNER_GROUP_VISIBILITY_ALL = 1;
+  RUNNER_GROUP_VISIBILITY_PRIVATE = 2; // private and internal repos
+  RUNNER_GROUP_VISIBILITY_SELECTED = 3;
+}
+
+// A set of runners with shared access rules.
+message RunnerGroup {
+  string id = 1;
+  string org = 2;
+  string name = 3;
+  bool is_default = 4;
+  RunnerGroupVisibility visibility = 5;
+  bool allows_public_repos = 6;
+  bool restricted_to_workflows = 7;
+  repeated string selected_workflows = 8; // "org/repo/.github/workflows/x.yml@ref" patterns
+  string network_configuration_id = 9;    // hosted runners: private networking
+  uint32 runner_count = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Request for CreateRunnerGroup.
+message CreateRunnerGroupRequest {
+  string org = 1;
+  string name = 2;
+  RunnerGroupVisibility visibility = 3;
+  repeated RepoRef selected_repos = 4;
+  repeated string runner_ids = 5;
+  bool allows_public_repos = 6;
+  bool restricted_to_workflows = 7;
+  repeated string selected_workflows = 8;
+}
+
+// Request for GetRunnerGroup.
+message GetRunnerGroupRequest {
+  string org = 1;
+  string runner_group_id = 2;
+}
+
+// Request for ListRunnerGroups.
+message ListRunnerGroupsRequest {
+  string org = 1;
+  RepoRef visible_to_repo = 2; // only groups this repo may use
+  PageRequest page = 3;
+}
+
+// Response for ListRunnerGroups.
+message ListRunnerGroupsResponse {
+  repeated RunnerGroup groups = 1;
+  PageResponse page = 2;
+}
+
+// The full selected workflow list, wrapped so an update can tell "unchanged" from "empty".
+message RunnerGroupWorkflows {
+  repeated string workflows = 1;
+}
+
+// Request for UpdateRunnerGroup.
+message UpdateRunnerGroupRequest {
+  string org = 1;
+  string runner_group_id = 2;
+  optional string name = 3;
+  optional RunnerGroupVisibility visibility = 4;
+  optional bool allows_public_repos = 5;
+  optional bool restricted_to_workflows = 6;
+  RunnerGroupWorkflows selected_workflows = 7; // unset = unchanged
+  optional string network_configuration_id = 8;
+}
+
+// Request for DeleteRunnerGroup.
+message DeleteRunnerGroupRequest {
+  string org = 1;
+  string runner_group_id = 2;
+}
+
+// Response for DeleteRunnerGroup.
+message DeleteRunnerGroupResponse {}
+
+// Request for ListRunnerGroupRepos.
+message ListRunnerGroupReposRequest {
+  string org = 1;
+  string runner_group_id = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListRunnerGroupRepos.
+message ListRunnerGroupReposResponse {
+  repeated RepoRef repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetRunnerGroupRepos.
+message SetRunnerGroupReposRequest {
+  string org = 1;
+  string runner_group_id = 2;
+  repeated RepoRef repos = 3;
+}
+
+// Response for SetRunnerGroupRepos.
+message SetRunnerGroupReposResponse {}
+
+// Request for SetRunnerGroupRunners.
+message SetRunnerGroupRunnersRequest {
+  string org = 1;
+  string runner_group_id = 2;
+  repeated string runner_ids = 3;
+}
+
+// Response for SetRunnerGroupRunners.
+message SetRunnerGroupRunnersResponse {}
+
+// ---------- Hosted machine classes and images ----------
+
+// A hosted runner size a job can request through `runs-on`.
+message RunnerMachineClass {
+  string id = 1;        // label to use in `runs-on`, e.g. "linux-arm64-8"
+  RunnerOs os = 2;
+  RunnerArch arch = 3;
+  uint32 cpu_cores = 4;
+  uint64 memory_bytes = 5;
+  uint64 storage_bytes = 6;
+  string gpu = 7;       // e.g. "nvidia-t4"; empty = none
+  uint32 gpu_count = 8;
+  uint64 per_minute_usd_micros = 9;
+  bool static_ip_available = 10;
+}
+
+// Request for ListRunnerMachineClasses.
+message ListRunnerMachineClassesRequest {
+  string org = 1;
+  RunnerOs os = 2; // UNSPECIFIED = all
+  PageRequest page = 3;
+}
+
+// Response for ListRunnerMachineClasses.
+message ListRunnerMachineClassesResponse {
+  repeated RunnerMachineClass classes = 1;
+  PageResponse page = 2;
+}
+
+// Where a runner image comes from.
+enum RunnerImageSource {
+  RUNNER_IMAGE_SOURCE_UNSPECIFIED = 0;
+  RUNNER_IMAGE_SOURCE_PLATFORM = 1; // maintained by Beehive
+  RUNNER_IMAGE_SOURCE_CUSTOM = 2;   // registered by the org
+}
+
+// An OS image hosted runners boot.
+message RunnerImage {
+  string id = 1;
+  string name = 2;      // e.g. "ubuntu-24.04"
+  RunnerImageSource source = 3;
+  RunnerOs os = 4;
+  RunnerArch arch = 5;
+  string oci_reference = 6; // custom images: registry reference with digest
+  uint64 size_bytes = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// Request for ListRunnerImages.
+message ListRunnerImagesRequest {
+  string org = 1;
+  RunnerImageSource source = 2; // UNSPECIFIED = all
+  PageRequest page = 3;
+}
+
+// Response for ListRunnerImages.
+message ListRunnerImagesResponse {
+  repeated RunnerImage images = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateRunnerCustomImage.
+message CreateRunnerCustomImageRequest {
+  string org = 1;
+  string name = 2;
+  RunnerOs os = 3;
+  RunnerArch arch = 4;
+  string oci_reference = 5; // must be pinned by digest
+}
+
+// Request for DeleteRunnerCustomImage.
+message DeleteRunnerCustomImageRequest {
+  string org = 1;
+  string image_id = 2;
+}
+
+// Response for DeleteRunnerCustomImage.
+message DeleteRunnerCustomImageResponse {}
+
+// ---------- Native job protocol ----------
+
+// Request for AcquireRunnerJob.
+message AcquireRunnerJobRequest {
+  string runner_id = 1;     // caller authenticates with the runner credential
+  repeated string labels = 2; // labels offered right now; empty = registered labels
+  uint32 max_jobs = 3;      // concurrent jobs this runner accepts; 0 = 1
+}
+
+// A job handed to a native runner. Messages with no `job_id` are keep-alives.
+message RunnerJobAssignment {
+  string job_id = 1;
+  string run_id = 2;
+  RepoRef repo = 3;
+  string lease_id = 4;
+  google.protobuf.Timestamp lease_expires_at = 5;
+  string job_token = 6;          // scoped token for this job (checkout, artifacts, caches, OIDC)
+  string plan_json = 7;          // resolved job: steps, env, matrix, services, container, JSON
+  ObjectId head_changeset = 8;
+  string head_ref = 9;
+  uint32 timeout_seconds = 10;
+  string secrets_url = 11;       // signed URL to fetch the job's sealed secrets once
+}
+
+// Request for RenewRunnerJob.
+message RenewRunnerJobRequest {
+  string runner_id = 1;
+  string job_id = 2;
+  string lease_id = 3;
+}
+
+// Response for RenewRunnerJob.
+message RenewRunnerJobResponse {
+  google.protobuf.Timestamp lease_expires_at = 1;
+  bool cancel_requested = 2;   // stop the job and complete it as CANCELLED
+  bool force_cancel = 3;       // stop without running `always()` steps
+}
+
+// Request for UpdateRunnerJobStep.
+message UpdateRunnerJobStepRequest {
+  string runner_id = 1;
+  string job_id = 2;
+  string lease_id = 3;
+  uint32 step_number = 4;
+  string step_name = 5;
+  WorkflowStatus status = 6;
+  WorkflowConclusion conclusion = 7;
+  google.protobuf.Timestamp started_at = 8;
+  google.protobuf.Timestamp completed_at = 9;
+}
+
+// Response for UpdateRunnerJobStep.
+message UpdateRunnerJobStepResponse {}
+
+// Request for AppendRunnerJobLog.
+message AppendRunnerJobLogRequest {
+  string runner_id = 1;
+  string job_id = 2;
+  string lease_id = 3;
+  uint64 offset = 4;  // byte offset where `data` starts
+  bytes data = 5;     // at most 1 MiB
+  uint32 step_number = 6;
+}
+
+// Response for AppendRunnerJobLog.
+message AppendRunnerJobLogResponse {
+  uint64 stored_end = 1; // next offset to write
+}
+
+// Request for CompleteRunnerJob.
+message CompleteRunnerJobRequest {
+  string runner_id = 1;
+  string job_id = 2;
+  string lease_id = 3;
+  WorkflowConclusion conclusion = 4;
+  repeated KeyValue outputs = 5;  // job outputs
+  string summary_markdown = 6;    // step summary, at most 1 MiB
+  google.protobuf.Timestamp completed_at = 7;
+  // The evaluated `environment.url` of a job that deploys to an environment; recorded on the
+  // final deployment status.
+  string environment_url = 8;
+}
+
+// Response for CompleteRunnerJob.
+message CompleteRunnerJobResponse {}
+
+// Request for SearchWorkflowRunLogs.
+message SearchWorkflowRunLogsRequest {
+  RepoRef repo = 1;
+  string run_id = 2;
+  string query = 3;     // required
+  uint32 limit = 4;     // default 100, at most 1000
+}
+
+// One matching log line.
+message WorkflowLogMatch {
+  string job_id = 1;
+  string job_name = 2;
+  uint64 line = 3;      // 1-based line in the job log
+  string text = 4;
+}
+
+// Response for SearchWorkflowRunLogs.
+message SearchWorkflowRunLogsResponse {
+  repeated WorkflowLogMatch matches = 1;
+}
+
+// Request for GetWorkflowBadge.
+message GetWorkflowBadgeRequest {
+  RepoRef repo = 1;
+  string workflow = 2;  // id, path or file name
+  string branch = 3;    // empty = the default branch
+}
+
+// A status badge.
+message WorkflowBadge {
+  string label = 1;     // the workflow name
+  string message = 2;   // "passing", "failing", "cancelled" or "no status"
+  string color = 3;     // "#rrggbb"
+  string svg = 4;       // the badge image
+}
+
+// Request for FetchRunnerJobSecrets.
+message FetchRunnerJobSecretsRequest {
+  string runner_id = 1;
+  string job_id = 2;
+  string lease_id = 3;
+}
+
+// Response for FetchRunnerJobSecrets.
+message FetchRunnerJobSecretsResponse {
+  repeated KeyValue secrets = 1;  // name -> value, by name
+}

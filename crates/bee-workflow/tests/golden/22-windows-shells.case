@@ -1,0 +1,33 @@
+event: push refs/heads/main
+--- .github/workflows/windows.yml
+name: Windows
+on: push
+jobs:
+  win:
+    runs-on: windows-2022
+    steps:
+      - run: Get-ChildItem
+      - run: echo $SHELL
+        shell: bash
+      - run: dir
+        shell: cmd
+      - run: Write-Host "legacy"
+        shell: powershell
+  win-defaults:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./tools
+    steps:
+      - run: ./bootstrap.sh
+      - run: python --version
+        shell: python
+        working-directory: ./py
+  linux-sh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: sh
+    steps:
+      - run: ls -la

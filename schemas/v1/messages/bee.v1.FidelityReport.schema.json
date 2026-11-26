@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "bee.v1.FidelityDrop": {
+      "properties": {
+        "reason": {
+          "description": "e.g. \"force-push commit no longer served by GitHub\"",
+          "type": "string"
+        },
+        "ref": {
+          "description": "e.g. \"pull/412#review-comment-99\" or a commit sha",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.FidelityDrop",
+      "type": "object"
+    },
+    "bee.v1.FidelityItem": {
+      "properties": {
+        "archived": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "category": {
+          "type": "string"
+        },
+        "dropped": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "drops": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.FidelityDrop"
+          },
+          "type": "array"
+        },
+        "imported": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.FidelityItem",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.FidelityReport.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "generatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "importId": {
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.FidelityItem"
+      },
+      "type": "array"
+    },
+    "manualSteps": {
+      "description": "secrets to re-enter, webhooks to enable, app installs",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.FidelityReport",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.get-security-configuration.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/GetSecurityConfiguration: `data` is a bee.v1.SecurityConfiguration in proto3-JSON. `bee security get-security-configuration --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SecurityConfiguration.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.get-security-configuration"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security get-security-configuration",
+  "type": "object"
+}

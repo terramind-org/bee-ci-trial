@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.get-push-protection-bypass.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/GetPushProtectionBypass: `data` is a bee.v1.PushProtectionBypass in proto3-JSON. `bee security get-push-protection-bypass --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.PushProtectionBypass.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.get-push-protection-bypass"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security get-push-protection-bypass",
+  "type": "object"
+}

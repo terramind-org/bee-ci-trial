@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SearchSortOrder": {
+      "description": "Sort direction.",
+      "enum": [
+        "SEARCH_SORT_ORDER_UNSPECIFIED",
+        "SEARCH_SORT_ORDER_DESC",
+        "SEARCH_SORT_ORDER_ASC"
+      ],
+      "title": "bee.v1.SearchSortOrder",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SearchReposRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SearchRepos.",
+  "properties": {
+    "includeTextMatches": {
+      "type": "boolean"
+    },
+    "order": {
+      "$ref": "#/$defs/bee.v1.SearchSortOrder"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "query": {
+      "type": "string"
+    },
+    "sort": {
+      "description": "\"stars\", \"forks\", \"updated\", \"help-wanted-issues\", \"best-match\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SearchReposRequest",
+  "type": "object"
+}

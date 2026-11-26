@@ -1,0 +1,7 @@
+feature_id,test
+F49-018,bee-proto::gateway::unary_json_round_trip_with_metadata
+F49-018,bee-proto::gateway::server_streaming_envelopes
+F49-018,bee-proto::gateway::raw_http_client_over_tcp
+F422-020,bee-proto::error_contract::spec_table_matches_code
+F422-020,bee-proto::error_contract::proto_comments_match_code
+F422-020,bee-proto::gateway::unary_error_maps_to_connect_error_and_back

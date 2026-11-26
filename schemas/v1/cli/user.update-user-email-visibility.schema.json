@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/user.update-user-email-visibility.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.UserService/UpdateUserEmailVisibility: `data` is a bee.v1.UpdateUserEmailVisibilityResponse in proto3-JSON. `bee user update-user-email-visibility --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateUserEmailVisibilityResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.user.update-user-email-visibility"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee user update-user-email-visibility",
+  "type": "object"
+}

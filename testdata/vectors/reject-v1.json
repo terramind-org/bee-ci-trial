@@ -1,0 +1,357 @@
+{
+  "format": "sCBOR v1",
+  "frozen": true,
+  "spec": "SPEC.md §3.1, §4",
+  "vectors": [
+    {
+      "description": "A valid tree followed by one extra byte.",
+      "encoding_hex": "a200010182a401416102010358220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0406a401416202010358220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f040500",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-trailing-byte"
+    },
+    {
+      "description": "format_version 1 encoded in two bytes.",
+      "encoding_hex": "a20018010180",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-non-shortest-int"
+    },
+    {
+      "description": "A one-byte name with a two-byte length head.",
+      "encoding_hex": "a200010181a40158016102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-non-shortest-length"
+    },
+    {
+      "description": "Entries as an indefinite-length array.",
+      "encoding_hex": "a20001019fff",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-indefinite-array"
+    },
+    {
+      "description": "A tagged value.",
+      "encoding_hex": "a2000101c080",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-tag"
+    },
+    {
+      "description": "A half-precision float.",
+      "encoding_hex": "a200f93c000180",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-float"
+    },
+    {
+      "description": "Map keys 1 then 0.",
+      "encoding_hex": "a201800001",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-unsorted-keys"
+    },
+    {
+      "description": "Map key 1 twice.",
+      "encoding_hex": "a3000101800180",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-duplicate-keys"
+    },
+    {
+      "description": "A text map key.",
+      "encoding_hex": "a20001616180",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "tree",
+      "name": "reject-text-key"
+    },
+    {
+      "description": "An unknown format_version.",
+      "encoding_hex": "a200020182a401416102010358220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0406a401416202010358220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f0405",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "UNKNOWN_FORMAT_VERSION"
+      },
+      "kind": "tree",
+      "name": "reject-format-version-2"
+    },
+    {
+      "description": "No key 0.",
+      "encoding_hex": "a10182a401416102010358220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0406a401416202010358220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f0405",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "tree",
+      "name": "reject-missing-format-version"
+    },
+    {
+      "description": "Unknown odd extension key 65.",
+      "encoding_hex": "a300010182a401416102010358220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0406a401416202010358220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f0405184100",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "UNKNOWN_CRITICAL_EXTENSION"
+      },
+      "kind": "tree",
+      "name": "reject-critical-extension"
+    },
+    {
+      "description": "Key 2 is not defined for trees.",
+      "encoding_hex": "a300010182a401416102010358220101ac678d92b3d739773d18cd952cfcea443fa4a5a98ffc9554b66795bb22d5532d0406a401416202010358220101488c11dd70fcd9ee40dd3e30ca2bd7be9b899ba4cce90aa65d85e3491f316e1f04050200",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "tree",
+      "name": "reject-unknown-defined-key"
+    },
+    {
+      "description": "Entries b then a.",
+      "encoding_hex": "a200010182a401416202010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a401416102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_TREE"
+      },
+      "kind": "tree",
+      "name": "reject-tree-unsorted-entries"
+    },
+    {
+      "description": "Two entries named a.",
+      "encoding_hex": "a200010182a401416102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a401416102020358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_TREE"
+      },
+      "kind": "tree",
+      "name": "reject-tree-duplicate-names"
+    },
+    {
+      "description": "An entry named .Swarm.",
+      "encoding_hex": "a200010181a401462e537761726d02010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_NAME"
+      },
+      "kind": "tree",
+      "name": "reject-tree-reserved-name"
+    },
+    {
+      "description": "An entry name containing /.",
+      "encoding_hex": "a200010181a40143612f6202010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_NAME"
+      },
+      "kind": "tree",
+      "name": "reject-tree-slash-name"
+    },
+    {
+      "description": "An entry named ..",
+      "encoding_hex": "a200010181a401422e2e02010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_NAME"
+      },
+      "kind": "tree",
+      "name": "reject-tree-dotdot-name"
+    },
+    {
+      "description": "A 256-byte entry name.",
+      "encoding_hex": "a200010181a4015901006e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e02010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_NAME"
+      },
+      "kind": "tree",
+      "name": "reject-tree-long-name"
+    },
+    {
+      "description": "Mode 6.",
+      "encoding_hex": "a200010181a401416102060358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_MODE"
+      },
+      "kind": "tree",
+      "name": "reject-tree-unknown-mode"
+    },
+    {
+      "description": "Mode tree with a blob id.",
+      "encoding_hex": "a200010181a401416102040358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "WRONG_KIND"
+      },
+      "kind": "tree",
+      "name": "reject-tree-mode-kind-mismatch"
+    },
+    {
+      "description": "A gitlink with a non-zero size.",
+      "encoding_hex": "a200010181a40141610205035822020001010101010101010101010101010101010101010000000000000000000000000401",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "tree",
+      "name": "reject-tree-gitlink-size"
+    },
+    {
+      "description": "An entry id with algorithm byte 0x03.",
+      "encoding_hex": "a200010181a401416102010358220301af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_ID"
+      },
+      "kind": "tree",
+      "name": "reject-tree-reserved-algorithm"
+    },
+    {
+      "description": "A message that is not UTF-8.",
+      "encoding_hex": "a5000101600282000005600662c328",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "NON_CANONICAL"
+      },
+      "kind": "meta",
+      "name": "reject-meta-invalid-utf8"
+    },
+    {
+      "description": "Provenance with an explicitly empty principal_chain (must be omitted).",
+      "encoding_hex": "a600010160028200000560066007a10180",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "meta",
+      "name": "reject-meta-empty-chain"
+    },
+    {
+      "description": "A 31-byte prompt_digest.",
+      "encoding_hex": "a600010160028200000560066007a105581f00000000000000000000000000000000000000000000000000000000000000",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "meta",
+      "name": "reject-meta-short-digest"
+    },
+    {
+      "description": "Key 64 (git) as text.",
+      "encoding_hex": "a600010160028200000560066018406178",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_FIELD"
+      },
+      "kind": "meta",
+      "name": "reject-meta-git-not-bytes"
+    },
+    {
+      "description": "A 15-byte ChangeId.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a044f0000000000000000000000000000000580",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_ID"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-short-change-id"
+    },
+    {
+      "description": "The same parent twice.",
+      "encoding_hex": "a6000101825822010301060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d85822010301060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d80258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000580",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_PARENTS"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-duplicate-parent"
+    },
+    {
+      "description": "A tree id as a parent.",
+      "encoding_hex": "a60001018158220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e53550258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000580",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "WRONG_KIND"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-parent-kind"
+    },
+    {
+      "description": "Delta paths b then a.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000582a20141620200a20141610200",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_DELTA"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-unsorted-delta"
+    },
+    {
+      "description": "A delta path with a .. component.",
+      "encoding_hex": "a6000101815822010301060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d80258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000581a20146612f2e2e2f620200",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_PATH"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-path-dotdot"
+    },
+    {
+      "description": "A parentless changeset whose delta deletes a path.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000581a20141610200",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_DELTA"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-delete-without-parent"
+    },
+    {
+      "description": "A delta put with mode tree.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000581a201416102a301040258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e53550300",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_MODE"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-put-tree-mode"
+    },
+    {
+      "description": "Puts for both a and a/b.",
+      "encoding_hex": "a6000101800258220102866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e535503582201044d2fc7750e2b76da47568fad7e9bf1a4e53fec54b41e04ddef151c38dd59073a0450000000000000000000000000000000000582a201416102a301010258220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620300a20143612f6202a301010258220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620300",
+      "error": {
+        "reason": "INVALID_ARGUMENT",
+        "subcode": "INVALID_DELTA"
+      },
+      "kind": "changeset",
+      "name": "reject-changeset-file-and-dir"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/blame.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee blame --json`: one such document with `schema` = bee.v1.blame. Show which changeset last changed each line of a file, from the server. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BlameResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.blame"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee blame",
+  "type": "object"
+}

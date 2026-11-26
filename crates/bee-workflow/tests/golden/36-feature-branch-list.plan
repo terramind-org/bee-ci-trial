@@ -1,0 +1,36 @@
+# event push action=-
+run .github/workflows/ci.yml "CI"
+  run-name: "Update code"
+  event: push ref=refs/heads/feature/search sha=2222222222222222222222222222222222222222
+  permissions: default
+  job check decided=true
+    instance "check"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"push on feature/search created=true\""
+        run: "echo \"push on feature/search created=true\""
+        shell: default -> "bash -e {0}"
+  job only-on-create if="github.event_name == 'create' && github.event.ref_type == 'branch'" decided=false
+    skipped
+# event create action=-
+run .github/workflows/ci.yml "CI"
+  run-name: "CI"
+  event: create ref=refs/heads/feature/search sha=2222222222222222222222222222222222222222
+  permissions: default
+  job check decided=true
+    instance "check"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"create on feature/search created=\""
+        run: "echo \"create on feature/search created=\""
+        shell: default -> "bash -e {0}"
+  job only-on-create if="github.event_name == 'create' && github.event.ref_type == 'branch'" decided=true
+    instance "only-on-create"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"new branch feature/search\""
+        run: "echo \"new branch feature/search\""
+        shell: default -> "bash -e {0}"

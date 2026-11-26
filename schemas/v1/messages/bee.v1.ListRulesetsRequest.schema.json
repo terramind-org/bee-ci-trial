@@ -1,0 +1,71 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RulesetTarget": {
+      "description": "What a ruleset governs.",
+      "enum": [
+        "RULESET_TARGET_UNSPECIFIED",
+        "RULESET_TARGET_BRANCH",
+        "RULESET_TARGET_TAG",
+        "RULESET_TARGET_PUSH"
+      ],
+      "title": "bee.v1.RulesetTarget",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRulesetsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListRulesets.\n\nOneof `owner`: at most one of `repo`, `org`, `enterprise` is set.",
+  "properties": {
+    "enterprise": {
+      "type": "string"
+    },
+    "includeInherited": {
+      "description": "also rulesets from the org and enterprise above",
+      "type": "boolean"
+    },
+    "org": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "target": {
+      "$ref": "#/$defs/bee.v1.RulesetTarget",
+      "description": "filter"
+    }
+  },
+  "title": "bee.v1.ListRulesetsRequest",
+  "type": "object"
+}

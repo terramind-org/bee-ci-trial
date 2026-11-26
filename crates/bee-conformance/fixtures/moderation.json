@@ -1,0 +1,134 @@
+{
+  "service": "bee.v1.ModerationService",
+  "note": "Blocks and moderators target an agent principal created in setup (the only other principal setup can make). Settings-changing and destructive fixtures (interaction limits, first-time-contributor and flood settings, takedowns) act on repos of their own.",
+  "fixtures": [
+    {"method": "BlockUser",
+     "setup": [{"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "block-user-agent", "runtime": "claude-code", "purpose": "BlockUser fixture", "org": "{{org}}"}}],
+     "request": {"scope": {"personal": true}, "principalId": "{{a.id}}", "reason": "spam", "note": "BlockUser fixture", "durationSeconds": "86400"}},
+    {"method": "UnblockUser",
+     "setup": [
+       {"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "unblock-user-agent", "runtime": "claude-code", "purpose": "UnblockUser fixture", "org": "{{org}}"}},
+       {"call": "ModerationService/BlockUser", "request": {"scope": {"personal": true}, "principalId": "{{a.id}}", "reason": "spam"}}
+     ],
+     "request": {"scope": {"personal": true}, "principalId": "{{a.id}}"}},
+    {"method": "ListBlockedUsers",
+     "setup": [
+       {"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "list-blocked-users-agent", "runtime": "claude-code", "purpose": "ListBlockedUsers fixture", "org": "{{org}}"}},
+       {"call": "ModerationService/BlockUser", "request": {"scope": {"personal": true}, "principalId": "{{a.id}}", "reason": "harassment"}}
+     ],
+     "request": {"scope": {"personal": true}, "page": {"pageSize": 20}}},
+    {"method": "CheckUserBlocked",
+     "setup": [
+       {"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "check-user-blocked-agent", "runtime": "claude-code", "purpose": "CheckUserBlocked fixture", "org": "{{org}}"}},
+       {"call": "ModerationService/BlockUser", "request": {"scope": {"personal": true}, "principalId": "{{a.id}}", "reason": "spam"}}
+     ],
+     "request": {"scope": {"personal": true}, "principalId": "{{a.id}}"}},
+    {"method": "ReportContent",
+     "setup": [{"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "report-content fixture", "body": "buy cheap stuff"}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}, "category": "MODERATION_REPORT_CATEGORY_SPAM", "audience": "MODERATION_REPORT_AUDIENCE_MAINTAINERS", "body": "looks like spam"}},
+    {"method": "ListContentReports",
+     "request": {"repo": {"fullName": "{{repo}}"}, "state": "MODERATION_REPORT_STATE_OPEN", "page": {"pageSize": 20}}},
+    {"method": "GetContentReport",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "get-content-report fixture"}},
+       {"call": "ModerationService/ReportContent", "save": "r", "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}, "category": "MODERATION_REPORT_CATEGORY_OFF_TOPIC", "audience": "MODERATION_REPORT_AUDIENCE_MAINTAINERS", "body": "off topic"}}
+     ],
+     "request": {"id": "{{r.id}}"}},
+    {"method": "ResolveContentReport",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "resolve-content-report fixture"}},
+       {"call": "ModerationService/ReportContent", "save": "r", "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}, "category": "MODERATION_REPORT_CATEGORY_ABUSE", "audience": "MODERATION_REPORT_AUDIENCE_MAINTAINERS", "body": "abusive"}}
+     ],
+     "request": {"id": "{{r.id}}", "state": "MODERATION_REPORT_STATE_DISMISSED", "action": "MODERATION_REPORT_ACTION_NONE", "note": "not abusive"}},
+    {"method": "GetInteractionLimit",
+     "request": {"scope": {"repo": {"fullName": "{{repo}}"}}}},
+    {"method": "SetInteractionLimit",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "set-interaction-limit", "visibility": "VISIBILITY_PUBLIC", "description": "SetInteractionLimit fixture"}}],
+     "request": {"scope": {"repo": {"fullName": "{{org}}/set-interaction-limit"}}, "level": "INTERACTION_LIMIT_LEVEL_CONTRIBUTORS_ONLY", "durationSeconds": "86400", "appliesToAgents": true}},
+    {"method": "RemoveInteractionLimit",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "remove-interaction-limit", "visibility": "VISIBILITY_PUBLIC", "description": "RemoveInteractionLimit fixture"}},
+       {"call": "ModerationService/SetInteractionLimit", "request": {"scope": {"repo": {"fullName": "{{org}}/remove-interaction-limit"}}, "level": "INTERACTION_LIMIT_LEVEL_EXISTING_USERS", "durationSeconds": "86400"}}
+     ],
+     "request": {"scope": {"repo": {"fullName": "{{org}}/remove-interaction-limit"}}}},
+    {"method": "MinimizeComment",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "minimize-comment fixture"}},
+       {"call": "IssueService/CreateIssueComment", "save": "c", "request": {"repo": {"fullName": "{{repo}}"}, "number": "{{i.number}}", "body": "minimize me"}}
+     ],
+     "request": {"commentId": "{{c.id}}", "reason": "MINIMIZED_REASON_SPAM"},
+     "expect": "UNIMPLEMENTED",
+     "note": "bee-server builds ModerationConfig without a comment source (forge/mod.rs never calls with_comments), so moderation answers UNIMPLEMENTED/no_comment_source for any comment, including this real issue comment."},
+    {"method": "UnminimizeComment",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "unminimize-comment fixture"}},
+       {"call": "IssueService/CreateIssueComment", "save": "c", "request": {"repo": {"fullName": "{{repo}}"}, "number": "{{i.number}}", "body": "unminimize me"}}
+     ],
+     "request": {"commentId": "{{c.id}}"},
+     "expect": "UNIMPLEMENTED",
+     "note": "bee-server builds ModerationConfig without a comment source (forge/mod.rs never calls with_comments), so moderation answers UNIMPLEMENTED/no_comment_source for any comment, including this real issue comment."},
+    {"method": "LockConversation",
+     "setup": [{"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "lock-conversation fixture"}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}, "reason": "MODERATION_LOCK_REASON_TOO_HEATED"}},
+    {"method": "UnlockConversation",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "unlock-conversation fixture"}},
+       {"call": "ModerationService/LockConversation", "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}, "reason": "MODERATION_LOCK_REASON_RESOLVED"}}
+     ],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}},
+    {"method": "AddModerator",
+     "setup": [{"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "add-moderator-agent", "runtime": "claude-code", "purpose": "AddModerator fixture", "org": "{{org}}"}}],
+     "request": {"org": "{{org}}", "principalId": "{{a.id}}"}},
+    {"method": "RemoveModerator",
+     "setup": [
+       {"call": "AuthService/CreateAgent", "save": "a", "request": {"display": "remove-moderator-agent", "runtime": "claude-code", "purpose": "RemoveModerator fixture", "org": "{{org}}"}},
+       {"call": "ModerationService/AddModerator", "request": {"org": "{{org}}", "principalId": "{{a.id}}"}}
+     ],
+     "request": {"org": "{{org}}", "principalId": "{{a.id}}"}},
+    {"method": "ListModerators",
+     "request": {"org": "{{org}}", "page": {"pageSize": 20}}},
+    {"method": "GetFirstTimeContributorSettings",
+     "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "SetFirstTimeContributorSettings",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "set-first-time-contributor-settings", "visibility": "VISIBILITY_PUBLIC", "description": "SetFirstTimeContributorSettings fixture"}}],
+     "request": {"repo": {"fullName": "{{org}}/set-first-time-contributor-settings"}, "runApproval": "MODERATION_RUN_APPROVAL_FIRST_TIME", "labelFirstContributions": true, "label": "first-time-contributor", "holdChangeRequests": true, "treatNewAgentsAsFirstTime": true}},
+    {"method": "GetModerationCommunityProfile",
+     "request": {"repo": {"fullName": "{{repo}}"}, "revision": {"expr": "main"}},
+     "expect": "UNIMPLEMENTED",
+     "note": "The forge core answers UNIMPLEMENTED/served_elsewhere (owner: community) for this method on bee-server --dev; the request is well formed."},
+    {"method": "ListCodesOfConduct",
+     "request": {}},
+    {"method": "GetFloodLimits",
+     "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "SetFloodLimits",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "set-flood-limits", "visibility": "VISIBILITY_PUBLIC", "description": "SetFloodLimits fixture"}}],
+     "request": {"repo": {"fullName": "{{org}}/set-flood-limits"}, "maxOpenChangeRequestsPerPrincipal": 5, "maxOpenChangeRequestsPerOwner": 20, "maxNewChangeRequestsPerHourPerOwner": 10, "maxNewCommentsPerHourPerOwner": 100, "maxNewIssuesPerHourPerOwner": 30, "minReputation": 0.2, "exemptCollaborators": true, "throttleDurationSeconds": "3600"}},
+    {"method": "ListThrottledPrincipals",
+     "request": {"repo": {"fullName": "{{repo}}"}, "page": {"pageSize": 20}}},
+    {"method": "ReleaseThrottledPrincipal",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "release-throttled-principal", "visibility": "VISIBILITY_PUBLIC", "description": "ReleaseThrottledPrincipal fixture"}},
+       {"call": "ModerationService/SetFloodLimits", "request": {"repo": {"fullName": "{{org}}/release-throttled-principal"}, "maxNewIssuesPerHourPerOwner": 1, "exemptCollaborators": false, "throttleDurationSeconds": "3600"}},
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{org}}/release-throttled-principal"}, "title": "release-throttled-principal first"}},
+       {"call": "IssueService/CreateIssue", "expect": "RESOURCE_EXHAUSTED", "request": {"repo": {"fullName": "{{org}}/release-throttled-principal"}, "title": "release-throttled-principal second"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/release-throttled-principal"}, "principalId": "{{user}}"}},
+    {"method": "CreateTakedown",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "create-takedown", "visibility": "VISIBILITY_PUBLIC", "description": "CreateTakedown fixture"}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_REPO", "repo": {"fullName": "{{org}}/create-takedown"}}, "kind": "TAKEDOWN_KIND_DMCA", "noticeText": "CreateTakedown fixture notice", "noticeUrl": "https://example.com/notices/create-takedown", "complainant": "Example Rights Holder"}},
+    {"method": "ListTakedowns",
+     "request": {"repo": {"fullName": "{{org}}/create-takedown"}, "state": "TAKEDOWN_STATE_ACTIVE", "page": {"pageSize": 20}}},
+    {"method": "GetTakedown",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "get-takedown", "visibility": "VISIBILITY_PUBLIC", "description": "GetTakedown fixture"}},
+       {"call": "ModerationService/CreateTakedown", "save": "t", "request": {"subject": {"kind": "SUBJECT_KIND_REPO", "repo": {"fullName": "{{org}}/get-takedown"}}, "kind": "TAKEDOWN_KIND_MALWARE", "noticeText": "GetTakedown fixture notice", "complainant": "Example Security Team"}}
+     ],
+     "request": {"id": "{{t.id}}"}},
+    {"method": "ReinstateTakedown",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "reinstate-takedown", "visibility": "VISIBILITY_PUBLIC", "description": "ReinstateTakedown fixture"}},
+       {"call": "ModerationService/CreateTakedown", "save": "t", "request": {"subject": {"kind": "SUBJECT_KIND_REPO", "repo": {"fullName": "{{org}}/reinstate-takedown"}}, "kind": "TAKEDOWN_KIND_LEGAL", "noticeText": "ReinstateTakedown fixture notice", "complainant": "Example Legal"}}
+     ],
+     "request": {"id": "{{t.id}}", "reason": "counter-notice accepted"}}
+  ]
+}

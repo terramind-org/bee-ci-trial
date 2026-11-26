@@ -1,0 +1,13 @@
+# event push action=-
+run .github/workflows/docs.yml "Docs"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job deploy decided=true
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run make docs"
+        run: "make docs"
+        shell: default -> "bash -e {0}"

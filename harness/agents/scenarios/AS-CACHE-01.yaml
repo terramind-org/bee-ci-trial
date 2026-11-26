@@ -1,0 +1,49 @@
+id: AS-CACHE-01
+area: "4.5"
+title: Start 50 jobs on one machine that each check out the same 1,000-file scope; the daemon fetches each object from upstream once
+surfaces: cli
+timeout: 1800
+budget: { max_turns: 80 }
+requires: ["bin:bee"]
+notes: >
+  The daemon is a tier serving the same RPC surface (SPEC §10.2, §12.3), so the assertion reads
+  its tier stats directly at the endpoint the agent reports. 1,000 blobs plus their trees and
+  the changeset are at most ~1,100 distinct objects; any upstream miss count above that means an
+  object was fetched more than once.
+fixtures: [base]
+setup:
+  - name: a 1,000-file scope plus unrelated files
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add the shared scope"
+      generate: { pattern: "scope/part-{i}.txt", count: 1000, content: "shared scope file {i}\n" }
+      files:
+        other/unrelated.txt: "not in the scope\n"
+agent:
+  token: "${workerToken}"
+prompt: |
+  On this machine, run 50 independent jobs in parallel. Each job must have its own checkout of
+  only the `scope/` directory of the bee repository ${repo.fullName} at main, in
+  `./jobs/job-<n>/` under the current directory (n = 1..50). All jobs must share one local
+  node cache, so that each object is downloaded from the server at most once.
+
+  When all 50 checkouts are complete, leave the local cache running and write `answer.json` in
+  the current directory as:
+  {"cache_endpoint": "<URL where the local cache serves the bee API>", "cache_pid": <its process id>}
+assertions:
+  - name: 50 checkouts of 1,000 scope files each
+    workdir: { glob: "jobs/job-*/scope/part-*.txt", min: 50000, max: 50000 }
+  - name: nothing outside the scope was checked out
+    workdir: { glob: "jobs/job-*/other/**", max: 0 }
+  - name: the node cache served the jobs and went upstream at most once per object
+    call: ObjectService/GetTierStats
+    endpoint: "${json:answer.json#cache_endpoint}"
+    request: {}
+    expect:
+      - { path: hits, gte: 49000 }
+      - { path: misses, lte: 1100 }
+      - { path: failClosed, lte: 0 }
+teardown:
+  - name: stop the agent's node cache
+    exec: ["kill", "${json:answer.json#cache_pid}"]

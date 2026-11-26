@@ -1,0 +1,83 @@
+id: AS-ISSUE-02
+area: "4.15"
+title: Be assigned an issue, implement it, and close it through a landed CR
+surfaces: both
+timeout: 1500
+budget: { max_turns: 100 }
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add slugify"
+      files:
+        src/text.py: |
+          import re
+
+
+          def slugify(title: str) -> str:
+              s = title.strip().lower()
+              s = re.sub(r"[^a-z0-9]", "-", s)
+              return s
+        tests/test_text.py: |
+          from src.text import slugify
+
+
+          def test_basic():
+              assert slugify("Hello World") == "hello-world"
+  - name: the issue
+    call: IssueService/CreateIssue
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      title: "slugify leaves repeated and trailing dashes"
+      body: |
+        `slugify("Hello,  World!")` returns `"hello---world-"`. It should return `"hello-world"`:
+        runs of non-alphanumeric characters become a single dash, and there are no leading or
+        trailing dashes. Please add a test for it.
+    save: { issue: "$" }
+  - name: assign it to the worker
+    call: IssueService/AddIssueAssignees
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${issue.number}", assignees: ["${worker.id}"] }
+agent:
+  token: "${workerToken}"
+prompt: |
+  An issue in the bee repository ${repo.fullName} has been assigned to you. Implement it and
+  get it closed by landing your change through a change request.
+assertions:
+  - name: the issue is closed as completed and linked to a change request
+    call: IssueService/GetIssueByNumber
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${issue.number}" }
+    expect:
+      - { path: state, eq: ISSUE_STATE_CLOSED }
+      - { path: stateReason, eq: ISSUE_STATE_REASON_COMPLETED }
+      - { path: linkedChangeRequestIds, len_gte: 1 }
+  - name: a landed change request by the worker closes it
+    call: IssueService/GetIssueDevelopment
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${issue.number}" }
+    expect:
+      - path: changes
+        some:
+          - { path: state, eq: landed }
+          - { path: closes, eq: true }
+    save: { linked: changes }
+  - name: the landed CR was authored by the worker and changed the code and a test
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, state: CHANGE_STATE_LANDED, authorId: "${worker.id}" }
+    expect:
+      - { path: changes, len_gte: 1 }
+      - { path: "changes[*].linkedIssues[*]", contains: "${issue.number}" }
+  - name: main has the fix and a new test
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 5 }, includeMeta: true }
+    expect:
+      - { path: "changesets[*].delta[*].path", decode: base64, contains: src/text.py }
+      - { path: "changesets[*].delta[*].path", decode: base64, contains: tests/test_text.py }
+      - path: changesets
+        some:
+          - { path: meta.provenance.session, eq: "${run.session}" }
+  - name: the new test exercises the reported input
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:tests/test_text.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "hello-world" }
+      - { path: "messages[*].data", decode: base64, matches: "Hello,\\s+World!" }

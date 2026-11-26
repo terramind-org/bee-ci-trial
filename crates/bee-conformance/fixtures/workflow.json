@@ -1,0 +1,2010 @@
+{
+  "service": "bee.v1.WorkflowService",
+  "fixtures": [
+    {
+      "method": "ListWorkflows",
+      "setup": [
+        {
+          "commit": {
+            "repo": "{{repo}}",
+            "parent": "main",
+            "message": "add workflow fixtures",
+            "change": 2500,
+            "land": "main",
+            "files": {
+              ".github/workflows/ci.yml": "name: CI\non:\n  workflow_dispatch:\n    inputs:\n      greeting:\n        description: what to say\n        type: string\n        default: hello\n  repository_dispatch:\n    types: [wf-fixture-ping]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - name: say\n        run: echo greeting\n",
+              ".github/workflows/deploy.yml": "name: Deploy\non:\n  workflow_dispatch:\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    environment: wf-fixture-env\n    steps:\n      - run: echo deploying\n",
+              ".github/workflows/toggle.yml": "name: Toggle\non:\n  workflow_dispatch:\njobs:\n  noop:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo toggle\n",
+              ".github/workflows/required.yml": "name: Required\non:\n  pull_request:\njobs:\n  gate:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo gate\n",
+              ".github/workflows/job.yml": "name: Job\non:\n  workflow_dispatch:\npermissions:\n  contents: read\n  id-token: write\n  attestations: write\njobs:\n  work:\n    runs-on: [self-hosted, wf-job-fixture]\n    steps:\n      - name: work\n        run: echo work\n"
+            }
+          },
+          "save": "wfc"
+        },
+        {
+          "call": "DeploymentService/CreateDeploymentEnvironment",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "wf-fixture-env",
+            "reviewers": [
+              {
+                "kind": "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+                "principal": {
+                  "id": "{{user}}",
+                  "kind": "PRINCIPAL_KIND_HUMAN"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "ref": "main"
+      }
+    },
+    {
+      "method": "GetWorkflow",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "ci.yml",
+        "ref": "main",
+        "includeSource": true
+      }
+    },
+    {
+      "method": "ValidateWorkflow",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "path": ".github/workflows/validate-fixture.yml",
+        "source": "name: Toggle\non:\n  workflow_dispatch:\njobs:\n  noop:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo toggle\n",
+        "ref": "main"
+      }
+    },
+    {
+      "method": "DisableWorkflow",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "toggle.yml"
+      }
+    },
+    {
+      "method": "EnableWorkflow",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "toggle.yml"
+      }
+    },
+    {
+      "method": "GetWorkflowUsage",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "ci.yml"
+      }
+    },
+    {
+      "method": "DispatchWorkflow",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "ci.yml",
+        "ref": "main",
+        "inputs": [
+          {
+            "key": "greeting",
+            "value": "dispatch-workflow-fixture"
+          }
+        ]
+      }
+    },
+    {
+      "method": "CreateRepositoryDispatchEvent",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "eventType": "wf-fixture-ping",
+        "clientPayloadJson": "{\"source\":\"create-repository-dispatch-event-fixture\"}"
+      }
+    },
+    {
+      "method": "ListWorkflowRuns",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "workflow": "ci.yml",
+        "ref": "main"
+      }
+    },
+    {
+      "method": "GetWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "GetWorkflowRunAttempt",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}",
+        "attempt": 1
+      }
+    },
+    {
+      "method": "WatchWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      },
+      "maxItems": 1
+    },
+    {
+      "method": "CancelWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ForceCancelWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "RerunWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "RerunFailedWorkflowJobs",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "RerunWorkflowJob",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowJobs",
+          "save": "j",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{j.jobs.0.id}}"
+      }
+    },
+    {
+      "method": "DeleteWorkflowRun",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ApproveWorkflowRun",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "save": "arepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "approve-run-fixture",
+            "visibility": "VISIBILITY_PRIVATE",
+            "autoInit": true
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{org}}/approve-run-fixture",
+            "parent": "main",
+            "message": "add pr workflow",
+            "change": 2501,
+            "land": "main",
+            "files": {
+              ".github/workflows/agent-cr.yml": "name: Agent CR\non:\n  pull_request:\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo check\n"
+            }
+          }
+        },
+        {
+          "call": "WorkflowService/SetActionsPolicy",
+          "request": {
+            "scope": {
+              "kind": "ACTIONS_POLICY_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{org}}/approve-run-fixture"
+              }
+            },
+            "agentRunsRequireApproval": true
+          }
+        },
+        {
+          "call": "AuthService/CreateAgent",
+          "save": "ag",
+          "request": {
+            "display": "approve-run-fixture-agent",
+            "runtime": "claude-code",
+            "purpose": "authors a change request whose run needs approval",
+            "org": "{{org}}"
+          }
+        },
+        {
+          "call": "RepoService/AddCollaborator",
+          "save": "inv",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/approve-run-fixture"
+            },
+            "principalId": "{{ag.id}}",
+            "role": "REPO_ROLE_WRITE"
+          }
+        },
+        {
+          "call": "AuthService/MintToken",
+          "save": "at",
+          "request": {
+            "principalId": "{{ag.id}}",
+            "scope": {
+              "repos": [
+                "{{arepo.id}}"
+              ],
+              "actions": [
+                "read",
+                "commit"
+              ],
+              "session": "approve-run-fixture"
+            }
+          }
+        },
+        {
+          "call": "RepoService/AcceptRepoInvitation",
+          "token": "{{at.token}}",
+          "request": {
+            "invitationId": "{{inv.invitation.id}}"
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{org}}/approve-run-fixture",
+            "parent": "main",
+            "message": "agent change",
+            "change": 2502,
+            "createRef": "cr/approve-run",
+            "files": {
+              "docs/agent.md": "agent change\n"
+            }
+          },
+          "save": "hc"
+        },
+        {
+          "call": "ChangeService/OpenChange",
+          "token": "{{at.token}}",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/approve-run-fixture"
+            },
+            "targetRef": "main",
+            "head": "{{hc.objectId}}",
+            "title": "approve-run fixture"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "pause",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/WatchWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{pause.runId}}"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowRuns",
+          "save": "runs",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/approve-run-fixture"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/approve-run-fixture"
+        },
+        "runId": "{{runs.runs.0.id}}"
+      },
+      "volatile": ["/ok/0/numericId"],
+      "note": "numericId comes from one server-wide run counter; runs that background triggers start for earlier fixtures advance it by a timing-dependent amount, so its absolute value can differ between the three identical servers."
+    },
+    {
+      "method": "ListWorkflowRunApprovals",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "deploy.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ReviewWorkflowRunPendingDeployments",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}",
+            "environments": [
+              "wf-fixture-env"
+            ],
+            "decision": "DEPLOYMENT_REVIEW_DECISION_APPROVED",
+            "comment": "list-run-approvals-fixture"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ListWorkflowRunPendingDeployments",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "deploy.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ReviewWorkflowRunPendingDeployments",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "deploy.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}",
+        "environments": [
+          "wf-fixture-env"
+        ],
+        "decision": "DEPLOYMENT_REVIEW_DECISION_APPROVED",
+        "comment": "review-pending-deployments-fixture"
+      }
+    },
+    {
+      "method": "GetWorkflowRunUsage",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ListWorkflowJobs",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}",
+        "filter": "WORKFLOW_JOB_ATTEMPT_FILTER_ALL"
+      }
+    },
+    {
+      "method": "GetWorkflowJob",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowJobs",
+          "save": "j",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{j.jobs.0.id}}"
+      }
+    },
+    {
+      "method": "GetWorkflowJobSummary",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowJobs",
+          "save": "j",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{j.jobs.0.id}}"
+      }
+    },
+    {
+      "method": "TailWorkflowJobLogs",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowJobs",
+          "save": "j",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{j.jobs.0.id}}",
+        "offset": "0",
+        "follow": false
+      },
+      "maxItems": 5
+    },
+    {
+      "method": "GetWorkflowJobLogsUrl",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        },
+        {
+          "call": "WorkflowService/ListWorkflowJobs",
+          "save": "j",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{j.jobs.0.id}}"
+      }
+    },
+    {
+      "method": "GetWorkflowRunLogsUrl",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}",
+        "attempt": 1
+      }
+    },
+    {
+      "method": "DeleteWorkflowRunLogs",
+      "setup": [
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "ci.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "WorkflowService/ForceCancelWorkflowRun",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "runId": "{{r.runId}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "runId": "{{r.runId}}"
+      }
+    },
+    {
+      "method": "ListWorkflowArtifacts",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "GetWorkflowArtifact",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "get-artifact-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/CreateWorkflowArtifactUpload",
+          "save": "u",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "name": "get-artifact-fixture.txt",
+            "archive": false,
+            "contentType": "text/plain",
+            "retentionDays": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "artifactId": "{{u.artifactId}}"
+      }
+    },
+    {
+      "method": "DeleteWorkflowArtifact",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "delete-artifact-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/CreateWorkflowArtifactUpload",
+          "save": "u",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "name": "delete-artifact-fixture.txt",
+            "archive": false,
+            "contentType": "text/plain",
+            "retentionDays": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "artifactId": "{{u.artifactId}}"
+      }
+    },
+    {
+      "method": "GetWorkflowArtifactDownloadUrl",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "artifact-url-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/CreateWorkflowArtifactUpload",
+          "save": "u",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "name": "artifact-url-fixture.txt",
+            "archive": false,
+            "contentType": "text/plain",
+            "retentionDays": 1
+          }
+        },
+        {
+          "upload": {
+            "url": "{{u.uploadUrl}}",
+            "method": "PUT",
+            "text": "hello"
+          }
+        },
+        {
+          "call": "WorkflowService/FinalizeWorkflowArtifact",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "artifactId": "{{u.artifactId}}",
+            "sizeBytes": "5",
+            "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "artifactId": "{{u.artifactId}}"
+      }
+    },
+    {
+      "method": "CreateWorkflowArtifactUpload",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "create-upload-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{a.jobId}}",
+        "name": "create-artifact-upload-fixture.zip",
+        "archive": true,
+        "contentType": "application/zip",
+        "retentionDays": 1
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "FinalizeWorkflowArtifact",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "finalize-artifact-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/CreateWorkflowArtifactUpload",
+          "save": "u",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "name": "finalize-artifact-fixture.txt",
+            "archive": false,
+            "contentType": "text/plain",
+            "retentionDays": 1
+          }
+        },
+        {
+          "upload": {
+            "url": "{{u.uploadUrl}}",
+            "method": "PUT",
+            "text": "hello"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "artifactId": "{{u.artifactId}}",
+        "sizeBytes": "5",
+        "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "ListWorkflowCaches",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "DeleteWorkflowCaches",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "key": "delete-workflow-caches-fixture",
+        "ref": "main"
+      }
+    },
+    {
+      "method": "GetWorkflowCacheUsage",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "ListWorkflowCacheUsageByRepo",
+      "request": {
+        "org": "{{org}}"
+      }
+    },
+    {
+      "method": "LookupWorkflowCache",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "lookup-cache-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/ReserveWorkflowCache",
+          "save": "c",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "key": "lookup-cache-fixture",
+            "version": "v1",
+            "sizeBytes": "5"
+          }
+        },
+        {
+          "upload": {
+            "url": "{{c.uploadUrl}}",
+            "method": "PUT",
+            "text": "hello"
+          }
+        },
+        {
+          "call": "WorkflowService/CommitWorkflowCache",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "cacheId": "{{c.cacheId}}",
+            "sizeBytes": "5",
+            "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{a.jobId}}",
+        "key": "lookup-cache-fixture",
+        "version": "v1",
+        "restoreKeys": [
+          "lookup-cache-"
+        ]
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "ReserveWorkflowCache",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "reserve-cache-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{a.jobId}}",
+        "key": "reserve-cache-fixture",
+        "version": "v1",
+        "sizeBytes": "5"
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "CommitWorkflowCache",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "commit-cache-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/ReserveWorkflowCache",
+          "save": "c",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "key": "commit-cache-fixture",
+            "version": "v1",
+            "sizeBytes": "5"
+          }
+        },
+        {
+          "upload": {
+            "url": "{{c.uploadUrl}}",
+            "method": "PUT",
+            "text": "hello"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "cacheId": "{{c.cacheId}}",
+        "sizeBytes": "5",
+        "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "GetActionsPolicy",
+      "request": {
+        "scope": {
+          "kind": "ACTIONS_POLICY_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        }
+      }
+    },
+    {
+      "method": "SetActionsPolicy",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-actions-policy-fixture",
+            "visibility": "VISIBILITY_PRIVATE",
+            "description": "workflow fixture",
+            "autoInit": true
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "ACTIONS_POLICY_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{org}}/set-actions-policy-fixture"
+          }
+        },
+        "shaPinningRequired": true,
+        "artifactRetentionDays": 7
+      }
+    },
+    {
+      "method": "ListActionsPolicyEnabledRepos",
+      "request": {
+        "org": "{{org}}"
+      }
+    },
+    {
+      "method": "SetActionsPolicyEnabledRepos",
+      "setup": [
+        {
+          "call": "OrgService/CreateOrg",
+          "request": {
+            "name": "wf-enabled-repos-fixture",
+            "display": "enabled repos fixture"
+          }
+        },
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "wf-enabled-repos-fixture",
+            "name": "enabled-one",
+            "visibility": "VISIBILITY_PRIVATE"
+          }
+        },
+        {
+          "call": "WorkflowService/SetActionsPolicy",
+          "request": {
+            "scope": {
+              "kind": "ACTIONS_POLICY_SCOPE_KIND_ORG",
+              "org": "wf-enabled-repos-fixture"
+            },
+            "enabledRepos": "ACTIONS_POLICY_ENABLED_REPOS_SELECTED"
+          }
+        }
+      ],
+      "request": {
+        "org": "wf-enabled-repos-fixture",
+        "repos": [
+          {
+            "fullName": "wf-enabled-repos-fixture/enabled-one"
+          }
+        ]
+      }
+    },
+    {
+      "method": "ListRequiredWorkflows",
+      "request": {
+        "org": "{{org}}"
+      }
+    },
+    {
+      "method": "CreateRequiredWorkflow",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "create-required-target",
+            "visibility": "VISIBILITY_PRIVATE",
+            "description": "workflow fixture",
+            "autoInit": true
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "name": "create-required-workflow-fixture",
+        "sourceRepo": {
+          "fullName": "{{repo}}"
+        },
+        "sourcePath": ".github/workflows/required.yml",
+        "sourceRef": "main",
+        "scope": "WORKFLOW_REQUIREMENT_SCOPE_SELECTED",
+        "selectedRepos": [
+          {
+            "fullName": "{{org}}/create-required-target"
+          }
+        ],
+        "enforced": false
+      }
+    },
+    {
+      "method": "UpdateRequiredWorkflow",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "update-required-target",
+            "visibility": "VISIBILITY_PRIVATE",
+            "description": "workflow fixture",
+            "autoInit": true
+          }
+        },
+        {
+          "call": "WorkflowService/CreateRequiredWorkflow",
+          "request": {
+            "org": "{{org}}",
+            "name": "update-required-workflow-fixture",
+            "sourceRepo": {
+              "fullName": "{{repo}}"
+            },
+            "sourcePath": ".github/workflows/required.yml",
+            "sourceRef": "main",
+            "scope": "WORKFLOW_REQUIREMENT_SCOPE_SELECTED",
+            "selectedRepos": [
+              {
+                "fullName": "{{org}}/update-required-target"
+              }
+            ],
+            "enforced": false
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "requiredWorkflowId": "{{w.id}}",
+        "name": "update-required-workflow-fixture-renamed",
+        "enforced": false
+      }
+    },
+    {
+      "method": "DeleteRequiredWorkflow",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-required-target",
+            "visibility": "VISIBILITY_PRIVATE",
+            "description": "workflow fixture",
+            "autoInit": true
+          }
+        },
+        {
+          "call": "WorkflowService/CreateRequiredWorkflow",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-required-workflow-fixture",
+            "sourceRepo": {
+              "fullName": "{{repo}}"
+            },
+            "sourcePath": ".github/workflows/required.yml",
+            "sourceRef": "main",
+            "scope": "WORKFLOW_REQUIREMENT_SCOPE_SELECTED",
+            "selectedRepos": [
+              {
+                "fullName": "{{org}}/delete-required-target"
+              }
+            ],
+            "enforced": false
+          },
+          "save": "w"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "requiredWorkflowId": "{{w.id}}"
+      }
+    },
+    {
+      "method": "CreateWorkflowOidcToken",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "oidc-token-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{a.jobId}}",
+        "audience": "https://oidc-fixture.example"
+      },
+      "token": "{{a.jobToken}}"
+    },
+    {
+      "method": "GetWorkflowOidcClaimTemplate",
+      "request": {
+        "scope": {
+          "kind": "ACTIONS_POLICY_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        }
+      }
+    },
+    {
+      "method": "SetWorkflowOidcClaimTemplate",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-oidc-template-fixture",
+            "visibility": "VISIBILITY_PRIVATE",
+            "description": "workflow fixture",
+            "autoInit": true
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "ACTIONS_POLICY_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{org}}/set-oidc-template-fixture"
+          }
+        },
+        "useDefault": false,
+        "includeClaimKeys": [
+          "repo",
+          "context"
+        ]
+      }
+    },
+    {
+      "method": "CreateAttestation",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "create-attestation-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "jobId": "{{a.jobId}}",
+        "subjects": [
+          {
+            "name": "create-attestation-fixture.tar",
+            "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ],
+        "predicateType": "https://slsa.dev/provenance/v1"
+      },
+      "token": "{{a.jobToken}}",
+      "volatile": [
+        "/ok/0/bundleJson"
+      ]
+    },
+    {
+      "method": "ListAttestations",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "volatile": [
+        "/ok/0/attestations/*/bundleJson"
+      ]
+    },
+    {
+      "method": "VerifyAttestation",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "expectedSignerWorkflow": "dev/playground/.github/workflows/job.yml",
+        "expectedSourceRef": "main"
+      },
+      "volatile": [
+        "/ok/0/attestations/*/bundleJson"
+      ]
+    },
+    {
+      "method": "DeleteAttestation",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rt",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rt.token}}",
+            "name": "delete-attestation-runner",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "wf-job-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "job.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        },
+        {
+          "call": "WorkflowService/CreateAttestation",
+          "save": "att",
+          "token": "{{a.jobToken}}",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "jobId": "{{a.jobId}}",
+            "subjects": [
+              {
+                "name": "delete-attestation-fixture.tar",
+                "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+              }
+            ],
+            "predicateType": "https://slsa.dev/provenance/v1"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "attestationId": "{{att.id}}"
+      }
+    },
+    {"method": "SearchWorkflowRunLogs",
+     "setup": [{"commit": {"repo": "{{repo}}", "parent": "main", "message": "add search-logs fixture workflow", "change": 10510, "land": "main",
+                           "files": {".github/workflows/search-logs-fixture.yml": "name: Search logs fixture\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, search-logs-fixture]\n    steps:\n      - name: say\n        run: echo search\n"}}},
+               {"call": "RunnerService/CreateRunnerRegistrationToken", "save": "rrTok", "request": {"scope": {"kind": "RUNNER_SCOPE_KIND_REPO", "repo": {"fullName": "{{repo}}"}}}},
+               {"call": "RunnerService/RegisterRunner", "save": "rr", "request": {"registrationToken": "{{rrTok.token}}", "name": "search-logs-fixture", "os": "RUNNER_OS_LINUX", "arch": "RUNNER_ARCH_X64", "labels": ["search-logs-fixture"], "version": "1.0.0"}},
+               {"call": "WorkflowService/DispatchWorkflow", "save": "run", "request": {"repo": {"fullName": "{{repo}}"}, "workflow": "search-logs-fixture.yml", "ref": "main"}},
+               {"call": "RunnerService/AcquireRunnerJob", "save": "a", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "maxJobs": 1}},
+               {"call": "RunnerService/AppendRunnerJobLog", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "jobId": "{{a.jobId}}", "leaseId": "{{a.leaseId}}", "offset": "0", "data": "c3RhcnRpbmcKc2VhcmNoLWxvZ3MtbmVlZGxlIGZvdW5kCmRvbmUK", "stepNumber": 1}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "runId": "{{run.runId}}", "query": "search-logs-needle", "limit": 10}},
+    {"method": "GetWorkflowBadge",
+     "setup": [{"commit": {"repo": "{{repo}}", "parent": "main", "message": "add badge fixture workflow", "change": 10511, "land": "main",
+                           "files": {".github/workflows/badge-fixture.yml": "name: Badge fixture\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, badge-fixture]\n    steps:\n      - name: say\n        run: echo badge\n"}}},
+               {"call": "RunnerService/CreateRunnerRegistrationToken", "save": "rrTok", "request": {"scope": {"kind": "RUNNER_SCOPE_KIND_REPO", "repo": {"fullName": "{{repo}}"}}}},
+               {"call": "RunnerService/RegisterRunner", "save": "rr", "request": {"registrationToken": "{{rrTok.token}}", "name": "badge-fixture", "os": "RUNNER_OS_LINUX", "arch": "RUNNER_ARCH_X64", "labels": ["badge-fixture"], "version": "1.0.0"}},
+               {"call": "WorkflowService/DispatchWorkflow", "save": "run", "request": {"repo": {"fullName": "{{repo}}"}, "workflow": "badge-fixture.yml", "ref": "main"}},
+               {"call": "RunnerService/AcquireRunnerJob", "save": "a", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "maxJobs": 1}},
+               {"call": "RunnerService/CompleteRunnerJob", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "jobId": "{{a.jobId}}", "leaseId": "{{a.leaseId}}", "conclusion": "WORKFLOW_CONCLUSION_SUCCESS"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "workflow": "badge-fixture.yml", "branch": "main"}}
+  ]
+}

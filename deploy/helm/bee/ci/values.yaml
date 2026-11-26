@@ -1,0 +1,38 @@
+# Values for scripts/check-helm.sh: the services in dependencies.yaml, images loaded into kind
+# as bee-server:helm-ci and bee-web:helm-ci. The Secrets bee-secrets and
+# bee-ssh are created by the script.
+config:
+  publicUrl: http://bee-server.bee-ci.svc.cluster.local:7420
+  s3:
+    endpoint: http://rustfs:9000
+    bucket: bee
+  login:
+    oidcIssuer: http://mock-oidc:8080/default
+    oidcClientId: bee-helm
+
+secrets:
+  existingSecret: bee-secrets
+
+ssh:
+  hostKeySecret:
+    name: bee-ssh
+
+server:
+  image:
+    repository: bee-server
+    tag: helm-ci
+    pullPolicy: Never
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+web:
+  image:
+    repository: bee-web
+    tag: helm-ci
+    pullPolicy: Never
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi

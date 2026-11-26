@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/runner.complete-runner-job.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RunnerService/CompleteRunnerJob: `data` is a bee.v1.CompleteRunnerJobResponse in proto3-JSON. `bee runner complete-runner-job --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CompleteRunnerJobResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.runner.complete-runner-job"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee runner complete-runner-job",
+  "type": "object"
+}

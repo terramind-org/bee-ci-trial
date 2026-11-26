@@ -1,0 +1,22 @@
+event: push refs/heads/main
+vars: LOG_LEVEL=debug
+--- .github/workflows/env.yml
+name: Env precedence
+on: push
+env:
+  LEVEL: workflow
+  SHARED: ${{ vars.LOG_LEVEL }}
+  NUMBER: 3.10
+  FLAG: true
+jobs:
+  show:
+    runs-on: ubuntu-latest
+    env:
+      LEVEL: job
+      JOB_ONLY: ${{ github.job }}
+    steps:
+      - run: echo "$LEVEL $SHARED $NUMBER $FLAG"
+        env:
+          LEVEL: step
+          FROM_ENV: ${{ env.SHARED }}
+      - run: echo "${{ env.LEVEL }}"

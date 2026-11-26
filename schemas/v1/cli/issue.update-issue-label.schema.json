@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/issue.update-issue-label.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.IssueService/UpdateIssueLabel: `data` is a bee.v1.Label in proto3-JSON. `bee issue update-issue-label --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Label.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.issue.update-issue-label"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee issue update-issue-label",
+  "type": "object"
+}

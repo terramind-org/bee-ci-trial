@@ -1,0 +1,21 @@
+event: push refs/heads/feature/old deleted files=
+--- .github/workflows/cleanup.yml
+name: Cleanup preview
+on: delete
+jobs:
+  cleanup:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./teardown-preview.sh "${{ github.event.ref }}"
+--- .github/workflows/push.yml
+name: Push
+on:
+  push:
+    branches: ['feature/**']
+jobs:
+  noop:
+    if: ${{ !github.event.deleted }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo building

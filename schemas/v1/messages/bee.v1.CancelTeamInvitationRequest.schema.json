@@ -1,0 +1,18 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CancelTeamInvitationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CancelTeamInvitation.",
+  "properties": {
+    "invitationId": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CancelTeamInvitationRequest",
+  "type": "object"
+}

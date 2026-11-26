@@ -1,0 +1,14 @@
+event: repository_dispatch deploy-service payload={"service":"api","version":"1.2.3","canary":true}
+--- .github/workflows/dispatch.yml
+name: External deploy
+on:
+  repository_dispatch:
+    types: [deploy-service, rollback-service]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy ${{ github.event.client_payload.service }}@${{ github.event.client_payload.version }}
+      - if: github.event.client_payload.canary
+        run: ./canary ${{ github.event.action }}
+      - run: echo '${{ toJSON(github.event.client_payload) }}'

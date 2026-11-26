@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateSponsorProfileRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateSponsorProfile.",
+  "properties": {
+    "currency": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "goalCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "goalDescription": {
+      "type": "string"
+    },
+    "introduction": {
+      "type": "string"
+    },
+    "login": {
+      "description": "empty = the caller; an org login needs org admin",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateSponsorProfileRequest",
+  "type": "object"
+}

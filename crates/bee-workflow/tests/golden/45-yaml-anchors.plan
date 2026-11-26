@@ -1,0 +1,31 @@
+# event push action=-
+run .github/workflows/anchors.yml "Anchors"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job unit decided=true
+    instance "unit"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        RUST_BACKTRACE: "1"
+        CARGO_INCREMENTAL: "0"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo test"
+        run: "cargo test"
+        shell: default -> "bash -e {0}"
+  job integration decided=true
+    instance "integration"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      env:
+        RUST_BACKTRACE: "1"
+        CARGO_INCREMENTAL: "0"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo test"
+        run: "cargo test"
+        shell: default -> "bash -e {0}"

@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "bee.v1.PolicyEffect": {
+      "description": "Effect of a matched rule.",
+      "enum": [
+        "POLICY_EFFECT_UNSPECIFIED",
+        "POLICY_EFFECT_ALLOW",
+        "POLICY_EFFECT_DENY",
+        "POLICY_EFFECT_REQUIRE"
+      ],
+      "title": "bee.v1.PolicyEffect",
+      "type": "string"
+    },
+    "bee.v1.PolicyRuleMatch": {
+      "description": "A rule that matched an evaluated action.",
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "effect": {
+          "$ref": "#/$defs/bee.v1.PolicyEffect"
+        },
+        "rule": {
+          "description": "key path or \"ruleset:<id>/<rule_type>\"",
+          "type": "string"
+        },
+        "satisfied": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/bee.v1.PolicySourceKind"
+        },
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PolicyRuleMatch",
+      "type": "object"
+    },
+    "bee.v1.PolicySourceKind": {
+      "description": "Where a piece of effective policy comes from.",
+      "enum": [
+        "POLICY_SOURCE_KIND_UNSPECIFIED",
+        "POLICY_SOURCE_KIND_ENTERPRISE_DEFAULT",
+        "POLICY_SOURCE_KIND_ORG_DEFAULT",
+        "POLICY_SOURCE_KIND_REPO_FILE",
+        "POLICY_SOURCE_KIND_RULESET",
+        "POLICY_SOURCE_KIND_BUILTIN"
+      ],
+      "title": "bee.v1.PolicySourceKind",
+      "type": "string"
+    },
+    "bee.v1.RulesetEvaluationResult": {
+      "description": "Outcome of evaluating a rule or a whole ruleset.",
+      "enum": [
+        "RULESET_EVALUATION_RESULT_UNSPECIFIED",
+        "RULESET_EVALUATION_RESULT_PASS",
+        "RULESET_EVALUATION_RESULT_FAIL",
+        "RULESET_EVALUATION_RESULT_BYPASSED"
+      ],
+      "title": "bee.v1.RulesetEvaluationResult",
+      "type": "string"
+    },
+    "bee.v1.RulesetRuleResult": {
+      "description": "The result of one rule in an evaluation.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "missing": {
+          "description": "e.g. \"approval:human\", \"check:test\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "result": {
+          "$ref": "#/$defs/bee.v1.RulesetEvaluationResult"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "ruleType": {
+          "description": "the RulesetRule oneof field name, e.g. \"required_approvals\"",
+          "type": "string"
+        },
+        "rulesetId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RulesetRuleResult",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EvaluatePolicyActionResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for EvaluatePolicyAction.",
+  "properties": {
+    "allowed": {
+      "type": "boolean"
+    },
+    "bypassAvailable": {
+      "description": "the principal is a bypass actor for every blocking rule",
+      "type": "boolean"
+    },
+    "epoch": {
+      "type": "string"
+    },
+    "evaluateModeResults": {
+      "description": "rules in EVALUATE mode, not enforced",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RulesetRuleResult"
+      },
+      "type": "array"
+    },
+    "matchedRules": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PolicyRuleMatch"
+      },
+      "type": "array"
+    },
+    "missing": {
+      "description": "e.g. \"approval:owner:src/auth\", \"check:test\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.EvaluatePolicyActionResponse",
+  "type": "object"
+}

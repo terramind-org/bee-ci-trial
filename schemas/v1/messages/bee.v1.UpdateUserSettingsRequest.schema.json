@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateUserSettingsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateUserSettings.",
+  "properties": {
+    "accessibility": {
+      "description": "merged by key; empty value removes",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "darkTheme": {
+      "type": "string"
+    },
+    "diffView": {
+      "type": "string"
+    },
+    "editorIndent": {
+      "type": "string"
+    },
+    "keyboardShortcuts": {
+      "description": "merged by key",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "keyboardShortcutsEnabled": {
+      "type": "boolean"
+    },
+    "lightTheme": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "showPrivateContributions": {
+      "type": "boolean"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "timeZone": {
+      "type": "string"
+    },
+    "vigilantMode": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateUserSettingsRequest",
+  "type": "object"
+}

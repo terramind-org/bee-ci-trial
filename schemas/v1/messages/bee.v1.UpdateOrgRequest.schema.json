@@ -1,0 +1,34 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateOrgRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "display": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "expectedVersion": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "location": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateOrgRequest",
+  "type": "object"
+}

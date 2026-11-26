@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "bee.v1.CustomPropertyDefinition": {
+      "description": "An org-defined repo property.",
+      "properties": {
+        "allowedValues": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "defaultValue": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "editableByRepoAdmins": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "#/$defs/bee.v1.CustomPropertyType"
+        }
+      },
+      "title": "bee.v1.CustomPropertyDefinition",
+      "type": "object"
+    },
+    "bee.v1.CustomPropertyType": {
+      "description": "Value type of a custom property.",
+      "enum": [
+        "CUSTOM_PROPERTY_TYPE_UNSPECIFIED",
+        "CUSTOM_PROPERTY_TYPE_STRING",
+        "CUSTOM_PROPERTY_TYPE_SINGLE_SELECT",
+        "CUSTOM_PROPERTY_TYPE_MULTI_SELECT",
+        "CUSTOM_PROPERTY_TYPE_TRUE_FALSE"
+      ],
+      "title": "bee.v1.CustomPropertyType",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListCustomPropertyDefinitionsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "definitions": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.CustomPropertyDefinition"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListCustomPropertyDefinitionsResponse",
+  "type": "object"
+}

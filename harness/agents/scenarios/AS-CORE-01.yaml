@@ -1,0 +1,54 @@
+id: AS-CORE-01
+area: "4.1"
+title: Commit and land a one-file fix through the API alone, with no checkout
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: seed the buggy file
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add tax computation"
+      files:
+        src/billing/tax.py: |
+          TAX_RATE = 0.7
+
+
+          def tax(amount_cents: int) -> int:
+              return round(amount_cents * TAX_RATE)
+        src/billing/__init__.py: ""
+    save: seed
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, `src/billing/tax.py` applies a 70% tax: TAX_RATE is
+  0.7 but it should be 0.07. Fix the constant and land the fix on main. Work against the server
+  directly; do not clone or check out the repository.
+assertions:
+  - name: main moved past the seed
+    call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: main }
+    expect:
+      - { path: ref.version, gt: "${seed.ref.version}" }
+  - name: the tip is a one-file change to tax.py made in this run's session
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 1 }, includeMeta: true }
+    expect:
+      - { path: changesets, len: 1 }
+      - { path: "changesets[0].delta", len: 1 }
+      - { path: "changesets[0].delta[0].path", decode: base64, eq: src/billing/tax.py }
+      - { path: "changesets[0].meta.provenance.session", eq: "${run.session}" }
+      - { path: "changesets[0].meta.creator", eq: "${worker.id}" }
+  - name: the file on main has the right rate and nothing else changed
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/billing/tax.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "TAX_RATE = 0\\.07\\s*\\n" }
+      - { path: "messages[*].data", decode: base64, matches: "def tax\\(amount_cents: int\\) -> int:" }
+  - name: the sibling file is untouched
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:README.md}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, eq: "# app\n" }

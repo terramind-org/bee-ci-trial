@@ -1,0 +1,407 @@
+{
+ "service": "bee.v1.GistService",
+ "note": "Each fixture creates the gist it acts on in its own setup.",
+ "fixtures": [
+  {
+   "method": "CreateGist",
+   "request": {
+    "files": {
+     "create-gist-fixture.md": "# create-gist fixture\n",
+     "hello.rs": "fn main() {}\n"
+    },
+    "description": "create-gist fixture",
+    "public": true
+   }
+  },
+  {
+   "method": "GetGist",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "get-gist-fixture.txt": "get gist\n"
+      },
+      "description": "get-gist fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "maxInlineBytes": 4096
+   }
+  },
+  {
+   "method": "ListGists",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "request": {
+      "files": {
+       "list-gists-fixture.txt": "list gists\n"
+      },
+      "description": "list-gists fixture",
+      "public": false
+     }
+    }
+   ],
+   "request": {
+    "filter": "GIST_LIST_FILTER_MINE",
+    "page": {
+     "pageSize": 50
+    }
+   }
+  },
+  {
+   "method": "UpdateGist",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "update-gist-fixture.txt": "before\n",
+       "remove-me.txt": "gone soon\n"
+      },
+      "description": "update-gist fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "expectedHead": "{{g.head}}",
+    "description": "update-gist fixture (edited)",
+    "fileChanges": [
+     {
+      "filename": "update-gist-fixture.txt",
+      "content": "after\n"
+     },
+     {
+      "filename": "remove-me.txt",
+      "delete": true
+     },
+     {
+      "filename": "added.txt",
+      "content": "new file\n"
+     }
+    ]
+   }
+  },
+  {
+   "method": "DeleteGist",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "delete-gist-fixture.txt": "delete me\n"
+      },
+      "description": "delete-gist fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}"
+   }
+  },
+  {
+   "method": "ListGistRevisions",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "list-gist-revisions-fixture.txt": "v1\n"
+      },
+      "description": "list-gist-revisions fixture",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/UpdateGist",
+     "request": {
+      "gistId": "{{g.id}}",
+      "fileChanges": [
+       {
+        "filename": "list-gist-revisions-fixture.txt",
+        "content": "v2\n"
+       }
+      ]
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "page": {
+     "pageSize": 20
+    }
+   }
+  },
+  {
+   "method": "GetGistRevision",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "get-gist-revision-fixture.txt": "v1\n"
+      },
+      "description": "get-gist-revision fixture",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/UpdateGist",
+     "request": {
+      "gistId": "{{g.id}}",
+      "fileChanges": [
+       {
+        "filename": "get-gist-revision-fixture.txt",
+        "content": "v2\n"
+       }
+      ]
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "changeset": "{{g.head}}",
+    "maxInlineBytes": 4096
+   }
+  },
+  {
+   "method": "GetGistFileRawUrl",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "get-gist-file-raw-url-fixture.txt": "raw content\n"
+      },
+      "description": "get-gist-file-raw-url fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "filename": "get-gist-file-raw-url-fixture.txt",
+    "changeset": "{{g.head}}"
+   }
+  },
+  {
+   "method": "ForkGist",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "fork-gist-owner",
+      "runtime": "claude-code",
+      "purpose": "second principal for a fixture",
+      "org": "{{org}}"
+     }
+    },
+    {
+     "call": "AuthService/MintToken",
+     "save": "at",
+     "request": {
+      "principalId": "{{a.id}}",
+      "scope": {}
+     }
+    },
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "token": "{{at.token}}",
+     "request": {
+      "files": {
+       "fork-gist-fixture.txt": "fork me\n"
+      },
+      "description": "fork-gist fixture (owned by an agent)",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}"
+   },
+   "note": "The gist belongs to an agent created in setup (created with its token), so the dev caller may fork it."
+  },
+  {
+   "method": "ListGistForks",
+   "setup": [
+    {
+     "call": "AuthService/CreateAgent",
+     "save": "a",
+     "request": {
+      "display": "list-gist-forks-owner",
+      "runtime": "claude-code",
+      "purpose": "second principal for a fixture",
+      "org": "{{org}}"
+     }
+    },
+    {
+     "call": "AuthService/MintToken",
+     "save": "at",
+     "request": {
+      "principalId": "{{a.id}}",
+      "scope": {}
+     }
+    },
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "token": "{{at.token}}",
+     "request": {
+      "files": {
+       "list-gist-forks-fixture.txt": "fork me\n"
+      },
+      "description": "list-gist-forks fixture (owned by an agent)",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/ForkGist",
+     "request": {
+      "gistId": "{{g.id}}"
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "page": {
+     "pageSize": 20
+    }
+   },
+   "note": "The gist belongs to an agent created in setup (created with its token), so the dev caller may fork it."
+  },
+  {
+   "method": "StarGist",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "star-gist-fixture.txt": "star me\n"
+      },
+      "description": "star-gist fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}"
+   }
+  },
+  {
+   "method": "UnstarGist",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "unstar-gist-fixture.txt": "unstar me\n"
+      },
+      "description": "unstar-gist fixture",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/StarGist",
+     "request": {
+      "gistId": "{{g.id}}"
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}"
+   }
+  },
+  {
+   "method": "IsGistStarred",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "is-gist-starred-fixture.txt": "starred\n"
+      },
+      "description": "is-gist-starred fixture",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/StarGist",
+     "request": {
+      "gistId": "{{g.id}}"
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}"
+   }
+  },
+  {
+   "method": "CreateGistComment",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "create-gist-comment-fixture.txt": "comment on me\n"
+      },
+      "description": "create-gist-comment fixture",
+      "public": true
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "body": "Nice gist, **thanks**."
+   }
+  },
+  {
+   "method": "ListGistComments",
+   "setup": [
+    {
+     "call": "GistService/CreateGist",
+     "save": "g",
+     "request": {
+      "files": {
+       "list-gist-comments-fixture.txt": "comments\n"
+      },
+      "description": "list-gist-comments fixture",
+      "public": true
+     }
+    },
+    {
+     "call": "GistService/CreateGistComment",
+     "request": {
+      "gistId": "{{g.id}}",
+      "body": "first comment"
+     }
+    }
+   ],
+   "request": {
+    "gistId": "{{g.id}}",
+    "includeHtml": true,
+    "page": {
+     "pageSize": 20
+    }
+   }
+  }
+ ]
+}

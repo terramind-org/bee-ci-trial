@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "bee.v1.MarketplaceBillingCycle": {
+      "description": "Billing cycle of a purchase.",
+      "enum": [
+        "MARKETPLACE_BILLING_CYCLE_UNSPECIFIED",
+        "MARKETPLACE_BILLING_CYCLE_MONTHLY",
+        "MARKETPLACE_BILLING_CYCLE_YEARLY"
+      ],
+      "title": "bee.v1.MarketplaceBillingCycle",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PurchaseMarketplacePlanRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for PurchaseMarketplacePlan.",
+  "properties": {
+    "billingCycle": {
+      "$ref": "#/$defs/bee.v1.MarketplaceBillingCycle"
+    },
+    "listing": {
+      "type": "string"
+    },
+    "org": {
+      "description": "buyer",
+      "type": "string"
+    },
+    "planId": {
+      "type": "string"
+    },
+    "unitCount": {
+      "description": "PER_UNIT plans",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.PurchaseMarketplacePlanRequest",
+  "type": "object"
+}

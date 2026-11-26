@@ -1,0 +1,29 @@
+event: push refs/heads/main
+vars: APP_URL=https://widget.example DEPLOY_REGION=eu
+--- .github/workflows/deploy.yml
+name: Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make dist
+  deploy:
+    needs: build
+    runs-on:
+      group: production-runners
+      labels: [linux, deploy]
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    timeout-minutes: 15
+    steps:
+      - id: deploy
+        run: ./deploy.sh --region ${{ vars.DEPLOY_REGION }} --url ${{ vars.APP_URL }}
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}

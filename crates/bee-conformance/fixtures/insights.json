@@ -1,0 +1,30 @@
+{
+  "service": "bee.v1.InsightsService",
+  "note": "Repository health files (LICENSE, CITATION.cff, CONTRIBUTING.md, CODE_OF_CONDUCT.md) live on the ref insights/health created by GetLanguageStats' setup, so main stays as the scenario left it.",
+  "fixtures": [
+    {"method": "GetLanguageStats",
+     "setup": [{"commit": {"repo": "{{repo}}", "parent": "main", "message": "insights health files", "change": 7000, "createRef": "insights/health",
+                "files": {
+                  "LICENSE": "MIT License\n\nCopyright (c) 2026 bee\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+                  "CITATION.cff": "cff-version: 1.2.0\nmessage: \"If you use this software, please cite it as below.\"\ntitle: \"playground\"\nversion: 0.1.0\ndate-released: 2026-10-01\nauthors:\n  - family-names: Dev\n    given-names: Bee\n",
+                  "CONTRIBUTING.md": "# Contributing\n\nOpen a change request.\n",
+                  "CODE_OF_CONDUCT.md": "# Code of Conduct\n\nBe kind.\n",
+                  "src/main.py": "print('hello')\n"
+                }}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "insights/health"}, "includeDocumentation": true}},
+    {"method": "GetLicenseInfo", "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "insights/health"}}},
+    {"method": "GetCommunityProfile", "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "insights/health"}}},
+    {"method": "GetCitation", "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "insights/health"}}},
+    {"method": "GetPulse", "request": {"repo": {"fullName": "{{repo}}"}, "window": "INSIGHTS_WINDOW_MONTH"}},
+    {"method": "ListContributors", "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "main"}, "includeWeeks": true, "page": {"pageSize": 20}}},
+    {"method": "GetCommitActivity", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "GetCodeFrequency", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "GetTrafficViews", "request": {"repo": {"fullName": "{{repo}}"}, "interval": "TRAFFIC_INTERVAL_DAY"}},
+    {"method": "GetTrafficClones", "request": {"repo": {"fullName": "{{repo}}"}, "interval": "TRAFFIC_INTERVAL_WEEK"}},
+    {"method": "ListTrafficReferrers", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "ListTrafficPopularPaths", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "GetNetworkGraph", "request": {"repo": {"fullName": "{{repo}}"}, "refs": ["main", "insights/health"], "maxNodes": 100}},
+    {"method": "ListInsightsOrgDependencies", "request": {"org": "{{org}}", "page": {"pageSize": 20}}},
+    {"method": "ListInsightsAgentStats", "request": {"repo": {"fullName": "{{repo}}"}, "window": "INSIGHTS_WINDOW_MONTH", "page": {"pageSize": 20}}}
+  ]
+}

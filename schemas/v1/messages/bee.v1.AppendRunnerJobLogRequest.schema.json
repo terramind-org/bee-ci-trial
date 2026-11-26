@@ -1,0 +1,37 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AppendRunnerJobLogRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AppendRunnerJobLog.",
+  "properties": {
+    "data": {
+      "contentEncoding": "base64",
+      "description": "at most 1 MiB",
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "leaseId": {
+      "type": "string"
+    },
+    "offset": {
+      "description": "byte offset where `data` starts",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "runnerId": {
+      "type": "string"
+    },
+    "stepNumber": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.AppendRunnerJobLogRequest",
+  "type": "object"
+}

@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MoveProjectItemRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for MoveProjectItem.",
+  "properties": {
+    "afterItemId": {
+      "description": "empty = move to the top",
+      "type": "string"
+    },
+    "itemId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.MoveProjectItemRequest",
+  "type": "object"
+}

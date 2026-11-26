@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "bee.v1.BillingIncludedUsage": {
+      "description": "Usage included in a plan before metered charges start.",
+      "properties": {
+        "product": {
+          "$ref": "#/$defs/bee.v1.BillingProduct"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "unit": {
+          "description": "e.g. \"minute\", \"GB-month\", \"token\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BillingIncludedUsage",
+      "type": "object"
+    },
+    "bee.v1.BillingPlan": {
+      "description": "A plan an account can be on.",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "features": {
+          "description": "feature keys enabled by the plan",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "e.g. \"free\", \"team\", \"enterprise\"",
+          "type": "string"
+        },
+        "included": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.BillingIncludedUsage"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "seatMonthlyPriceMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "seatYearlyPriceMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "selfServe": {
+          "description": "false = contact sales",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.BillingPlan",
+      "type": "object"
+    },
+    "bee.v1.BillingProduct": {
+      "description": "A metered product.",
+      "enum": [
+        "BILLING_PRODUCT_UNSPECIFIED",
+        "BILLING_PRODUCT_ACTIONS_MINUTES",
+        "BILLING_PRODUCT_STORAGE_GB",
+        "BILLING_PRODUCT_WORKSPACES_HOURS",
+        "BILLING_PRODUCT_AGENT_TOKENS",
+        "BILLING_PRODUCT_PACKAGES_TRANSFER",
+        "BILLING_PRODUCT_LFS",
+        "BILLING_PRODUCT_SEATS",
+        "BILLING_PRODUCT_MARKETPLACE"
+      ],
+      "title": "bee.v1.BillingProduct",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListBillingPlansResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListBillingPlans.",
+  "properties": {
+    "plans": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.BillingPlan"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListBillingPlansResponse",
+  "type": "object"
+}

@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bee.dev/schemas/v1/import-report.schema.json",
+  "title": "bee import fidelity report",
+  "description": "What a git or GitHub import carried, archived and dropped, with a reason for every dropped item (SPEC §17.6). `complete` is true only when nothing was dropped and the requested round-trip verification passed; only then may an import be called 100%.",
+  "type": "object",
+  "required": [
+    "schema",
+    "source",
+    "object_format",
+    "default_branch",
+    "complete",
+    "summary",
+    "options",
+    "categories",
+    "renamed_refs",
+    "refs",
+    "lfs_objects",
+    "verification",
+    "stats"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "bee.v1.import-report" },
+    "source": { "type": "string", "description": "Where the history came from: a path, `github:acme/api`." },
+    "object_format": { "enum": ["sha1", "sha256"] },
+    "default_branch": {
+      "type": ["string", "null"],
+      "description": "The bee name of the branch the source's HEAD named, when known."
+    },
+    "complete": { "type": "boolean" },
+    "summary": { "type": "string", "description": "`imported 100%`, or `incomplete: ...` naming what was lost." },
+    "options": {
+      "type": "object",
+      "required": ["include_pull_refs", "verify"],
+      "additionalProperties": false,
+      "properties": {
+        "include_pull_refs": { "type": "boolean" },
+        "verify": { "type": "boolean" }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Per-category counts. The git importer always writes commits, trees, blobs, refs, annotated_tags, submodules and lfs_pointers, in that order; forge importers add their own (pull_requests, review_comments, ...).",
+      "items": { "$ref": "#/$defs/category" }
+    },
+    "renamed_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["git", "git_hex", "bee", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "git": { "type": "string", "description": "Original ref name, lossy UTF-8." },
+          "git_hex": { "type": "string", "description": "Original ref name bytes, lowercase hex." },
+          "bee": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["git", "bee", "kind", "git_target", "commit", "changeset", "tags", "action", "version"],
+        "additionalProperties": false,
+        "properties": {
+          "git": { "type": "string" },
+          "bee": { "type": "string" },
+          "kind": { "enum": ["branch", "tag", "pull_request", "other"] },
+          "git_target": { "type": "string", "description": "The git object the ref points at (a commit or an annotated tag)." },
+          "commit": { "type": "string", "description": "The commit after peeling tags." },
+          "changeset": { "type": "string", "description": "The bee changeset id (`c1_...`)." },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Annotated tag objects peeled, outermost first; kept byte-exact as git_tag records." },
+          "action": { "enum": ["created", "updated", "unchanged"] },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "lfs_objects": {
+      "type": "array",
+      "description": "Distinct Git LFS objects named by pointer files in the history; the forge importer fetches them.",
+      "items": {
+        "type": "object",
+        "required": ["oid", "size"],
+        "additionalProperties": false,
+        "properties": {
+          "oid": { "type": "string", "description": "`sha256:<64 hex>`." },
+          "size": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["performed", "commits_checked", "refs_checked", "commit_id_mismatches", "graph_mismatches", "ref_mismatches"],
+      "additionalProperties": false,
+      "properties": {
+        "performed": { "type": "boolean" },
+        "commits_checked": { "type": "integer", "minimum": 0 },
+        "refs_checked": { "type": "integer", "minimum": 0 },
+        "commit_id_mismatches": { "type": "array", "items": { "type": "string" } },
+        "graph_mismatches": { "type": "array", "items": { "type": "string" } },
+        "ref_mismatches": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "github": {
+      "type": "object",
+      "description": "Present on GitHub imports (bee-github): placeholders, manual steps, settings that were not translated, and the redirect map size. The GitHub categories (pull_requests, pr_revisions, force_push_commits, reviews, review_comments, issue_comments, issues, labels, milestones, reactions, releases, release_assets, lfs_objects, branch_protection, codeowners, webhooks, workflows, wiki, principals, secrets, deploy_keys) follow the git importer's in `categories`.",
+      "required": ["repository", "phase", "sources", "placeholders", "manual_steps", "untranslatable", "redirects", "unexplained_drops"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "description": "`owner/name` on GitHub." },
+        "phase": { "enum": ["mirror_only", "mirror", "live", "frozen", "cut_over", "new", "git", "metadata"] },
+        "sources": { "type": "array", "items": { "enum": ["git", "api", "migration_archive"] } },
+        "placeholders": {
+          "type": "array",
+          "description": "Placeholder principals by GitHub numeric id. Claim tokens never appear here.",
+          "items": {
+            "type": "object",
+            "required": ["github_id", "login", "principal", "kind", "claimed", "contributions"],
+            "additionalProperties": false,
+            "properties": {
+              "github_id": { "type": "integer", "minimum": 0 },
+              "login": { "type": "string" },
+              "principal": { "type": "string" },
+              "kind": { "enum": ["human", "agent"] },
+              "claimed": { "type": "boolean" },
+              "contributions": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "manual_steps": { "type": "array", "items": { "type": "string" }, "description": "Secrets to re-enter, webhooks to enable, land rules to review." },
+        "untranslatable": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["setting", "item", "detail"],
+            "additionalProperties": false,
+            "properties": {
+              "setting": { "type": "string" },
+              "item": { "type": "string" },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "redirects": { "type": "integer", "minimum": 0 },
+        "unexplained_drops": { "type": "integer", "minimum": 0, "description": "Dropped items without a reason; zero by construction." }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "commits_walked",
+        "commits_already_imported",
+        "changesets_written",
+        "objects_written",
+        "bytes_written",
+        "refs_written",
+        "records_written"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "commits_walked": { "type": "integer", "minimum": 0 },
+        "commits_already_imported": { "type": "integer", "minimum": 0 },
+        "changesets_written": { "type": "integer", "minimum": 0 },
+        "objects_written": { "type": "integer", "minimum": 0 },
+        "bytes_written": { "type": "integer", "minimum": 0 },
+        "refs_written": { "type": "integer", "minimum": 0 },
+        "records_written": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "required": ["category", "imported", "archived", "dropped", "excluded", "drops"],
+      "additionalProperties": false,
+      "properties": {
+        "category": { "type": "string" },
+        "imported": { "type": "integer", "minimum": 0 },
+        "archived": { "type": "integer", "minimum": 0 },
+        "dropped": { "type": "integer", "minimum": 0, "description": "Equals the length of `drops`." },
+        "excluded": { "type": "integer", "minimum": 0, "description": "Left out on purpose by an option; not a loss." },
+        "drops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["item", "reason", "detail"],
+            "additionalProperties": false,
+            "properties": {
+              "item": { "type": "string", "description": "A git object id or ref name." },
+              "reason": {
+                "type": "string",
+                "description": "Stable reason: unsupported_ref_name, ref_name_collision, too_many_parents, message_too_large, blob_too_large, too_large, depth_limit, invalid_path, unsupported_name, duplicate_entry, invalid_mode, integrity, missing_object, shallow_boundary, parent_dropped, target_dropped, target_not_commit, malformed; forge importers add their own."
+              },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

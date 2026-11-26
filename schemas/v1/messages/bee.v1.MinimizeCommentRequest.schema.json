@@ -1,0 +1,31 @@
+{
+  "$defs": {
+    "bee.v1.MinimizedReason": {
+      "description": "Why a comment is minimized (PRODUCT §4.21).",
+      "enum": [
+        "MINIMIZED_REASON_UNSPECIFIED",
+        "MINIMIZED_REASON_SPAM",
+        "MINIMIZED_REASON_ABUSE",
+        "MINIMIZED_REASON_OFF_TOPIC",
+        "MINIMIZED_REASON_OUTDATED",
+        "MINIMIZED_REASON_DUPLICATE",
+        "MINIMIZED_REASON_RESOLVED"
+      ],
+      "title": "bee.v1.MinimizedReason",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MinimizeCommentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for MinimizeComment.",
+  "properties": {
+    "commentId": {
+      "type": "string"
+    },
+    "reason": {
+      "$ref": "#/$defs/bee.v1.MinimizedReason"
+    }
+  },
+  "title": "bee.v1.MinimizeCommentRequest",
+  "type": "object"
+}

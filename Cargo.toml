@@ -1,0 +1,53 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/bee-core",
+    "crates/bee-object",
+    "crates/bee-store",
+    "crates/bee-store-sql",
+    "crates/bee-store-blob",
+    "crates/bee-merge",
+    "crates/bee-history",
+    "crates/bee-derived",
+    "crates/bee-proto",
+    "crates/bee-policy",
+    "crates/bee-auth",
+    "crates/bee-forge",
+    "crates/bee-server",
+    "crates/bee-wc",
+    "crates/bee-daemon",
+    "crates/bee-mcp",
+    "crates/bee-import",
+    "crates/bee-cli",
+    "crates/bee-testkit",
+    "crates/bee-conformance",
+    "crates/bee-git",
+    "crates/bee-github",
+    "crates/bee-git-http",
+    "crates/bee-classify",
+    "crates/bee-secrets",
+    "crates/bee-workflow",
+    "crates/bee-search",
+    "crates/bee-deps",
+    "crates/bee-compat",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/terramind-org/bee"
+rust-version = "1.99"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+strip = true
+lto = "thin"
+# Keep Cargo's default 16 codegen units: they keep release builds within 16 GB,
+# while thin LTO recovers most cross-unit inlining.

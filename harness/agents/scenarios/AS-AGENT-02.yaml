@@ -1,0 +1,62 @@
+id: AS-AGENT-02
+area: "4.19"
+title: A component watcher detects an injected latency regression and opens an issue with evidence
+surfaces: both
+timeout: 1500
+budget: { max_turns: 80 }
+requires: ["env:BEE_HARNESS_LATENCY_INJECT", "env:BEE_HARNESS_LATENCY_CLEAR"]
+notes: >
+  BEE_HARNESS_LATENCY_INJECT is a host command that, given a service name, makes that service's
+  request latency on the dev server rise (for example by feeding synthetic telemetry or adding
+  a delay); BEE_HARNESS_LATENCY_CLEAR undoes it. The agent under test is the watcher.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add checkout service"
+      files:
+        services/checkout/app.py: "def checkout(cart):\n    return sum(cart)\n"
+  - name: the watcher for the checkout component, run by the worker
+    call: AgentService/CreateComponentWatcher
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: "checkout-watcher"
+      component: checkout
+      paths: ["${b64:services/checkout}"]
+      serviceName: "checkout-${run.ns}"
+      instructions: "Watch p95 latency; open an issue when it regresses."
+      labels: [perf]
+    save: { watcher: "$" }
+  - call: IssueService/CreateIssueLabel
+    request: { repo: { fullName: "${repo.fullName}" }, name: perf, color: "d93f0b" }
+  - name: inject the latency regression
+    exec: ["sh", "-c", "$BEE_HARNESS_LATENCY_INJECT \"$0\"", "checkout-${run.ns}"]
+agent:
+  token: "${workerToken}"
+prompt: |
+  You are the component watcher for the `checkout` component (service `checkout-${run.ns}`) of
+  the bee repository ${repo.fullName}; your watcher id is ${watcher.id}. Look at the
+  component's telemetry. If something has regressed, record it as an anomaly with the evidence
+  you found, and open an issue about it (labelled `perf`) that includes that evidence.
+assertions:
+  - name: the watcher recorded an anomaly with evidence, linked to an issue
+    call: AgentService/ListWatcherAnomalies
+    request: { repo: { fullName: "${repo.fullName}" }, watcherId: "${watcher.id}" }
+    expect:
+      - path: anomalies
+        some:
+          - { path: evidence, len_gte: 1 }
+          - { path: issue, truthy: true }
+          - { path: title, matches: "(?i)latenc|slow|p9[59]" }
+    save: { anomalies: anomalies }
+  - name: the issue carries the evidence and the label
+    call: IssueService/GetIssueByNumber
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${anomalies[0].issue}" }
+    expect:
+      - { path: "labels[*].name", contains: perf }
+      - { path: body, matches: "(?i)latenc|p9[59]" }
+      - { path: body, matches: "\\d+(\\.\\d+)?\\s*(ms|s)\\b" }
+      - { path: author.id, eq: "${worker.id}" }
+teardown:
+  - exec: ["sh", "-c", "$BEE_HARNESS_LATENCY_CLEAR \"$0\"", "checkout-${run.ns}"]

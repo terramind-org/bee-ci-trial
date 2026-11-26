@@ -1,0 +1,8 @@
+manifest App/App.csproj nuget lock=false count=2
+manifest App/packages.lock.json nuget lock=true count=3
+manifest Directory.Packages.props nuget lock=false count=1
+App/App.csproj nuget Newtonsoft.Json@12.0.3 runtime direct req=12.0.3 pkg:nuget/Newtonsoft.Json@12.0.3
+App/App.csproj nuget Serilog@3.1.1 runtime direct req=3.1.1 pkg:nuget/Serilog@3.1.1
+App/packages.lock.json nuget Newtonsoft.Json@12.0.3 runtime direct req=[12.0.3, ) pkg:nuget/Newtonsoft.Json@12.0.3
+App/packages.lock.json nuget Serilog@3.1.1 runtime direct req=[3.1.1, ) pkg:nuget/Serilog@3.1.1 -> nuget/System.Diagnostics.DiagnosticSource@7.0.2
+App/packages.lock.json nuget System.Diagnostics.DiagnosticSource@7.0.2 runtime indirect req=- pkg:nuget/System.Diagnostics.DiagnosticSource@7.0.2

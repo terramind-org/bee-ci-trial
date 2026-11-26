@@ -1,0 +1,4 @@
+manifest Pipfile.lock pip lock=true count=3
+Pipfile.lock pip black@24.3.0 dev direct req===24.3.0 pkg:pypi/black@24.3.0
+Pipfile.lock pip jinja2@3.0.1 runtime direct req===3.0.1 pkg:pypi/jinja2@3.0.1
+Pipfile.lock pip markupsafe@2.1.5 runtime direct req===2.1.5 pkg:pypi/markupsafe@2.1.5

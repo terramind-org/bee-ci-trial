@@ -1,0 +1,101 @@
+{
+  "$defs": {
+    "bee.v1.Collaborator": {
+      "description": "A principal with a direct grant on a repo.",
+      "properties": {
+        "customRoleId": {
+          "type": "string"
+        },
+        "outsideCollaborator": {
+          "type": "boolean"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.RepoRole"
+        }
+      },
+      "title": "bee.v1.Collaborator",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRole": {
+      "description": "Repo role names shared by orgs, teams and collaborators.",
+      "enum": [
+        "REPO_ROLE_UNSPECIFIED",
+        "REPO_ROLE_NONE",
+        "REPO_ROLE_READ",
+        "REPO_ROLE_TRIAGE",
+        "REPO_ROLE_WRITE",
+        "REPO_ROLE_MAINTAIN",
+        "REPO_ROLE_ADMIN"
+      ],
+      "title": "bee.v1.RepoRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListCollaboratorsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "collaborators": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Collaborator"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListCollaboratorsResponse",
+  "type": "object"
+}

@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "bee.v1.GitRefUpdateCommand": {
+      "description": "One ref update from receive-pack.",
+      "properties": {
+        "newOid": {
+          "description": "all zeros = delete",
+          "type": "string"
+        },
+        "oldOid": {
+          "description": "all zeros = create",
+          "type": "string"
+        },
+        "refName": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.GitRefUpdateCommand",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitIngestCommitsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GitIngestCommits.\n\nOneof `pack`: at most one of `packUploadId`, `packBytes` is set.",
+  "properties": {
+    "atomic": {
+      "description": "all refs update or none",
+      "type": "boolean"
+    },
+    "clientAgent": {
+      "type": "string"
+    },
+    "commands": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitRefUpdateCommand"
+      },
+      "type": "array"
+    },
+    "packBytes": {
+      "contentEncoding": "base64",
+      "description": "inline, at most 1 MiB",
+      "type": "string"
+    },
+    "packUploadId": {
+      "description": "from CreateGitPackUpload",
+      "type": "string"
+    },
+    "pushOptions": {
+      "description": "`git push -o`, e.g. \"cr.title=...\", \"land.method=squash\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "quiet": {
+      "description": "suppress progress messages",
+      "type": "boolean"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.GitIngestCommitsRequest",
+  "type": "object"
+}

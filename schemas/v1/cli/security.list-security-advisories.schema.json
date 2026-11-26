@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.list-security-advisories.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/ListSecurityAdvisories: `data` is a bee.v1.ListSecurityAdvisoriesResponse in proto3-JSON. `bee security list-security-advisories --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListSecurityAdvisoriesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.list-security-advisories"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security list-security-advisories",
+  "type": "object"
+}

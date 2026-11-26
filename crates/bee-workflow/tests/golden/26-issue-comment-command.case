@@ -1,0 +1,17 @@
+event: comment created pr body="/deploy staging"
+--- .github/workflows/chatops.yml
+name: ChatOps
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  deploy:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/deploy')
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "deploying for PR ${{ github.event.issue.number }}"
+  help:
+    if: ${{ github.event.comment.body == '/help' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo help

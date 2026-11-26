@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/sponsor.create-sponsor-tier.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SponsorService/CreateSponsorTier: `data` is a bee.v1.SponsorTier in proto3-JSON. `bee sponsor create-sponsor-tier --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SponsorTier.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.sponsor.create-sponsor-tier"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee sponsor create-sponsor-tier",
+  "type": "object"
+}

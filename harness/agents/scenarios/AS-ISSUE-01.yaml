@@ -1,0 +1,103 @@
+id: AS-ISSUE-01
+area: "4.15"
+title: Triage ten new issues into types, labels, sub-issues and a project iteration
+surfaces: both
+timeout: 1500
+budget: { max_turns: 120 }
+fixtures: [base]
+setup:
+  - name: issue types
+    call: IssueService/CreateIssueType
+    each: [Bug, Feature, Task]
+    request: { org: "${run.ns}", name: "${item}", enabled: true }
+  - name: area labels
+    call: IssueService/CreateIssueLabel
+    each: ["area:billing", "area:auth", "area:ui"]
+    request: { repo: { fullName: "${repo.fullName}" }, name: "${item}", color: "1d76db" }
+  - name: the pre-triaged tracking issue
+    call: IssueService/CreateIssue
+    request: { repo: { fullName: "${repo.fullName}" }, title: "Billing revamp", body: "Tracking issue for the billing work this quarter.", issueType: Feature, labels: ["area:billing"] }
+    save: { tracking: "$" }
+  - name: the roadmap project with its Sprint 7 iteration
+    call: ProjectService/CreateProject
+    request: { owner: "${run.ns}", title: Roadmap, linkRepos: [{ fullName: "${repo.fullName}" }] }
+    save: { project: "$" }
+  - call: ProjectService/CreateProjectField
+    request: { projectId: "${project.id}", name: Sprint, kind: PROJECT_FIELD_KIND_ITERATION }
+    save: { sprintField: "$" }
+  - call: ProjectService/AddProjectIteration
+    request: { projectId: "${project.id}", fieldId: "${sprintField.id}", title: "Sprint 7", startOn: "${time:-2d}", durationDays: 14 }
+    save: { sprint7: "$" }
+  - name: ten untriaged issues
+    call: IssueService/CreateIssue
+    each:
+      - { title: "Invoice total ignores discounts", body: "An invoice with a 10% discount still shows the full price as the total." }
+      - { title: "Add PDF export for invoices", body: "Customers want to download invoices as PDF from the invoice page." }
+      - { title: "Migrate the invoices table to the new schema", body: "Move invoice rows to the v2 schema; no user-visible change." }
+      - { title: "Login fails when the password contains a colon", body: "Users with ':' in their password get 'invalid credentials'." }
+      - { title: "Support passkeys for sign-in", body: "Let users register a passkey and sign in without a password." }
+      - { title: "Rotate the session signing key", body: "Routine rotation of the key that signs session cookies." }
+      - { title: "Dark mode resets on reload", body: "Choosing dark mode works until the page is reloaded; then it is light again." }
+      - { title: "Keyboard shortcut for search", body: "Pressing / should focus the search box." }
+      - { title: "Upgrade the date picker library", body: "Bump the date picker dependency to the current major version." }
+      - { title: "Refund button double-charges on slow networks", body: "Clicking Refund twice on a slow connection refunds the customer twice." }
+    request: { repo: { fullName: "${repo.fullName}" }, title: "${item.title}", body: "${item.body}" }
+    save: { issues: "$" }
+  - name: triage rights for the worker
+    call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${worker.id}", role: REPO_ROLE_MAINTAIN }
+  - name: project changes need a token that is not restricted to repos
+    call: AuthService/MintToken
+    request: { principalId: "${worker.id}", scope: { actions: [read, commit, triage, issues_write], session: "${run.session}" } }
+    save: { projectToken: token }
+agent:
+  token: "${projectToken}"
+prompt: |
+  Triage the ten open issues in the bee repository ${repo.fullName} other than "Billing
+  revamp" (issue #${tracking.number}, already triaged):
+
+  - give each one an issue type: Bug, Feature or Task;
+  - label each one with exactly one of the area labels `area:billing`, `area:auth` or `area:ui`;
+  - make every billing issue a sub-issue of "Billing revamp";
+  - put every billing issue into the "Sprint 7" iteration of the org's "Roadmap" project.
+assertions:
+  - name: types and area labels
+    call: IssueService/GetIssueByNumber
+    each:
+      - { n: "${issues[0].number}", type: Bug, label: "area:billing" }
+      - { n: "${issues[1].number}", type: Feature, label: "area:billing" }
+      - { n: "${issues[2].number}", type: Task, label: "area:billing" }
+      - { n: "${issues[3].number}", type: Bug, label: "area:auth" }
+      - { n: "${issues[4].number}", type: Feature, label: "area:auth" }
+      - { n: "${issues[5].number}", type: Task, label: "area:auth" }
+      - { n: "${issues[6].number}", type: Bug, label: "area:ui" }
+      - { n: "${issues[7].number}", type: Feature, label: "area:ui" }
+      - { n: "${issues[8].number}", type: Task, label: "area:ui" }
+      - { n: "${issues[9].number}", type: Bug, label: "area:billing" }
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${item.n}" }
+    expect:
+      - { path: issueType.name, eq: "${item.type}" }
+      - { path: "labels[*].name", contains: "${item.label}" }
+      - { path: labels, len: 1 }
+  - name: the four billing issues are the tracking issue's sub-issues
+    call: IssueService/ListIssueSubIssues
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${tracking.number}" }
+    expect:
+      - { path: subIssues, len: 4 }
+      - { path: "subIssues[*].number", contains: "${issues[0].number}" }
+      - { path: "subIssues[*].number", contains: "${issues[1].number}" }
+      - { path: "subIssues[*].number", contains: "${issues[2].number}" }
+      - { path: "subIssues[*].number", contains: "${issues[9].number}" }
+  - name: billing issues are in Sprint 7, others are not
+    call: ProjectService/ListProjectItems
+    request: { projectId: "${project.id}" }
+    each: ["${issues[0].number}", "${issues[1].number}", "${issues[2].number}", "${issues[9].number}"]
+    expect:
+      - path: items
+        some:
+          - { path: number, eq: "${item}" }
+          - { path: fieldValues, some: [{ path: iterationId, eq: "${sprint7.id}" }] }
+      - path: items
+        none:
+          - { path: number, in: ["${issues[3].number}", "${issues[4].number}", "${issues[5].number}", "${issues[6].number}", "${issues[7].number}", "${issues[8].number}"] }
+          - { path: fieldValues, some: [{ path: iterationId, eq: "${sprint7.id}" }] }

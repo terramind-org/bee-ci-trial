@@ -1,0 +1,48 @@
+id: AS-OPS-01
+area: "4.22"
+title: As an operator agent, diagnose an injected fault from metrics, logs and traces and name the failing component
+surfaces: both
+timeout: 1200
+budget: { max_turns: 80 }
+requires: ["env:BEE_HARNESS_FAULT_INJECT", "env:BEE_HARNESS_FAULT_CLEAR"]
+notes: >
+  BEE_HARNESS_FAULT_INJECT is a host command that breaks one server component (chosen by the
+  hook, e.g. at random among search, events, blob_store) and prints that component's health
+  name (the `HealthComponent.name` the server reports); BEE_HARNESS_FAULT_CLEAR repairs it.
+  The agent is not told which component was broken.
+fixtures: [base]
+setup:
+  - name: operator rights for the worker
+    call: AuthService/MintToken
+    request: { principalId: "${worker.id}", scope: { actions: [read, manage_policy, manage_settings], session: "${run.session}" } }
+    save: { opsToken: token }
+  - name: break one component
+    exec: ["sh", "-c", "$BEE_HARNESS_FAULT_INJECT"]
+    save_stdout: faulty
+agent:
+  token: "${opsToken}"
+prompt: |
+  Users report that parts of the bee server at $BEE_ENDPOINT are failing. You are the
+  operator on call. Using the server's metrics, logs and traces, find which component is
+  failing and why.
+
+  Write your diagnosis to `answer.json` in the current directory as:
+  {"component": "<name of the failing component, as the server names it>", "evidence": ["<metric, log line or trace that shows it>", ...]}
+assertions:
+  - name: ground truth - the server reports the injected component as unhealthy
+    call: OpsService/GetOpsHealth
+    request: { includeComponents: true }
+    expect:
+      - path: components
+        some:
+          - { path: name, eq: "${faulty}" }
+          - { path: readiness, in: [HEALTH_STATUS_DEGRADED, HEALTH_STATUS_DOWN] }
+  - name: the agent named the component, with evidence
+    answer:
+      file: answer.json
+      expect:
+        - { path: component, eq: "${faulty}" }
+        - { path: evidence, len_gte: 1 }
+teardown:
+  - name: repair the component
+    exec: ["sh", "-c", "$BEE_HARNESS_FAULT_CLEAR"]

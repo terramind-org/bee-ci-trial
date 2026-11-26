@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AddAppInstallationReposResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for AddAppInstallationRepos.",
+  "properties": {
+    "repoCount": {
+      "description": "repos covered after the change",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.AddAppInstallationReposResponse",
+  "type": "object"
+}

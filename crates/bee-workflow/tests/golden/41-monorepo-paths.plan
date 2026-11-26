@@ -1,0 +1,29 @@
+# event push action=-
+run .github/workflows/api.yml "api"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job test decided=true
+    instance "test"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run go test ./..."
+        run: "go test ./..."
+        shell: default -> "bash -e {0}"
+        working-directory: "services/api"
+run .github/workflows/infra.yml "infra"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job plan decided=true
+    instance "plan"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run hashicorp/setup-terraform@v3"
+        uses: hashicorp/setup-terraform@v3
+      step 2 "Run terraform plan"
+        run: "terraform plan"
+        shell: default -> "bash -e {0}"
+        working-directory: "infra"

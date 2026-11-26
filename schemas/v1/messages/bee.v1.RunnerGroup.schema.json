@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "bee.v1.RunnerGroupVisibility": {
+      "description": "Which repos may use a runner group.",
+      "enum": [
+        "RUNNER_GROUP_VISIBILITY_UNSPECIFIED",
+        "RUNNER_GROUP_VISIBILITY_ALL",
+        "RUNNER_GROUP_VISIBILITY_PRIVATE",
+        "RUNNER_GROUP_VISIBILITY_SELECTED"
+      ],
+      "title": "bee.v1.RunnerGroupVisibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RunnerGroup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A set of runners with shared access rules.",
+  "properties": {
+    "allowsPublicRepos": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "isDefault": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "networkConfigurationId": {
+      "description": "hosted runners: private networking",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "restrictedToWorkflows": {
+      "type": "boolean"
+    },
+    "runnerCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "selectedWorkflows": {
+      "description": "\"org/repo/.github/workflows/x.yml@ref\" patterns",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.RunnerGroupVisibility"
+    }
+  },
+  "title": "bee.v1.RunnerGroup",
+  "type": "object"
+}

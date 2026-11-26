@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/policy.assign-custom-org-role.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PolicyService/AssignCustomOrgRole: `data` is a bee.v1.PolicyOrgRoleAssignment in proto3-JSON. `bee policy assign-custom-org-role --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.PolicyOrgRoleAssignment.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.policy.assign-custom-org-role"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee policy assign-custom-org-role",
+  "type": "object"
+}

@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "bee.v1.Import": {
+      "properties": {
+        "eta": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "liveSince": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/bee.v1.ImportPhase"
+        },
+        "progress": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ImportProgress"
+          },
+          "type": "array"
+        },
+        "rateLimitNote": {
+          "description": "e.g. \"GitHub App: 12,500 req/h, 41% used\"",
+          "type": "string"
+        },
+        "repoIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "source": {
+          "description": "\"github:acme/api\" or \"github:acme/*\"",
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.ImportState"
+        }
+      },
+      "title": "bee.v1.Import",
+      "type": "object"
+    },
+    "bee.v1.ImportPhase": {
+      "enum": [
+        "IMPORT_PHASE_UNSPECIFIED",
+        "IMPORT_PHASE_DRY_RUN",
+        "IMPORT_PHASE_MIRROR",
+        "IMPORT_PHASE_BRIDGE",
+        "IMPORT_PHASE_CUTOVER"
+      ],
+      "title": "bee.v1.ImportPhase",
+      "type": "string"
+    },
+    "bee.v1.ImportProgress": {
+      "properties": {
+        "category": {
+          "description": "e.g. \"pull_requests\", \"review_comments\", \"lfs\"",
+          "type": "string"
+        },
+        "done": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "total": {
+          "description": "0 when unknown",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ImportProgress",
+      "type": "object"
+    },
+    "bee.v1.ImportState": {
+      "enum": [
+        "IMPORT_STATE_UNSPECIFIED",
+        "IMPORT_STATE_QUEUED",
+        "IMPORT_STATE_GIT",
+        "IMPORT_STATE_METADATA",
+        "IMPORT_STATE_LIVE",
+        "IMPORT_STATE_FAILED",
+        "IMPORT_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.ImportState",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListImportsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "imports": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Import"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListImportsResponse",
+  "type": "object"
+}

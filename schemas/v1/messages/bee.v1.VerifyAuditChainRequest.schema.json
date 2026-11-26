@@ -1,0 +1,38 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.VerifyAuditChainRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for VerifyAuditChain.",
+  "properties": {
+    "enterprise": {
+      "type": "string"
+    },
+    "expectedHeadHash": {
+      "contentEncoding": "base64",
+      "description": "optional anchor previously recorded by the caller",
+      "type": "string"
+    },
+    "fromSeq": {
+      "description": "0 = first entry",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "org": {
+      "type": "string"
+    },
+    "toSeq": {
+      "description": "0 = latest entry",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.VerifyAuditChainRequest",
+  "type": "object"
+}

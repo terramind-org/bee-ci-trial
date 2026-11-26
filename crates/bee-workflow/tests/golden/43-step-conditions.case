@@ -1,0 +1,31 @@
+event: push refs/heads/main
+--- .github/workflows/steps.yml
+name: Step conditions
+on: push
+jobs:
+  flaky:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - id: tests
+        run: make test
+        continue-on-error: true
+        timeout-minutes: 5
+      - name: Report flaky outcome
+        if: steps.tests.outcome == 'failure'
+        run: echo "tests failed but conclusion is ${{ steps.tests.conclusion }}"
+      - name: Upload logs on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: logs/
+      - name: Always clean up
+        if: always()
+        run: make clean
+      - name: Cancelled
+        if: cancelled()
+        run: echo cancelled
+      - name: Dynamic continue
+        run: ./maybe.sh
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}

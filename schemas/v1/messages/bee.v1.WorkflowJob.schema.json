@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.WorkflowConclusion": {
+      "description": "Outcome of a completed run, job or step.",
+      "enum": [
+        "WORKFLOW_CONCLUSION_UNSPECIFIED",
+        "WORKFLOW_CONCLUSION_SUCCESS",
+        "WORKFLOW_CONCLUSION_FAILURE",
+        "WORKFLOW_CONCLUSION_NEUTRAL",
+        "WORKFLOW_CONCLUSION_CANCELLED",
+        "WORKFLOW_CONCLUSION_SKIPPED",
+        "WORKFLOW_CONCLUSION_TIMED_OUT",
+        "WORKFLOW_CONCLUSION_ACTION_REQUIRED",
+        "WORKFLOW_CONCLUSION_STALE",
+        "WORKFLOW_CONCLUSION_STARTUP_FAILURE"
+      ],
+      "title": "bee.v1.WorkflowConclusion",
+      "type": "string"
+    },
+    "bee.v1.WorkflowStatus": {
+      "description": "Lifecycle status of a run, job or step.",
+      "enum": [
+        "WORKFLOW_STATUS_UNSPECIFIED",
+        "WORKFLOW_STATUS_REQUESTED",
+        "WORKFLOW_STATUS_PENDING",
+        "WORKFLOW_STATUS_WAITING",
+        "WORKFLOW_STATUS_ACTION_REQUIRED",
+        "WORKFLOW_STATUS_QUEUED",
+        "WORKFLOW_STATUS_IN_PROGRESS",
+        "WORKFLOW_STATUS_COMPLETED"
+      ],
+      "title": "bee.v1.WorkflowStatus",
+      "type": "string"
+    },
+    "bee.v1.WorkflowStep": {
+      "description": "One step of a job.",
+      "properties": {
+        "completedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "conclusion": {
+          "$ref": "#/$defs/bee.v1.WorkflowConclusion"
+        },
+        "logOffset": {
+          "description": "byte offset in the job log where this step starts",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/bee.v1.WorkflowStatus"
+        }
+      },
+      "title": "bee.v1.WorkflowStep",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowJob.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One job of a run attempt.",
+  "properties": {
+    "checkRunId": {
+      "description": "CheckService run carrying annotations and output",
+      "type": "string"
+    },
+    "completedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "conclusion": {
+      "$ref": "#/$defs/bee.v1.WorkflowConclusion"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "headChangeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "headRef": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "labels": {
+      "description": "`runs-on` labels",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "logSizeBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "machineClass": {
+      "description": "hosted class, empty for self-hosted",
+      "type": "string"
+    },
+    "matrixJson": {
+      "description": "JSON object of this job's matrix values",
+      "type": "string"
+    },
+    "name": {
+      "description": "includes matrix values, e.g. \"test (ubuntu, 22)\"",
+      "type": "string"
+    },
+    "needs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "runAttempt": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "runnerGroupId": {
+      "type": "string"
+    },
+    "runnerId": {
+      "type": "string"
+    },
+    "runnerName": {
+      "type": "string"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.WorkflowStatus"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkflowStep"
+      },
+      "type": "array"
+    },
+    "workflowName": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WorkflowJob",
+  "type": "object"
+}

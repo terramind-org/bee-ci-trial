@@ -1,0 +1,78 @@
+id: AS-STORE-01
+area: "4.3"
+title: As an admin agent, run fsck and GC in dry-run, then for real, and report results
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: some history
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add data"
+      files:
+        data/a.txt: "alpha\n"
+        data/b.txt: "beta\n"
+  - name: an abandoned draft changeset nobody references
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      land: false
+      change: abandoned
+      message: "Abandoned experiment"
+      files:
+        data/c.txt: "gamma\n"
+  - name: the worker administers the org's storage
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${worker.id}", role: ROLE_ADMIN }
+  - name: an admin token for the worker
+    call: AuthService/MintToken
+    request:
+      principalId: "${worker.id}"
+      scope: { repos: ["${run.ns}/*"], actions: [read, manage_settings, purge], session: "${run.session}" }
+    save: { adminAgentToken: token }
+agent:
+  token: "${adminAgentToken}"
+prompt: |
+  You are the storage administrator for the bee org ${run.ns}. Check the org's storage for
+  integrity problems, then preview what garbage collection would remove, then run garbage
+  collection for real.
+
+  Write a report to `report.json` in the current directory as:
+  {"fsck_clean": <true|false>, "fsck_violations": <number>, "objects_checked": <number>,
+   "gc_dry_run_objects": <number>, "gc_objects_collected": <number>}
+assertions:
+  - name: fsck, a GC dry run and a real GC ran as the worker, in that order
+    call: AuditService/QueryAuditLog
+    request:
+      org: "${run.ns}"
+      oldestFirst: true
+      filter: { actorId: "${worker.id}", actionPrefixes: ["admin."] }
+    expect:
+      - { path: "entries[*].action", matches: "fsck" }
+      - path: entries
+        count_gte: 2
+        where:
+          - { path: action, matches: "gc" }
+  - name: ground truth - the org is clean now
+    call: AdminService/RunFsck
+    request: { org: "${run.ns}" }
+    save: { fsckNow: "$" }
+    expect:
+      - { path: clean, eq: true }
+  - name: ground truth - a second dry run finds nothing left to collect beyond the safety window
+    call: AdminService/RunGc
+    request: { org: "${run.ns}", dryRun: true }
+    save: { gcAfter: "$" }
+    expect:
+      - { path: dryRun, eq: true }
+  - name: the report matches the server's numbers
+    answer:
+      file: report.json
+      expect:
+        - { path: fsck_clean, eq: true }
+        - { path: fsck_violations, eq: 0 }
+        - { path: objects_checked, gte: 1 }
+        - { path: gc_dry_run_objects, gte: 0 }
+        - { path: gc_objects_collected, gte: 0 }

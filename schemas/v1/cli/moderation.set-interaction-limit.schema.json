@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/moderation.set-interaction-limit.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModerationService/SetInteractionLimit: `data` is a bee.v1.InteractionLimit in proto3-JSON. `bee moderation set-interaction-limit --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.InteractionLimit.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.moderation.set-interaction-limit"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee moderation set-interaction-limit",
+  "type": "object"
+}

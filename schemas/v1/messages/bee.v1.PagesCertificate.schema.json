@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "bee.v1.PagesCertificateState": {
+      "description": "ACME certificate state for a custom domain.",
+      "enum": [
+        "PAGES_CERTIFICATE_STATE_UNSPECIFIED",
+        "PAGES_CERTIFICATE_STATE_NONE",
+        "PAGES_CERTIFICATE_STATE_REQUESTED",
+        "PAGES_CERTIFICATE_STATE_ISSUED",
+        "PAGES_CERTIFICATE_STATE_EXPIRED",
+        "PAGES_CERTIFICATE_STATE_ERRORED"
+      ],
+      "title": "bee.v1.PagesCertificateState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PagesCertificate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The HTTPS certificate of a site's custom domain.",
+  "properties": {
+    "domains": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "errorMessage": {
+      "description": "with ERRORED",
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "issuedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.PagesCertificateState"
+    }
+  },
+  "title": "bee.v1.PagesCertificate",
+  "type": "object"
+}

@@ -1,0 +1,251 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee status --json`: one such document with `schema` = bee.v1.status. Show uncommitted changes, the local stack and any rebase in progress (no network). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "modeChanged": {
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "modified",
+                  "deleted"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "status",
+              "modeChanged"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "clean": {
+          "type": "boolean"
+        },
+        "conflicts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "content",
+                  "add_add",
+                  "modify_delete",
+                  "symlink",
+                  "binary",
+                  "redacted",
+                  "mode",
+                  "file_directory"
+                ]
+              },
+              "markers": {
+                "description": "The file holds diff3 conflict markers.",
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "resolved": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "kind",
+              "markers",
+              "resolved"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "head": {
+          "type": "string"
+        },
+        "hidden": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "onto": {
+          "type": "string"
+        },
+        "ontoVersion": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rebase": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "current": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "currentSubject": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "done": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "enum": [
+                    "sync",
+                    "restack"
+                  ]
+                },
+                "pending": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "current",
+                "currentSubject",
+                "done",
+                "pending"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "recovered": {
+          "description": "Operation finished by crash recovery.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "skipped": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sparse": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "stack": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "changeId": {
+                "pattern": "^k_[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "changeset": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "head": {
+                "description": "The working copy is based on this change.",
+                "type": "boolean"
+              },
+              "index": {
+                "description": "Position from 1 at the bottom.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "parent": {
+                "pattern": "^c1_[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "changeId",
+              "changeset",
+              "parent",
+              "subject",
+              "head"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "targetRef": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "root",
+        "repo",
+        "targetRef",
+        "head",
+        "onto",
+        "ontoVersion",
+        "stack",
+        "changes",
+        "conflicts",
+        "rebase",
+        "sparse",
+        "hidden",
+        "skipped",
+        "clean",
+        "recovered"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.status"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee status",
+  "type": "object"
+}

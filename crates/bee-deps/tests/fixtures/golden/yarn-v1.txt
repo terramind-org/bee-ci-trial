@@ -1,0 +1,6 @@
+manifest package.json npm lock=false count=3
+manifest yarn.lock npm lock=true count=4
+yarn.lock npm @babel/code-frame@7.12.13 runtime direct req=^7.10.4 pkg:npm/%40babel/code-frame@7.12.13 -> npm/%40babel/highlight@7.13.10
+yarn.lock npm @babel/highlight@7.13.10 runtime indirect req=- pkg:npm/%40babel/highlight@7.13.10
+yarn.lock npm debug@4.3.4 dev direct req=^4.3.0 pkg:npm/debug@4.3.4 -> npm/ms@2.1.2
+yarn.lock npm ms@2.1.2 runtime direct req=2.1.2 pkg:npm/ms@2.1.2

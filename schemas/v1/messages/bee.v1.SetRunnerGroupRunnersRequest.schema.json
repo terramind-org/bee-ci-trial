@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetRunnerGroupRunnersRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetRunnerGroupRunners.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "runnerGroupId": {
+      "type": "string"
+    },
+    "runnerIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.SetRunnerGroupRunnersRequest",
+  "type": "object"
+}

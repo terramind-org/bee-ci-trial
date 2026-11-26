@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateOAuthAuthorizationResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateOAuthAuthorization.",
+  "properties": {
+    "code": {
+      "description": "code flow; single use",
+      "type": "string"
+    },
+    "codeExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "redirectUrl": {
+      "description": "redirect_uri with code and state (or error=access_denied)",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateOAuthAuthorizationResponse",
+  "type": "object"
+}

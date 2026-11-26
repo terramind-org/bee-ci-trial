@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/event.get-webhook-delivery.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.EventService/GetWebhookDelivery: `data` is a bee.v1.WebhookDelivery in proto3-JSON. `bee event get-webhook-delivery --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WebhookDelivery.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.event.get-webhook-delivery"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee event get-webhook-delivery",
+  "type": "object"
+}

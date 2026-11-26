@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "bee.v1.InteractionLimitLevel": {
+      "description": "Who may still interact under a limit.",
+      "enum": [
+        "INTERACTION_LIMIT_LEVEL_UNSPECIFIED",
+        "INTERACTION_LIMIT_LEVEL_EXISTING_USERS",
+        "INTERACTION_LIMIT_LEVEL_CONTRIBUTORS_ONLY",
+        "INTERACTION_LIMIT_LEVEL_COLLABORATORS_ONLY"
+      ],
+      "title": "bee.v1.InteractionLimitLevel",
+      "type": "string"
+    },
+    "bee.v1.InteractionLimitScope": {
+      "description": "Where a limit applies.\n\nOneof `scope`: at most one of `repo`, `org`, `userId` is set.",
+      "properties": {
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "userId": {
+          "description": "across every repo the user owns",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.InteractionLimitScope",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.InteractionLimit.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A temporary interaction limit.",
+  "properties": {
+    "appliesToAgents": {
+      "description": "agent principals are judged by their owner's standing",
+      "type": "boolean"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "inheritedFrom": {
+      "description": "\"org\" when an org limit applies to a repo",
+      "type": "string"
+    },
+    "level": {
+      "$ref": "#/$defs/bee.v1.InteractionLimitLevel",
+      "description": "UNSPECIFIED = no limit in force"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.InteractionLimitScope"
+    },
+    "setBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    }
+  },
+  "title": "bee.v1.InteractionLimit",
+  "type": "object"
+}

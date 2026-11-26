@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/git.git-list-refs.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.GitService/GitListRefs: `data` is a bee.v1.GitListRefsResponse in proto3-JSON. `bee git git-list-refs --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GitListRefsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.git.git-list-refs"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee git git-list-refs",
+  "type": "object"
+}

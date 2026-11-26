@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "bee.v1.ModerationReportAction": {
+      "description": "Action taken when resolving a report.",
+      "enum": [
+        "MODERATION_REPORT_ACTION_UNSPECIFIED",
+        "MODERATION_REPORT_ACTION_NONE",
+        "MODERATION_REPORT_ACTION_CONTENT_MINIMIZED",
+        "MODERATION_REPORT_ACTION_CONTENT_DELETED",
+        "MODERATION_REPORT_ACTION_USER_BLOCKED",
+        "MODERATION_REPORT_ACTION_CONVERSATION_LOCKED",
+        "MODERATION_REPORT_ACTION_INTERACTION_LIMITED",
+        "MODERATION_REPORT_ACTION_TAKEN_DOWN",
+        "MODERATION_REPORT_ACTION_ACCOUNT_SUSPENDED"
+      ],
+      "title": "bee.v1.ModerationReportAction",
+      "type": "string"
+    },
+    "bee.v1.ModerationReportState": {
+      "description": "Report lifecycle.",
+      "enum": [
+        "MODERATION_REPORT_STATE_UNSPECIFIED",
+        "MODERATION_REPORT_STATE_OPEN",
+        "MODERATION_REPORT_STATE_RESOLVED",
+        "MODERATION_REPORT_STATE_DISMISSED"
+      ],
+      "title": "bee.v1.ModerationReportState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ResolveContentReportRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ResolveContentReport.",
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/bee.v1.ModerationReportAction"
+    },
+    "id": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.ModerationReportState",
+      "description": "RESOLVED or DISMISSED"
+    }
+  },
+  "title": "bee.v1.ResolveContentReportRequest",
+  "type": "object"
+}

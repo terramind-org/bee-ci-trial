@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "bee.v1.IssueFieldIteration": {
+      "description": "One iteration of an iteration issue field.",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "durationDays": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "description": "server-assigned; send empty to create",
+          "type": "string"
+        },
+        "startOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueFieldIteration",
+      "type": "object"
+    },
+    "bee.v1.IssueFieldKind": {
+      "description": "Value type of a custom issue field.",
+      "enum": [
+        "ISSUE_FIELD_KIND_UNSPECIFIED",
+        "ISSUE_FIELD_KIND_TEXT",
+        "ISSUE_FIELD_KIND_NUMBER",
+        "ISSUE_FIELD_KIND_DATE",
+        "ISSUE_FIELD_KIND_SINGLE_SELECT",
+        "ISSUE_FIELD_KIND_ITERATION"
+      ],
+      "title": "bee.v1.IssueFieldKind",
+      "type": "string"
+    },
+    "bee.v1.IssueFieldOption": {
+      "description": "One choice of a single-select issue field.",
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "description": "server-assigned; send empty to create",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueFieldOption",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.IssueField.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An org-defined typed custom field on issues (Priority, Effort, Target date and so on).",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "issueTypeIds": {
+      "description": "types the field applies to; empty = all",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "iterations": {
+      "description": "ITERATION only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueFieldIteration"
+      },
+      "type": "array"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.IssueFieldKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "options": {
+      "description": "SINGLE_SELECT only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueFieldOption"
+      },
+      "type": "array"
+    },
+    "orgId": {
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.IssueField",
+  "type": "object"
+}

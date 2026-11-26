@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "bee.v1.AdvisoryType": {
+      "description": "Advisory type in the global database.",
+      "enum": [
+        "ADVISORY_TYPE_UNSPECIFIED",
+        "ADVISORY_TYPE_REVIEWED",
+        "ADVISORY_TYPE_UNREVIEWED",
+        "ADVISORY_TYPE_MALWARE"
+      ],
+      "title": "bee.v1.AdvisoryType",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAdvisoriesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListAdvisories.",
+  "properties": {
+    "cweId": {
+      "type": "string"
+    },
+    "ecosystem": {
+      "type": "string"
+    },
+    "packageName": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "publishedAfter": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "#/$defs/bee.v1.SecuritySeverity",
+      "description": "UNSPECIFIED = all"
+    },
+    "type": {
+      "$ref": "#/$defs/bee.v1.AdvisoryType"
+    },
+    "updatedAfter": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListAdvisoriesRequest",
+  "type": "object"
+}

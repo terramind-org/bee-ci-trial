@@ -1,0 +1,66 @@
+id: AS-MIG-01
+area: "4.12"
+title: Migrate a GitHub repo, verify the fidelity report, and land a change in bridge mode that appears as a PR on GitHub
+surfaces: both
+timeout: 3600
+budget: { max_turns: 120 }
+requires: ["env:BEE_HARNESS_GITHUB_TOKEN", "env:BEE_HARNESS_GITHUB_REPO"]
+notes: >
+  BEE_HARNESS_GITHUB_REPO is a sandbox repository ("owner/name") the harness may open PRs on;
+  BEE_HARNESS_GITHUB_TOKEN can read it and open PRs. Each run uses its own marker (run.ns) so
+  runs never confuse each other's PRs.
+setup:
+  - name: create the run's org
+    call: OrgService/CreateOrg
+    request: { name: "${run.ns}", display: "agent harness ${run.ns}" }
+  - call: AuthService/CreateAgent
+    request: { display: "migrator-${run.ns}", runtime: "${run.runtime}", purpose: "migration", org: "${run.ns}" }
+    save: { migrator: "$" }
+  - call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${migrator.id}", role: ROLE_ADMIN }
+  - call: AuthService/MintToken
+    request: { principalId: "${migrator.id}", scope: { repos: ["${run.ns}/*"], actions: [read, commit, land, review, manage_refs, manage_settings], session: "${run.session}" } }
+    save: { migratorToken: token }
+agent:
+  token: "${migratorToken}"
+  env:
+    GITHUB_TOKEN: "${env:BEE_HARNESS_GITHUB_TOKEN}"
+prompt: |
+  Migrate the GitHub repository ${env:BEE_HARNESS_GITHUB_REPO} into the bee org ${run.ns}
+  (a GitHub token is in the GITHUB_TOKEN environment variable). Check the migration's fidelity
+  report: every dropped item must have an explanation. Then run the migration as a two-way
+  bridge with GitHub, and land a change on the migrated repository's main branch that adds a
+  file `migration/${run.ns}.md` containing "migrated". In bridge mode, that change must show up
+  on GitHub as a pull request; its title must contain "${run.ns}".
+assertions:
+  - name: one import into the org, now bridging and live
+    call: ImportService/ListImports
+    request: { targetOrg: "${run.ns}" }
+    expect:
+      - { path: imports, len: 1 }
+      - { path: "imports[0].phase", eq: IMPORT_PHASE_BRIDGE }
+      - { path: "imports[0].state", eq: IMPORT_STATE_LIVE }
+    save: { imp: "imports[0]" }
+  - name: every drop in the fidelity report is explained
+    call: ImportService/GetFidelityReport
+    request: { id: "${imp.id}" }
+    expect:
+      - { path: items, len_gte: 1 }
+      - path: "items[*].drops[*]"
+        every:
+          - { path: reason, matches: "\\S" }
+  - name: the marker file landed on the migrated repo's main
+    call: QueryService/ReadPath
+    request: { repo: { id: "${imp.repoIds[0]}" }, at: { expr: main }, path: "${b64:migration/${run.ns}.md}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "migrated" }
+  - name: the change appears as a pull request on GitHub
+    http:
+      url: "https://api.github.com/repos/${env:BEE_HARNESS_GITHUB_REPO}/pulls?state=all&per_page=100"
+      headers:
+        Authorization: "Bearer ${env:BEE_HARNESS_GITHUB_TOKEN}"
+        Accept: application/vnd.github+json
+    retry: { attempts: 12, interval_ms: 10000 }
+    expect:
+      - { path: status, eq: 200 }
+      - { path: "body[*].title", matches: "${run.ns}" }

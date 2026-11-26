@@ -1,0 +1,380 @@
+{
+  "$defs": {
+    "bee.v1.BenchmarkSeries": {
+      "description": "One measured series of a benchmark: the baseline (the target branch) and the change.",
+      "properties": {
+        "baseline": {
+          "type": "number"
+        },
+        "lowerIsBetter": {
+          "type": "boolean"
+        },
+        "name": {
+          "description": "e.g. \"p95 latency\"",
+          "type": "string"
+        },
+        "unit": {
+          "description": "e.g. \"ms\"",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "title": "bee.v1.BenchmarkSeries",
+      "type": "object"
+    },
+    "bee.v1.Evidence": {
+      "description": "One piece of evidence attached to a change request.",
+      "properties": {
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.EvidenceAsset"
+          },
+          "type": "array"
+        },
+        "changeRequestId": {
+          "type": "string"
+        },
+        "checkRunId": {
+          "description": "CHECK_RUN (and WORKFLOW_ARTIFACT reported by a check run)",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "head": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "that revision's head changeset"
+        },
+        "id": {
+          "type": "string"
+        },
+        "repoId": {
+          "type": "string"
+        },
+        "revision": {
+          "description": "revision the evidence was captured for",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/bee.v1.EvidenceSource"
+        },
+        "spec": {
+          "$ref": "#/$defs/bee.v1.EvidenceSpec"
+        },
+        "stale": {
+          "description": "computed on read: `revision` is older than the CR's current one",
+          "type": "boolean"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.EvidenceState"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "uploader": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "workflowArtifactId": {
+          "description": "WORKFLOW_ARTIFACT",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Evidence",
+      "type": "object"
+    },
+    "bee.v1.EvidenceAsset": {
+      "description": "One stored file of an evidence item.",
+      "properties": {
+        "alt": {
+          "description": "required for images, 1-1000 characters",
+          "type": "string"
+        },
+        "contentType": {
+          "description": "the sniffed type, e.g. \"image/png\", \"video/webm\"",
+          "type": "string"
+        },
+        "digest": {
+          "description": "\"sha256:<hex>\" of the bytes",
+          "type": "string"
+        },
+        "durationMs": {
+          "description": "video and audio",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "height": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "role": {
+          "$ref": "#/$defs/bee.v1.EvidenceAssetRole"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "url": {
+          "description": "signed download URL, filled on every read, never stored",
+          "type": "string"
+        },
+        "urlExpiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "width": {
+          "description": "images (read by the server) and video",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.EvidenceAsset",
+      "type": "object"
+    },
+    "bee.v1.EvidenceAssetRole": {
+      "description": "The part an asset plays in its evidence item.",
+      "enum": [
+        "EVIDENCE_ASSET_ROLE_UNSPECIFIED",
+        "EVIDENCE_ASSET_ROLE_MAIN",
+        "EVIDENCE_ASSET_ROLE_BEFORE",
+        "EVIDENCE_ASSET_ROLE_AFTER",
+        "EVIDENCE_ASSET_ROLE_POSTER",
+        "EVIDENCE_ASSET_ROLE_CAPTIONS"
+      ],
+      "title": "bee.v1.EvidenceAssetRole",
+      "type": "string"
+    },
+    "bee.v1.EvidenceKind": {
+      "description": "What an evidence item shows. Each kind allows a fixed set of assets (by role); anything else\nis INVALID_ARGUMENT (subcode `bad_evidence`). Every image asset needs alt text.",
+      "enum": [
+        "EVIDENCE_KIND_UNSPECIFIED",
+        "EVIDENCE_KIND_SCREENSHOT",
+        "EVIDENCE_KIND_BEFORE_AFTER",
+        "EVIDENCE_KIND_VIDEO",
+        "EVIDENCE_KIND_BENCHMARK",
+        "EVIDENCE_KIND_IMAGE",
+        "EVIDENCE_KIND_AUDIO",
+        "EVIDENCE_KIND_DOCUMENT",
+        "EVIDENCE_KIND_PREVIEW_LINK",
+        "EVIDENCE_KIND_TEST_REPORT"
+      ],
+      "title": "bee.v1.EvidenceKind",
+      "type": "string"
+    },
+    "bee.v1.EvidenceSource": {
+      "description": "Where an evidence item came from. UPLOADED is shown as \"From the agent\" (or the person who\nuploaded it); CHECK_RUN and WORKFLOW_ARTIFACT are shown as \"Verified by CI\".",
+      "enum": [
+        "EVIDENCE_SOURCE_UNSPECIFIED",
+        "EVIDENCE_SOURCE_UPLOADED",
+        "EVIDENCE_SOURCE_CHECK_RUN",
+        "EVIDENCE_SOURCE_WORKFLOW_ARTIFACT"
+      ],
+      "title": "bee.v1.EvidenceSource",
+      "type": "string"
+    },
+    "bee.v1.EvidenceSpec": {
+      "description": "What the author says about an evidence item.",
+      "properties": {
+        "benchmark": {
+          "description": "BENCHMARK only, 1-20 series",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BenchmarkSeries"
+          },
+          "type": "array"
+        },
+        "caption": {
+          "description": "at most 1000 characters, plain text",
+          "type": "string"
+        },
+        "hero": {
+          "description": "shown first; setting it clears the CR's previous hero",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.EvidenceKind"
+        },
+        "order": {
+          "description": "position in the gallery, ascending",
+          "format": "int32",
+          "type": "integer"
+        },
+        "paths": {
+          "description": "repo paths the item shows (UTF-8), at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testReport": {
+          "$ref": "#/$defs/bee.v1.TestReport",
+          "description": "TEST_REPORT only"
+        },
+        "title": {
+          "description": "1-120 characters",
+          "type": "string"
+        },
+        "url": {
+          "description": "PREVIEW_LINK only, https",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EvidenceSpec",
+      "type": "object"
+    },
+    "bee.v1.EvidenceState": {
+      "enum": [
+        "EVIDENCE_STATE_UNSPECIFIED",
+        "EVIDENCE_STATE_PENDING",
+        "EVIDENCE_STATE_READY"
+      ],
+      "title": "bee.v1.EvidenceState",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.TestFailure": {
+      "description": "A failed test of a test report.",
+      "properties": {
+        "message": {
+          "description": "first lines of the failure, plain text",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TestFailure",
+      "type": "object"
+    },
+    "bee.v1.TestReport": {
+      "description": "The outcome of a test run, in numbers.",
+      "properties": {
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failures": {
+          "description": "at most 50",
+          "items": {
+            "$ref": "#/$defs/bee.v1.TestFailure"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "summary": {
+          "description": "one line in words, e.g. \"All 214 billing tests pass\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TestReport",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListEvidenceResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListEvidence.",
+  "properties": {
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Evidence"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListEvidenceResponse",
+  "type": "object"
+}

@@ -1,0 +1,5 @@
+manifest package-lock.json npm lock=true count=3
+manifest package.json npm lock=false count=2
+package-lock.json npm minimist@0.0.8 dev indirect req=- pkg:npm/minimist@0.0.8
+package-lock.json npm minimist@1.2.0 runtime direct req=^1.2.0 pkg:npm/minimist@1.2.0
+package-lock.json npm mocha@5.2.0 dev direct req=^5.0.0 pkg:npm/mocha@5.2.0 -> npm/minimist@0.0.8

@@ -1,0 +1,35 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SavedReply.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A per-user reusable reply snippet.",
+  "properties": {
+    "body": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.SavedReply",
+  "type": "object"
+}

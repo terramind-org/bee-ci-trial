@@ -1,0 +1,59 @@
+[package]
+name = "bee-github"
+description = "GitHub importer, identity placeholders, fidelity report and the dual-run bridge."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[[bin]]
+name = "bee-github"
+path = "src/bin/bee-github.rs"
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+bee-store = { path = "../bee-store" }
+bee-git = { path = "../bee-git" }
+bee-import = { path = "../bee-import" }
+bee-forge = { path = "../bee-forge" }
+bee-policy = { path = "../bee-policy" }
+bee-proto = { path = "../bee-proto" }
+bee-mcp = { path = "../bee-mcp" }
+async-trait = "=0.1.92"
+# The webhook receiver endpoint (`webhook_router`), mountable by the server or served by the binary.
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "http2", "tokio"] }
+base64 = "=0.22.1"
+blake3 = "=1.8.7"
+bytes = "=1.11.0"
+clap = { version = "=4.6.7", default-features = false, features = ["std", "help", "usage", "error-context", "suggestions", "string"] }
+# Org migration archives are .tar.gz.
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+getrandom = "=0.4.3"
+hmac = "=0.12.1"
+http = "=1.3.1"
+http-body-util = "=0.1.3"
+hyper = "=1.12.0"
+hyper-rustls = { version = "=0.27.10", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-tokio"] }
+hyper-util = { version = "=0.1.21", features = ["client-legacy", "http1", "http2", "tokio"] }
+# RS256 signatures for GitHub App JWTs.
+ring = "=0.17.14"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sha2 = "=0.10.9"
+tokio = { version = "=1.53.3", features = ["rt", "rt-multi-thread", "macros", "net", "sync", "time"] }
+
+[dev-dependencies]
+jsonschema = { version = "=0.59.0", default-features = false }
+tempfile = "=3.27.0"
+bee-auth = { path = "../bee-auth" }
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

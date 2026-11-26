@@ -1,0 +1,249 @@
+{
+  "$defs": {
+    "bee.v1.Advisory": {
+      "description": "An entry in the global advisory database.",
+      "properties": {
+        "affected": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.AdvisoryAffectedPackage"
+          },
+          "type": "array"
+        },
+        "cveId": {
+          "type": "string"
+        },
+        "cvssScore": {
+          "type": "number"
+        },
+        "cvssVector": {
+          "type": "string"
+        },
+        "cweIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "description": "Markdown",
+          "type": "string"
+        },
+        "ghsaId": {
+          "type": "string"
+        },
+        "publishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "references": {
+          "description": "URLs",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.SecuritySeverity"
+        },
+        "sourceRepo": {
+          "$ref": "#/$defs/bee.v1.RepoRef",
+          "description": "set when published from a repo advisory"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/bee.v1.AdvisoryType"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "withdrawnAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Advisory",
+      "type": "object"
+    },
+    "bee.v1.AdvisoryAffectedPackage": {
+      "description": "A range of affected versions for one package.",
+      "properties": {
+        "ecosystem": {
+          "type": "string"
+        },
+        "firstPatchedVersion": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vulnerableFunctions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "vulnerableRange": {
+          "description": "e.g. \">= 1.0, < 1.4.2\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AdvisoryAffectedPackage",
+      "type": "object"
+    },
+    "bee.v1.AdvisoryType": {
+      "description": "Advisory type in the global database.",
+      "enum": [
+        "ADVISORY_TYPE_UNSPECIFIED",
+        "ADVISORY_TYPE_REVIEWED",
+        "ADVISORY_TYPE_UNREVIEWED",
+        "ADVISORY_TYPE_MALWARE"
+      ],
+      "title": "bee.v1.AdvisoryType",
+      "type": "string"
+    },
+    "bee.v1.DependencyChange": {
+      "description": "One changed dependency in a review.",
+      "properties": {
+        "baseVersion": {
+          "type": "string"
+        },
+        "changeType": {
+          "$ref": "#/$defs/bee.v1.DependencyChangeType"
+        },
+        "ecosystem": {
+          "type": "string"
+        },
+        "headVersion": {
+          "type": "string"
+        },
+        "licenseDenied": {
+          "description": "license is on the org's deny list",
+          "type": "boolean"
+        },
+        "licenses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "manifestPath": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "packageUrl": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.DependencyScope"
+        },
+        "vulnerabilities": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Advisory"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.DependencyChange",
+      "type": "object"
+    },
+    "bee.v1.DependencyChangeType": {
+      "description": "How a dependency differs between two revisions.",
+      "enum": [
+        "DEPENDENCY_CHANGE_TYPE_UNSPECIFIED",
+        "DEPENDENCY_CHANGE_TYPE_ADDED",
+        "DEPENDENCY_CHANGE_TYPE_REMOVED",
+        "DEPENDENCY_CHANGE_TYPE_CHANGED"
+      ],
+      "title": "bee.v1.DependencyChangeType",
+      "type": "string"
+    },
+    "bee.v1.DependencyScope": {
+      "description": "How a dependency is used.",
+      "enum": [
+        "DEPENDENCY_SCOPE_UNSPECIFIED",
+        "DEPENDENCY_SCOPE_RUNTIME",
+        "DEPENDENCY_SCOPE_DEVELOPMENT"
+      ],
+      "title": "bee.v1.DependencyScope",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DependencyReview.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Result of a dependency review.",
+  "properties": {
+    "base": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DependencyChange"
+      },
+      "type": "array"
+    },
+    "checkRunId": {
+      "description": "the check run reporting this review, if any",
+      "type": "string"
+    },
+    "head": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "highestSeverity": {
+      "$ref": "#/$defs/bee.v1.SecuritySeverity"
+    },
+    "passes": {
+      "description": "meets the repo's dependency review policy",
+      "type": "boolean"
+    },
+    "vulnerableAdditions": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.DependencyReview",
+  "type": "object"
+}

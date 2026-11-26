@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/user.list-repo-followers.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.UserService/ListRepoFollowers: `data` is a bee.v1.ListRepoFollowersResponse in proto3-JSON. `bee user list-repo-followers --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListRepoFollowersResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.user.list-repo-followers"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee user list-repo-followers",
+  "type": "object"
+}

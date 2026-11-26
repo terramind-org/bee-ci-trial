@@ -1,0 +1,10 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:03.000
+The settings page lists every signed-in session the same way.
+
+00:00:03.000 --> 00:00:06.000
+Each row is marked in turn: this device is outlined, the others get a Sign out button.
+
+00:00:06.000 --> 00:00:08.000
+The finished list shows which session is yours.

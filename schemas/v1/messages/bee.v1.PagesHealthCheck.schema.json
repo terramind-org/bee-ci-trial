@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "bee.v1.PagesDomainHealth": {
+      "description": "DNS findings for one host name.",
+      "properties": {
+        "aRecords": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "aaaaRecords": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cnameTarget": {
+          "type": "string"
+        },
+        "dnsResolves": {
+          "type": "boolean"
+        },
+        "hasCaaConflict": {
+          "description": "a CAA record forbids the ACME issuer",
+          "type": "boolean"
+        },
+        "hasCnameRecord": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "httpsEligible": {
+          "type": "boolean"
+        },
+        "isApex": {
+          "type": "boolean"
+        },
+        "isProxied": {
+          "description": "behind a third-party proxy or CDN",
+          "type": "boolean"
+        },
+        "pointsToPages": {
+          "type": "boolean"
+        },
+        "problems": {
+          "description": "human-readable fixes",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.PagesDomainHealth",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PagesHealthCheck.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "DNS health of a site's custom domain.",
+  "properties": {
+    "altDomain": {
+      "$ref": "#/$defs/bee.v1.PagesDomainHealth",
+      "description": "www or apex counterpart"
+    },
+    "checkedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "domain": {
+      "$ref": "#/$defs/bee.v1.PagesDomainHealth"
+    }
+  },
+  "title": "bee.v1.PagesHealthCheck",
+  "type": "object"
+}

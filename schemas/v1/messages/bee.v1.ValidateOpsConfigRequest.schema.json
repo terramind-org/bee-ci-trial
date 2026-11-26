@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ValidateOpsConfigRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ValidateOpsConfig.",
+  "properties": {
+    "component": {
+      "description": "\"server\", \"daemon\", \"git_gateway\"",
+      "type": "string"
+    },
+    "toml": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ValidateOpsConfigRequest",
+  "type": "object"
+}

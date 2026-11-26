@@ -1,0 +1,627 @@
+// Moderation and community for bee.v1: blocks, reports, interaction limits, comment
+// minimizing, conversation locks, moderators, first-time contributors, community profile,
+// agent-flood defenses and takedowns. See docs/PRODUCT.md §4.10 and §4.21.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+
+// Moderation actions. Each is enforced at every write path (reasons BLOCKED,
+// INTERACTION_LIMITED, LOCKED, RESOURCE_EXHAUSTED for flood limits) and writes an audit entry.
+service ModerationService {
+  // ---- Blocks ----
+
+  // Blocks a user for the caller personally or for an org. A blocked user cannot comment,
+  // react, open issues or CRs, or be assigned. Writes by them fail with BLOCKED.
+  rpc BlockUser(BlockUserRequest) returns (BlockEntry);
+  // Removes a block.
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+  // Lists blocks at personal or org scope.
+  rpc ListBlockedUsers(ListBlockedUsersRequest) returns (ListBlockedUsersResponse);
+  // Returns whether a user is blocked at a scope.
+  rpc CheckUserBlocked(CheckUserBlockedRequest) returns (CheckUserBlockedResponse);
+
+  // ---- Reports ----
+
+  // Reports content to repo maintainers or to site administrators.
+  rpc ReportContent(ReportContentRequest) returns (ModerationReport);
+  // Lists reports in a moderation queue (repo, org or site).
+  rpc ListContentReports(ListContentReportsRequest) returns (ListContentReportsResponse);
+  // Fetches one report.
+  rpc GetContentReport(GetContentReportRequest) returns (ModerationReport);
+  // Resolves a report, recording the action taken. INVALID_STATE when already resolved.
+  rpc ResolveContentReport(ResolveContentReportRequest) returns (ModerationReport);
+
+  // ---- Interaction limits ----
+
+  // Returns the interaction limit in force at a repo, org or user scope.
+  rpc GetInteractionLimit(GetInteractionLimitRequest) returns (InteractionLimit);
+  // Sets a temporary interaction limit. Excluded principals get INTERACTION_LIMITED.
+  rpc SetInteractionLimit(SetInteractionLimitRequest) returns (InteractionLimit);
+  // Removes an interaction limit.
+  rpc RemoveInteractionLimit(RemoveInteractionLimitRequest) returns (RemoveInteractionLimitResponse);
+
+  // ---- Comments and conversations ----
+
+  // Minimizes (hides) a comment with a reason. The body and edit history are kept.
+  rpc MinimizeComment(MinimizeCommentRequest) returns (Comment);
+  // Shows a minimized comment again.
+  rpc UnminimizeComment(UnminimizeCommentRequest) returns (Comment);
+  // Locks the conversation on an issue, CR or discussion. Non-collaborators then get LOCKED.
+  rpc LockConversation(LockConversationRequest) returns (ModerationLock);
+  // Unlocks a conversation.
+  rpc UnlockConversation(UnlockConversationRequest) returns (UnlockConversationResponse);
+
+  // ---- Moderators ----
+
+  // Grants the moderator role in an org to a principal or team.
+  rpc AddModerator(AddModeratorRequest) returns (ModerationModerator);
+  // Removes the moderator role.
+  rpc RemoveModerator(RemoveModeratorRequest) returns (RemoveModeratorResponse);
+  // Lists an org's moderators.
+  rpc ListModerators(ListModeratorsRequest) returns (ListModeratorsResponse);
+
+  // ---- First-time contributors ----
+
+  // Returns how first-time contributors are handled in a repo or org.
+  rpc GetFirstTimeContributorSettings(GetFirstTimeContributorSettingsRequest) returns (ModerationFirstTimeContributorSettings);
+  // Sets how first-time contributors are handled.
+  rpc SetFirstTimeContributorSettings(SetFirstTimeContributorSettingsRequest) returns (ModerationFirstTimeContributorSettings);
+
+  // ---- Community profile ----
+
+  // Returns the community health profile of a repo: which community files are present.
+  rpc GetModerationCommunityProfile(GetModerationCommunityProfileRequest) returns (ModerationCommunityProfile);
+  // Lists the code of conduct templates the server offers.
+  rpc ListCodesOfConduct(ListCodesOfConductRequest) returns (ListCodesOfConductResponse);
+
+  // ---- Agent-flood defenses ----
+
+  // Returns a repo's flood limits (open CR caps, creation rate, reputation threshold).
+  rpc GetFloodLimits(GetFloodLimitsRequest) returns (ModerationFloodLimits);
+  // Sets a repo's flood limits. Unset fields are unchanged.
+  rpc SetFloodLimits(SetFloodLimitsRequest) returns (ModerationFloodLimits);
+  // Lists principals currently throttled by flood limits.
+  rpc ListThrottledPrincipals(ListThrottledPrincipalsRequest) returns (ListThrottledPrincipalsResponse);
+  // Lifts the throttle on one principal early.
+  rpc ReleaseThrottledPrincipal(ReleaseThrottledPrincipalRequest) returns (ReleaseThrottledPrincipalResponse);
+
+  // ---- Takedowns ----
+
+  // Records a takedown notice (DMCA, legal, abuse) and disables the repo or comment.
+  // Blob content is removed through AdminService.Redact; this covers repos and comments.
+  rpc CreateTakedown(CreateTakedownRequest) returns (Takedown);
+  // Lists takedowns.
+  rpc ListTakedowns(ListTakedownsRequest) returns (ListTakedownsResponse);
+  // Fetches one takedown.
+  rpc GetTakedown(GetTakedownRequest) returns (Takedown);
+  // Reinstates taken-down content (counter-notice or error). INVALID_STATE unless active.
+  rpc ReinstateTakedown(ReinstateTakedownRequest) returns (Takedown);
+}
+
+// ---------- Blocks ----------
+
+// Where a block applies.
+message BlockScope {
+  oneof scope {
+    bool personal = 1;        // the caller's own block list
+    string org = 2;
+  }
+}
+
+// One block.
+message BlockEntry {
+  BlockScope scope = 1;
+  Principal blocked = 2;
+  Principal blocked_by = 3;
+  string reason = 4;
+  string note = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp expires_at = 7; // unset = permanent
+}
+
+// Request for BlockUser.
+message BlockUserRequest {
+  BlockScope scope = 1;
+  string principal_id = 2;
+  string reason = 3;
+  string note = 4;
+  uint64 duration_seconds = 5; // 0 = permanent
+  bool hide_content = 6;       // minimize the user's existing comments in scope
+  SubjectRef source = 7;       // the content that prompted the block, for the audit entry
+}
+
+// Request for UnblockUser.
+message UnblockUserRequest {
+  BlockScope scope = 1;
+  string principal_id = 2;
+}
+
+// Response for UnblockUser.
+message UnblockUserResponse {}
+
+// Request for ListBlockedUsers.
+message ListBlockedUsersRequest {
+  BlockScope scope = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListBlockedUsers.
+message ListBlockedUsersResponse {
+  repeated BlockEntry blocks = 1;
+  PageResponse page = 2;
+}
+
+// Request for CheckUserBlocked.
+message CheckUserBlockedRequest {
+  BlockScope scope = 1;
+  string principal_id = 2;
+}
+
+// Response for CheckUserBlocked.
+message CheckUserBlockedResponse {
+  bool blocked = 1;
+  BlockEntry block = 2;
+}
+
+// ---------- Reports ----------
+
+// Why content is reported.
+enum ModerationReportCategory {
+  MODERATION_REPORT_CATEGORY_UNSPECIFIED = 0;
+  MODERATION_REPORT_CATEGORY_SPAM = 1;
+  MODERATION_REPORT_CATEGORY_ABUSE = 2;
+  MODERATION_REPORT_CATEGORY_HARASSMENT = 3;
+  MODERATION_REPORT_CATEGORY_OFF_TOPIC = 4;
+  MODERATION_REPORT_CATEGORY_MALWARE = 5;
+  MODERATION_REPORT_CATEGORY_COPYRIGHT = 6;
+  MODERATION_REPORT_CATEGORY_PRIVACY = 7;
+  MODERATION_REPORT_CATEGORY_AGENT_FLOOD = 8; // mass automated CRs or comments
+  MODERATION_REPORT_CATEGORY_OTHER = 9;
+}
+
+// Who handles a report.
+enum ModerationReportAudience {
+  MODERATION_REPORT_AUDIENCE_UNSPECIFIED = 0;
+  MODERATION_REPORT_AUDIENCE_MAINTAINERS = 1;
+  MODERATION_REPORT_AUDIENCE_SITE_ADMINS = 2;
+}
+
+// Report lifecycle.
+enum ModerationReportState {
+  MODERATION_REPORT_STATE_UNSPECIFIED = 0;
+  MODERATION_REPORT_STATE_OPEN = 1;
+  MODERATION_REPORT_STATE_RESOLVED = 2;
+  MODERATION_REPORT_STATE_DISMISSED = 3;
+}
+
+// Action taken when resolving a report.
+enum ModerationReportAction {
+  MODERATION_REPORT_ACTION_UNSPECIFIED = 0;
+  MODERATION_REPORT_ACTION_NONE = 1;
+  MODERATION_REPORT_ACTION_CONTENT_MINIMIZED = 2;
+  MODERATION_REPORT_ACTION_CONTENT_DELETED = 3;
+  MODERATION_REPORT_ACTION_USER_BLOCKED = 4;
+  MODERATION_REPORT_ACTION_CONVERSATION_LOCKED = 5;
+  MODERATION_REPORT_ACTION_INTERACTION_LIMITED = 6;
+  MODERATION_REPORT_ACTION_TAKEN_DOWN = 7;
+  MODERATION_REPORT_ACTION_ACCOUNT_SUSPENDED = 8;
+}
+
+// A content report.
+message ModerationReport {
+  string id = 1;
+  SubjectRef subject = 2;
+  ModerationReportCategory category = 3;
+  ModerationReportAudience audience = 4;
+  string body = 5;
+  Principal reporter = 6;
+  Principal content_author = 7;
+  ModerationReportState state = 8;
+  ModerationReportAction action = 9;
+  string resolution_note = 10;
+  Principal resolved_by = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp resolved_at = 13;
+}
+
+// Request for ReportContent.
+message ReportContentRequest {
+  SubjectRef subject = 1;
+  ModerationReportCategory category = 2;
+  ModerationReportAudience audience = 3;
+  string body = 4;
+}
+
+// Request for ListContentReports.
+message ListContentReportsRequest {
+  oneof queue {
+    RepoRef repo = 1;
+    string org = 2;
+    bool site = 3;            // site administrators' queue
+  }
+  ModerationReportState state = 4;
+  ModerationReportCategory category = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListContentReports.
+message ListContentReportsResponse {
+  repeated ModerationReport reports = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetContentReport.
+message GetContentReportRequest {
+  string id = 1;
+}
+
+// Request for ResolveContentReport.
+message ResolveContentReportRequest {
+  string id = 1;
+  ModerationReportState state = 2; // RESOLVED or DISMISSED
+  ModerationReportAction action = 3;
+  string note = 4;
+}
+
+// ---------- Interaction limits ----------
+
+// Who may still interact under a limit.
+enum InteractionLimitLevel {
+  INTERACTION_LIMIT_LEVEL_UNSPECIFIED = 0;
+  INTERACTION_LIMIT_LEVEL_EXISTING_USERS = 1;    // accounts older than 24 hours
+  INTERACTION_LIMIT_LEVEL_CONTRIBUTORS_ONLY = 2; // prior contributors
+  INTERACTION_LIMIT_LEVEL_COLLABORATORS_ONLY = 3;
+}
+
+// Where a limit applies.
+message InteractionLimitScope {
+  oneof scope {
+    RepoRef repo = 1;
+    string org = 2;
+    string user_id = 3;       // across every repo the user owns
+  }
+}
+
+// A temporary interaction limit.
+message InteractionLimit {
+  InteractionLimitScope scope = 1;
+  InteractionLimitLevel level = 2; // UNSPECIFIED = no limit in force
+  bool applies_to_agents = 3;      // agent principals are judged by their owner's standing
+  string inherited_from = 4;       // "org" when an org limit applies to a repo
+  Principal set_by = 5;
+  google.protobuf.Timestamp expires_at = 6;
+}
+
+// Request for GetInteractionLimit.
+message GetInteractionLimitRequest {
+  InteractionLimitScope scope = 1;
+}
+
+// Request for SetInteractionLimit.
+message SetInteractionLimitRequest {
+  InteractionLimitScope scope = 1;
+  InteractionLimitLevel level = 2;
+  uint64 duration_seconds = 3; // e.g. 86400, 259200, 604800, 2592000, 15552000
+  bool applies_to_agents = 4;
+}
+
+// Request for RemoveInteractionLimit.
+message RemoveInteractionLimitRequest {
+  InteractionLimitScope scope = 1;
+}
+
+// Response for RemoveInteractionLimit.
+message RemoveInteractionLimitResponse {}
+
+// ---------- Comments and conversations ----------
+
+// Request for MinimizeComment.
+message MinimizeCommentRequest {
+  string comment_id = 1;
+  MinimizedReason reason = 2;
+}
+
+// Request for UnminimizeComment.
+message UnminimizeCommentRequest {
+  string comment_id = 1;
+}
+
+// Why a conversation is locked.
+enum ModerationLockReason {
+  MODERATION_LOCK_REASON_UNSPECIFIED = 0;
+  MODERATION_LOCK_REASON_OFF_TOPIC = 1;
+  MODERATION_LOCK_REASON_TOO_HEATED = 2;
+  MODERATION_LOCK_REASON_RESOLVED = 3;
+  MODERATION_LOCK_REASON_SPAM = 4;
+}
+
+// A locked conversation.
+message ModerationLock {
+  SubjectRef subject = 1;
+  ModerationLockReason reason = 2;
+  Principal locked_by = 3;
+  google.protobuf.Timestamp locked_at = 4;
+}
+
+// Request for LockConversation.
+message LockConversationRequest {
+  SubjectRef subject = 1;     // issue, change request or discussion
+  ModerationLockReason reason = 2;
+}
+
+// Request for UnlockConversation.
+message UnlockConversationRequest {
+  SubjectRef subject = 1;
+}
+
+// Response for UnlockConversation.
+message UnlockConversationResponse {}
+
+// ---------- Moderators ----------
+
+// A moderator: a principal or a team.
+message ModerationModerator {
+  string org = 1;
+  oneof moderator {
+    Principal principal = 2;
+    string team_id = 3;
+  }
+  Principal added_by = 4;
+  google.protobuf.Timestamp added_at = 5;
+}
+
+// Request for AddModerator.
+message AddModeratorRequest {
+  string org = 1;
+  oneof moderator {
+    string principal_id = 2;
+    string team_id = 3;
+  }
+}
+
+// Request for RemoveModerator.
+message RemoveModeratorRequest {
+  string org = 1;
+  oneof moderator {
+    string principal_id = 2;
+    string team_id = 3;
+  }
+}
+
+// Response for RemoveModerator.
+message RemoveModeratorResponse {}
+
+// Request for ListModerators.
+message ListModeratorsRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListModerators.
+message ListModeratorsResponse {
+  repeated ModerationModerator moderators = 1;
+  PageResponse page = 2;
+}
+
+// ---------- First-time contributors ----------
+
+// When workflow runs from first-time contributors need approval.
+enum ModerationRunApproval {
+  MODERATION_RUN_APPROVAL_UNSPECIFIED = 0;
+  MODERATION_RUN_APPROVAL_NEW_ACCOUNTS = 1;       // first-time contributors who are new accounts
+  MODERATION_RUN_APPROVAL_FIRST_TIME = 2;         // all first-time contributors
+  MODERATION_RUN_APPROVAL_ALL_OUTSIDE = 3;        // every outside collaborator
+}
+
+// Handling of first-time contributors.
+message ModerationFirstTimeContributorSettings {
+  RepoRef repo = 1;           // set for repo settings
+  string org = 2;             // set for org settings
+  ModerationRunApproval run_approval = 3;
+  bool label_first_contributions = 4;
+  string label = 5;           // e.g. "first-time-contributor"
+  bool hold_change_requests = 6; // CRs wait for maintainer approval before review starts
+  bool treat_new_agents_as_first_time = 7;
+}
+
+// Request for GetFirstTimeContributorSettings.
+message GetFirstTimeContributorSettingsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+}
+
+// Request for SetFirstTimeContributorSettings.
+message SetFirstTimeContributorSettingsRequest {
+  RepoRef repo = 1;
+  string org = 2;
+  optional ModerationRunApproval run_approval = 3;
+  optional bool label_first_contributions = 4;
+  optional string label = 5;
+  optional bool hold_change_requests = 6;
+  optional bool treat_new_agents_as_first_time = 7;
+}
+
+// ---------- Community profile ----------
+
+// One community file and where it was found.
+message ModerationCommunityFile {
+  string kind = 1;            // "readme", "license", "code_of_conduct", "contributing",
+                              // "security", "support", "issue_template", "pr_template",
+                              // "funding", "agents"
+  bool present = 2;
+  bytes path = 3;
+  RepoRef source_repo = 4;    // set when inherited from the org's .github repo
+  string detected = 5;        // e.g. SPDX id or code of conduct key
+}
+
+// A repo's community health profile.
+message ModerationCommunityProfile {
+  RepoRef repo = 1;
+  uint32 health_percentage = 2;
+  repeated ModerationCommunityFile files = 3;
+  string description = 4;
+  bool has_description = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// Request for GetModerationCommunityProfile.
+message GetModerationCommunityProfileRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;      // unset = default branch
+}
+
+// A code of conduct template.
+message ModerationCodeOfConduct {
+  string key = 1;             // e.g. "contributor_covenant"
+  string name = 2;
+  string body = 3;            // Markdown
+  string url = 4;
+}
+
+// Request for ListCodesOfConduct.
+message ListCodesOfConductRequest {}
+
+// Response for ListCodesOfConduct.
+message ListCodesOfConductResponse {
+  repeated ModerationCodeOfConduct codes_of_conduct = 1;
+}
+
+// ---------- Agent-flood defenses ----------
+
+// Per-repo limits that contain mass agent CR floods without affecting other repos.
+message ModerationFloodLimits {
+  RepoRef repo = 1;
+  uint32 max_open_change_requests_per_principal = 2;   // 0 = no cap
+  uint32 max_open_change_requests_per_owner = 3;       // across all agents of one owner
+  uint32 max_new_change_requests_per_hour_per_owner = 4;
+  uint32 max_new_comments_per_hour_per_owner = 5;
+  uint32 max_new_issues_per_hour_per_owner = 6;
+  double min_reputation = 7;  // principals below are throttled; 0 = off
+  bool exempt_collaborators = 8;
+  uint64 throttle_duration_seconds = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Request for GetFloodLimits.
+message GetFloodLimitsRequest {
+  RepoRef repo = 1;
+}
+
+// Request for SetFloodLimits.
+message SetFloodLimitsRequest {
+  RepoRef repo = 1;
+  optional uint32 max_open_change_requests_per_principal = 2;
+  optional uint32 max_open_change_requests_per_owner = 3;
+  optional uint32 max_new_change_requests_per_hour_per_owner = 4;
+  optional uint32 max_new_comments_per_hour_per_owner = 5;
+  optional uint32 max_new_issues_per_hour_per_owner = 6;
+  optional double min_reputation = 7;
+  optional bool exempt_collaborators = 8;
+  optional uint64 throttle_duration_seconds = 9;
+}
+
+// A principal held back by flood limits.
+message ModerationThrottledPrincipal {
+  Principal principal = 1;
+  string owner_id = 2;        // the agent's owner, for agents
+  string limit = 3;           // which limit tripped, e.g. "max_new_change_requests_per_hour_per_owner"
+  double reputation = 4;
+  uint32 recent_count = 5;
+  google.protobuf.Timestamp throttled_at = 6;
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+// Request for ListThrottledPrincipals.
+message ListThrottledPrincipalsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListThrottledPrincipals.
+message ListThrottledPrincipalsResponse {
+  repeated ModerationThrottledPrincipal principals = 1;
+  PageResponse page = 2;
+}
+
+// Request for ReleaseThrottledPrincipal.
+message ReleaseThrottledPrincipalRequest {
+  RepoRef repo = 1;
+  string principal_id = 2;
+}
+
+// Response for ReleaseThrottledPrincipal.
+message ReleaseThrottledPrincipalResponse {}
+
+// ---------- Takedowns ----------
+
+// Basis of a takedown.
+enum TakedownKind {
+  TAKEDOWN_KIND_UNSPECIFIED = 0;
+  TAKEDOWN_KIND_DMCA = 1;
+  TAKEDOWN_KIND_LEGAL = 2;
+  TAKEDOWN_KIND_ABUSE = 3;
+  TAKEDOWN_KIND_MALWARE = 4;
+  TAKEDOWN_KIND_PRIVACY = 5;
+}
+
+// Takedown lifecycle.
+enum TakedownState {
+  TAKEDOWN_STATE_UNSPECIFIED = 0;
+  TAKEDOWN_STATE_ACTIVE = 1;
+  TAKEDOWN_STATE_REINSTATED = 2;
+}
+
+// A takedown of a repo or comment.
+message Takedown {
+  string id = 1;
+  TakedownKind kind = 2;
+  TakedownState state = 3;
+  SubjectRef subject = 4;     // repo or comment
+  string notice_url = 5;      // public copy of the notice, if published
+  string notice_text = 6;
+  string complainant = 7;
+  Principal created_by = 8;
+  string reinstate_reason = 9;
+  Principal reinstated_by = 10;
+  string audit_entry_id = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp reinstated_at = 13;
+}
+
+// Request for CreateTakedown.
+message CreateTakedownRequest {
+  SubjectRef subject = 1;
+  TakedownKind kind = 2;
+  string notice_text = 3;
+  string notice_url = 4;
+  string complainant = 5;
+}
+
+// Request for ListTakedowns.
+message ListTakedownsRequest {
+  RepoRef repo = 1;           // unset = all
+  TakedownState state = 2;
+  TakedownKind kind = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListTakedowns.
+message ListTakedownsResponse {
+  repeated Takedown takedowns = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetTakedown.
+message GetTakedownRequest {
+  string id = 1;
+}
+
+// Request for ReinstateTakedown.
+message ReinstateTakedownRequest {
+  string id = 1;
+  string reason = 2;
+}

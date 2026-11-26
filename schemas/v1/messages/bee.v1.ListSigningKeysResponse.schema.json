@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "bee.v1.SigningKey": {
+      "description": "One token signing key's public half.",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "publicKey": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "retiredAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "signing": {
+          "description": "the key that signs new tokens",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.SigningKey",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSigningKeysResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "keys": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SigningKey"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListSigningKeysResponse",
+  "type": "object"
+}

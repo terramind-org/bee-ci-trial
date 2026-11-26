@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetWorkflowArtifactDownloadUrlResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetWorkflowArtifactDownloadUrl.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetWorkflowArtifactDownloadUrlResponse",
+  "type": "object"
+}

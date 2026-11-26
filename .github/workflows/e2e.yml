@@ -1,0 +1,59 @@
+name: e2e
+
+# The PLAN phase 1 exit test (scripts/e2e/exit-test.sh): import this repository into a
+# `bee-server --dev`, change it through `bee mcp`, push to it with git, verify log, diff and
+# blame over the API, run the SPEC §16 load harness, and repeat clone/history after restart. Docs: docs/e2e.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exit-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: "true"
+      CARGO_TERM_COLOR: never
+      CARGO_BUILD_JOBS: "3"
+      # The built-in token can read this repository (permissions: contents: read), which is the
+      # import source, including its issue and pull-request metadata. On a fork PR it remains
+      # read-only; the test
+      # never writes to GitHub.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      EXIT_TEST_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain (pinned in rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      - name: Install pinned harness tooling
+        run: bun install --frozen-lockfile --cwd harness/agents
+
+      - name: Typecheck the exit test
+        run: bun run --cwd harness/agents typecheck --project ../../scripts/e2e/tsconfig.json
+
+      - name: Unit tests of the test's own helpers
+        run: bun test scripts/e2e/test
+
+      - name: Phase 1 exit test
+        run: scripts/e2e/exit-test.sh

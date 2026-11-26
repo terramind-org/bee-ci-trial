@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SafetyAttention": {
+      "properties": {
+        "acknowledgedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "answerable": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "concern": {
+          "$ref": "#/$defs/bee.v1.SafetyConcern"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "tripwire": {
+          "$ref": "#/$defs/bee.v1.SafetyTripwire"
+        },
+        "work": {
+          "$ref": "#/$defs/bee.v1.SafetyRef"
+        }
+      },
+      "title": "bee.v1.SafetyAttention",
+      "type": "object"
+    },
+    "bee.v1.SafetyConcern": {
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/bee.v1.SafetyConcernCategory"
+        },
+        "id": {
+          "type": "string"
+        },
+        "raisedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SafetyConcern",
+      "type": "object"
+    },
+    "bee.v1.SafetyConcernCategory": {
+      "enum": [
+        "SAFETY_CONCERN_CATEGORY_UNSPECIFIED",
+        "SAFETY_CONCERN_CATEGORY_RULE_CONFLICT",
+        "SAFETY_CONCERN_CATEGORY_UNSAFE",
+        "SAFETY_CONCERN_CATEGORY_POTENTIALLY_UNLAWFUL"
+      ],
+      "title": "bee.v1.SafetyConcernCategory",
+      "type": "string"
+    },
+    "bee.v1.SafetyRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SafetyWorkKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SafetyRef",
+      "type": "object"
+    },
+    "bee.v1.SafetySignalKind": {
+      "enum": [
+        "SAFETY_SIGNAL_KIND_UNSPECIFIED",
+        "SAFETY_SIGNAL_KIND_OUTSIDE_TASK",
+        "SAFETY_SIGNAL_KIND_AROUND_REFUSAL",
+        "SAFETY_SIGNAL_KIND_TESTS_WEAKENED",
+        "SAFETY_SIGNAL_KIND_OWN_LEASH",
+        "SAFETY_SIGNAL_KIND_SAID_VS_SHOWN",
+        "SAFETY_SIGNAL_KIND_SECRETS_AND_EXIT",
+        "SAFETY_SIGNAL_KIND_FOLLOWING_STRANGERS",
+        "SAFETY_SIGNAL_KIND_HARM_TO_CODE",
+        "SAFETY_SIGNAL_KIND_HARM_TO_OTHERS",
+        "SAFETY_SIGNAL_KIND_LEGAL_FLAGS"
+      ],
+      "title": "bee.v1.SafetySignalKind",
+      "type": "string"
+    },
+    "bee.v1.SafetyTripwire": {
+      "properties": {
+        "findingId": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SafetySignalKind"
+        },
+        "pausedSwarm": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "stoppedRunIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SafetyTripwire",
+      "type": "object"
+    },
+    "bee.v1.SafetyWorkKind": {
+      "enum": [
+        "SAFETY_WORK_KIND_UNSPECIFIED",
+        "SAFETY_WORK_KIND_RUN",
+        "SAFETY_WORK_KIND_SWARM"
+      ],
+      "title": "bee.v1.SafetyWorkKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSafetyAttentionResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SafetyAttention"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListSafetyAttentionResponse",
+  "type": "object"
+}

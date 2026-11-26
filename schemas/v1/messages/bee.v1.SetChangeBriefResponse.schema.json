@@ -1,0 +1,249 @@
+{
+  "$defs": {
+    "bee.v1.BriefAsk": {
+      "description": "A decision the author asks a person to make. Answering posts a comment\n`Decision on \"<question>\": <option>` that agents read.",
+      "properties": {
+        "options": {
+          "description": "2-6 options, each at most 80 characters",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "question": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefAsk",
+      "type": "object"
+    },
+    "bee.v1.BriefChecklist": {
+      "description": "What a change request's brief and evidence still owe for one revision. Advisory only.",
+      "properties": {
+        "complete": {
+          "description": "every item satisfied (true when there are no items)",
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefChecklistItem"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.BriefChecklist",
+      "type": "object"
+    },
+    "bee.v1.BriefChecklistItem": {
+      "description": "One thing the brief or evidence should cover.",
+      "properties": {
+        "detail": {
+          "description": "in words, e.g. \"a screenshot of the UI change\"",
+          "type": "string"
+        },
+        "evidenceIds": {
+          "description": "evidence that satisfies it, on this revision",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "\"brief\" (an outcome and at least one highlight), \"brief:risk\" (a risk or a rollback plan)\nor \"evidence:ui\" (a screenshot, before and after, or a video).",
+          "type": "string"
+        },
+        "kinds": {
+          "description": "kinds that satisfy an evidence item",
+          "items": {
+            "$ref": "#/$defs/bee.v1.EvidenceKind"
+          },
+          "type": "array"
+        },
+        "paths": {
+          "description": "paths that raised the item, at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "satisfied": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.BriefChecklistItem",
+      "type": "object"
+    },
+    "bee.v1.BriefHighlight": {
+      "description": "One thing the change does, with the paths that do it.",
+      "properties": {
+        "paths": {
+          "description": "repo paths (UTF-8), at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefHighlight",
+      "type": "object"
+    },
+    "bee.v1.BriefRisk": {
+      "description": "A risk the author sees, and what mitigates it.",
+      "properties": {
+        "mitigation": {
+          "description": "at most 280 characters",
+          "type": "string"
+        },
+        "text": {
+          "description": "at most 280 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BriefRisk",
+      "type": "object"
+    },
+    "bee.v1.ChangeBrief": {
+      "description": "A change request's brief (SPEC §11.9): what a busy person reads first. Set through\nBriefService.SetChangeBrief or OpenChangeRequest.brief; fields 7-9 are set by the server.",
+      "properties": {
+        "asks": {
+          "description": "decisions the author wants from a person, at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefAsk"
+          },
+          "type": "array"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "highlights": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefHighlight"
+          },
+          "type": "array"
+        },
+        "outcome": {
+          "description": "one line: what is different for users, at most 280 characters",
+          "type": "string"
+        },
+        "risks": {
+          "description": "at most 20",
+          "items": {
+            "$ref": "#/$defs/bee.v1.BriefRisk"
+          },
+          "type": "array"
+        },
+        "rollback": {
+          "description": "how to undo it, in words",
+          "type": "string"
+        },
+        "tryItUrl": {
+          "description": "https URL where the change can be tried",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "writtenForRevision": {
+          "description": "the current revision when the brief was set",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.ChangeBrief",
+      "type": "object"
+    },
+    "bee.v1.EvidenceKind": {
+      "description": "What an evidence item shows. Each kind allows a fixed set of assets (by role); anything else\nis INVALID_ARGUMENT (subcode `bad_evidence`). Every image asset needs alt text.",
+      "enum": [
+        "EVIDENCE_KIND_UNSPECIFIED",
+        "EVIDENCE_KIND_SCREENSHOT",
+        "EVIDENCE_KIND_BEFORE_AFTER",
+        "EVIDENCE_KIND_VIDEO",
+        "EVIDENCE_KIND_BENCHMARK",
+        "EVIDENCE_KIND_IMAGE",
+        "EVIDENCE_KIND_AUDIO",
+        "EVIDENCE_KIND_DOCUMENT",
+        "EVIDENCE_KIND_PREVIEW_LINK",
+        "EVIDENCE_KIND_TEST_REPORT"
+      ],
+      "title": "bee.v1.EvidenceKind",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetChangeBriefResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for SetChangeBrief.",
+  "properties": {
+    "brief": {
+      "$ref": "#/$defs/bee.v1.ChangeBrief"
+    },
+    "checklist": {
+      "$ref": "#/$defs/bee.v1.BriefChecklist",
+      "description": "for the current revision, after the change"
+    },
+    "version": {
+      "description": "the change request's new `version`",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.SetChangeBriefResponse",
+  "type": "object"
+}

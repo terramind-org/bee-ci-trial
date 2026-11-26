@@ -1,0 +1,37 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateOAuthAppRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateOAuthApp. Unset fields are unchanged.",
+  "properties": {
+    "callbackUrls": {
+      "description": "replaces the list when replace_callback_urls is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "deviceFlowEnabled": {
+      "type": "boolean"
+    },
+    "homepageUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "oauthApp": {
+      "type": "string"
+    },
+    "replaceCallbackUrls": {
+      "type": "boolean"
+    },
+    "resetClientSecret": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateOAuthAppRequest",
+  "type": "object"
+}

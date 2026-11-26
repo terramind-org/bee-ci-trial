@@ -1,0 +1,179 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Repo": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "customProperties": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "defaultRef": {
+          "type": "string"
+        },
+        "deletedAt": {
+          "description": "set while soft-deleted",
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "forkParentId": {
+          "description": "set for forks",
+          "type": "string"
+        },
+        "forks": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "homepage": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isTemplate": {
+          "type": "boolean"
+        },
+        "licenseSpdx": {
+          "description": "detected license",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "openChanges": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "openIssues": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "orgId": {
+          "type": "string"
+        },
+        "primaryLanguage": {
+          "type": "string"
+        },
+        "pushedAt": {
+          "description": "last ref update",
+          "format": "date-time",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "socialPreviewUrl": {
+          "type": "string"
+        },
+        "stars": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "templateRepoId": {
+          "description": "repo this one was created from",
+          "type": "string"
+        },
+        "topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "visibility": {
+          "$ref": "#/$defs/bee.v1.Visibility"
+        }
+      },
+      "title": "bee.v1.Repo",
+      "type": "object"
+    },
+    "bee.v1.Visibility": {
+      "enum": [
+        "VISIBILITY_UNSPECIFIED",
+        "VISIBILITY_PRIVATE",
+        "VISIBILITY_INTERNAL",
+        "VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.Visibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListForksResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "forks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Repo"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListForksResponse",
+  "type": "object"
+}

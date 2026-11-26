@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RequestCodeScanningAutofixResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for RequestCodeScanningAutofix.",
+  "properties": {
+    "agentRunId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RequestCodeScanningAutofixResponse",
+  "type": "object"
+}

@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "bee.v1.HealthComponent": {
+      "description": "Liveness and readiness of one component.",
+      "properties": {
+        "checkedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "criticalPath": {
+          "description": "the git data path depends on it (SPEC §15.1)",
+          "type": "boolean"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "liveness": {
+          "$ref": "#/$defs/bee.v1.HealthStatus"
+        },
+        "name": {
+          "description": "\"metadata\", \"blob_store\", \"search\", \"events\", \"git_gateway\", ...",
+          "type": "string"
+        },
+        "readiness": {
+          "$ref": "#/$defs/bee.v1.HealthStatus"
+        },
+        "reason": {
+          "description": "short machine-readable reason, e.g. \"primary_unreachable\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.HealthComponent",
+      "type": "object"
+    },
+    "bee.v1.HealthStatus": {
+      "description": "Health of one component.",
+      "enum": [
+        "HEALTH_STATUS_UNSPECIFIED",
+        "HEALTH_STATUS_OK",
+        "HEALTH_STATUS_DEGRADED",
+        "HEALTH_STATUS_DOWN"
+      ],
+      "title": "bee.v1.HealthStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetOpsHealthResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetOpsHealth.",
+  "properties": {
+    "cell": {
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.HealthComponent"
+      },
+      "type": "array"
+    },
+    "liveness": {
+      "$ref": "#/$defs/bee.v1.HealthStatus"
+    },
+    "node": {
+      "type": "string"
+    },
+    "readiness": {
+      "$ref": "#/$defs/bee.v1.HealthStatus"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetOpsHealthResponse",
+  "type": "object"
+}

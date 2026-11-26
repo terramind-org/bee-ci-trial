@@ -1,0 +1,796 @@
+// Search, code navigation and discovery for bee.v1. See docs/PRODUCT.md §4.4 and §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+
+// Search across code, forge objects and people, code navigation, saved searches and the
+// explore surfaces (trending, topics, collections). Every result honors the caller's read
+// access, including restricted paths (SPEC §9.3): a hit the caller cannot read is never
+// returned, counted or hinted at. Query syntax errors fail with INVALID_ARGUMENT (subcode
+// `bad_query`); ParseSearchQuery explains them with positions.
+service SearchService {
+  // Searches code. Supports literal and /regex/ terms plus `repo:`, `org:`, `path:`,
+  // `language:`, `symbol:`, `content:`, `is:` and boolean operators. TOO_LARGE when a regex
+  // exceeds the compile limit.
+  rpc SearchCode(SearchCodeRequest) returns (SearchCodeResponse);
+  // Streams every code match for large result sets, file by file, without paging.
+  rpc StreamSearchCode(StreamSearchCodeRequest) returns (stream CodeSearchStreamMessage);
+  // Searches symbol definitions by name across repos.
+  rpc SearchSymbols(SearchSymbolsRequest) returns (SearchSymbolsResponse);
+  // Finds the definitions of the symbol at a position in a file at a revision.
+  rpc GetSymbolDefinitions(GetSymbolDefinitionsRequest) returns (GetSymbolDefinitionsResponse);
+  // Finds references to the symbol at a position in a file at a revision.
+  rpc GetSymbolReferences(GetSymbolReferencesRequest) returns (GetSymbolReferencesResponse);
+  // Returns the symbol outline of one file at a revision.
+  rpc GetDocumentSymbols(GetDocumentSymbolsRequest) returns (GetDocumentSymbolsResponse);
+  // Searches issues and change requests with GitHub-compatible qualifiers, e.g.
+  // `is:open is:cr review:required label:x author:@me base:main path:billing/`.
+  rpc SearchIssues(SearchIssuesRequest) returns (SearchIssuesResponse);
+  // Searches repos (`topic:`, `language:`, `stars:`, `org:`, `is:public`, `archived:` ...).
+  rpc SearchRepos(SearchReposRequest) returns (SearchReposResponse);
+  // Searches changesets by message, author, committer, dates, hash and repo.
+  rpc SearchChangesets(SearchChangesetsRequest) returns (SearchChangesetsResponse);
+  // Searches users, agents and orgs (`type:user`, `type:org`, `type:agent`, `location:` ...).
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+  // Searches topics.
+  rpc SearchTopics(SearchTopicsRequest) returns (SearchTopicsResponse);
+  // Searches discussions (`category:`, `is:answered`, `author:` ...).
+  rpc SearchDiscussions(SearchDiscussionsRequest) returns (SearchDiscussionsResponse);
+  // Searches packages (`type:npm`, `org:` ...).
+  rpc SearchPackages(SearchPackagesRequest) returns (SearchPackagesResponse);
+  // Checks a query and returns its parsed qualifiers, or errors with positions. Never runs it.
+  rpc ParseSearchQuery(ParseSearchQueryRequest) returns (ParseSearchQueryResponse);
+  // Saves a search for the caller. ALREADY_EXISTS when the name is taken.
+  rpc CreateSavedSearch(CreateSavedSearchRequest) returns (SavedSearch);
+  // Fetches one of the caller's saved searches.
+  rpc GetSavedSearch(GetSavedSearchRequest) returns (SavedSearch);
+  // Lists the caller's saved searches.
+  rpc ListSavedSearches(ListSavedSearchesRequest) returns (ListSavedSearchesResponse);
+  // Edits a saved search.
+  rpc UpdateSavedSearch(UpdateSavedSearchRequest) returns (SavedSearch);
+  // Deletes a saved search.
+  rpc DeleteSavedSearch(DeleteSavedSearchRequest) returns (DeleteSavedSearchResponse);
+  // Lists trending repos over a time window, optionally for one language.
+  rpc ListTrendingRepos(ListTrendingReposRequest) returns (ListTrendingReposResponse);
+  // Lists trending developers and agents over a time window.
+  rpc ListTrendingDevelopers(ListTrendingDevelopersRequest) returns (ListTrendingDevelopersResponse);
+  // Ranks agents, humans or repos by one metric over a time window: changes landed (by the
+  // principal, or into the repo), reviews submitted (agents and humans), or stars gained
+  // (repos). Ordered by score descending, then name ascending. INVALID_ARGUMENT (subcode
+  // `invalid_field`) for a review ranking of repos or a star ranking of people. Answers
+  // callers without credentials over public repos.
+  rpc ListLeaderboard(ListLeaderboardRequest) returns (ListLeaderboardResponse);
+  // Returns a topic page: description, aliases, related topics and top repos.
+  rpc GetTopic(GetTopicRequest) returns (Topic);
+  // Lists featured (curated) topics.
+  rpc ListFeaturedTopics(ListFeaturedTopicsRequest) returns (ListFeaturedTopicsResponse);
+  // Lists curated collections.
+  rpc ListTopicCollections(ListTopicCollectionsRequest) returns (ListTopicCollectionsResponse);
+  // Fetches one collection with its items.
+  rpc GetTopicCollection(GetTopicCollectionRequest) returns (TopicCollection);
+}
+
+// Sort direction.
+enum SearchSortOrder {
+  SEARCH_SORT_ORDER_UNSPECIFIED = 0; // DESC
+  SEARCH_SORT_ORDER_DESC = 1;
+  SEARCH_SORT_ORDER_ASC = 2;
+}
+
+// Which search grammar a query uses.
+enum SearchQueryKind {
+  SEARCH_QUERY_KIND_UNSPECIFIED = 0;
+  SEARCH_QUERY_KIND_CODE = 1;
+  SEARCH_QUERY_KIND_SYMBOLS = 2;
+  SEARCH_QUERY_KIND_ISSUES = 3;     // issues and change requests
+  SEARCH_QUERY_KIND_REPOS = 4;
+  SEARCH_QUERY_KIND_CHANGESETS = 5;
+  SEARCH_QUERY_KIND_USERS = 6;
+  SEARCH_QUERY_KIND_TOPICS = 7;
+  SEARCH_QUERY_KIND_DISCUSSIONS = 8;
+  SEARCH_QUERY_KIND_PACKAGES = 9;
+}
+
+// A byte range within a line or text, half-open, in UTF-8 bytes.
+message SearchRange {
+  uint32 start = 1;
+  uint32 end = 2;
+}
+
+// Highlighted text for a matched field.
+message SearchTextMatch {
+  string field = 1;             // e.g. "title", "body"
+  string fragment = 2;
+  repeated SearchRange ranges = 3; // within fragment
+}
+
+// One matching line in a file.
+message CodeSearchLineMatch {
+  uint32 line_number = 1;       // 1-based
+  string line = 2;              // the line text, UTF-8, possibly cut to a limit
+  repeated SearchRange ranges = 3; // match ranges within `line`
+  repeated string context_before = 4;
+  repeated string context_after = 5;
+}
+
+// One file with matches.
+message CodeSearchHit {
+  RepoRef repo = 1;
+  string repo_full_name = 2;
+  bytes path = 3;
+  string ref = 4;               // indexed ref, e.g. "main"
+  ObjectId changeset = 5;       // indexed changeset
+  ObjectId blob = 6;
+  string language = 7;
+  repeated CodeSearchLineMatch line_matches = 8;
+  uint32 match_count = 9;       // total matches in the file, may exceed line_matches
+  bool path_matched = 10;       // the path itself matched
+  repeated SymbolInfo symbols = 11; // matched symbol definitions, for symbol: queries
+  float score = 12;
+}
+
+// Counts per facet value, for filtering a result set.
+message SearchFacet {
+  string name = 1;              // e.g. "language", "repo", "path"
+  repeated SearchFacetValue values = 2;
+}
+
+// One facet value and its count.
+message SearchFacetValue {
+  string value = 1;
+  uint64 count = 2;
+}
+
+// One message on the code search stream.
+message CodeSearchStreamMessage {
+  oneof payload {
+    CodeSearchHit hit = 1;
+    CodeSearchStreamProgress progress = 2;
+    CodeSearchStreamDone done = 3;
+  }
+}
+
+// Periodic progress on a streaming code search.
+message CodeSearchStreamProgress {
+  uint64 files_matched = 1;
+  uint64 matches = 2;
+  uint32 repos_searched = 3;
+  uint32 repos_total = 4;
+}
+
+// Final message on a streaming code search.
+message CodeSearchStreamDone {
+  uint64 files_matched = 1;
+  uint64 matches = 2;
+  bool limit_hit = 3;           // stopped at max_matches
+  repeated string skipped_repos = 4; // repos not yet indexed or timed out
+  repeated SearchFacet facets = 5;
+}
+
+// Kind of a code symbol.
+enum SymbolKind {
+  SYMBOL_KIND_UNSPECIFIED = 0;
+  SYMBOL_KIND_FILE = 1;
+  SYMBOL_KIND_MODULE = 2;
+  SYMBOL_KIND_NAMESPACE = 3;
+  SYMBOL_KIND_PACKAGE = 4;
+  SYMBOL_KIND_CLASS = 5;
+  SYMBOL_KIND_METHOD = 6;
+  SYMBOL_KIND_PROPERTY = 7;
+  SYMBOL_KIND_FIELD = 8;
+  SYMBOL_KIND_CONSTRUCTOR = 9;
+  SYMBOL_KIND_ENUM = 10;
+  SYMBOL_KIND_INTERFACE = 11;
+  SYMBOL_KIND_FUNCTION = 12;
+  SYMBOL_KIND_VARIABLE = 13;
+  SYMBOL_KIND_CONSTANT = 14;
+  SYMBOL_KIND_STRUCT = 15;
+  SYMBOL_KIND_TRAIT = 16;
+  SYMBOL_KIND_TYPE_ALIAS = 17;
+  SYMBOL_KIND_MACRO = 18;
+  SYMBOL_KIND_ENUM_MEMBER = 19;
+}
+
+// A position range in a file: 1-based lines, 0-based UTF-8 byte columns, end exclusive.
+message SymbolRange {
+  uint32 start_line = 1;
+  uint32 start_column = 2;
+  uint32 end_line = 3;
+  uint32 end_column = 4;
+}
+
+// A symbol definition.
+message SymbolInfo {
+  string name = 1;
+  string qualified_name = 2;    // e.g. "billing::invoice::Invoice::total"
+  SymbolKind kind = 3;
+  string language = 4;
+  string container = 5;         // enclosing symbol name
+  string signature = 6;         // one-line declaration text
+}
+
+// Where a symbol occurs.
+message SymbolLocation {
+  RepoRef repo = 1;
+  string repo_full_name = 2;
+  bytes path = 3;
+  ObjectId changeset = 4;
+  SymbolRange range = 5;
+  string line = 6;              // the source line
+  SymbolInfo symbol = 7;
+  bool precise = 8;             // from a precise index (stack graphs); false = search-based
+}
+
+// One node in a file's symbol outline.
+message SymbolOutlineNode {
+  SymbolInfo symbol = 1;
+  SymbolRange range = 2;        // whole declaration
+  SymbolRange selection_range = 3; // the name
+  repeated SymbolOutlineNode children = 4;
+}
+
+// An issue or change request search result.
+message SearchIssueHit {
+  SubjectRef subject = 1;       // kind ISSUE or CHANGE_REQUEST
+  uint64 number = 2;
+  string title = 3;
+  string state = 4;             // "open", "closed", "landed", "draft"
+  string state_reason = 5;      // e.g. "completed", "not_planned", "duplicate"
+  Principal author = 6;
+  repeated Principal assignees = 7;
+  repeated Label labels = 8;
+  string milestone = 9;
+  uint32 comment_count = 10;
+  string review_decision = 11;  // CRs: "review_required", "approved", "changes_requested"
+  string base_ref = 12;         // CRs only
+  string head_ref = 13;         // CRs only
+  string checks_state = 14;     // CRs: "success", "failure", "pending"
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp closed_at = 17;
+  string repo_full_name = 18;
+  repeated SearchTextMatch text_matches = 19;
+  string url = 20;
+}
+
+// A repo search result.
+message SearchRepoHit {
+  RepoRef repo = 1;
+  string full_name = 2;
+  string description = 3;
+  repeated string topics = 4;
+  string primary_language = 5;
+  uint64 star_count = 6;
+  uint64 fork_count = 7;
+  uint64 open_issue_count = 8;
+  string license_spdx_id = 9;
+  bool archived = 10;
+  bool is_fork = 11;
+  bool is_template = 12;
+  string visibility = 13;       // "public", "internal", "private"
+  google.protobuf.Timestamp updated_at = 14;
+  google.protobuf.Timestamp pushed_at = 15;
+  repeated SearchTextMatch text_matches = 16;
+  float score = 17;
+}
+
+// A changeset search result.
+message SearchChangesetHit {
+  RepoRef repo = 1;
+  string repo_full_name = 2;
+  ObjectId changeset = 3;
+  ChangeId change_id = 4;
+  string message = 5;
+  Principal author = 6;
+  Principal committer = 7;
+  google.protobuf.Timestamp authored_at = 8;
+  google.protobuf.Timestamp committed_at = 9;
+  repeated SearchTextMatch text_matches = 10;
+}
+
+// A user, agent or org search result.
+message SearchUserHit {
+  Principal principal = 1;
+  string login = 2;
+  string name = 3;
+  bool is_org = 4;
+  string bio = 5;
+  string location = 6;
+  string avatar_url = 7;
+  uint64 follower_count = 8;
+  uint64 public_repo_count = 9;
+  repeated SearchTextMatch text_matches = 10;
+}
+
+// A discussion search result.
+message SearchDiscussionHit {
+  SubjectRef subject = 1;
+  uint64 number = 2;
+  string title = 3;
+  string category = 4;
+  Principal author = 5;
+  bool answered = 6;
+  uint32 comment_count = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  string repo_full_name = 10;
+  repeated SearchTextMatch text_matches = 11;
+}
+
+// A package search result.
+message SearchPackageHit {
+  SubjectRef subject = 1;       // kind PACKAGE
+  string name = 2;
+  string ecosystem = 3;         // e.g. "npm", "container", "maven", "cargo"
+  string owner = 4;             // org or user login
+  string repo_full_name = 5;    // linked repo, if any
+  string latest_version = 6;
+  string description = 7;
+  uint64 download_count = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// A topic: a tag on repos, with an optional curated page.
+message Topic {
+  string name = 1;              // lowercase slug, e.g. "rust"
+  string display_name = 2;
+  string short_description = 3;
+  string description = 4;       // Markdown
+  bool featured = 5;
+  bool curated = 6;
+  repeated string aliases = 7;
+  repeated string related = 8;
+  string logo_url = 9;
+  string released = 10;         // free text, e.g. "2010"
+  string created_by = 11;
+  string wikipedia_url = 12;
+  uint64 repo_count = 13;
+  repeated SearchRepoHit top_repos = 14; // GetTopic only
+}
+
+// A curated collection of repos, people and links.
+message TopicCollection {
+  string slug = 1;
+  string display_name = 2;
+  string description = 3;
+  string image_url = 4;
+  repeated TopicCollectionItem items = 5; // GetTopicCollection only
+  uint32 item_count = 6;
+}
+
+// One item in a collection.
+message TopicCollectionItem {
+  oneof item {
+    SearchRepoHit repo = 1;
+    SearchUserHit user = 2;
+    string url = 3;
+  }
+  string note = 4;
+}
+
+// Time window for trending.
+enum TrendingWindow {
+  TRENDING_WINDOW_UNSPECIFIED = 0; // DAILY
+  TRENDING_WINDOW_DAILY = 1;
+  TRENDING_WINDOW_WEEKLY = 2;
+  TRENDING_WINDOW_MONTHLY = 3;
+}
+
+// A trending repo with its window activity.
+message TrendingRepo {
+  SearchRepoHit repo = 1;
+  uint64 stars_in_window = 2;
+  uint64 forks_in_window = 3;
+  repeated Principal built_by = 4; // top contributors
+  uint32 rank = 5;
+}
+
+// A trending developer or agent.
+message TrendingDeveloper {
+  SearchUserHit user = 1;
+  SearchRepoHit popular_repo = 2;
+  uint32 rank = 3;
+}
+
+// A parsed qualifier, e.g. `-label:bug` is key "label", value "bug", negated.
+message SearchQualifier {
+  string key = 1;               // empty for free-text terms
+  string value = 2;
+  bool negated = 3;
+  bool regex = 4;               // value was /.../
+  SearchRange range = 5;        // position in the query string
+  string resolved = 6;          // e.g. "@me" resolved to a login
+}
+
+// A query error with its position.
+message SearchQueryError {
+  string message = 1;
+  string subcode = 2;           // e.g. "unknown_qualifier", "bad_regex", "unbalanced_paren"
+  SearchRange range = 3;
+}
+
+// A per-user saved search.
+message SavedSearch {
+  string id = 1;
+  string name = 2;
+  SearchQueryKind kind = 3;
+  string query = 4;
+  string sort = 5;
+  SearchSortOrder order = 6;
+  string org = 7;               // scope; empty = global
+  RepoRef repo = 8;             // scope; unset = not repo-scoped
+  bool pinned = 9;              // shown in the dashboard sidebar
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Request for SearchCode.
+message SearchCodeRequest {
+  string query = 1;
+  bool case_sensitive = 2;
+  uint32 context_lines = 3;     // lines of context around each match, max 10
+  uint32 max_line_matches_per_file = 4; // 0 = server default
+  bool include_facets = 5;
+  PageRequest page = 6;
+}
+
+// Response for SearchCode.
+message SearchCodeResponse {
+  repeated CodeSearchHit hits = 1;
+  uint64 total_count = 2;       // approximate for very large sets
+  bool incomplete = 3;          // some shards timed out or repos are not indexed yet
+  repeated SearchFacet facets = 4;
+  PageResponse page = 5;
+}
+
+// Request for StreamSearchCode.
+message StreamSearchCodeRequest {
+  string query = 1;
+  bool case_sensitive = 2;
+  uint32 context_lines = 3;
+  uint64 max_matches = 4;       // 0 = server default
+  bool include_facets = 5;
+}
+
+// Request for SearchSymbols.
+message SearchSymbolsRequest {
+  string query = 1;             // name or /regex/ plus repo:, org:, path:, language:, kind:
+  repeated SymbolKind kinds = 2;
+  PageRequest page = 3;
+}
+
+// Response for SearchSymbols.
+message SearchSymbolsResponse {
+  repeated SymbolLocation symbols = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for GetSymbolDefinitions.
+message GetSymbolDefinitionsRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+  uint32 line = 4;              // 1-based
+  uint32 column = 5;            // 0-based UTF-8 byte column
+  bool cross_repo = 6;          // also look in other repos the caller can read
+}
+
+// Response for GetSymbolDefinitions.
+message GetSymbolDefinitionsResponse {
+  repeated SymbolLocation definitions = 1;
+  SymbolInfo symbol = 2;        // the symbol at the position, if resolved
+}
+
+// Request for GetSymbolReferences.
+message GetSymbolReferencesRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+  uint32 line = 4;
+  uint32 column = 5;
+  bool include_declaration = 6;
+  bool cross_repo = 7;
+  PageRequest page = 8;
+}
+
+// Response for GetSymbolReferences.
+message GetSymbolReferencesResponse {
+  repeated SymbolLocation references = 1;
+  SymbolInfo symbol = 2;
+  PageResponse page = 3;
+}
+
+// Request for GetDocumentSymbols.
+message GetDocumentSymbolsRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bytes path = 3;
+}
+
+// Response for GetDocumentSymbols.
+message GetDocumentSymbolsResponse {
+  repeated SymbolOutlineNode symbols = 1;
+  string language = 2;
+  ObjectId changeset = 3;
+}
+
+// Request for SearchIssues.
+message SearchIssuesRequest {
+  string query = 1;
+  string sort = 2;              // "created", "updated", "comments", "reactions", "best-match"
+  SearchSortOrder order = 3;
+  bool include_text_matches = 4;
+  PageRequest page = 5;
+}
+
+// Response for SearchIssues.
+message SearchIssuesResponse {
+  repeated SearchIssueHit hits = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for SearchRepos.
+message SearchReposRequest {
+  string query = 1;
+  string sort = 2;              // "stars", "forks", "updated", "help-wanted-issues", "best-match"
+  SearchSortOrder order = 3;
+  bool include_text_matches = 4;
+  PageRequest page = 5;
+}
+
+// Response for SearchRepos.
+message SearchReposResponse {
+  repeated SearchRepoHit hits = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for SearchChangesets.
+message SearchChangesetsRequest {
+  string query = 1;
+  string sort = 2;              // "author-date", "committer-date", "best-match"
+  SearchSortOrder order = 3;
+  bool include_text_matches = 4;
+  PageRequest page = 5;
+}
+
+// Response for SearchChangesets.
+message SearchChangesetsResponse {
+  repeated SearchChangesetHit hits = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for SearchUsers.
+message SearchUsersRequest {
+  string query = 1;
+  string sort = 2;              // "followers", "repositories", "joined", "best-match"
+  SearchSortOrder order = 3;
+  PageRequest page = 4;
+}
+
+// Response for SearchUsers.
+message SearchUsersResponse {
+  repeated SearchUserHit hits = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for SearchTopics.
+message SearchTopicsRequest {
+  string query = 1;
+  PageRequest page = 2;
+}
+
+// Response for SearchTopics.
+message SearchTopicsResponse {
+  repeated Topic topics = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for SearchDiscussions.
+message SearchDiscussionsRequest {
+  string query = 1;
+  string sort = 2;              // "created", "updated", "comments", "best-match"
+  SearchSortOrder order = 3;
+  bool include_text_matches = 4;
+  PageRequest page = 5;
+}
+
+// Response for SearchDiscussions.
+message SearchDiscussionsResponse {
+  repeated SearchDiscussionHit hits = 1;
+  uint64 total_count = 2;
+  bool incomplete = 3;
+  PageResponse page = 4;
+}
+
+// Request for SearchPackages.
+message SearchPackagesRequest {
+  string query = 1;
+  string sort = 2;              // "downloads", "updated", "best-match"
+  SearchSortOrder order = 3;
+  PageRequest page = 4;
+}
+
+// Response for SearchPackages.
+message SearchPackagesResponse {
+  repeated SearchPackageHit hits = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for ParseSearchQuery.
+message ParseSearchQueryRequest {
+  SearchQueryKind kind = 1;
+  string query = 2;
+}
+
+// Response for ParseSearchQuery.
+message ParseSearchQueryResponse {
+  bool valid = 1;
+  repeated SearchQualifier qualifiers = 2;
+  repeated SearchQueryError errors = 3;
+  string normalized = 4;        // canonical form of a valid query
+}
+
+// Request for CreateSavedSearch.
+message CreateSavedSearchRequest {
+  string name = 1;
+  SearchQueryKind kind = 2;
+  string query = 3;
+  string sort = 4;
+  SearchSortOrder order = 5;
+  string org = 6;
+  RepoRef repo = 7;
+  bool pinned = 8;
+}
+
+// Request for GetSavedSearch.
+message GetSavedSearchRequest {
+  string saved_search_id = 1;
+}
+
+// Request for ListSavedSearches.
+message ListSavedSearchesRequest {
+  SearchQueryKind kind = 1;     // UNSPECIFIED = all
+  PageRequest page = 2;
+}
+
+// Response for ListSavedSearches.
+message ListSavedSearchesResponse {
+  repeated SavedSearch saved_searches = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateSavedSearch.
+message UpdateSavedSearchRequest {
+  string saved_search_id = 1;
+  optional string name = 2;
+  optional string query = 3;
+  optional string sort = 4;
+  optional SearchSortOrder order = 5;
+  optional bool pinned = 6;
+}
+
+// Request for DeleteSavedSearch.
+message DeleteSavedSearchRequest {
+  string saved_search_id = 1;
+}
+
+// Response for DeleteSavedSearch.
+message DeleteSavedSearchResponse {}
+
+// Request for ListTrendingRepos.
+message ListTrendingReposRequest {
+  TrendingWindow window = 1;
+  string language = 2;          // empty = all languages
+  string spoken_language = 3;   // ISO 639-1 code of the README language
+  PageRequest page = 4;
+}
+
+// Response for ListTrendingRepos.
+message ListTrendingReposResponse {
+  repeated TrendingRepo repos = 1;
+  google.protobuf.Timestamp computed_at = 2;
+  PageResponse page = 3;
+}
+
+// Request for ListTrendingDevelopers.
+message ListTrendingDevelopersRequest {
+  TrendingWindow window = 1;
+  string language = 2;
+  bool include_agents = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListTrendingDevelopers.
+message ListTrendingDevelopersResponse {
+  repeated TrendingDeveloper developers = 1;
+  google.protobuf.Timestamp computed_at = 2;
+  PageResponse page = 3;
+}
+
+// What a leaderboard ranks.
+enum LeaderboardSubject {
+  LEADERBOARD_SUBJECT_UNSPECIFIED = 0; // AGENTS
+  LEADERBOARD_SUBJECT_AGENTS = 1;
+  LEADERBOARD_SUBJECT_HUMANS = 2;
+  LEADERBOARD_SUBJECT_REPOS = 3;
+}
+
+// What a leaderboard counts.
+enum LeaderboardMetric {
+  LEADERBOARD_METRIC_UNSPECIFIED = 0; // LANDS
+  LEADERBOARD_METRIC_LANDS = 1;       // changes landed by the principal, or into the repo
+  LEADERBOARD_METRIC_REVIEWS = 2;     // reviews submitted (agents and humans only)
+  LEADERBOARD_METRIC_STARS = 3;       // stars gained (repos only)
+}
+
+// Request for ListLeaderboard.
+message ListLeaderboardRequest {
+  TrendingWindow window = 1;
+  LeaderboardSubject subject = 2;
+  LeaderboardMetric metric = 3;
+  PageRequest page = 4;
+}
+
+// One place on a leaderboard: `user` for agents and humans, `repo` for repos.
+message LeaderboardEntry {
+  uint32 rank = 1;
+  SearchUserHit user = 2;
+  SearchRepoHit repo = 3;
+  uint64 score = 4;
+}
+
+// Response for ListLeaderboard.
+message ListLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+  google.protobuf.Timestamp computed_at = 2;
+  PageResponse page = 3;
+}
+
+// Request for GetTopic.
+message GetTopicRequest {
+  string name = 1;
+  uint32 top_repo_count = 2;    // 0 = server default
+}
+
+// Request for ListFeaturedTopics.
+message ListFeaturedTopicsRequest {
+  PageRequest page = 1;
+}
+
+// Response for ListFeaturedTopics.
+message ListFeaturedTopicsResponse {
+  repeated Topic topics = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListTopicCollections.
+message ListTopicCollectionsRequest {
+  PageRequest page = 1;
+}
+
+// Response for ListTopicCollections.
+message ListTopicCollectionsResponse {
+  repeated TopicCollection collections = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetTopicCollection.
+message GetTopicCollectionRequest {
+  string slug = 1;
+}

@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    },
+    "bee.v1.PackageVisibility": {
+      "description": "Who can read a package.",
+      "enum": [
+        "PACKAGE_VISIBILITY_UNSPECIFIED",
+        "PACKAGE_VISIBILITY_PRIVATE",
+        "PACKAGE_VISIBILITY_INTERNAL",
+        "PACKAGE_VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.PackageVisibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetPackageVisibilityRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetPackageVisibility.",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.PackageVisibility"
+    }
+  },
+  "title": "bee.v1.SetPackageVisibilityRequest",
+  "type": "object"
+}

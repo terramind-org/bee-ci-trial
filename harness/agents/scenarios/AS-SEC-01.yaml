@@ -1,0 +1,69 @@
+id: AS-SEC-01
+area: "4.18"
+title: Respond to a vulnerability alert by landing the update CR and closing the alert
+surfaces: both
+timeout: 1500
+budget: { max_turns: 80 }
+notes: >
+  The advisory is published by a sibling repo in the run's org, so the advisory database has a
+  per-run package (`harness-pad-<ns>`) that no other run shares. The server's dependency graph
+  raises the alert and its security-update run opens the update CR; the agent only responds.
+fixtures: [base]
+setup:
+  - name: the library repo that publishes the advisory
+    call: RepoService/CreateRepo
+    request: { org: "${run.ns}", name: pad, visibility: VISIBILITY_PUBLIC, autoInit: true }
+  - call: SecurityService/CreateSecurityAdvisory
+    request:
+      repo: { fullName: "${run.ns}/pad" }
+      summary: "harness-pad-${run.ns} pads with attacker-controlled width"
+      description: "Unbounded width allows memory exhaustion."
+      severity: SECURITY_SEVERITY_HIGH
+      affected: [{ ecosystem: pip, name: "harness-pad-${run.ns}", vulnerableRange: "< 1.2.1", firstPatchedVersion: "1.2.1" }]
+    save: { advisory: "$" }
+  - call: SecurityService/PublishSecurityAdvisory
+    request: { repo: { fullName: "${run.ns}/pad" }, ghsaId: "${advisory.ghsaId}" }
+  - name: the app depends on the vulnerable version
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add dependencies"
+      files:
+        requirements.txt: |
+          requests==2.32.3
+          harness-pad-${run.ns}==1.2.0
+  - name: security updates on
+    call: SecurityService/SetDependencyUpdateConfig
+    request: { repo: { fullName: "${repo.fullName}" }, securityUpdatesEnabled: true }
+  - name: the alert is open and has an update CR
+    call: SecurityService/ListDependencyAlerts
+    request: { repo: { fullName: "${repo.fullName}" } }
+    retry: { attempts: 30, interval_ms: 2000 }
+    expect:
+      - { path: alerts, len: 1 }
+      - { path: "alerts[0].updateChangeRequest", truthy: true }
+    save: { alert: "alerts[0]" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  The bee repository ${repo.fullName} has an open vulnerability alert. Deal with it: get the
+  proposed fix onto main and make sure the alert ends up closed as fixed.
+assertions:
+  - name: the alert is fixed
+    call: SecurityService/GetDependencyAlert
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${alert.number}" }
+    retry: { attempts: 15, interval_ms: 2000 }
+    expect:
+      - { path: state, eq: DEPENDENCY_ALERT_STATE_FIXED }
+      - { path: fixedAt, exists: true }
+  - name: the update CR landed
+    call: ChangeService/GetChangeByNumber
+    request: { repo: { fullName: "${repo.fullName}" }, number: "${alert.updateChangeRequest}" }
+    expect:
+      - { path: state, eq: CHANGE_STATE_LANDED }
+  - name: main pins the patched version and nothing else changed
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:requirements.txt}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, matches: "harness-pad-${run.ns}(==|>=)1\\.2\\.[1-9]" }
+      - { path: "messages[0].data", decode: base64, contains: "requests==2.32.3" }

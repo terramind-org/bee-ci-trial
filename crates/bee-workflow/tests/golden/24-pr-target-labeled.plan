@@ -1,0 +1,21 @@
+# event pull_request action=labeled
+# event pull_request_target action=labeled
+run .github/workflows/fork-tests.yml "Fork tests"
+  run-name: "Add feature"
+  event: pull_request_target ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: contents=read, pull-requests=write
+  job test if="contains(github.event.pull_request.labels.*.name, 'safe-to-test')" decided=true
+    instance "test"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=read, pull-requests=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+        with:
+          ref: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          persist-credentials: "false"
+      step 2 "Run make test"
+        run: "make test"
+        shell: default -> "bash -e {0}"
+  job comment if="github.event.label.name == 'needs-review'" decided=false
+    skipped

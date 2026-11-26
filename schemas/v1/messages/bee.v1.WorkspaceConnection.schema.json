@@ -1,0 +1,34 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkspaceConnection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "How to reach a running workspace.",
+  "properties": {
+    "connectionToken": {
+      "description": "short-lived; do not log",
+      "type": "string"
+    },
+    "sshHost": {
+      "type": "string"
+    },
+    "sshPort": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sshUser": {
+      "type": "string"
+    },
+    "tokenExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "webIdeUrl": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WorkspaceConnection",
+  "type": "object"
+}

@@ -1,0 +1,886 @@
+{
+  "service": "bee.v1.RunnerService",
+  "fixtures": [
+    {
+      "method": "CreateRunnerRegistrationToken",
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        }
+      }
+    },
+    {
+      "method": "CreateRunnerRemoveToken",
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        }
+      }
+    },
+    {
+      "method": "CreateRunnerJitConfig",
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "name": "create-jit-config-fixture",
+        "labels": [
+          "runner-fixture",
+          "jit"
+        ],
+        "workFolder": "_work"
+      }
+    },
+    {
+      "method": "RegisterRunner",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "t",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "registrationToken": "{{t.token}}",
+        "name": "register-runner-fixture",
+        "os": "RUNNER_OS_LINUX",
+        "arch": "RUNNER_ARCH_ARM64",
+        "labels": [
+          "runner-fixture",
+          "gpu"
+        ],
+        "ephemeral": false,
+        "version": "1.0.0"
+      }
+    },
+    {
+      "method": "ListRunners",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "list-runners-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "list-runners-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "label": "list-runners-fixture"
+      }
+    },
+    {
+      "method": "GetRunner",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "get-runner-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "runnerId": "{{rr.runner.id}}"
+      }
+    },
+    {
+      "method": "DeleteRunner",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "delete-runner-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "runnerId": "{{rr.runner.id}}",
+        "force": false
+      }
+    },
+    {
+      "method": "AddRunnerLabels",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "add-runner-labels-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "runnerId": "{{rr.runner.id}}",
+        "labels": [
+          "add-labels-a",
+          "add-labels-b"
+        ]
+      }
+    },
+    {
+      "method": "RemoveRunnerLabel",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "remove-runner-label-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture",
+              "remove-label-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "runnerId": "{{rr.runner.id}}",
+        "label": "remove-label-fixture"
+      }
+    },
+    {
+      "method": "SetRunnerLabels",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "set-runner-labels-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "request": {
+        "scope": {
+          "kind": "RUNNER_SCOPE_KIND_REPO",
+          "repo": {
+            "fullName": "{{repo}}"
+          }
+        },
+        "runnerId": "{{rr.runner.id}}",
+        "labels": [
+          "set-labels-a",
+          "set-labels-b"
+        ]
+      }
+    },
+    {
+      "method": "CreateRunnerGroup",
+      "request": {
+        "org": "{{org}}",
+        "name": "create-runner-group-fixture",
+        "visibility": "RUNNER_GROUP_VISIBILITY_SELECTED",
+        "selectedRepos": [
+          {
+            "fullName": "{{repo}}"
+          }
+        ],
+        "allowsPublicRepos": false,
+        "restrictedToWorkflows": true,
+        "selectedWorkflows": [
+          "dev/playground/.github/workflows/ci.yml@refs/heads/main"
+        ]
+      }
+    },
+    {
+      "method": "GetRunnerGroup",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "get-runner-group-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_ALL"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}"
+      }
+    },
+    {
+      "method": "ListRunnerGroups",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "list-runner-groups-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_ALL"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "visibleToRepo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "UpdateRunnerGroup",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "update-runner-group-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_ALL"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}",
+        "name": "update-runner-group-fixture-renamed",
+        "visibility": "RUNNER_GROUP_VISIBILITY_PRIVATE",
+        "allowsPublicRepos": false,
+        "restrictedToWorkflows": true,
+        "selectedWorkflows": {
+          "workflows": [
+            "dev/playground/.github/workflows/ci.yml@refs/heads/main"
+          ]
+        }
+      }
+    },
+    {
+      "method": "DeleteRunnerGroup",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-runner-group-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_ALL"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}"
+      }
+    },
+    {
+      "method": "ListRunnerGroupRepos",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "list-group-repos-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_SELECTED",
+            "selectedRepos": [
+              {
+                "fullName": "{{repo}}"
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}"
+      }
+    },
+    {
+      "method": "SetRunnerGroupRepos",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-group-repos-fixture",
+            "visibility": "VISIBILITY_PRIVATE"
+          }
+        },
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-group-repos-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_SELECTED"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}",
+        "repos": [
+          {
+            "fullName": "{{repo}}"
+          },
+          {
+            "fullName": "{{org}}/set-group-repos-fixture"
+          }
+        ]
+      }
+    },
+    {
+      "method": "SetRunnerGroupRunners",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_ORG",
+              "org": "{{org}}"
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "set-group-runners-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "RunnerService/CreateRunnerGroup",
+          "save": "g",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-group-runners-fixture",
+            "visibility": "RUNNER_GROUP_VISIBILITY_ALL"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "runnerGroupId": "{{g.id}}",
+        "runnerIds": [
+          "{{rr.runner.id}}"
+        ]
+      }
+    },
+    {
+      "method": "ListRunnerMachineClasses",
+      "request": {
+        "org": "{{org}}",
+        "os": "RUNNER_OS_LINUX"
+      }
+    },
+    {
+      "method": "ListRunnerImages",
+      "request": {
+        "org": "{{org}}"
+      }
+    },
+    {
+      "method": "CreateRunnerCustomImage",
+      "request": {
+        "org": "{{org}}",
+        "name": "create-custom-image-fixture",
+        "os": "RUNNER_OS_LINUX",
+        "arch": "RUNNER_ARCH_X64",
+        "ociReference": "registry.example/dev/create-custom-image@sha256:abababababababababababababababababababababababababababababababab"
+      }
+    },
+    {
+      "method": "DeleteRunnerCustomImage",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerCustomImage",
+          "save": "img",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-custom-image-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "ociReference": "registry.example/dev/delete-custom-image@sha256:abababababababababababababababababababababababababababababababab"
+          }
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "imageId": "{{img.id}}"
+      }
+    },
+    {
+      "method": "AcquireRunnerJob",
+      "setup": [
+        {
+          "commit": {
+            "repo": "{{repo}}",
+            "parent": "main",
+            "message": "add runner fixture workflow",
+            "change": 2600,
+            "land": "main",
+            "files": {
+              ".github/workflows/runner-fixture.yml": "name: Runner fixture\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, runner-fixture]\n    steps:\n      - name: say\n        run: echo runner\n"
+            }
+          }
+        },
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "acquire-job-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "runner-fixture.yml",
+            "ref": "main"
+          }
+        }
+      ],
+      "request": {
+        "runnerId": "{{rr.runner.id}}",
+        "maxJobs": 1
+      },
+      "maxItems": 1,
+      "token": "{{rr.credential}}"
+    },
+    {
+      "method": "RenewRunnerJob",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "renew-job-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "runner-fixture.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "runnerId": "{{rr.runner.id}}",
+        "jobId": "{{a.jobId}}",
+        "leaseId": "{{a.leaseId}}"
+      },
+      "token": "{{rr.credential}}"
+    },
+    {
+      "method": "UpdateRunnerJobStep",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "update-step-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "runner-fixture.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "runnerId": "{{rr.runner.id}}",
+        "jobId": "{{a.jobId}}",
+        "leaseId": "{{a.leaseId}}",
+        "stepNumber": 1,
+        "stepName": "say",
+        "status": "WORKFLOW_STATUS_IN_PROGRESS"
+      },
+      "token": "{{rr.credential}}"
+    },
+    {
+      "method": "AppendRunnerJobLog",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "append-log-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "runner-fixture.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "runnerId": "{{rr.runner.id}}",
+        "jobId": "{{a.jobId}}",
+        "leaseId": "{{a.leaseId}}",
+        "offset": "0",
+        "data": "cnVubmVyCg==",
+        "stepNumber": 1
+      },
+      "token": "{{rr.credential}}"
+    },
+    {
+      "method": "CompleteRunnerJob",
+      "setup": [
+        {
+          "call": "RunnerService/CreateRunnerRegistrationToken",
+          "save": "rrTok",
+          "request": {
+            "scope": {
+              "kind": "RUNNER_SCOPE_KIND_REPO",
+              "repo": {
+                "fullName": "{{repo}}"
+              }
+            }
+          }
+        },
+        {
+          "call": "RunnerService/RegisterRunner",
+          "save": "rr",
+          "request": {
+            "registrationToken": "{{rrTok.token}}",
+            "name": "complete-job-fixture",
+            "os": "RUNNER_OS_LINUX",
+            "arch": "RUNNER_ARCH_X64",
+            "labels": [
+              "runner-fixture"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        {
+          "call": "WorkflowService/DispatchWorkflow",
+          "save": "run",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "workflow": "runner-fixture.yml",
+            "ref": "main"
+          }
+        },
+        {
+          "call": "RunnerService/AcquireRunnerJob",
+          "save": "a",
+          "token": "{{rr.credential}}",
+          "request": {
+            "runnerId": "{{rr.runner.id}}",
+            "maxJobs": 1
+          }
+        }
+      ],
+      "request": {
+        "runnerId": "{{rr.runner.id}}",
+        "jobId": "{{a.jobId}}",
+        "leaseId": "{{a.leaseId}}",
+        "conclusion": "WORKFLOW_CONCLUSION_SUCCESS",
+        "outputs": [
+          {
+            "key": "result",
+            "value": "complete-job-fixture"
+          }
+        ],
+        "summaryMarkdown": "# complete-job-fixture\n"
+      },
+      "token": "{{rr.credential}}"
+    },
+    {"method": "FetchRunnerJobSecrets",
+     "note": "Own repo, workflow and runner: on dev/playground an earlier fixture's runner (whose acquire stream the harness already dropped) can claim the dispatched job first.",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "fetch-job-secrets-fixture", "visibility": "VISIBILITY_PRIVATE", "description": "FetchRunnerJobSecrets fixture", "autoInit": true}},
+               {"commit": {"repo": "{{org}}/fetch-job-secrets-fixture", "parent": "main", "message": "add fetch-job-secrets workflow", "change": 10530, "land": "main",
+                           "files": {".github/workflows/secrets.yml": "name: Secrets fixture\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, fetch-job-secrets-fixture]\n    steps:\n      - name: use\n        run: echo secrets\n"}}},
+               {"call": "SecretService/GetSecretPublicKey", "save": "k", "request": {"scope": {"kind": "SECRET_SCOPE_KIND_REPO", "repo": {"fullName": "{{org}}/fetch-job-secrets-fixture"}}}},
+               {"seal": {"publicKey": "{{k.key}}", "plaintext": "fetch-job-secrets-value"}, "save": "s"},
+               {"call": "SecretService/PutSecret", "request": {"scope": {"kind": "SECRET_SCOPE_KIND_REPO", "repo": {"fullName": "{{org}}/fetch-job-secrets-fixture"}}, "name": "FETCH_JOB_SECRETS_FIXTURE", "encryptedValue": "{{s.sealed}}", "keyId": "{{k.keyId}}"}},
+               {"call": "RunnerService/CreateRunnerRegistrationToken", "save": "rrTok", "request": {"scope": {"kind": "RUNNER_SCOPE_KIND_REPO", "repo": {"fullName": "{{org}}/fetch-job-secrets-fixture"}}}},
+               {"call": "RunnerService/RegisterRunner", "save": "rr", "request": {"registrationToken": "{{rrTok.token}}", "name": "fetch-job-secrets-fixture", "os": "RUNNER_OS_LINUX", "arch": "RUNNER_ARCH_X64", "labels": ["fetch-job-secrets-fixture"], "version": "1.0.0"}},
+               {"call": "WorkflowService/DispatchWorkflow", "save": "run", "request": {"repo": {"fullName": "{{org}}/fetch-job-secrets-fixture"}, "workflow": "secrets.yml", "ref": "main"}},
+               {"call": "RunnerService/AcquireRunnerJob", "save": "a", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "maxJobs": 1}}],
+     "request": {"runnerId": "{{rr.runner.id}}", "jobId": "{{a.jobId}}", "leaseId": "{{a.leaseId}}"},
+     "token": "{{rr.credential}}"}
+  ]
+}

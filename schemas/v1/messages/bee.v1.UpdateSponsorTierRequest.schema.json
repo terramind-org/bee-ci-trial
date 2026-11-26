@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SponsorTierState": {
+      "description": "Lifecycle of a tier.",
+      "enum": [
+        "SPONSOR_TIER_STATE_UNSPECIFIED",
+        "SPONSOR_TIER_STATE_DRAFT",
+        "SPONSOR_TIER_STATE_PUBLISHED",
+        "SPONSOR_TIER_STATE_RETIRED"
+      ],
+      "title": "bee.v1.SponsorTierState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateSponsorTierRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateSponsorTier.",
+  "properties": {
+    "amountCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "customAmount": {
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "replaceSponsorOnlyRepos": {
+      "type": "boolean"
+    },
+    "sponsorOnlyRepos": {
+      "description": "replaces when replace_sponsor_only_repos",
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SponsorTierState",
+      "description": "DRAFT -> PUBLISHED, or PUBLISHED -> RETIRED"
+    },
+    "tierId": {
+      "type": "string"
+    },
+    "welcomeMessage": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateSponsorTierRequest",
+  "type": "object"
+}

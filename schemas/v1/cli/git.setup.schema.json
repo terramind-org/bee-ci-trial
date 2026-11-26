@@ -1,0 +1,58 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/git.setup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee git setup --json`: one such document with `schema` = bee.v1.git.setup. Point a git repository at Beehive: remote, credential helper, protocol v2, preflight. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "configScope": {
+          "enum": [
+            "local",
+            "global"
+          ]
+        },
+        "credentialHelper": {
+          "description": "The helper command installed.",
+          "type": "string"
+        },
+        "gitVersion": {
+          "type": "string"
+        },
+        "preflight": {
+          "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GitPreflightResponse.schema.json"
+        },
+        "protocolVersion": {
+          "type": "integer"
+        },
+        "remote": {
+          "type": "string"
+        },
+        "url": {
+          "description": "The remote URL (no credential in it).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "remote",
+        "url",
+        "credentialHelper",
+        "configScope",
+        "protocolVersion",
+        "gitVersion",
+        "preflight"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.git.setup"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee git setup",
+  "type": "object"
+}

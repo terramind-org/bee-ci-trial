@@ -1,0 +1,38 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/login.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee login --json`: one such document with `schema` = bee.v1.login. Store a token (and default endpoint) in ~/.config/bee/credentials (mode 0600). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "credentialsPath": {
+          "description": "File the token was written to.",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "Default endpoint stored with it, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "credentialsPath",
+        "endpoint"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.login"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee login",
+  "type": "object"
+}

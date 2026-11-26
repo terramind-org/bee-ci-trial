@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "bee.v1.OpsComponentStatus": {
+      "description": "Status of a status page component.",
+      "enum": [
+        "OPS_COMPONENT_STATUS_UNSPECIFIED",
+        "OPS_COMPONENT_STATUS_OPERATIONAL",
+        "OPS_COMPONENT_STATUS_DEGRADED",
+        "OPS_COMPONENT_STATUS_PARTIAL_OUTAGE",
+        "OPS_COMPONENT_STATUS_MAJOR_OUTAGE",
+        "OPS_COMPONENT_STATUS_MAINTENANCE"
+      ],
+      "title": "bee.v1.OpsComponentStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateOpsIncidentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateOpsIncident.",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "cells": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "componentIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "componentStatus": {
+      "$ref": "#/$defs/bee.v1.OpsComponentStatus",
+      "description": "applied to the listed components"
+    },
+    "impact": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateOpsIncidentRequest",
+  "type": "object"
+}

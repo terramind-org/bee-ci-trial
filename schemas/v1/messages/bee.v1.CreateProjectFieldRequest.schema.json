@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "bee.v1.ProjectFieldKind": {
+      "description": "Type of a project field. Custom fields use TEXT through ITERATION; the rest are built-in\nfields derived from the item's content.",
+      "enum": [
+        "PROJECT_FIELD_KIND_UNSPECIFIED",
+        "PROJECT_FIELD_KIND_TEXT",
+        "PROJECT_FIELD_KIND_NUMBER",
+        "PROJECT_FIELD_KIND_DATE",
+        "PROJECT_FIELD_KIND_SINGLE_SELECT",
+        "PROJECT_FIELD_KIND_ITERATION",
+        "PROJECT_FIELD_KIND_TITLE",
+        "PROJECT_FIELD_KIND_ASSIGNEES",
+        "PROJECT_FIELD_KIND_LABELS",
+        "PROJECT_FIELD_KIND_MILESTONE",
+        "PROJECT_FIELD_KIND_REPOSITORY",
+        "PROJECT_FIELD_KIND_LINKED_CHANGES",
+        "PROJECT_FIELD_KIND_REVIEWERS",
+        "PROJECT_FIELD_KIND_PARENT_ISSUE",
+        "PROJECT_FIELD_KIND_SUB_ISSUES_PROGRESS",
+        "PROJECT_FIELD_KIND_ISSUE_TYPE"
+      ],
+      "title": "bee.v1.ProjectFieldKind",
+      "type": "string"
+    },
+    "bee.v1.ProjectFieldOption": {
+      "description": "One choice of a single-select field.",
+      "properties": {
+        "color": {
+          "description": "e.g. \"GREEN\", \"RED\", or six hex digits",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "description": "server-assigned; send empty to create",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectFieldOption",
+      "type": "object"
+    },
+    "bee.v1.ProjectIteration": {
+      "description": "One iteration (sprint) of an iteration field.",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "durationDays": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isBreak": {
+          "description": "a gap between iterations",
+          "type": "boolean"
+        },
+        "startOn": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectIteration",
+      "type": "object"
+    },
+    "bee.v1.ProjectIterationConfig": {
+      "description": "Configuration of an iteration field.",
+      "properties": {
+        "completedIterations": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ProjectIteration"
+          },
+          "type": "array"
+        },
+        "durationDays": {
+          "description": "default length of new iterations",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "iterations": {
+          "description": "active and upcoming",
+          "items": {
+            "$ref": "#/$defs/bee.v1.ProjectIteration"
+          },
+          "type": "array"
+        },
+        "startOn": {
+          "description": "first iteration's start",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectIterationConfig",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateProjectFieldRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateProjectField.",
+  "properties": {
+    "iterationConfig": {
+      "$ref": "#/$defs/bee.v1.ProjectIterationConfig"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.ProjectFieldKind",
+      "description": "TEXT, NUMBER, DATE, SINGLE_SELECT or ITERATION"
+    },
+    "name": {
+      "type": "string"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.ProjectFieldOption"
+      },
+      "type": "array"
+    },
+    "projectId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateProjectFieldRequest",
+  "type": "object"
+}

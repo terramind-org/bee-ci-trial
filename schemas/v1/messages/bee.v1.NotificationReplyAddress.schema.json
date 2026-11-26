@@ -1,0 +1,23 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.NotificationReplyAddress.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A reply-by-email address for a thread.",
+  "properties": {
+    "address": {
+      "description": "e.g. \"reply+<token>@reply.beehive.example\"",
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "threadId": {
+      "type": "string"
+    },
+    "token": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.NotificationReplyAddress",
+  "type": "object"
+}

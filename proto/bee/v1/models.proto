@@ -1,0 +1,376 @@
+// Model gateway for bee.v1: model catalog, inference, prompt files and evals as repo
+// content, BYOK provider keys and usage. See docs/PRODUCT.md §4.20 and SPEC.md §15.6.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// The model gateway. It is never on the critical path of source control: no VCS or land
+// operation calls it, and its outage only affects model-backed features.
+service ModelService {
+  // Lists models in the catalog with provider, capabilities, context window and pricing.
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  // Fetches one catalog model.
+  rpc GetModel(GetModelRequest) returns (ModelInfo);
+  // Runs a chat-completion style inference and returns the full response.
+  // QUOTA_EXCEEDED past the org's model budget; UNAVAILABLE when the provider is down.
+  rpc RunModelInference(RunModelInferenceRequest) returns (RunModelInferenceResponse);
+  // Runs inference and streams output deltas as they are produced.
+  rpc StreamModelInference(StreamModelInferenceRequest) returns (stream ModelInferenceChunk);
+  // Lists `.prompt.yml` files in a repo at a revision.
+  rpc ListPromptFiles(ListPromptFilesRequest) returns (ListPromptFilesResponse);
+  // Fetches and parses one prompt file. INVALID_ARGUMENT with subcode `bad_prompt_file`
+  // when it does not parse.
+  rpc GetPromptFile(GetPromptFileRequest) returns (PromptFile);
+  // Runs an eval of a prompt file over its dataset, optionally reporting a check run.
+  rpc RunPromptEval(RunPromptEvalRequest) returns (EvalRun);
+  // Fetches one eval run with scores.
+  rpc GetEvalRun(GetEvalRunRequest) returns (EvalRun);
+  // Lists eval runs for a repo, prompt file or changeset.
+  rpc ListEvalRuns(ListEvalRunsRequest) returns (ListEvalRunsResponse);
+  // Cancels a queued or running eval. INVALID_STATE when it already finished.
+  rpc CancelEvalRun(CancelEvalRunRequest) returns (EvalRun);
+  // Registers an org-level provider key (BYOK). The key itself lives in SecretService.
+  rpc CreateModelProviderKey(CreateModelProviderKeyRequest) returns (ModelProviderKey);
+  // Lists an org's provider keys (never the secret values).
+  rpc ListModelProviderKeys(ListModelProviderKeysRequest) returns (ListModelProviderKeysResponse);
+  // Removes a provider key registration.
+  rpc DeleteModelProviderKey(DeleteModelProviderKeyRequest) returns (DeleteModelProviderKeyResponse);
+  // Returns model usage per org or principal over a window.
+  rpc GetModelUsage(GetModelUsageRequest) returns (ModelUsage);
+}
+
+// ---------- Catalog ----------
+
+// Price per million tokens.
+message ModelPricing {
+  uint64 input_usd_micros_per_mtok = 1;
+  uint64 output_usd_micros_per_mtok = 2;
+  uint64 cached_input_usd_micros_per_mtok = 3;
+}
+
+// A catalog model.
+message ModelInfo {
+  string id = 1;              // e.g. "anthropic/claude-sonnet"
+  string provider = 2;
+  string display_name = 3;
+  string description = 4;
+  repeated string capabilities = 5; // "chat", "tools", "vision", "embeddings", "reasoning"
+  uint64 context_window_tokens = 6;
+  uint64 max_output_tokens = 7;
+  ModelPricing pricing = 8;
+  bool byok_only = 9;         // usable only with an org provider key
+  bool enabled_for_org = 10;  // org policy allows it
+  google.protobuf.Timestamp deprecated_at = 11;
+}
+
+// Request for ListModels.
+message ListModelsRequest {
+  string org = 1;             // applies org policy and BYOK availability
+  string provider = 2;
+  string capability = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListModels.
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetModel.
+message GetModelRequest {
+  string org = 1;
+  string id = 2;
+}
+
+// ---------- Inference ----------
+
+// Role of a chat message.
+enum ModelMessageRole {
+  MODEL_MESSAGE_ROLE_UNSPECIFIED = 0;
+  MODEL_MESSAGE_ROLE_SYSTEM = 1;
+  MODEL_MESSAGE_ROLE_USER = 2;
+  MODEL_MESSAGE_ROLE_ASSISTANT = 3;
+  MODEL_MESSAGE_ROLE_TOOL = 4;
+}
+
+// One chat message.
+message ModelMessage {
+  ModelMessageRole role = 1;
+  string content = 2;
+  string tool_call_id = 3;    // TOOL messages
+  string name = 4;
+}
+
+// A tool the model may call.
+message ModelTool {
+  string name = 1;
+  string description = 2;
+  string parameters_schema = 3; // JSON Schema document
+}
+
+// Sampling parameters.
+message ModelParams {
+  optional double temperature = 1;
+  optional double top_p = 2;
+  uint64 max_output_tokens = 3;
+  repeated string stop = 4;
+  string response_format = 5; // "text" or "json"
+  uint64 seed = 6;
+}
+
+// A tool call the model made.
+message ModelToolCall {
+  string id = 1;
+  string name = 2;
+  string arguments = 3;       // JSON
+}
+
+// Why generation stopped.
+enum ModelFinishReason {
+  MODEL_FINISH_REASON_UNSPECIFIED = 0;
+  MODEL_FINISH_REASON_STOP = 1;
+  MODEL_FINISH_REASON_LENGTH = 2;
+  MODEL_FINISH_REASON_TOOL_CALLS = 3;
+  MODEL_FINISH_REASON_CONTENT_FILTER = 4;
+}
+
+// Request for RunModelInference.
+message RunModelInferenceRequest {
+  string org = 1;             // billing and policy scope
+  string model = 2;
+  repeated ModelMessage messages = 3;
+  ModelParams params = 4;
+  repeated ModelTool tools = 5;
+  string provider_key_id = 6; // empty = gateway key or the org default BYOK key
+}
+
+// Response for RunModelInference.
+message RunModelInferenceResponse {
+  string id = 1;
+  string model = 2;
+  ModelMessage message = 3;
+  repeated ModelToolCall tool_calls = 4;
+  ModelFinishReason finish_reason = 5;
+  Cost cost = 6;
+  uint64 latency_ms = 7;
+}
+
+// Request for StreamModelInference.
+message StreamModelInferenceRequest {
+  string org = 1;
+  string model = 2;
+  repeated ModelMessage messages = 3;
+  ModelParams params = 4;
+  repeated ModelTool tools = 5;
+  string provider_key_id = 6;
+}
+
+// One streamed piece of an inference response.
+message ModelInferenceChunk {
+  string id = 1;
+  string content_delta = 2;
+  repeated ModelToolCall tool_calls = 3; // complete tool calls, sent when known
+  ModelFinishReason finish_reason = 4;   // set on the last chunk
+  Cost cost = 5;                         // set on the last chunk
+}
+
+// ---------- Prompt files ----------
+
+// A parsed `.prompt.yml` file.
+message PromptFile {
+  bytes path = 1;
+  ObjectId blob = 2;
+  string name = 3;
+  string description = 4;
+  string model = 5;
+  ModelParams params = 6;
+  repeated ModelMessage messages = 7; // templates with {{variables}}
+  repeated string variables = 8;
+  uint32 test_data_count = 9;
+  repeated string evaluators = 10;
+  string raw = 11;            // YAML source, when requested
+}
+
+// Request for ListPromptFiles.
+message ListPromptFilesRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  bytes path_prefix = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListPromptFiles.
+message ListPromptFilesResponse {
+  repeated PromptFile prompt_files = 1; // parsed headers only
+  PageResponse page = 2;
+}
+
+// Request for GetPromptFile.
+message GetPromptFileRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  bytes path = 3;
+  bool include_raw = 4;
+}
+
+// ---------- Evals ----------
+
+// Eval run lifecycle.
+enum EvalRunState {
+  EVAL_RUN_STATE_UNSPECIFIED = 0;
+  EVAL_RUN_STATE_QUEUED = 1;
+  EVAL_RUN_STATE_RUNNING = 2;
+  EVAL_RUN_STATE_SUCCEEDED = 3;
+  EVAL_RUN_STATE_FAILED = 4;
+  EVAL_RUN_STATE_CANCELLED = 5;
+}
+
+// Aggregate score for one evaluator.
+message EvalScore {
+  string evaluator = 1;
+  double mean = 2;
+  uint32 passed = 3;
+  uint32 failed = 4;
+}
+
+// An eval of a prompt file.
+message EvalRun {
+  string id = 1;
+  RepoRef repo = 2;
+  ObjectId changeset = 3;
+  bytes prompt_path = 4;
+  bytes dataset_path = 5;     // empty = the prompt file's inline test data
+  repeated string models = 6;
+  EvalRunState state = 7;
+  repeated EvalScore scores = 8;
+  uint32 cases_total = 9;
+  uint32 cases_done = 10;
+  Cost cost = 11;
+  string check_run_id = 12;   // check run reporting the result, if requested
+  string results_url = 13;    // signed URL to per-case results JSON
+  string error = 14;
+  Principal started_by = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp finished_at = 17;
+}
+
+// Request for RunPromptEval.
+message RunPromptEvalRequest {
+  RepoRef repo = 1;
+  Revision revision = 2;
+  bytes prompt_path = 3;
+  bytes dataset_path = 4;
+  repeated string models = 5; // empty = the prompt file's model
+  bool report_check = 6;      // report the result as a check run on the changeset
+  string check_name = 7;
+  double pass_threshold = 8;  // minimum mean score for the check to pass
+}
+
+// Request for GetEvalRun.
+message GetEvalRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// Request for ListEvalRuns.
+message ListEvalRunsRequest {
+  RepoRef repo = 1;
+  bytes prompt_path = 2;
+  ObjectId changeset = 3;
+  EvalRunState state = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListEvalRuns.
+message ListEvalRunsResponse {
+  repeated EvalRun runs = 1;
+  PageResponse page = 2;
+}
+
+// Request for CancelEvalRun.
+message CancelEvalRunRequest {
+  RepoRef repo = 1;
+  string id = 2;
+}
+
+// ---------- BYOK ----------
+
+// An org's own provider key, stored in SecretService.
+message ModelProviderKey {
+  string id = 1;
+  string org = 2;
+  string provider = 3;
+  string name = 4;
+  string secret_name = 5;     // org secret holding the key
+  string endpoint = 6;        // custom base URL, if any
+  repeated string models = 7; // models routed through this key; empty = all of the provider
+  bool is_default = 8;
+  Principal created_by = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// Request for CreateModelProviderKey.
+message CreateModelProviderKeyRequest {
+  string org = 1;
+  string provider = 2;
+  string name = 3;
+  string secret_name = 4;
+  string endpoint = 5;
+  repeated string models = 6;
+  bool is_default = 7;
+}
+
+// Request for ListModelProviderKeys.
+message ListModelProviderKeysRequest {
+  string org = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListModelProviderKeys.
+message ListModelProviderKeysResponse {
+  repeated ModelProviderKey keys = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteModelProviderKey.
+message DeleteModelProviderKeyRequest {
+  string org = 1;
+  string id = 2;
+}
+
+// Response for DeleteModelProviderKey.
+message DeleteModelProviderKeyResponse {}
+
+// ---------- Usage ----------
+
+// Usage for one model and principal.
+message ModelUsageLine {
+  string model = 1;
+  string principal_id = 2;
+  uint64 requests = 3;
+  Cost cost = 4;
+  bool byok = 5;
+}
+
+// Model usage over a window.
+message ModelUsage {
+  string org = 1;
+  google.protobuf.Timestamp window_start = 2;
+  google.protobuf.Timestamp window_end = 3;
+  repeated ModelUsageLine lines = 4;
+  Cost total = 5;
+  uint64 budget_usd_micros = 6; // 0 = no budget
+}
+
+// Request for GetModelUsage.
+message GetModelUsageRequest {
+  string org = 1;
+  string principal_id = 2;    // empty = whole org
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+  bool group_by_principal = 5;
+}

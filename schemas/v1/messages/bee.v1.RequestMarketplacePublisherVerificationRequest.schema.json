@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RequestMarketplacePublisherVerificationRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RequestMarketplacePublisherVerification.",
+  "properties": {
+    "domain": {
+      "description": "must be a verified domain of the org",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "supportEmail": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RequestMarketplacePublisherVerificationRequest",
+  "type": "object"
+}

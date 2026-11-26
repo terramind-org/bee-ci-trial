@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "bee.v1.AuditSink": {
+      "description": "A streaming destination for audit entries.",
+      "properties": {
+        "actionPrefixes": {
+          "description": "empty = every action",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "credentialSecret": {
+          "description": "SecretService secret name; the value is never returned",
+          "type": "string"
+        },
+        "deliveredSeq": {
+          "description": "last sequence delivered",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "bucket URI, HEC URL, site, or HTTPS URL",
+          "type": "string"
+        },
+        "enterprise": {
+          "type": "string"
+        },
+        "health": {
+          "$ref": "#/$defs/bee.v1.AuditSinkHealth"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.AuditSinkKind"
+        },
+        "lagEntries": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "lastDeliveredAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AuditSink",
+      "type": "object"
+    },
+    "bee.v1.AuditSinkHealth": {
+      "description": "Delivery health of a sink.",
+      "enum": [
+        "AUDIT_SINK_HEALTH_UNSPECIFIED",
+        "AUDIT_SINK_HEALTH_HEALTHY",
+        "AUDIT_SINK_HEALTH_LAGGING",
+        "AUDIT_SINK_HEALTH_FAILING",
+        "AUDIT_SINK_HEALTH_PAUSED"
+      ],
+      "title": "bee.v1.AuditSinkHealth",
+      "type": "string"
+    },
+    "bee.v1.AuditSinkKind": {
+      "description": "Destination type of a sink.",
+      "enum": [
+        "AUDIT_SINK_KIND_UNSPECIFIED",
+        "AUDIT_SINK_KIND_S3",
+        "AUDIT_SINK_KIND_SPLUNK",
+        "AUDIT_SINK_KIND_DATADOG",
+        "AUDIT_SINK_KIND_HTTPS"
+      ],
+      "title": "bee.v1.AuditSinkKind",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAuditSinksResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAuditSinks.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "sinks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AuditSink"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListAuditSinksResponse",
+  "type": "object"
+}

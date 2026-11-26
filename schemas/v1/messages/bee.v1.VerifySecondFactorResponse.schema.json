@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.VerifySecondFactorResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "token": {
+      "description": "elevated token, short-lived",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.VerifySecondFactorResponse",
+  "type": "object"
+}

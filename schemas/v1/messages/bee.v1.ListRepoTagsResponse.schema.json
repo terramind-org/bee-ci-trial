@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoTag": {
+      "description": "A tag under `tags/*`, with its annotated-tag object when it has one.",
+      "properties": {
+        "annotated": {
+          "type": "boolean"
+        },
+        "annotation": {
+          "$ref": "#/$defs/bee.v1.RepoTagAnnotation",
+          "description": "set when annotated"
+        },
+        "name": {
+          "description": "without the \"tags/\" prefix",
+          "type": "string"
+        },
+        "protected": {
+          "description": "policy restricts who may move or delete it",
+          "type": "boolean"
+        },
+        "refVersion": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "releaseId": {
+          "description": "release using this tag, if any",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "changeset the tag resolves to"
+        }
+      },
+      "title": "bee.v1.RepoTag",
+      "type": "object"
+    },
+    "bee.v1.RepoTagAnnotation": {
+      "description": "The annotated-tag object: tagger, message and optional signature.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "message": {
+          "type": "string"
+        },
+        "signature": {
+          "contentEncoding": "base64",
+          "description": "armored GPG or SSH signature, if signed",
+          "type": "string"
+        },
+        "tagger": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "taggerTime": {
+          "$ref": "#/$defs/bee.v1.Signature"
+        },
+        "verificationReason": {
+          "description": "e.g. \"valid\", \"unknown_key\", \"bad_signature\", \"unsigned\"",
+          "type": "string"
+        },
+        "verified": {
+          "description": "signature verifies against a registered signing key",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.RepoTagAnnotation",
+      "type": "object"
+    },
+    "bee.v1.Signature": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tzOffsetMinutes": {
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.Signature",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRepoTagsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListRepoTags.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "tags": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoTag"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListRepoTagsResponse",
+  "type": "object"
+}

@@ -1,0 +1,464 @@
+// Repository insights for bee.v1: languages, license, community health, citation, pulse,
+// contributors, activity series, traffic, network graph, dependency and agent insights.
+// See docs/PRODUCT.md §4.4 and §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Read-only aggregates derived from repo contents, the ref-log, provenance and access logs.
+// Content-derived results (languages, license, community files, citation) are pure functions
+// of the tree and are cached by tree id. Activity series are computed lazily; a response with
+// `computing` set means the aggregate is being built and the call should be retried later.
+// Traffic requires push access (PERMISSION_DENIED otherwise).
+service InsightsService {
+  // Bytes per language at a revision, honoring `.gitattributes` linguist overrides
+  // (linguist-language, linguist-vendored, linguist-generated, linguist-documentation).
+  rpc GetLanguageStats(GetLanguageStatsRequest) returns (GetLanguageStatsResponse);
+  // Detects the repo's license from LICENSE-like files at a revision. NOT_FOUND when none.
+  rpc GetLicenseInfo(GetLicenseInfoRequest) returns (LicenseInfo);
+  // Reports which community health files exist and the health percentage.
+  rpc GetCommunityProfile(GetCommunityProfileRequest) returns (CommunityProfile);
+  // Parses CITATION.cff and formats it as APA and BibTeX. NOT_FOUND when absent;
+  // INVALID_ARGUMENT (subcode `bad_citation`) when it does not parse.
+  rpc GetCitation(GetCitationRequest) returns (CitationInfo);
+  // Summarizes activity over a window: change requests, issues, authors and agents.
+  rpc GetPulse(GetPulseRequest) returns (PulseSummary);
+  // Lists contributors with commit counts, line changes and weekly series.
+  rpc ListContributors(ListContributorsRequest) returns (ListContributorsResponse);
+  // Weekly changeset counts for the last year, with a per-day breakdown.
+  rpc GetCommitActivity(GetCommitActivityRequest) returns (GetCommitActivityResponse);
+  // Weekly additions and deletions over the repo's history.
+  rpc GetCodeFrequency(GetCodeFrequencyRequest) returns (GetCodeFrequencyResponse);
+  // Page views and unique visitors over the last 14 days.
+  rpc GetTrafficViews(GetTrafficViewsRequest) returns (GetTrafficViewsResponse);
+  // Clones and unique cloners over the last 14 days.
+  rpc GetTrafficClones(GetTrafficClonesRequest) returns (GetTrafficClonesResponse);
+  // Top referring sites over the last 14 days.
+  rpc ListTrafficReferrers(ListTrafficReferrersRequest) returns (ListTrafficReferrersResponse);
+  // Most viewed paths over the last 14 days.
+  rpc ListTrafficPopularPaths(ListTrafficPopularPathsRequest) returns (ListTrafficPopularPathsResponse);
+  // Changesets across refs and forks in a window, as nodes and edges.
+  // TOO_LARGE when the window holds more nodes than `max_nodes` allows.
+  rpc GetNetworkGraph(GetNetworkGraphRequest) returns (GetNetworkGraphResponse);
+  // Aggregates the dependency graphs of an org's repos: packages, versions, licenses, users.
+  rpc ListInsightsOrgDependencies(ListInsightsOrgDependenciesRequest) returns (ListInsightsOrgDependenciesResponse);
+  // Per-agent landed and reverted counts and cost in a repo over a window.
+  rpc ListInsightsAgentStats(ListInsightsAgentStatsRequest) returns (ListInsightsAgentStatsResponse);
+}
+
+// Time window for activity aggregates.
+enum InsightsWindow {
+  INSIGHTS_WINDOW_UNSPECIFIED = 0; // WEEK
+  INSIGHTS_WINDOW_DAY = 1;
+  INSIGHTS_WINDOW_THREE_DAYS = 2;
+  INSIGHTS_WINDOW_WEEK = 3;
+  INSIGHTS_WINDOW_MONTH = 4;
+  INSIGHTS_WINDOW_QUARTER = 5;
+  INSIGHTS_WINDOW_YEAR = 6;
+}
+
+// Bucket size for traffic series.
+enum TrafficInterval {
+  TRAFFIC_INTERVAL_UNSPECIFIED = 0; // DAY
+  TRAFFIC_INTERVAL_DAY = 1;
+  TRAFFIC_INTERVAL_WEEK = 2;
+}
+
+// Linguist classification of a language.
+enum LanguageType {
+  LANGUAGE_TYPE_UNSPECIFIED = 0;
+  LANGUAGE_TYPE_PROGRAMMING = 1;
+  LANGUAGE_TYPE_MARKUP = 2;
+  LANGUAGE_TYPE_DATA = 3;
+  LANGUAGE_TYPE_PROSE = 4;
+}
+
+// Bytes of one language.
+message LanguageStat {
+  string name = 1;              // e.g. "Rust"
+  uint64 byte_count = 2;
+  uint32 file_count = 3;
+  double percentage = 4;        // of counted bytes, 0..100
+  string color = 5;             // six hex digits, no '#'
+  LanguageType type = 6;
+}
+
+// A detected license.
+message LicenseInfo {
+  string spdx_id = 1;           // e.g. "Apache-2.0"; "NOASSERTION" when unrecognized
+  string name = 2;
+  double confidence = 3;        // 0..1
+  bytes path = 4;
+  ObjectId blob = 5;
+  string matcher = 6;           // e.g. "exact", "dice", "package_manifest"
+  repeated string permissions = 7; // e.g. "commercial-use"
+  repeated string conditions = 8;
+  repeated string limitations = 9;
+  repeated LicenseInfo additional = 10; // other licenses found (multi-licensed repos)
+  ObjectId changeset = 11;
+}
+
+// A community health file kind.
+enum CommunityFileKind {
+  COMMUNITY_FILE_KIND_UNSPECIFIED = 0;
+  COMMUNITY_FILE_KIND_README = 1;
+  COMMUNITY_FILE_KIND_LICENSE = 2;
+  COMMUNITY_FILE_KIND_CONTRIBUTING = 3;
+  COMMUNITY_FILE_KIND_SECURITY = 4;
+  COMMUNITY_FILE_KIND_CODE_OF_CONDUCT = 5;
+  COMMUNITY_FILE_KIND_FUNDING = 6;
+  COMMUNITY_FILE_KIND_SUPPORT = 7;
+  COMMUNITY_FILE_KIND_CITATION = 8;
+  COMMUNITY_FILE_KIND_ISSUE_TEMPLATE = 9;
+  COMMUNITY_FILE_KIND_CHANGE_REQUEST_TEMPLATE = 10;
+  COMMUNITY_FILE_KIND_GOVERNANCE = 11;
+  COMMUNITY_FILE_KIND_CODEOWNERS = 12;
+}
+
+// Presence of one community health file.
+message CommunityFile {
+  CommunityFileKind kind = 1;
+  bool present = 2;
+  repeated bytes paths = 3;     // where found: root, then .github, then docs
+  bool inherited = 4;           // from the org's `.github` repo
+  string detail = 5;            // e.g. detected code of conduct "contributor_covenant_2.1"
+}
+
+// Community profile and health percentage.
+message CommunityProfile {
+  RepoRef repo = 1;
+  ObjectId changeset = 2;
+  uint32 health_percentage = 3; // 0..100
+  repeated CommunityFile files = 4;
+  bool has_description = 5;
+  bool has_discussions = 6;
+  bool content_reports_enabled = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// A parsed CITATION.cff with formatted renderings.
+message CitationInfo {
+  bytes path = 1;
+  ObjectId blob = 2;
+  string title = 3;
+  repeated string authors = 4;  // formatted names
+  string version = 5;
+  string doi = 6;
+  string date_released = 7;     // YYYY-MM-DD
+  string url = 8;
+  string cff_version = 9;
+  string apa = 10;
+  string bibtex = 11;
+  string json = 12;             // the parsed file as JSON
+}
+
+// Activity summary over a window.
+message PulseSummary {
+  RepoRef repo = 1;
+  google.protobuf.Timestamp from_at = 2;
+  google.protobuf.Timestamp to_at = 3;
+  uint32 change_requests_opened = 4;
+  uint32 change_requests_landed = 5;
+  uint32 change_requests_closed = 6;
+  uint32 issues_opened = 7;
+  uint32 issues_closed = 8;
+  uint32 changesets_landed = 9;
+  uint32 files_changed = 10;
+  uint64 additions = 11;
+  uint64 deletions = 12;
+  uint32 human_authors = 13;
+  uint32 agent_authors = 14;
+  uint32 releases_published = 15;
+  repeated SubjectRef landed_change_requests = 16; // up to a limit, newest first
+  repeated SubjectRef opened_issues = 17;
+  repeated PulseAuthorCount top_authors = 18;
+}
+
+// One author's landed changeset count in a pulse window.
+message PulseAuthorCount {
+  Principal author = 1;
+  uint32 changesets = 2;
+}
+
+// One week of a contributor's activity.
+message ContributorWeek {
+  google.protobuf.Timestamp week_start = 1; // Sunday 00:00 UTC
+  uint32 changesets = 2;
+  uint64 additions = 3;
+  uint64 deletions = 4;
+}
+
+// One contributor's totals and weekly series.
+message ContributorStats {
+  Principal principal = 1;
+  bool placeholder = 2;         // imported identity not yet claimed
+  string placeholder_email = 3; // commit email the placeholder stands for
+  uint32 changesets = 4;
+  uint64 additions = 5;
+  uint64 deletions = 6;
+  repeated ContributorWeek weeks = 7;
+  google.protobuf.Timestamp first_at = 8;
+  google.protobuf.Timestamp last_at = 9;
+}
+
+// One week of changeset counts, Sunday first.
+message InsightsCommitWeek {
+  google.protobuf.Timestamp week_start = 1;
+  repeated uint32 days = 2;     // 7 entries, Sunday..Saturday
+  uint32 total = 3;
+}
+
+// One week of line changes.
+message InsightsCodeFrequencyWeek {
+  google.protobuf.Timestamp week_start = 1;
+  uint64 additions = 2;
+  uint64 deletions = 3;
+}
+
+// One traffic bucket.
+message TrafficPoint {
+  google.protobuf.Timestamp at = 1;
+  uint64 count = 2;
+  uint64 uniques = 3;
+}
+
+// A referring site.
+message TrafficReferrer {
+  string referrer = 1;          // host, e.g. "news.ycombinator.com"
+  uint64 count = 2;
+  uint64 uniques = 3;
+}
+
+// A popular path in the web app.
+message TrafficPopularPath {
+  string path = 1;              // URL path, e.g. "/org/repo/tree/main/docs"
+  string title = 2;
+  uint64 count = 3;
+  uint64 uniques = 4;
+}
+
+// A changeset node in the network graph.
+message NetworkNode {
+  ObjectId changeset = 1;
+  RepoRef repo = 2;             // the fork or repo it was seen in
+  string repo_full_name = 3;
+  repeated string refs = 4;     // refs pointing at it
+  Principal author = 5;
+  string summary = 6;           // first line of the message
+  google.protobuf.Timestamp committed_at = 7;
+  uint32 lane = 8;              // layout column hint
+}
+
+// A parent edge in the network graph.
+message NetworkEdge {
+  ObjectId child = 1;
+  ObjectId parent = 2;
+}
+
+// One dependency aggregated across an org's repos.
+message InsightsOrgDependency {
+  string ecosystem = 1;         // e.g. "cargo", "npm"
+  string package_name = 2;
+  repeated string versions = 3;
+  repeated string licenses = 4; // SPDX ids
+  uint32 repo_count = 5;
+  repeated string repos = 6;    // full names, up to a limit
+  uint32 open_advisories = 7;
+  string highest_severity = 8;  // "low", "moderate", "high", "critical"
+}
+
+// One agent's results in a repo.
+message InsightsAgentStats {
+  Principal agent = 1;
+  uint32 change_requests_opened = 2;
+  uint32 change_requests_landed = 3;
+  uint32 change_requests_closed = 4; // closed without landing
+  uint32 changesets_landed = 5;
+  uint32 changesets_reverted = 6;
+  double revert_rate = 7;       // reverted / landed, 0..1
+  Cost cost = 8;                // summed from provenance
+  uint64 additions = 9;
+  uint64 deletions = 10;
+  uint32 review_rounds_median = 11;
+}
+
+// Request for GetLanguageStats.
+message GetLanguageStatsRequest {
+  RepoRef repo = 1;
+  Revision at = 2;              // default the default ref
+  bool include_vendored = 3;
+  bool include_generated = 4;
+  bool include_documentation = 5;
+}
+
+// Response for GetLanguageStats.
+message GetLanguageStatsResponse {
+  repeated LanguageStat languages = 1; // largest first
+  uint64 total_bytes = 2;
+  ObjectId changeset = 3;
+  ObjectId tree = 4;            // cache key
+}
+
+// Request for GetLicenseInfo.
+message GetLicenseInfoRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+}
+
+// Request for GetCommunityProfile.
+message GetCommunityProfileRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+}
+
+// Request for GetCitation.
+message GetCitationRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+}
+
+// Request for GetPulse.
+message GetPulseRequest {
+  RepoRef repo = 1;
+  InsightsWindow window = 2;
+}
+
+// Request for ListContributors.
+message ListContributorsRequest {
+  RepoRef repo = 1;
+  Revision at = 2;              // ref whose history is counted; default the default ref
+  PrincipalKind kind = 3;       // UNSPECIFIED = humans and agents
+  google.protobuf.Timestamp since = 4;
+  google.protobuf.Timestamp until = 5;
+  bool include_weeks = 6;
+  PageRequest page = 7;
+}
+
+// Response for ListContributors.
+message ListContributorsResponse {
+  repeated ContributorStats contributors = 1; // most changesets first
+  uint32 human_count = 2;
+  uint32 agent_count = 3;
+  uint32 placeholder_count = 4;
+  bool computing = 5;
+  PageResponse page = 6;
+}
+
+// Request for GetCommitActivity.
+message GetCommitActivityRequest {
+  RepoRef repo = 1;
+}
+
+// Response for GetCommitActivity.
+message GetCommitActivityResponse {
+  repeated InsightsCommitWeek weeks = 1; // 52 weeks, oldest first
+  bool computing = 2;
+}
+
+// Request for GetCodeFrequency.
+message GetCodeFrequencyRequest {
+  RepoRef repo = 1;
+}
+
+// Response for GetCodeFrequency.
+message GetCodeFrequencyResponse {
+  repeated InsightsCodeFrequencyWeek weeks = 1;
+  bool computing = 2;
+}
+
+// Request for GetTrafficViews.
+message GetTrafficViewsRequest {
+  RepoRef repo = 1;
+  TrafficInterval interval = 2;
+}
+
+// Response for GetTrafficViews.
+message GetTrafficViewsResponse {
+  uint64 count = 1;
+  uint64 uniques = 2;
+  repeated TrafficPoint points = 3;
+}
+
+// Request for GetTrafficClones.
+message GetTrafficClonesRequest {
+  RepoRef repo = 1;
+  TrafficInterval interval = 2;
+}
+
+// Response for GetTrafficClones.
+message GetTrafficClonesResponse {
+  uint64 count = 1;
+  uint64 uniques = 2;
+  repeated TrafficPoint points = 3;
+}
+
+// Request for ListTrafficReferrers.
+message ListTrafficReferrersRequest {
+  RepoRef repo = 1;
+}
+
+// Response for ListTrafficReferrers.
+message ListTrafficReferrersResponse {
+  repeated TrafficReferrer referrers = 1; // top 10
+}
+
+// Request for ListTrafficPopularPaths.
+message ListTrafficPopularPathsRequest {
+  RepoRef repo = 1;
+}
+
+// Response for ListTrafficPopularPaths.
+message ListTrafficPopularPathsResponse {
+  repeated TrafficPopularPath paths = 1; // top 10
+}
+
+// Request for GetNetworkGraph.
+message GetNetworkGraphRequest {
+  RepoRef repo = 1;
+  google.protobuf.Timestamp since = 2;
+  google.protobuf.Timestamp until = 3;
+  bool include_forks = 4;
+  repeated string refs = 5;     // empty = all branches and tags
+  uint32 max_nodes = 6;         // 0 = server default
+}
+
+// Response for GetNetworkGraph.
+message GetNetworkGraphResponse {
+  repeated NetworkNode nodes = 1; // newest first
+  repeated NetworkEdge edges = 2;
+  bool truncated = 3;
+}
+
+// Request for ListInsightsOrgDependencies.
+message ListInsightsOrgDependenciesRequest {
+  string org = 1;
+  string ecosystem = 2;         // empty = all
+  string query = 3;             // package name substring
+  string license = 4;           // SPDX id filter
+  bool vulnerable_only = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListInsightsOrgDependencies.
+message ListInsightsOrgDependenciesResponse {
+  repeated InsightsOrgDependency dependencies = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for ListInsightsAgentStats.
+message ListInsightsAgentStatsRequest {
+  RepoRef repo = 1;
+  InsightsWindow window = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListInsightsAgentStats.
+message ListInsightsAgentStatsResponse {
+  repeated InsightsAgentStats agents = 1; // most landed first
+  Cost total_cost = 2;
+  PageResponse page = 3;
+}

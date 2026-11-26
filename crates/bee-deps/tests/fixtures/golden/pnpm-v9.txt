@@ -1,0 +1,6 @@
+manifest package.json npm lock=false count=2
+manifest pnpm-lock.yaml npm lock=true count=4
+pnpm-lock.yaml npm js-tokens@4.0.0 runtime indirect req=- pkg:npm/js-tokens@4.0.0
+pnpm-lock.yaml npm loose-envify@1.4.0 runtime indirect req=- pkg:npm/loose-envify@1.4.0 -> npm/js-tokens@4.0.0
+pnpm-lock.yaml npm react@18.2.0 runtime direct req=^18.2.0 pkg:npm/react@18.2.0 -> npm/loose-envify@1.4.0
+pnpm-lock.yaml npm typescript@5.4.5 dev direct req=~5.4.0 pkg:npm/typescript@5.4.5

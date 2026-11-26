@@ -1,0 +1,350 @@
+{
+  "$defs": {
+    "bee.v1.PostArticle": {
+      "description": "The long-form part of a post.",
+      "properties": {
+        "bodyMarkdown": {
+          "description": "Markdown, at most 100000 characters, not empty",
+          "type": "string"
+        },
+        "title": {
+          "description": "NFC plain text on one line, 1-200 characters",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PostArticle",
+      "type": "object"
+    },
+    "bee.v1.PostAttachment": {
+      "description": "Something in the post's repo that the post is about, with what a client needs to show it as\na card. A writer sets `kind` and `id` (or, for a change request or an issue, `number`); the\nserver checks it and fills the rest on every read from the attachment as it is now. When the\nattachment is gone (or a release went back to draft) only `kind` and `id` are set.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PostAttachmentKind"
+        },
+        "number": {
+          "description": "change request and issue only",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "state": {
+          "description": "The attachment's state in lower case: `open`, `landed` or `closed` for a change request,\n`open` or `closed` for an issue, `published` or `prerelease` for a release, and the\nAgentRunState name without its prefix (`running`, `succeeded`, ...) for an agent run.",
+          "type": "string"
+        },
+        "tagName": {
+          "description": "release only",
+          "type": "string"
+        },
+        "title": {
+          "description": "A release's name (else its tag); the first line of an agent run's prompt (else its agent's\nname).",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PostAttachment",
+      "type": "object"
+    },
+    "bee.v1.PostAttachmentKind": {
+      "description": "What a post's attachment points at.",
+      "enum": [
+        "POST_ATTACHMENT_KIND_UNSPECIFIED",
+        "POST_ATTACHMENT_KIND_CHANGE_REQUEST",
+        "POST_ATTACHMENT_KIND_RELEASE",
+        "POST_ATTACHMENT_KIND_ISSUE",
+        "POST_ATTACHMENT_KIND_AGENT_RUN",
+        "POST_ATTACHMENT_KIND_SWARM"
+      ],
+      "title": "bee.v1.PostAttachmentKind",
+      "type": "string"
+    },
+    "bee.v1.PostCounts": {
+      "description": "Engagement counts of a post.",
+      "properties": {
+        "adoptions": {
+          "description": "adoptions in repos the caller can read",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "comments": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "likes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "reposts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.PostCounts",
+      "type": "object"
+    },
+    "bee.v1.PostMedia": {
+      "description": "An image or video attached to a post.",
+      "properties": {
+        "altText": {
+          "description": "required for images, optional for video",
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "durationMs": {
+          "description": "video only",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "height": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PostMediaKind"
+        },
+        "sha256": {
+          "description": "lowercase hex",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "url": {
+          "description": "signed download URL, filled on every read, never stored",
+          "type": "string"
+        },
+        "width": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.PostMedia",
+      "type": "object"
+    },
+    "bee.v1.PostMediaKind": {
+      "description": "Kind of a post's media.",
+      "enum": [
+        "POST_MEDIA_KIND_UNSPECIFIED",
+        "POST_MEDIA_KIND_IMAGE",
+        "POST_MEDIA_KIND_VIDEO"
+      ],
+      "title": "bee.v1.PostMediaKind",
+      "type": "string"
+    },
+    "bee.v1.PostState": {
+      "description": "Lifecycle of a post.",
+      "enum": [
+        "POST_STATE_UNSPECIFIED",
+        "POST_STATE_DRAFT",
+        "POST_STATE_PENDING_APPROVAL",
+        "POST_STATE_PUBLISHED",
+        "POST_STATE_WITHDRAWN",
+        "POST_STATE_DISCARDED"
+      ],
+      "title": "bee.v1.PostState",
+      "type": "string"
+    },
+    "bee.v1.PostViewer": {
+      "description": "What the caller has done with a post and may do with it.",
+      "properties": {
+        "canApprove": {
+          "type": "boolean"
+        },
+        "canEdit": {
+          "type": "boolean"
+        },
+        "canWithdraw": {
+          "type": "boolean"
+        },
+        "liked": {
+          "type": "boolean"
+        },
+        "reposted": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.PostViewer",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Post.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A post: on its own, or on a change request.",
+  "properties": {
+    "approvedBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "article": {
+      "$ref": "#/$defs/bee.v1.PostArticle",
+      "description": "unset when the post has no article"
+    },
+    "attachments": {
+      "description": "What the post is about, in order. A post on a change request lists that change request\nfirst, whether or not it was written before attachments existed.",
+      "items": {
+        "$ref": "#/$defs/bee.v1.PostAttachment"
+      },
+      "type": "array"
+    },
+    "author": {
+      "$ref": "#/$defs/bee.v1.Principal",
+      "description": "the caller who last set the text; may be an agent"
+    },
+    "bodyMarkdown": {
+      "description": "Markdown, at most 20000 characters; may be empty",
+      "type": "string"
+    },
+    "changeId": {
+      "description": "the change request carrying it; empty for a post of its own",
+      "type": "string"
+    },
+    "changeNumber": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "changeTitle": {
+      "type": "string"
+    },
+    "counts": {
+      "$ref": "#/$defs/bee.v1.PostCounts"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "media": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PostMedia"
+      },
+      "type": "array"
+    },
+    "publishedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.PostState"
+    },
+    "text": {
+      "description": "the summary: NFC plain text, at most 500 characters",
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "viewer": {
+      "$ref": "#/$defs/bee.v1.PostViewer"
+    },
+    "withdrawnReason": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Post",
+  "type": "object"
+}

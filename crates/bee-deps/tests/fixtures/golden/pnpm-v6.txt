@@ -1,0 +1,5 @@
+manifest package.json npm lock=false count=2
+manifest pnpm-lock.yaml npm lock=true count=3
+pnpm-lock.yaml npm @babel/core@7.23.0 runtime direct req=7.23.0 pkg:npm/%40babel/core@7.23.0 -> npm/semver@6.3.1
+pnpm-lock.yaml npm rimraf@5.0.5 dev direct req=^5.0.0 pkg:npm/rimraf@5.0.5
+pnpm-lock.yaml npm semver@6.3.1 runtime indirect req=- pkg:npm/semver@6.3.1

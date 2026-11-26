@@ -1,0 +1,48 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetAgentBudgetRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetAgentBudget. Needs org owner/admin.",
+  "properties": {
+    "maxInputTokens": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "maxOutputTokens": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "maxRuns": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "maxUsdMicros": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "org": {
+      "type": "string"
+    },
+    "ownerId": {
+      "description": "empty = the caller",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SetAgentBudgetRequest",
+  "type": "object"
+}

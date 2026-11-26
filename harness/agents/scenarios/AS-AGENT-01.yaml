@@ -1,0 +1,96 @@
+id: AS-AGENT-01
+area: "4.19"
+title: Two agents take overlapping tasks; they discover each other's leases and route around them
+surfaces: both
+timeout: 1800
+budget: { max_turns: 100 }
+notes: >
+  Both agents are fresh agents of the runtime under test, started together, each told only that
+  someone else may be working in the repository. Neither is told about leases.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed the API"
+      files:
+        src/api/routes.py: |
+          ROUTES = {
+              "/health": "health",
+              "/users": "list_users",
+          }
+        src/api/handlers.py: |
+          def health():
+              return "ok"
+
+
+          def list_users():
+              return []
+  - name: the second agent
+    call: AuthService/CreateAgent
+    request: { display: "worker-b-${run.ns}", runtime: "${run.runtime}", purpose: "agent scenario ${scenario.id}", org: "${run.ns}" }
+    save: { workerB: "$" }
+  - name: let workerB join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${workerB.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${workerB.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request:
+      principalId: "${workerB.id}"
+      scope: { repos: ["${repo.fullName}"], actions: [read, commit, land, review, lease, manage_refs], session: "${run.session}/b" }
+    save: { workerBToken: token }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, add a `/orders` endpoint: a route `"/orders":
+  "list_orders"` in `src/api/routes.py` and a `list_orders()` handler returning `[]` in
+  `src/api/handlers.py`. Land it on main. Another agent may be changing the same files at the
+  same time; coordinate through the server so that neither of you overwrites or blocks the
+  other, and both changes end up on main.
+peers:
+  - name: agent-b
+    token: "${workerBToken}"
+    prompt: |
+      In the bee repository ${repo.fullName}, add a `/invoices` endpoint: a route `"/invoices":
+      "list_invoices"` in `src/api/routes.py` and a `list_invoices()` handler returning `[]` in
+      `src/api/handlers.py`. Land it on main. Another agent may be changing the same files at the
+      same time; coordinate through the server so that neither of you overwrites or blocks the
+      other, and both changes end up on main.
+assertions:
+  - name: both agents held leases on the shared files
+    call: EventService/ListEvents
+    request: { repo: { fullName: "${repo.fullName}" }, kinds: ["lease.*"] }
+    expect:
+      - path: events
+        some:
+          - { path: principal, eq: "${worker.id}" }
+          - { path: kind, matches: "acquired" }
+      - path: events
+        some:
+          - { path: principal, eq: "${workerB.id}" }
+          - { path: kind, matches: "acquired" }
+  - name: both endpoints are on main
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/api/routes.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "\"/orders\":\\s*\"list_orders\"" }
+      - { path: "messages[*].data", decode: base64, matches: "\"/invoices\":\\s*\"list_invoices\"" }
+      - { path: "messages[*].data", decode: base64, matches: "\"/health\":\\s*\"health\"" }
+      - { path: "messages[0].data", decode: base64, not_contains: "<<<<<<<" }
+  - call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/api/handlers.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "def list_orders\\(\\)" }
+      - { path: "messages[*].data", decode: base64, matches: "def list_invoices\\(\\)" }
+  - name: each agent landed its own change
+    call: QueryService/Log
+    request: { repo: { fullName: "${repo.fullName}" }, from: { expr: main }, page: { pageSize: 10 }, includeMeta: true }
+    expect:
+      - { path: "changesets[*].meta.creator", contains: "${worker.id}" }
+      - { path: "changesets[*].meta.creator", contains: "${workerB.id}" }
+  - name: no leases are left behind
+    call: LeaseService/ListLeases
+    request: { repo: { fullName: "${repo.fullName}" } }
+    expect:
+      - { path: leases, len: 0 }

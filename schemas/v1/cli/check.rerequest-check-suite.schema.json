@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/check.rerequest-check-suite.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.CheckService/RerequestCheckSuite: `data` is a bee.v1.CheckSuite in proto3-JSON. `bee check rerequest-check-suite --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CheckSuite.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.check.rerequest-check-suite"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee check rerequest-check-suite",
+  "type": "object"
+}

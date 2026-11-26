@@ -1,0 +1,29 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SponsorFiscalHost.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A fiscal host that receives funds for a maintainee.",
+  "properties": {
+    "feeBasisPoints": {
+      "description": "host fee, 100 = 1%",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "hostAccount": {
+      "description": "the maintainee's account at the host",
+      "type": "string"
+    },
+    "name": {
+      "description": "e.g. \"Open Source Collective\"",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.SponsorFiscalHost",
+  "type": "object"
+}

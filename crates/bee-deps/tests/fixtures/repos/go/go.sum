@@ -1,0 +1,5 @@
+github.com/gin-gonic/gin v1.7.2 h1:Tdt/gin172=
+github.com/gin-gonic/gin v1.7.2/go.mod h1:gin172mod=
+golang.org/x/text v0.3.6 h1:text036=
+golang.org/x/text v0.3.6/go.mod h1:text036mod=
+gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:yamlv3=

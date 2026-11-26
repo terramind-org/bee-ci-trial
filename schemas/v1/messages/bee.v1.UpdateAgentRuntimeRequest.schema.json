@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "bee.v1.AgentSandboxRequirements": {
+      "description": "Sandbox an agent runtime needs.",
+      "properties": {
+        "devcontainerPath": {
+          "type": "string"
+        },
+        "egressDomains": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "gpu": {
+          "type": "boolean"
+        },
+        "machineType": {
+          "description": "WorkspaceService machine type name; empty = default",
+          "type": "string"
+        },
+        "minCpus": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minMemoryBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "networkEgress": {
+          "description": "needs outbound network beyond the model gateway",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.AgentSandboxRequirements",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateAgentRuntimeRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateAgentRuntime.",
+  "properties": {
+    "capabilities": {
+      "description": "empty = unchanged",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "image": {
+      "type": "string"
+    },
+    "mcpEndpoint": {
+      "type": "string"
+    },
+    "sandbox": {
+      "$ref": "#/$defs/bee.v1.AgentSandboxRequirements",
+      "description": "unset = unchanged"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateAgentRuntimeRequest",
+  "type": "object"
+}

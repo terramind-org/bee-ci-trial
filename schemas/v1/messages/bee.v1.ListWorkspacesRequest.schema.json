@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkspaceState": {
+      "description": "Workspace lifecycle.",
+      "enum": [
+        "WORKSPACE_STATE_UNSPECIFIED",
+        "WORKSPACE_STATE_QUEUED",
+        "WORKSPACE_STATE_PROVISIONING",
+        "WORKSPACE_STATE_STARTING",
+        "WORKSPACE_STATE_AVAILABLE",
+        "WORKSPACE_STATE_STOPPING",
+        "WORKSPACE_STATE_STOPPED",
+        "WORKSPACE_STATE_REBUILDING",
+        "WORKSPACE_STATE_FAILED",
+        "WORKSPACE_STATE_DELETED"
+      ],
+      "title": "bee.v1.WorkspaceState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkspacesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListWorkspaces.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "ownerId": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "states": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkspaceState"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListWorkspacesRequest",
+  "type": "object"
+}

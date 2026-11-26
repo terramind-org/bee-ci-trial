@@ -1,0 +1,23 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TestSamlSsoConfigResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for TestSamlSsoConfig.",
+  "properties": {
+    "metadataOk": {
+      "type": "boolean"
+    },
+    "problems": {
+      "description": "e.g. \"certificate expires in 6 days\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "testSignInUrl": {
+      "description": "open in a browser to complete a test sign-in",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.TestSamlSsoConfigResponse",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.PagesDomainVerification": {
+      "description": "An org's claim on a domain, proven by a DNS TXT record, so no other account can serve it.",
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.PagesDomainVerificationState"
+        },
+        "txtRecordName": {
+          "description": "e.g. \"_beehive-pages-challenge-org.example.com\"",
+          "type": "string"
+        },
+        "txtRecordValue": {
+          "type": "string"
+        },
+        "verifiedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PagesDomainVerification",
+      "type": "object"
+    },
+    "bee.v1.PagesDomainVerificationState": {
+      "description": "Progress of an org domain verification.",
+      "enum": [
+        "PAGES_DOMAIN_VERIFICATION_STATE_UNSPECIFIED",
+        "PAGES_DOMAIN_VERIFICATION_STATE_PENDING",
+        "PAGES_DOMAIN_VERIFICATION_STATE_VERIFIED",
+        "PAGES_DOMAIN_VERIFICATION_STATE_FAILED"
+      ],
+      "title": "bee.v1.PagesDomainVerificationState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPagesVerifiedDomainsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListPagesVerifiedDomains.",
+  "properties": {
+    "domains": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.PagesDomainVerification"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListPagesVerifiedDomainsResponse",
+  "type": "object"
+}

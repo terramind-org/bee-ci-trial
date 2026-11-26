@@ -1,0 +1,10 @@
+/target
+# Output of scripts/package-release.sh.
+/dist/
+.DS_Store
+*.swp
+/.bee-dev/
+/.terramind/browser/
+/.terramind/artifacts/
+/.claude/
+/.terramind/

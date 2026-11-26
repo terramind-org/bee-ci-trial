@@ -1,0 +1,13 @@
+tree ed9e3a84668a8a809e50cb30f660f0ff08e88687
+parent 5887259c5f57231044a8d5fa62febd9bc6c97dca
+author Sig Tester <tester@example.com> 1767657600 +0000
+committer Sig Tester <tester@example.com> 1767657600 +0000
+gpgsig -----BEGIN SSH SIGNATURE-----
+ U1NIU0lHAAAAAQAAAGgAAAATZWNkc2Etc2hhMi1uaXN0cDI1NgAAAAhuaXN0cDI1NgAAAE
+ EEAebNA0f4GqN+mY0Gt/A/J9/xWndHZz/z0j9g8smzWBYKJ2FWlTQfrHFJGGKMwuc62xF6
+ CJlOUqv8uBMCLBdUowAAAANnaXQAAAAAAAAABnNoYTUxMgAAAGMAAAATZWNkc2Etc2hhMi
+ 1uaXN0cDI1NgAAAEgAAAAgLLMrwkkjIlfcGfipqC9MPMyposjBMAtl3jWYutSzvZEAAAAg
+ b7+z4oq14BV3uoT8Wq9+zaJdGgSqblRix53GhlubVpg=
+ -----END SSH SIGNATURE-----
+
+signed by ssh_ecdsa

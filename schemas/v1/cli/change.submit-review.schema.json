@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/change.submit-review.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ChangeService/SubmitReview: `data` is a bee.v1.Review in proto3-JSON. `bee change submit-review --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Review.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.change.submit-review"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee change submit-review",
+  "type": "object"
+}

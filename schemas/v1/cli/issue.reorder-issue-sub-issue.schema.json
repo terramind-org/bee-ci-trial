@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/issue.reorder-issue-sub-issue.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.IssueService/ReorderIssueSubIssue: `data` is a bee.v1.Issue in proto3-JSON. `bee issue reorder-issue-sub-issue --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Issue.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.issue.reorder-issue-sub-issue"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee issue reorder-issue-sub-issue",
+  "type": "object"
+}

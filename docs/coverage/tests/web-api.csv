@@ -1,0 +1,6 @@
+feature_id,test
+F424-005,"web:lib/api/ops.test.ts::no screen imports generated code, the fixture or the transport internals, or hand-rolls RPC requests"
+F424-005,web:lib/api/ops.test.ts::every UI method sends a real bee.v1 RPC with a valid request
+F424-005,web:lib/api/contract.test.ts::every screen read returns identical results
+F424-005,"web:lib/api/contract.test.ts::every screen write returns identical results, errors included"
+F424-005,web:lib/api/gen.test.ts::lib/gen is up to date with the protos

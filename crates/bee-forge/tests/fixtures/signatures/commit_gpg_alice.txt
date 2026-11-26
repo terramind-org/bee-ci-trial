@@ -1,0 +1,13 @@
+tree 9b2ad68c8a709a332f668848d02b261d189eaa46
+author Sig Tester <tester@example.com> 1767225600 +0000
+committer Sig Tester <tester@example.com> 1767225600 +0000
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ iKQEABYKAEwWIQQ1NVtKlkNF+rp7DKBxE5cqmNI4UgUCate5iBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMSHGFsaWNlQGV4YW1wbGUuY29tAAoJEHETlyqY0jhS
+ pkMA/jy3YJL6m2mXiKjkAlotsCSVgKc/kq7fUm91XRW0B6ieAP9A82Y4WPIUvnOC
+ AEsF7T6P75eIjc7MTpJCYbJ4L4/DCQ==
+ =xI3C
+ -----END PGP SIGNATURE-----
+
+signed by gpg_alice

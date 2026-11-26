@@ -1,0 +1,174 @@
+{
+  "$defs": {
+    "bee.v1.ContributorStats": {
+      "description": "One contributor's totals and weekly series.",
+      "properties": {
+        "additions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesets": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "deletions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "firstAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lastAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "placeholder": {
+          "description": "imported identity not yet claimed",
+          "type": "boolean"
+        },
+        "placeholderEmail": {
+          "description": "commit email the placeholder stands for",
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "weeks": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ContributorWeek"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.ContributorStats",
+      "type": "object"
+    },
+    "bee.v1.ContributorWeek": {
+      "description": "One week of a contributor's activity.",
+      "properties": {
+        "additions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changesets": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "deletions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "weekStart": {
+          "description": "Sunday 00:00 UTC",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ContributorWeek",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListContributorsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListContributors.",
+  "properties": {
+    "agentCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "computing": {
+      "type": "boolean"
+    },
+    "contributors": {
+      "description": "most changesets first",
+      "items": {
+        "$ref": "#/$defs/bee.v1.ContributorStats"
+      },
+      "type": "array"
+    },
+    "humanCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "placeholderCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.ListContributorsResponse",
+  "type": "object"
+}

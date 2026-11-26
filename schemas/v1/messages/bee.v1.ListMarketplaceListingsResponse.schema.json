@@ -1,0 +1,241 @@
+{
+  "$defs": {
+    "bee.v1.MarketplaceListing": {
+      "description": "A marketplace listing for an app, action or agent.",
+      "properties": {
+        "actionPath": {
+          "description": "ACTION listings, e.g. \"action.yml\" or a subdirectory",
+          "type": "string"
+        },
+        "actionRepo": {
+          "$ref": "#/$defs/bee.v1.RepoRef",
+          "description": "ACTION listings"
+        },
+        "agentId": {
+          "description": "AGENT listings: agent definition id",
+          "type": "string"
+        },
+        "appId": {
+          "description": "APP listings",
+          "type": "string"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fullDescription": {
+          "description": "markdown",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "installCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.MarketplacePlan"
+          },
+          "type": "array"
+        },
+        "privacyPolicyUrl": {
+          "type": "string"
+        },
+        "publishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "publisher": {
+          "description": "org name",
+          "type": "string"
+        },
+        "screenshotUrls": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "shortDescription": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.MarketplaceListingState"
+        },
+        "supportUrl": {
+          "type": "string"
+        },
+        "termsUrl": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/bee.v1.MarketplaceListingType"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verifiedPublisher": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.MarketplaceListing",
+      "type": "object"
+    },
+    "bee.v1.MarketplaceListingState": {
+      "description": "Publication state of a listing.",
+      "enum": [
+        "MARKETPLACE_LISTING_STATE_UNSPECIFIED",
+        "MARKETPLACE_LISTING_STATE_DRAFT",
+        "MARKETPLACE_LISTING_STATE_PENDING_REVIEW",
+        "MARKETPLACE_LISTING_STATE_PUBLISHED",
+        "MARKETPLACE_LISTING_STATE_UNPUBLISHED",
+        "MARKETPLACE_LISTING_STATE_REJECTED"
+      ],
+      "title": "bee.v1.MarketplaceListingState",
+      "type": "string"
+    },
+    "bee.v1.MarketplaceListingType": {
+      "description": "What a marketplace listing offers.",
+      "enum": [
+        "MARKETPLACE_LISTING_TYPE_UNSPECIFIED",
+        "MARKETPLACE_LISTING_TYPE_APP",
+        "MARKETPLACE_LISTING_TYPE_ACTION",
+        "MARKETPLACE_LISTING_TYPE_AGENT"
+      ],
+      "title": "bee.v1.MarketplaceListingType",
+      "type": "string"
+    },
+    "bee.v1.MarketplacePlan": {
+      "description": "A pricing plan on a listing. Prices are in micro-USD.",
+      "properties": {
+        "bullets": {
+          "description": "feature list shown on the listing",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "freeTrialDays": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "listingId": {
+          "type": "string"
+        },
+        "monthlyPriceMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "pricingModel": {
+          "$ref": "#/$defs/bee.v1.MarketplacePricingModel"
+        },
+        "retired": {
+          "description": "no new purchases",
+          "type": "boolean"
+        },
+        "unitName": {
+          "description": "PER_UNIT only, e.g. \"seat\"",
+          "type": "string"
+        },
+        "yearlyPriceMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.MarketplacePlan",
+      "type": "object"
+    },
+    "bee.v1.MarketplacePricingModel": {
+      "description": "How a plan is priced.",
+      "enum": [
+        "MARKETPLACE_PRICING_MODEL_UNSPECIFIED",
+        "MARKETPLACE_PRICING_MODEL_FREE",
+        "MARKETPLACE_PRICING_MODEL_FLAT",
+        "MARKETPLACE_PRICING_MODEL_PER_UNIT"
+      ],
+      "title": "bee.v1.MarketplacePricingModel",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListMarketplaceListingsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListMarketplaceListings.",
+  "properties": {
+    "listings": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.MarketplaceListing"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListMarketplaceListingsResponse",
+  "type": "object"
+}

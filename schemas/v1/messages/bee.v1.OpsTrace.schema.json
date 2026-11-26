@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    },
+    "bee.v1.OpsTraceSpan": {
+      "description": "One span.",
+      "properties": {
+        "attributes": {
+          "description": "never raw paths or secrets",
+          "items": {
+            "$ref": "#/$defs/bee.v1.KeyValue"
+          },
+          "type": "array"
+        },
+        "durationUs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "error": {
+          "type": "boolean"
+        },
+        "errorReason": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "parentSpanId": {
+          "type": "string"
+        },
+        "service": {
+          "type": "string"
+        },
+        "spanId": {
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsTraceSpan",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.OpsTrace.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A complete trace.",
+  "properties": {
+    "durationUs": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "error": {
+      "type": "boolean"
+    },
+    "rootOperation": {
+      "type": "string"
+    },
+    "rootService": {
+      "type": "string"
+    },
+    "spans": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsTraceSpan"
+      },
+      "type": "array"
+    },
+    "traceId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.OpsTrace",
+  "type": "object"
+}

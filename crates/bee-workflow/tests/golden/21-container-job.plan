@@ -1,0 +1,33 @@
+# event push action=-
+run .github/workflows/container.yml "Container job"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job test decided=true
+    instance "test"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      container: "ghcr.io/octo-org/build-image:2024.10"
+        credentials:
+          username: "mona"
+          password: "${{ secrets.GHCR_TOKEN }}"
+        env:
+          NODE_ENV: "test"
+        ports: 80
+        volumes: my_docker_volume:/volume_mount
+        options: "--cpus 2"
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run make ci"
+        run: "make ci"
+        shell: default -> "bash -e {0}"
+  job simple decided=true
+    instance "simple"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      container: "node:20-bookworm"
+      step 1 "Run node --version"
+        run: "node --version"
+        shell: default -> "bash -e {0}"

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/ops.set-ops-status-component.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.OpsService/SetOpsStatusComponent: `data` is a bee.v1.OpsStatusComponent in proto3-JSON. `bee ops set-ops-status-component --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.OpsStatusComponent.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.ops.set-ops-status-component"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee ops set-ops-status-component",
+  "type": "object"
+}

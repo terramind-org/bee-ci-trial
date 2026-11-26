@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.get-code-scanning-default-setup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/GetCodeScanningDefaultSetup: `data` is a bee.v1.CodeScanningDefaultSetup in proto3-JSON. `bee security get-code-scanning-default-setup --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.CodeScanningDefaultSetup.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.get-code-scanning-default-setup"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security get-code-scanning-default-setup",
+  "type": "object"
+}

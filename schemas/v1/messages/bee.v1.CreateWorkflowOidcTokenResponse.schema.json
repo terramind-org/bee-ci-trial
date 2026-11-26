@@ -1,0 +1,17 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateWorkflowOidcTokenResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for CreateWorkflowOidcToken.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "token": {
+      "description": "signed JWT",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateWorkflowOidcTokenResponse",
+  "type": "object"
+}

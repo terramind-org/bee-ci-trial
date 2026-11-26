@@ -1,0 +1,6 @@
+manifest parent/pom.xml maven lock=false count=0
+manifest pom.xml maven lock=false count=4
+pom.xml maven com.google.guava:guava@30.1-jre runtime direct req=30.1-jre pkg:maven/com.google.guava/guava@30.1-jre
+pom.xml maven junit:junit@4.13.2 dev direct req=4.13.2 pkg:maven/junit/junit@4.13.2
+pom.xml maven org.apache.logging.log4j:log4j-core@2.14.1 runtime direct req=2.14.1 pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1
+pom.xml maven org.example:ranged@1.0 runtime direct unresolved req=[1.0,2.0) pkg:maven/org.example/ranged@1.0

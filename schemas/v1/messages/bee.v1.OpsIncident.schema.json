@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "bee.v1.OpsIncidentState": {
+      "description": "Incident lifecycle.",
+      "enum": [
+        "OPS_INCIDENT_STATE_UNSPECIFIED",
+        "OPS_INCIDENT_STATE_INVESTIGATING",
+        "OPS_INCIDENT_STATE_IDENTIFIED",
+        "OPS_INCIDENT_STATE_MONITORING",
+        "OPS_INCIDENT_STATE_RESOLVED"
+      ],
+      "title": "bee.v1.OpsIncidentState",
+      "type": "string"
+    },
+    "bee.v1.OpsIncidentUpdate": {
+      "description": "One posted incident update.",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "body": {
+          "type": "string"
+        },
+        "postedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.OpsIncidentState"
+        }
+      },
+      "title": "bee.v1.OpsIncidentUpdate",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.OpsIncident.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A status page incident.",
+  "properties": {
+    "cells": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "componentIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "impact": {
+      "description": "\"none\", \"minor\", \"major\", \"critical\"",
+      "type": "string"
+    },
+    "resolvedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.OpsIncidentState"
+    },
+    "title": {
+      "type": "string"
+    },
+    "updates": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsIncidentUpdate"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.OpsIncident",
+  "type": "object"
+}

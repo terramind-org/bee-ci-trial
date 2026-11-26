@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.LinkTeamExternalGroupRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for LinkTeamExternalGroup.",
+  "properties": {
+    "groupId": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.LinkTeamExternalGroupRequest",
+  "type": "object"
+}

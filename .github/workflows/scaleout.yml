@@ -1,0 +1,38 @@
+# End-to-end check of the scaled-out stack (deploy/compose.scale.yml): three server replicas on
+# one Postgres and one S3 store behind a load balancer. Lands from 32 concurrent clients while
+# the coalescer owner is killed and restarted, then checks every land is in history exactly once
+# on every replica (scripts/check-scaleout.sh). Results: docs/scaling.md.
+name: scaleout
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scaleout-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scaleout-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the scaled-out stack
+        env:
+          CI: "true"
+          # The hosted runner has 4 CPUs and 16 GiB: compile with all of them.
+          BEE_CHECK_CARGO_BUILD_JOBS: "4"
+          BEE_CHECK_RESULTS: ${{ runner.temp }}/scaleout-results
+        run: scripts/check-scaleout.sh
+      - name: Keep the load results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scaleout-results
+          path: ${{ runner.temp }}/scaleout-results
+          if-no-files-found: ignore

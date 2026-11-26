@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/repo.list-deploy-keys.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RepoService/ListDeployKeys: `data` is a bee.v1.ListDeployKeysResponse in proto3-JSON. `bee repo list-deploy-keys --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListDeployKeysResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.repo.list-deploy-keys"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee repo list-deploy-keys",
+  "type": "object"
+}
