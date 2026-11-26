@@ -228,6 +228,59 @@ fn end(
     Ok(())
 }
 
+pub(in crate::swarms) fn finish_run_attempt(
+    record: &mut Record,
+    run: &str,
+    reason: &str,
+    now: pbjson_types::Timestamp,
+) -> Result<Option<serde_json::Value>> {
+    // A run can hold only one active task claim.
+    let Some(task) = record
+        .swarm
+        .tasks
+        .iter_mut()
+        .find(|task| task.state() == SwarmTaskState::Working && task.run_id == run)
+    else {
+        return Ok(None);
+    };
+    let outcome = end_after_run(task, reason, now)?;
+    Ok(Some(
+        json!({"task_id": task.id, "run_id": run, "outcome": outcome.as_str_name()}),
+    ))
+}
+
+fn end_after_run(
+    task: &mut SwarmTask,
+    reason: &str,
+    now: pbjson_types::Timestamp,
+) -> Result<SwarmAttemptOutcome> {
+    let attempt = task
+        .attempts
+        .last()
+        .ok_or_else(|| ForgeError::internal("Missing task attempt"))?;
+    let (outcome, reason) = if attempt.hand_back.is_some() {
+        (SwarmAttemptOutcome::Finished, attempt.reason.clone())
+    } else {
+        let reason: String = reason
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(500)
+            .collect();
+        let reason = if reason.is_empty() {
+            "The run ended without a hand-back".into()
+        } else {
+            reason
+        };
+        (SwarmAttemptOutcome::Empty, reason)
+    };
+    let hand_back = attempt.hand_back.clone().unwrap_or_default();
+    end(task, outcome, reason, hand_back, now)?;
+    Ok(outcome)
+}
+
 pub(in crate::swarms) async fn interrupt_attempts(
     tx: &mut Tx,
     repo: &Repo,
@@ -240,14 +293,10 @@ pub(in crate::swarms) async fn interrupt_attempts(
     for task in &mut record.swarm.tasks {
         if task.state() == SwarmTaskState::Working && run.is_none_or(|run| task.run_id == run) {
             let run_id = task.run_id.clone();
-            end(
-                task,
-                SwarmAttemptOutcome::Empty,
-                reason.into(),
-                SwarmHandBack::default(),
-                now,
-            )?;
-            events.push(json!({"task_id": task.id, "run_id": run_id, "outcome": "SWARM_ATTEMPT_OUTCOME_EMPTY"}));
+            let outcome = end_after_run(task, reason, now)?;
+            events.push(
+                json!({"task_id": task.id, "run_id": run_id, "outcome": outcome.as_str_name()}),
+            );
         }
     }
     let changed = !events.is_empty();
@@ -263,4 +312,53 @@ pub(in crate::swarms) async fn interrupt_attempts(
         .await?;
     }
     Ok(changed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_run_keeps_the_recorded_hand_back() {
+        let hand_back = SwarmHandBack {
+            done: vec!["Checked the public contract".into()],
+            ..Default::default()
+        };
+        let mut record = Record {
+            swarm: Swarm {
+                tasks: vec![SwarmTask {
+                    state: SwarmTaskState::Working as i32,
+                    run_id: "run".into(),
+                    attempts: vec![SwarmAttempt {
+                        run_id: "run".into(),
+                        reason: "The checks passed".into(),
+                        hand_back: Some(hand_back.clone()),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let finished_at = ts(1_760_000_000_000);
+        assert!(
+            finish_run_attempt(&mut record, "run", "cancelled later", finished_at)
+                .unwrap()
+                .is_some()
+        );
+        let task = &record.swarm.tasks[0];
+        assert_eq!(task.state(), SwarmTaskState::Finished);
+        assert!(task.run_id.is_empty());
+        let attempt = &task.attempts[0];
+        assert_eq!(attempt.finished_at, Some(finished_at));
+        assert_eq!(attempt.outcome(), SwarmAttemptOutcome::Finished);
+        assert_eq!(attempt.reason, "The checks passed");
+        assert_eq!(attempt.hand_back.as_ref(), Some(&hand_back));
+        assert!(
+            finish_run_attempt(&mut record, "run", "repeat", finished_at)
+                .unwrap()
+                .is_none()
+        );
+    }
 }

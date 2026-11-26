@@ -213,7 +213,7 @@ export class SwarmWorld {
         state: finished === undefined ? "AGENT_RUN_STATE_RUNNING" : "AGENT_RUN_STATE_SUCCEEDED",
         baseRef: branch,
         workRef: change?.ws ?? "ws/" + principal.id + "/" + runId.toLowerCase(),
-        budget: { maxUsdMicros: "3000000", maxInputTokens: "100000", maxOutputTokens: "25000", maxDurationSeconds: "3600", maxChangesets: "10", maxLanded: "2" },
+        budget: { maxUsdMicros: "3000000", maxInputTokens: "500000", maxOutputTokens: "35000", maxDurationSeconds: "3600", maxChangesets: "10", maxLanded: "2" },
         cost: provenance?.cost ?? zeroCost,
         changeRequests: change ? [String(change.number)] : [],
         session: provenance?.session ?? "run-" + runId.toLowerCase(),
@@ -225,11 +225,11 @@ export class SwarmWorld {
       return value;
     };
 
-    const attempt = (worker: AgentRun, ago: number, outcome: SwarmAttemptOutcome, reason: string, report?: SwarmHandBack): SwarmAttempt => ({
+    const attempt = (worker: AgentRun, ago: number, outcome: SwarmAttemptOutcome, reason: string, report?: SwarmHandBack, finished = ago - 2): SwarmAttempt => ({
       runId: worker.id!,
       agent: worker.agent as Principal,
       startedAt: at(ago),
-      finishedAt: outcome === IN_PROGRESS ? undefined : at(ago - 2),
+      finishedAt: outcome === IN_PROGRESS ? undefined : at(finished),
       outcome,
       reason,
       handBack: report,
@@ -285,6 +285,13 @@ export class SwarmWorld {
 
     const watch = run("watcher", "main", "Find the source of the health route latency", 1_700, 1_430);
     const route = run("triage", "main", "Add a health route latency histogram", 1_620, 1_430, histogram);
+    const support = run("billing", "main", "Prepare a redacted incident summary from the health route access logs.", 1_410, 1_400);
+    const concern = run("docs", "main", "Check which health route diagnostics are available to a signed-in customer.", 1_408, 1_402);
+    for (const interrupted of [support, concern]) {
+      interrupted.startedBy = publicPrincipal(s.p("mara"));
+      interrupted.state = CANCELLED;
+      interrupted.failureReason = "CANCELLED";
+    }
     this.swarms.push({
       id: id(1_690, "health-route"),
       repo: repoRef(repo),
@@ -296,20 +303,26 @@ export class SwarmWorld {
       lead: watch.agent as Principal,
       owner: publicPrincipal(s.p("mara")),
       state: FINISHED,
-      status: "The latency histogram landed. Keep an eye on p99 through the next release.",
-      memberRunIds: [watch.id!, route.id!],
+      status: "The latency histogram landed. Mara closed the swarm after the safety pause. The incident summary stayed private.",
+      memberRunIds: [watch.id!, route.id!, support.id!, concern.id!],
       tasks: [
         task("Compare telemetry around the dependency bump", ["src/metrics.ts"], TASK_FINISHED, [
           attempt(watch, 1_680, DONE, "Isolated time spent in the route.", handBack(["Compared route p99 before and after the dependency bump."])),
         ]),
         task(histogram.title, ["src/routes/health.ts"], TASK_FINISHED, [
-          attempt(route, 1_605, DONE, "Added the route latency histogram.", handBack(["Opened the histogram pull request and saw it land."], [], [], ["Watch the new metric through the next release."])),
+          attempt(route, 1_605, DONE, "Added the route latency histogram.", handBack(["Opened the histogram pull request and saw it land."], [], [], ["Watch the new metric through the next release."]), 1_430),
+        ]),
+        task("Prepare a redacted incident summary", [], TASK_EMPTY, [
+          attempt(support, 1_409, EMPTY, "A safety tripwire interrupted the work.", undefined, 1_400),
+        ]),
+        task("Check customer access to health diagnostics", [], TASK_EMPTY, [
+          attempt(concern, 1_407, EMPTY, "The agent asked for a redacted session.", undefined, 1_402),
         ]),
       ],
       joins: [],
       changeRequestIds: [histogram.id],
       createdAt: at(1_690),
-      updatedAt: at(1_430),
+      updatedAt: at(1_390),
     });
   }
 }

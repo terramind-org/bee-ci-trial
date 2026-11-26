@@ -887,18 +887,32 @@ impl Agents {
     /// Cancels a queued, running or waiting run.
     pub async fn cancel_run(&self, cx: &Cx, id: &str, reason: &str) -> Result<AgentRun> {
         check_len("reason", reason, 4096)?;
-        let mut tx = self.db.begin(SURFACE, cx).await?;
+        let (mut tx, swarm, _, _) = self.lock_terminal_run(cx, id).await?;
         let Some((rec, was_running)) = self.cancel_in_tx(cx, &mut tx, id, reason).await? else {
             return Err(ForgeError::invalid_state(format!(
                 "run {id} already finished"
             )));
         };
+        let run = rec.run();
+        crate::swarms::store::finish_run_attempt(
+            &mut tx,
+            &run_repo(&run),
+            &rec.org_id,
+            swarm.as_deref(),
+            id,
+            if reason.trim().is_empty() {
+                &run.failure_reason
+            } else {
+                reason
+            },
+        )
+        .await?;
         tx.commit().await?;
         self.after_cancel(&rec, was_running).await;
-        Ok(rec.run())
+        Ok(run)
     }
 
-    // Swarm stop uses the ordinary cancellation path for all members in one transaction.
+    // Bulk swarm and safety stops already end attempts while holding the swarm lock.
     pub(crate) async fn cancel_in_tx(
         &self,
         cx: &Cx,
@@ -955,6 +969,35 @@ impl Agents {
             let _ = self.ports.runner.cancel(&rec.run().id).await;
         }
         self.after_finish(rec, "cancelled").await;
+    }
+
+    async fn lock_terminal_run(
+        &self,
+        cx: &Cx,
+        id: &str,
+    ) -> Result<(Tx, Option<String>, RunRec, Row)> {
+        loop {
+            let mut tx = self.db.begin(SURFACE, cx).await?;
+            let repo = locate(&mut tx, "run", id)
+                .await?
+                .ok_or_else(|| ForgeError::not_found(format!("agent run {id}")))?;
+            let swarm = crate::swarms::store::lock_run_swarm(&mut tx, &repo, id).await?;
+            let row = tx
+                .get_for_update(&RUNS, &repo, id)
+                .await?
+                .ok_or_else(|| ForgeError::not_found(format!("agent run {id}")))?;
+            // CreateSwarm locks the lead run before inserting its one lifetime membership.
+            // If it won the race, start a fresh transaction to take the locks in order.
+            if swarm.is_none()
+                && crate::swarms::store::swarm_for_run(&mut tx, &repo, id)
+                    .await?
+                    .is_some()
+            {
+                continue;
+            }
+            let rec = row.decode()?;
+            return Ok((tx, swarm, rec, row));
+        }
     }
 
     /// Starts a new run with a finished run's task.
@@ -1430,8 +1473,7 @@ impl Agents {
         } else {
             self.ports.blobs.put(&o.transcript).await?
         };
-        let mut tx = self.db.begin(SURFACE, &cx).await?;
-        let (mut rec, row) = load_run(&mut tx, id).await?;
+        let (mut tx, swarm, mut rec, row) = self.lock_terminal_run(&cx, id).await?;
         let mut run = rec.run();
         let cancelled = run.state == St::Cancelled as i32;
         if terminal(run.state) && !cancelled {
@@ -1564,6 +1606,17 @@ impl Agents {
         }
         let terminal_now = terminal(run.state);
         if terminal_now {
+            if !cancelled {
+                crate::swarms::store::finish_run_attempt(
+                    &mut tx,
+                    &repo_id,
+                    &rec.org_id,
+                    swarm.as_deref(),
+                    id,
+                    &run.failure_reason,
+                )
+                .await?;
+            }
             tx.delete(&RUN_TOKENS, id, "token").await?;
             tx.emit_event(run_event("agent_run.completed", &rec))
                 .await?;
@@ -1736,8 +1789,7 @@ impl Agents {
                 _ => return Ok(()),
             }
         }
-        let mut tx = self.db.begin(SURFACE, &cx).await?;
-        let (mut rec, row) = load_run(&mut tx, run_id).await?;
+        let (mut tx, swarm, mut rec, row) = self.lock_terminal_run(&cx, run_id).await?;
         if rec.run().state != St::WaitingForReview as i32 {
             return Ok(());
         }
@@ -1761,6 +1813,15 @@ impl Agents {
         )
         .await?;
         save_run(&mut tx, &rec, &row).await?;
+        crate::swarms::store::finish_run_attempt(
+            &mut tx,
+            &repo.id,
+            &repo.org_id,
+            swarm.as_deref(),
+            run_id,
+            reason,
+        )
+        .await?;
         tx.delete(&RUN_TOKENS, run_id, "token").await?;
         tx.emit_event(run_event("agent_run.completed", &rec))
             .await?;

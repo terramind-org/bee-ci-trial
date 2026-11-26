@@ -7,7 +7,7 @@ use std::time::Duration;
 use bee_auth::{
     AgentInfo, InMemoryRevocations, KeyRing, MintRequest, PrincipalRef, Scope, SigningKey,
 };
-use bee_forge::agents::fake::FakeRunner;
+use bee_forge::agents::fake::{FakeRunner, FakeScript};
 use bee_forge::agents::local::LocalProvider;
 use bee_forge::agents::ports::IssuedToken;
 use bee_forge::agents::service::AgentApi;
@@ -22,6 +22,7 @@ use bee_forge::forge::Hooks;
 use bee_forge::hooks::{MemoryDirectory, MetaProvisioner, PolicySource, RepoInit};
 use bee_forge::ids::{Clock, ManualClock};
 use bee_forge::orgs::repos::NewRepo;
+use bee_forge::safety::service::SafetyApi;
 use bee_forge::service::ForgeServices;
 use bee_forge::store::ForgeStore;
 use bee_forge::store::memory::MemoryStore;
@@ -32,6 +33,7 @@ use bee_forge::{Cx, Forge};
 use bee_proto::v1::agent_service_server::AgentService;
 use bee_proto::v1::change_service_server::ChangeService;
 use bee_proto::v1::event_service_server::EventService;
+use bee_proto::v1::safety_service_server::SafetyService;
 use bee_proto::v1::swarm_service_server::SwarmService;
 use bee_proto::v1::*;
 use bee_store::{MemoryBlobStore, MemoryMetaStore, Writer};
@@ -92,6 +94,7 @@ pub(super) struct World {
     ring: KeyRing,
     issuer: Arc<TestIssuer>,
     policy: Arc<TestPolicy>,
+    runner: Arc<FakeRunner>,
     _workspace: tempfile::TempDir,
 }
 
@@ -262,7 +265,7 @@ impl World {
             forge.clone(),
             changes.clone(),
             AgentPorts {
-                runner,
+                runner: runner.clone(),
                 issuer: issuer.clone(),
                 blobs: Arc::new(MemoryBlobs::new()),
                 repo: vcs.clone(),
@@ -281,7 +284,9 @@ impl World {
                         name: id.into(),
                         runtime: "codex".into(),
                         owners: vec![owner.into()],
-                        toolsets: ["read", "commit", "lease"].map(str::to_string).to_vec(),
+                        toolsets: ["read", "commit", "lease", "swarm_join"]
+                            .map(str::to_string)
+                            .to_vec(),
                         default_budget: AgentRunBudget {
                             max_usd_micros: 5_000_000,
                             ..Default::default()
@@ -305,6 +310,7 @@ impl World {
             ring: key_ring,
             issuer,
             policy,
+            runner,
             _workspace: workspace,
         }
     }
@@ -324,7 +330,10 @@ impl World {
     }
 
     fn forged_lead_session(&self, session: &str) -> String {
-        let (who, owner) = AGENTS[0];
+        self.agent_token(AGENTS[0], Scope::new().session(session))
+    }
+
+    fn agent_token(&self, (who, owner): (&str, &str), scope: Scope) -> String {
         self.ring
             .mint(
                 &MintRequest {
@@ -337,7 +346,7 @@ impl World {
                             purpose: "Swarm integration".into(),
                         },
                     ),
-                    scope: Scope::new().session(session),
+                    scope,
                     on_behalf_of: vec![PrincipalRef::new(owner, bee_policy::PrincipalKind::Human)],
                 },
                 self.clock.now_ms() / 1000,
@@ -481,6 +490,306 @@ impl World {
     async fn run(&self, id: &str) -> AgentRun {
         self.agents.get_run(&Cx::system(), id).await.unwrap()
     }
+}
+
+#[tokio::test]
+async fn join_decisions_require_independent_approval() {
+    let w = World::new(Arc::new(MemoryStore::new()), Arc::new(ManualClock::new(T0))).await;
+    let lead = w.start_run(None).await;
+    let swarm = w.create(&lead, "Coordinate repository work", None).await;
+    let lead_token = w.run_token(&lead.id);
+    let owner_token = w.token("lead-owner");
+    let ask = |agent: &str| RequestSwarmJoinRequest {
+        swarm: Some(w.swarm_ref(&swarm)),
+        agent_principal_id: agent.into(),
+        budget: Some(AgentRunBudget {
+            max_usd_micros: 200_000,
+            ..Default::default()
+        }),
+    };
+    let lead_join = body(
+        w.api
+            .request_swarm_join(req(&lead_token, ask("lead-agent")))
+            .await,
+    );
+    for (token, join, accept, subcode) in [
+        (&lead_token, &lead_join, true, "swarm_join_self_decision"),
+        (&lead_token, &lead_join, false, "swarm_join_self_decision"),
+    ] {
+        let status = w
+            .api
+            .decide_swarm_join(req(
+                token,
+                DecideSwarmJoinRequest {
+                    swarm: Some(w.swarm_ref(&swarm)),
+                    join_id: join.id.clone(),
+                    accept,
+                    reason: String::new(),
+                },
+            ))
+            .await
+            .expect_err("join must be decided independently");
+        let detail = bee_proto::errors::detail_from_status(&status).unwrap();
+        assert_eq!(detail.reason, "PERMISSION_DENIED");
+        assert_eq!(detail.subcode, subcode);
+    }
+    assert_eq!(
+        w.decide(&swarm, &lead_join, false, &owner_token)
+            .await
+            .state(),
+        SwarmJoinState::Declined,
+    );
+    let owner_join = body(
+        w.api
+            .request_swarm_join(req(&owner_token, ask("lead-agent")))
+            .await,
+    );
+    for token in [&owner_token, &lead_token] {
+        let refused = w
+            .api
+            .decide_swarm_join(req(
+                token,
+                DecideSwarmJoinRequest {
+                    swarm: Some(w.swarm_ref(&swarm)),
+                    join_id: owner_join.id.clone(),
+                    accept: false,
+                    reason: String::new(),
+                },
+            ))
+            .await
+            .expect_err("the requester and joining agent cannot decide");
+        let detail = bee_proto::errors::detail_from_status(&refused).unwrap();
+        assert_eq!(detail.reason, "PERMISSION_DENIED");
+        assert_eq!(detail.subcode, "swarm_join_self_decision");
+    }
+
+    let worker_token = w.agent_token(AGENTS[1], Scope::new());
+    let worker_join = body(
+        w.api
+            .request_swarm_join(req(&worker_token, ask("worker-agent")))
+            .await,
+    );
+    let status = w
+        .api
+        .decide_swarm_join(req(
+            &lead_token,
+            DecideSwarmJoinRequest {
+                swarm: Some(w.swarm_ref(&swarm)),
+                join_id: worker_join.id.clone(),
+                accept: true,
+                reason: String::new(),
+            },
+        ))
+        .await
+        .expect_err("an agent-requested join requires a person");
+    let detail = bee_proto::errors::detail_from_status(&status).unwrap();
+    assert_eq!(detail.reason, "PERMISSION_DENIED");
+    assert_eq!(detail.subcode, "swarm_join_human_required");
+    assert_eq!(w.get(&swarm).await.member_run_ids, [lead.id]);
+    let accepted = w
+        .decide(&swarm, &worker_join, true, &w.token("admin"))
+        .await;
+    assert_eq!(accepted.state(), SwarmJoinState::Accepted);
+    assert_eq!(w.run(&accepted.run_id).await.state(), AgentRunState::Queued);
+}
+
+#[tokio::test]
+async fn terminal_member_runs_release_attempts_and_path_claims() {
+    let w = World::new(Arc::new(MemoryStore::new()), Arc::new(ManualClock::new(T0))).await;
+    let lead = w.start_run(None).await;
+    let swarm = w.create(&lead, "Fix examples", None).await;
+    let owner = w.token("lead-owner");
+    let reference = Some(w.swarm_ref(&swarm));
+    w.state(&swarm, "lead-owner", SwarmState::Working).await;
+    let join = w.request_join(&swarm, "worker-agent").await;
+    let member = w.decide(&swarm, &join, true, &owner).await.run_id;
+    w.runner.script(
+        "worker-agent",
+        FakeScript {
+            fail: Some("build failed\nmissing input".into()),
+            ..Default::default()
+        },
+    );
+    let task = body(
+        w.api
+            .add_swarm_task(req(
+                &owner,
+                AddSwarmTaskRequest {
+                    swarm: reference.clone(),
+                    title: "Verify the API examples".into(),
+                    paths: vec![b"docs/examples".to_vec()],
+                },
+            ))
+            .await,
+    );
+    let start = |run_id: String| StartSwarmTaskRequest {
+        swarm: reference.clone(),
+        task_id: task.id.clone(),
+        run_id,
+    };
+    body(
+        w.api
+            .start_swarm_task(req(&owner, start(member.clone())))
+            .await,
+    );
+    let lead_task = body(
+        w.api
+            .add_swarm_task(req(
+                &owner,
+                AddSwarmTaskRequest {
+                    swarm: reference.clone(),
+                    title: "Review the API overview".into(),
+                    paths: vec![b"docs/overview.md".to_vec()],
+                },
+            ))
+            .await,
+    );
+    body(
+        w.api
+            .start_swarm_task(req(
+                &owner,
+                StartSwarmTaskRequest {
+                    swarm: reference.clone(),
+                    task_id: lead_task.id,
+                    run_id: lead.id.clone(),
+                },
+            ))
+            .await,
+    );
+    assert_eq!(w.agents.dispatch_once().await.unwrap(), 2);
+    assert_eq!(w.run(&member).await.state(), AgentRunState::Failed);
+    assert_eq!(w.run(&lead.id).await.state(), AgentRunState::Succeeded);
+    let after_failure = w.get(&swarm).await;
+    let attempt = &after_failure.tasks[0].attempts[0];
+    assert_eq!(after_failure.tasks[0].state(), SwarmTaskState::Empty);
+    assert!(after_failure.tasks[0].run_id.is_empty());
+    assert_eq!(attempt.outcome(), SwarmAttemptOutcome::Empty);
+    assert_eq!(attempt.reason, "build failed missing input");
+    assert_eq!(attempt.finished_at, w.run(&member).await.finished_at);
+    assert_eq!(after_failure.tasks[1].state(), SwarmTaskState::Empty);
+    assert_eq!(
+        after_failure.tasks[1].attempts[0].reason,
+        "The run ended without a hand-back"
+    );
+
+    let replacement_join = w.request_join(&swarm, "declined-agent").await;
+    let replacement = w
+        .decide(&swarm, &replacement_join, true, &owner)
+        .await
+        .run_id;
+    body(
+        w.api
+            .start_swarm_task(req(&owner, start(replacement.clone())))
+            .await,
+    );
+    let cancelled = body(
+        w.agent_api
+            .cancel_agent_run(req(
+                &w.token("admin"),
+                CancelAgentRunRequest {
+                    id: replacement,
+                    reason: "Missing access\nReview with the owner".into(),
+                },
+            ))
+            .await,
+    );
+    assert_eq!(cancelled.state(), AgentRunState::Cancelled);
+    let finished = w.state(&swarm, "lead-owner", SwarmState::Finished).await;
+    assert_eq!(finished.state(), SwarmState::Finished);
+    let task = &finished.tasks[0];
+    assert_eq!(task.state(), SwarmTaskState::Empty);
+    assert_eq!(task.attempts.len(), 2);
+    assert_eq!(task.attempts[1].outcome(), SwarmAttemptOutcome::Empty);
+    assert_eq!(
+        task.attempts[1].reason,
+        "Missing access Review with the owner"
+    );
+    assert_eq!(task.attempts[1].finished_at, cancelled.finished_at);
+}
+
+#[tokio::test]
+async fn tripwire_pause_requires_acknowledgment_before_resume() {
+    let w = World::new(Arc::new(MemoryStore::new()), Arc::new(ManualClock::new(T0))).await;
+    let lead = w.start_run(None).await;
+    let swarm = w.create(&lead, "Check the public API", None).await;
+    let api = SafetyApi::new(w.agents.clone());
+    let owner = w.token("lead-owner");
+    let admin = w.token("admin");
+
+    w.state(&swarm, "lead-owner", SwarmState::Working).await;
+    w.state(&swarm, "lead-owner", SwarmState::Paused).await;
+    assert_eq!(
+        w.state(&swarm, "lead-owner", SwarmState::Working)
+            .await
+            .state(),
+        SwarmState::Working
+    );
+
+    body(
+        api.report_finding(req(
+            &admin,
+            ReportFindingRequest {
+                work: Some(SafetyRef {
+                    repo: repo_ref(&w.repo),
+                    kind: SafetyWorkKind::Swarm as i32,
+                    id: swarm.id.clone(),
+                }),
+                report: Some(SafetyFindingReport {
+                    kind: SafetySignalKind::HarmToOthers as i32,
+                    severity: SafetySeverity::Severe as i32,
+                    evidence: Some(SafetyEvidence {
+                        observation: "The draft includes private customer records.".into(),
+                        ..Default::default()
+                    }),
+                }),
+                ..Default::default()
+            },
+        ))
+        .await,
+    );
+    assert_eq!(w.get(&swarm).await.state(), SwarmState::Paused);
+    let attention = body(
+        api.list_safety_attention(req(
+            &owner,
+            ListSafetyAttentionRequest {
+                repo: repo_ref(&w.repo),
+                page: None,
+            },
+        ))
+        .await,
+    )
+    .items
+    .pop()
+    .unwrap();
+    assert!(attention.tripwire.unwrap().paused_swarm);
+    for token in [&owner, &admin] {
+        let refusal = w
+            .api
+            .set_swarm_state(req(token, w.set_state(&swarm, SwarmState::Working)))
+            .await
+            .expect_err("tripwire pause still needs acknowledgment");
+        assert_eq!(refusal.code(), tonic::Code::FailedPrecondition);
+        let detail = bee_proto::errors::detail_from_status(&refusal).unwrap();
+        assert_eq!(detail.reason, "INVALID_STATE");
+        assert_eq!(
+            detail.subcode,
+            format!("swarm_attention_open_{}", attention.id.to_ascii_lowercase())
+        );
+    }
+    body(
+        api.acknowledge_safety_attention(req(
+            &owner,
+            AcknowledgeSafetyAttentionRequest {
+                repo: repo_ref(&w.repo),
+                id: attention.id,
+            },
+        ))
+        .await,
+    );
+    assert_eq!(
+        w.state(&swarm, "admin", SwarmState::Working).await.state(),
+        SwarmState::Working
+    );
 }
 
 #[tokio::test]

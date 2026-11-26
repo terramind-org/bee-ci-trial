@@ -359,6 +359,20 @@ impl SwarmApi {
             return self.view(caller, &repo, &cx, record.swarm).await;
         }
         model::transition(record.swarm.state(), state)?;
+        if state == SwarmState::Working
+            && record.swarm.state() == SwarmState::Paused
+            && let Some(owner) = &record.swarm.owner
+            && let Some(attention) =
+                crate::safety::unacknowledged_swarm_pause(&mut tx, &repo.id, &id, &owner.id).await?
+        {
+            return Err(ForgeError::invalid_state(format!(
+                "Acknowledge safety attention item {attention} before resuming this swarm"
+            ))
+            .with_subcode(&format!(
+                "swarm_attention_open_{}",
+                attention.to_ascii_lowercase()
+            )));
+        }
         let mut cancelled = Vec::new();
         if state == SwarmState::Stopped {
             for run in &record.swarm.member_run_ids {

@@ -13,6 +13,7 @@ pub use detectors::{audit_actions, leash_audit_action};
 pub(crate) use evidence::evidence_event;
 pub use evidence::{record_changeset, record_landing_attempt, record_native_leash};
 pub(crate) use listener::SafetyListener;
+pub(crate) use store::unacknowledged_swarm_pause;
 
 use crate::agents::SURFACE;
 use crate::module::{EventKind, ForgeModule};

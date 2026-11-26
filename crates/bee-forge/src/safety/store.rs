@@ -315,6 +315,45 @@ pub(super) async fn retire(tx: &mut Tx, repo: &Repo, work: &SafetyRef, id: &str)
     .await
 }
 
+// Resume uses this read while holding the swarm lock that also guards a tripwire pause.
+pub(crate) async fn unacknowledged_swarm_pause(
+    tx: &mut Tx,
+    repo: &str,
+    swarm: &str,
+    owner: &str,
+) -> Result<Option<String>> {
+    const PAGE_SIZE: usize = 128;
+    let mut cursor = None;
+    loop {
+        let rows = tx
+            .scan(&ATTENTION, &Scan::scope(repo, PAGE_SIZE).after(cursor))
+            .await?;
+        for row in &rows {
+            // An ownerless tripwire still needs the administrators' acknowledgment.
+            if !attention_recipient(row, owner, true) {
+                continue;
+            }
+            let item: SafetyAttention = row.decode()?;
+            if item.acknowledged_at.is_none()
+                && item
+                    .tripwire
+                    .as_ref()
+                    .is_some_and(|tripwire| tripwire.paused_swarm)
+                && item
+                    .work
+                    .as_ref()
+                    .is_some_and(|work| work.kind() == SafetyWorkKind::Swarm && work.id == swarm)
+            {
+                return Ok(Some(item.id));
+            }
+        }
+        if rows.len() < PAGE_SIZE {
+            return Ok(None);
+        }
+        cursor = rows.last().map(Cursor::after);
+    }
+}
+
 pub(super) async fn emit(
     tx: &mut Tx,
     repo: &Repo,

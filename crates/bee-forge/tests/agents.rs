@@ -2553,6 +2553,46 @@ async fn principals_dashboards_work_items_and_activity_stream() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn queued_run_can_be_cancelled_but_cannot_be_retried() {
+    let w = world().await;
+    let run = w.start("writer", "bot", "Inspect the API").await.unwrap();
+    let writer = w.token("writer");
+    assert_eq!(run.state(), AgentRunState::Queued);
+    assert_eq!(
+        reason(
+            w.api
+                .retry_agent_run(req(
+                    &writer,
+                    RetryAgentRunRequest {
+                        id: run.id.clone(),
+                        ..Default::default()
+                    }
+                ))
+                .await
+        ),
+        "INVALID_STATE"
+    );
+
+    let cancelled = ok(w
+        .api
+        .cancel_agent_run(req(
+            &writer,
+            CancelAgentRunRequest {
+                id: run.id.clone(),
+                reason: "The inspection is no longer needed".into(),
+            },
+        ))
+        .await);
+    assert_eq!(cancelled.state(), AgentRunState::Cancelled);
+    assert_eq!(cancelled.failure_reason, "CANCELLED");
+    assert!(cancelled.finished_at.is_some());
+    assert_eq!(w.run(&run.id).await.state(), AgentRunState::Cancelled);
+    assert_eq!(w.agents.dispatch_once().await.unwrap(), 0);
+    assert!(w.runner.jobs().is_empty());
+    assert!(w.runner.cancelled().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn run_events_stream_steering_cancel_and_retry() {
     let w = world().await;
     w.runner.script(
@@ -2563,8 +2603,10 @@ async fn run_events_stream_steering_cancel_and_retry() {
         },
     );
     let run = w.start("writer", "bot", "long task").await.unwrap();
+    assert_eq!(run.state(), AgentRunState::Queued);
     // Steering before the run starts is queued and handed to the runner.
-    ok(w.api
+    let queued_message = ok(w
+        .api
         .send_agent_run_message(req(
             &w.token("writer"),
             SendAgentRunMessageRequest {
@@ -2573,10 +2615,14 @@ async fn run_events_stream_steering_cancel_and_retry() {
             },
         ))
         .await);
+    assert_eq!(queued_message.kind(), AgentRunEventKind::SteeringMessage);
+    assert_eq!(queued_message.text, "use small commits");
+    assert!(w.runner.steering().is_empty());
+    assert_eq!(w.run(&run.id).await.state(), AgentRunState::Queued);
     let agents = w.agents.clone();
     let dispatcher = tokio::spawn(async move { agents.dispatch_once().await });
     for _ in 0..200 {
-        if w.run(&run.id).await.state == AgentRunState::Running as i32 {
+        if !w.runner.jobs().is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
@@ -2620,6 +2666,9 @@ async fn run_events_stream_steering_cancel_and_retry() {
         ))
         .await);
     assert_eq!(cancelled.state, AgentRunState::Cancelled as i32);
+    assert!(cancelled.finished_at.is_some());
+    // A cancellation can arrive after the job is visible and before its fake gate is installed.
+    w.runner.release(&run.id);
     dispatcher.await.unwrap().unwrap();
     assert_eq!(w.run(&run.id).await.state, AgentRunState::Cancelled as i32);
     assert!(w.runner.cancelled().contains(&run.id));

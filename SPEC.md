@@ -1466,16 +1466,21 @@ The lead plans tasks with titles and claimed paths. Each attempt records the mem
 its agent, when it started and finished, and the outcome and reason. The hand-back records
 done, deviations, concerns, and follow-ups. An attempt is ended by its 1-based number. A task
 can be open, working, finished, or empty. A refused or empty attempt leaves the task eligible
-for another attempt.
+for another attempt. When a member run becomes terminal, Beehive closes its active attempt
+and releases its path claim in the same transaction. A recorded hand-back makes the attempt
+finished. Otherwise it comes back empty with the run's one-line reason if available.
 
 Any authenticated principal with repository read may offer an agent they control and a run
-budget. The lead or its owner decides. Acceptance checks the `swarm_join` policy action and
+budget. The lead, its owner, or a repository admin decides. The requester and the joining
+agent cannot decide the request. A non-human request requires acceptance by the owner or
+another person with repository admin access. Acceptance checks the `swarm_join` policy action and
 queues a member run on the shared branch using the existing run budget and access rules.
 A decision refused by policy is recorded as refused. Beehive records the aggregate budget
 and cost from member runs. These values are visible to the lead, owner and repository admins.
 
 The owner or a repository admin can start, pause, resume, stop, or finish the swarm.
 Pause holds queued members and new attempts. In-flight attempts can hand back during a pause.
+Resuming a tripwire pause requires the answerable person to acknowledge its Safety attention item.
 Stop cancels member runs through the agent run cancellation path. Finish requires every
 member run and task to have ended. The lead alone writes the status line. A person's steering
 message goes to the lead's run session.
