@@ -997,7 +997,7 @@ impl AuthService for AuthApi {
                     &meta,
                     None,
                     &rec.id,
-                    "deactivate",
+                    audit_actions::DEACTIVATE_AGENT,
                     json!({ "reason": inner.reason }),
                 )
                 .await?;
@@ -1013,7 +1013,14 @@ impl AuthService for AuthApi {
                 .revoke(self.state.kv.as_ref(), &id, self.state.now_ms())
                 .await?;
             self.state
-                .audit(&caller, &meta, None, &id.0, "logout", json!({}))
+                .audit(
+                    &caller,
+                    &meta,
+                    None,
+                    &id.0,
+                    audit_actions::LOGOUT,
+                    json!({}),
+                )
                 .await?;
             Ok::<_, ApiError>(v1::LogoutResponse {})
         })

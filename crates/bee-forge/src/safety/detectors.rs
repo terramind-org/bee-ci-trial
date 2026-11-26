@@ -265,6 +265,8 @@ macro_rules! leash_actions {
 leash_actions! {
     MINT_TOKEN = "mint_token",
     REVOKE_TOKEN = "revoke",
+    LOGOUT = "logout",
+    DEACTIVATE_AGENT = "deactivate",
     CREATE_AGENT_CREDENTIAL = "create_agent",
     UPDATE_AGENT_CREDENTIAL = "update_agent",
     AGENT_BUDGET = "agent.budget_set",
@@ -652,7 +654,10 @@ mod tests {
             (vec![], vec![])
         );
         assert_eq!(existing, vec![updated.clone()]);
-        assert_eq!(reconcile(&mut existing, vec![]).1, [updated.id.clone()]);
+        assert_eq!(
+            reconcile(&mut existing, vec![]).1.as_slice(),
+            std::slice::from_ref(&updated.id)
+        );
         assert!(existing.is_empty());
         for state in [SafetyFindingState::Dismissed, SafetyFindingState::Confirmed] {
             let mut decided = updated.clone();

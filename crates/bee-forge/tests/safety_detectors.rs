@@ -684,3 +684,114 @@ async fn safety_durable_audit_refresh_interrupts_an_attenuated_run() {
             .all(|subject| subject.kind() == SubjectKind::AgentRun)
     );
 }
+
+#[tokio::test]
+async fn safety_spot_check_requires_approval_of_the_merged_revision() {
+    for approve_latest in [false, true] {
+        let world = world().await;
+        let run = world.start_run(None).await;
+        let (change, first_head) = open(
+            &world,
+            &run,
+            &[("src/api.rs", "pub const VERSION: u32 = 1;\n")],
+        )
+        .await;
+        let changes = ChangeServices::new(world.agents.forge.clone(), world.agents.changes.clone());
+        let admin = world.token("admin");
+        let approve = |revision| {
+            req(
+                &admin,
+                SubmitReviewRequest {
+                    repo: repo_ref(&world.repo),
+                    change_request_id: change.id.clone(),
+                    revision,
+                    verdict: Verdict::Approve as i32,
+                    ..Default::default()
+                },
+            )
+        };
+        body(changes.submit_review(approve(1)).await);
+        let revised_head = world
+            .agents
+            .changes
+            .vcs()
+            .create_commit(
+                &world.repo,
+                NewCommit {
+                    parent: Some(first_head),
+                    edits: vec![(
+                        "src/api.rs".into(),
+                        Some(b"pub const VERSION: u32 = 2;\n".to_vec()),
+                    )],
+                    message: "Revise the API".into(),
+                    author: "lead-agent".into(),
+                    creator: "lead-agent".into(),
+                    chain: vec!["lead-agent".into(), "lead-owner".into()],
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        let token = world.run_token(&run.id);
+        let caller = world
+            .agents
+            .forge
+            .authn
+            .authenticate(&req(&token, ()))
+            .unwrap();
+        world
+            .agents
+            .changes
+            .revise(&caller.cx, &world.repo, &change.id, &revised_head)
+            .await
+            .unwrap();
+        if approve_latest {
+            body(changes.submit_review(approve(2)).await);
+        }
+        let (landed, _) = world
+            .agents
+            .changes
+            .land(
+                &caller.cx,
+                &world.repo,
+                &change.id,
+                LandMethod::Rebase,
+                "",
+                2,
+            )
+            .await
+            .unwrap();
+        assert_eq!(landed.state(), ChangeState::Landed);
+        world
+            .agents
+            .forge
+            .relay
+            .drain_all(&Cx::system())
+            .await
+            .unwrap();
+
+        let api = SafetyApi::new(world.agents.clone());
+        let at = 1_760_000_000_000;
+        let sample = body(
+            api.spot_check(req(
+                &admin,
+                SpotCheckRequest {
+                    repo: repo_ref(&world.repo),
+                    period: Some(SafetyPeriod {
+                        start: Some(bee_forge::ids::ts(at)),
+                        end: Some(bee_forge::ids::ts(at + 1)),
+                    }),
+                    seed: "revision-approval".into(),
+                    ..Default::default()
+                },
+            ))
+            .await,
+        );
+        if approve_latest {
+            assert!(sample.records.is_empty());
+        } else {
+            assert_eq!(sample.records.len(), 1);
+            assert_eq!(sample.records[0].work.as_ref().unwrap().id, run.id);
+        }
+    }
+}

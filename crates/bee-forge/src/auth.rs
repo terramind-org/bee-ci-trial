@@ -558,9 +558,8 @@ mod tests {
         let token = Verifier::new(&ring.verifying_keys(), revocations.as_ref())
             .verify(&minted.text, 1_000)
             .unwrap();
-        let mut cx = Cx::new("u1", PrincipalKind::Human)
+        let cx = Cx::new("u1", PrincipalKind::Human)
             .with_deadline(Instant::now() - Duration::from_millis(1));
-        let mut cx = cx.with_verified_token(&token);
         let caller = Caller::from_verified(token, minted.text, cx);
 
         assert!(caller.cx.check_deadline().is_err());

@@ -56,7 +56,9 @@ impl SafetyListener {
             event.kind.as_str(),
             "check.updated"
                 | "check_run.rerequested"
+                | "check_suite.created"
                 | "check_suite.rerequested"
+                | "workflow_run.requested"
                 | "workflow_run.completed"
         );
         let all = checks

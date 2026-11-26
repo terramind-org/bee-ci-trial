@@ -416,6 +416,8 @@ impl Build {
     }
 
     fn finish(mut self, unfinished: bool, agent_merge_times: Vec<u64>) -> Snapshot {
+        // Audit observations arrive oldest first. Keep the latest evidence for each subject.
+        self.record.findings.reverse();
         self.record.findings.sort_by(|a, b| a.id.cmp(&b.id));
         self.record.findings.dedup_by(|a, b| a.id == b.id);
         self.record.verdict = detectors::verdict(&self.record.findings, unfinished) as i32;
