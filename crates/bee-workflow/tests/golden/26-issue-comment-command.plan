@@ -1,0 +1,15 @@
+# event issue_comment action=created
+run .github/workflows/chatops.yml "ChatOps"
+  run-name: "ChatOps"
+  event: issue_comment ref=refs/heads/main sha=dddddddddddddddddddddddddddddddddddddddd
+  permissions: default
+  job deploy if="github.event.issue.pull_request && startsWith(github.event.comment.body, '/deploy')" decided=true
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"deploying for PR 42\""
+        run: "echo \"deploying for PR 42\""
+        shell: default -> "bash -e {0}"
+  job help if="${{ github.event.comment.body == '/help' }}" decided=false
+    skipped

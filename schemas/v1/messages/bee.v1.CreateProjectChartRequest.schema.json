@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "bee.v1.ProjectChart": {
+      "description": "An insights chart definition. A historical chart plots over time (burn-up); a current chart\ngroups the items as they are now.",
+      "properties": {
+        "aggregate": {
+          "$ref": "#/$defs/bee.v1.ProjectChartAggregate"
+        },
+        "endOn": {
+          "description": "unset = now",
+          "format": "date-time",
+          "type": "string"
+        },
+        "filter": {
+          "description": "project filter syntax",
+          "type": "string"
+        },
+        "groupByFieldId": {
+          "description": "series split",
+          "type": "string"
+        },
+        "historical": {
+          "description": "X axis is time",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/bee.v1.ProjectChartLayout"
+        },
+        "name": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "startOn": {
+          "description": "historical range; unset = project start",
+          "format": "date-time",
+          "type": "string"
+        },
+        "version": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "xAxisFieldId": {
+          "description": "current charts: field to bucket by",
+          "type": "string"
+        },
+        "yAxisFieldId": {
+          "description": "number field for SUM/AVERAGE/MIN/MAX",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ProjectChart",
+      "type": "object"
+    },
+    "bee.v1.ProjectChartAggregate": {
+      "description": "How a chart aggregates its Y axis.",
+      "enum": [
+        "PROJECT_CHART_AGGREGATE_UNSPECIFIED",
+        "PROJECT_CHART_AGGREGATE_COUNT",
+        "PROJECT_CHART_AGGREGATE_SUM",
+        "PROJECT_CHART_AGGREGATE_AVERAGE",
+        "PROJECT_CHART_AGGREGATE_MIN",
+        "PROJECT_CHART_AGGREGATE_MAX"
+      ],
+      "title": "bee.v1.ProjectChartAggregate",
+      "type": "string"
+    },
+    "bee.v1.ProjectChartLayout": {
+      "description": "Visual form of an insights chart.",
+      "enum": [
+        "PROJECT_CHART_LAYOUT_UNSPECIFIED",
+        "PROJECT_CHART_LAYOUT_BAR",
+        "PROJECT_CHART_LAYOUT_COLUMN",
+        "PROJECT_CHART_LAYOUT_LINE",
+        "PROJECT_CHART_LAYOUT_STACKED_AREA",
+        "PROJECT_CHART_LAYOUT_STACKED_BAR",
+        "PROJECT_CHART_LAYOUT_STACKED_COLUMN"
+      ],
+      "title": "bee.v1.ProjectChartLayout",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateProjectChartRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateProjectChart.",
+  "properties": {
+    "chart": {
+      "$ref": "#/$defs/bee.v1.ProjectChart",
+      "description": "id and version are ignored"
+    },
+    "projectId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateProjectChartRequest",
+  "type": "object"
+}

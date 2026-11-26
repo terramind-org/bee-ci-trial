@@ -1,0 +1,5 @@
+# event push action=-
+failed .github/workflows/secrets-in-if.yml
+  6:9: Unrecognized named-value: 'matrix'. Located within expression: matrix.os == 'linux'
+  8:13: Unrecognized named-value: 'secrets'. Located within expression: secrets.NPM_TOKEN != ''
+  10:14: Unrecognized function: 'success'. Located within expression: success()

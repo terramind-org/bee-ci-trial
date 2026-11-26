@@ -1,0 +1,494 @@
+// Beehive packages for bee.v1 (PRODUCT §4.17).
+// One package model covers every registry. The registry wire protocols themselves (OCI
+// distribution, npm, Maven repository layout, NuGet v3, RubyGems) are HTTP surfaces served
+// beside this API and are not modelled in proto; this service manages packages, versions,
+// access and provenance, and gives agents a publish path that needs no ecosystem client.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Package and version management across all registries.
+service PackageService {
+  // Lists packages of an org or user, optionally only those linked to a repo.
+  rpc ListPackages(ListPackagesRequest) returns (ListPackagesResponse);
+  // Returns one package. Errors: NOT_FOUND.
+  rpc GetPackage(GetPackageRequest) returns (Package);
+  // Updates a package's description and access inheritance. Errors: NOT_FOUND.
+  rpc UpdatePackage(UpdatePackageRequest) returns (Package);
+  // Deletes a package and all versions; restorable within the restore window.
+  // Errors: INVALID_STATE (public package with too many downloads to delete).
+  rpc DeletePackage(DeletePackageRequest) returns (DeletePackageResponse);
+  // Restores a deleted package. Errors: NOT_FOUND (past the window), ALREADY_EXISTS (name reused).
+  rpc RestorePackage(RestorePackageRequest) returns (Package);
+  // Changes a package's visibility. Errors: POLICY_DENIED (org forbids public packages).
+  rpc SetPackageVisibility(SetPackageVisibilityRequest) returns (Package);
+  // Links a package to a source repo. Errors: NOT_FOUND, PERMISSION_DENIED.
+  rpc LinkPackageToRepo(LinkPackageToRepoRequest) returns (Package);
+  // Removes a package's repo link.
+  rpc UnlinkPackageFromRepo(UnlinkPackageFromRepoRequest) returns (Package);
+  // Lists explicit access grants on a package.
+  rpc ListPackageAccessGrants(ListPackageAccessGrantsRequest) returns (ListPackageAccessGrantsResponse);
+  // Grants or changes a repo, team or principal's role on a package.
+  rpc GrantPackageAccess(GrantPackageAccessRequest) returns (PackageAccessGrant);
+  // Removes an access grant. Errors: NOT_FOUND.
+  rpc RevokePackageAccess(RevokePackageAccessRequest) returns (RevokePackageAccessResponse);
+  // Lists versions of a package, newest first.
+  rpc ListPackageVersions(ListPackageVersionsRequest) returns (ListPackageVersionsResponse);
+  // Returns one version with files, tags, digests and metadata. Errors: NOT_FOUND.
+  rpc GetPackageVersion(GetPackageVersionRequest) returns (PackageVersion);
+  // Deletes a version; restorable within the restore window.
+  // Errors: INVALID_STATE (last version of a public package with many downloads).
+  rpc DeletePackageVersion(DeletePackageVersionRequest) returns (DeletePackageVersionResponse);
+  // Restores a deleted version. Errors: NOT_FOUND (past the window).
+  rpc RestorePackageVersion(RestorePackageVersionRequest) returns (PackageVersion);
+  // Replaces a version's tags (container tags, npm dist-tags); moves tags off other versions.
+  rpc SetPackageVersionTags(SetPackageVersionTagsRequest) returns (PackageVersion);
+  // Returns the build provenance of a version: workflow run, changeset, signer, attestations.
+  // Errors: NOT_FOUND (version has no provenance).
+  rpc GetPackageVersionProvenance(GetPackageVersionProvenanceRequest) returns (PackageVersionProvenance);
+  // Starts a native publish: returns signed upload URLs for each file of a new version.
+  // Errors: ALREADY_EXISTS (version exists and versions are immutable), QUOTA_EXCEEDED,
+  // INVALID_ARGUMENT (subcode `bad_version` for a version string the ecosystem rejects).
+  rpc BeginPackageUpload(BeginPackageUploadRequest) returns (BeginPackageUploadResponse);
+  // Finishes a native publish after all files are uploaded; makes the version visible.
+  // Errors: INTEGRITY (size or digest mismatch), MISSING_OBJECT (a file was not uploaded).
+  rpc FinalizePackageVersion(FinalizePackageVersionRequest) returns (PackageVersion);
+  // Download counts and storage of a package, total and per version.
+  rpc GetPackageUsage(GetPackageUsageRequest) returns (PackageUsage);
+  // The retention policy that applies to a package (its own, else the owner's default), or
+  // the owner's default when name is empty. Needs `read` on the package (owner default: owner
+  // admin).
+  rpc GetPackageRetentionPolicy(GetPackageRetentionPolicyRequest) returns (PackageRetentionPolicy);
+  // Sets a package's retention policy, or the owner's default when name is empty; an all-zero
+  // policy removes it. Needs `admin` on the package (owner default: owner admin).
+  rpc SetPackageRetentionPolicy(SetPackageRetentionPolicyRequest) returns (PackageRetentionPolicy);
+  // An owner's package settings. Needs owner admin (the user, or an org owner/admin).
+  rpc GetPackageOwnerSettings(GetPackageOwnerSettingsRequest) returns (PackageOwnerSettings);
+  // Updates an owner's package settings. Unset fields are unchanged. Needs owner admin.
+  rpc UpdatePackageOwnerSettings(UpdatePackageOwnerSettingsRequest) returns (PackageOwnerSettings);
+}
+
+// ---------- Packages ----------
+
+// The registry a package belongs to.
+enum PackageEcosystem {
+  PACKAGE_ECOSYSTEM_UNSPECIFIED = 0;
+  PACKAGE_ECOSYSTEM_CONTAINER = 1; // OCI images and artifacts
+  PACKAGE_ECOSYSTEM_NPM = 2;
+  PACKAGE_ECOSYSTEM_MAVEN = 3;     // Maven and Gradle
+  PACKAGE_ECOSYSTEM_NUGET = 4;
+  PACKAGE_ECOSYSTEM_RUBYGEMS = 5;
+  PACKAGE_ECOSYSTEM_CARGO = 6;     // Cargo crates (sparse registry)
+}
+
+// Who can read a package.
+enum PackageVisibility {
+  PACKAGE_VISIBILITY_UNSPECIFIED = 0;
+  PACKAGE_VISIBILITY_PRIVATE = 1;
+  PACKAGE_VISIBILITY_INTERNAL = 2; // every member of the owning org or enterprise
+  PACKAGE_VISIBILITY_PUBLIC = 3;
+}
+
+// Whether a package owner is an org or a user.
+enum PackageOwnerKind {
+  PACKAGE_OWNER_KIND_UNSPECIFIED = 0;
+  PACKAGE_OWNER_KIND_ORG = 1;
+  PACKAGE_OWNER_KIND_USER = 2;
+}
+
+// A named package in one ecosystem, owned by an org or user.
+message Package {
+  string id = 1;
+  string owner = 2; // org or user name
+  PackageOwnerKind owner_kind = 3;
+  PackageEcosystem ecosystem = 4;
+  string name = 5;  // e.g. "@scope/pkg", "com.example:lib", "app"
+  PackageVisibility visibility = 6;
+  RepoRef repo = 7; // linked source repo, if any
+  bool inherit_access_from_repo = 8;
+  string description = 9;
+  uint32 version_count = 10;
+  uint64 download_count = 11;
+  string html_url = 12;
+  string registry_url = 13; // e.g. "oci.beehive.dev/org/app"
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  google.protobuf.Timestamp deleted_at = 16; // set while restorable
+}
+
+// Request for ListPackages.
+message ListPackagesRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2; // UNSPECIFIED = all
+  PackageVisibility visibility = 3;
+  RepoRef repo = 4;               // only packages linked to this repo
+  bool include_deleted = 5;       // include packages within the restore window
+  PageRequest page = 6;
+}
+
+// Response for ListPackages.
+message ListPackagesResponse {
+  repeated Package packages = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetPackage.
+message GetPackageRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+}
+
+// Request for UpdatePackage.
+message UpdatePackageRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  optional string description = 4;
+  optional bool inherit_access_from_repo = 5;
+}
+
+// Request for DeletePackage.
+message DeletePackageRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+}
+
+// Response for DeletePackage.
+message DeletePackageResponse {}
+
+// Request for RestorePackage.
+message RestorePackageRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+}
+
+// Request for SetPackageVisibility.
+message SetPackageVisibilityRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  PackageVisibility visibility = 4;
+}
+
+// Request for LinkPackageToRepo.
+message LinkPackageToRepoRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  RepoRef repo = 4;
+}
+
+// Request for UnlinkPackageFromRepo.
+message UnlinkPackageFromRepoRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+}
+
+// ---------- Access ----------
+
+// What an access grant names.
+enum PackageGranteeKind {
+  PACKAGE_GRANTEE_KIND_UNSPECIFIED = 0;
+  PACKAGE_GRANTEE_KIND_REPO = 1;      // workflows in the repo may use the package
+  PACKAGE_GRANTEE_KIND_TEAM = 2;
+  PACKAGE_GRANTEE_KIND_PRINCIPAL = 3; // a user, agent or service
+}
+
+// Role granted on a package.
+enum PackageRole {
+  PACKAGE_ROLE_UNSPECIFIED = 0;
+  PACKAGE_ROLE_READ = 1;
+  PACKAGE_ROLE_WRITE = 2;
+  PACKAGE_ROLE_ADMIN = 3;
+}
+
+// One explicit grant of a role on a package.
+message PackageAccessGrant {
+  PackageGranteeKind kind = 1;
+  RepoRef repo = 2;        // kind REPO
+  string team_id = 3;      // kind TEAM
+  Principal principal = 4; // kind PRINCIPAL
+  PackageRole role = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// Request for ListPackageAccessGrants.
+message ListPackageAccessGrantsRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListPackageAccessGrants.
+message ListPackageAccessGrantsResponse {
+  repeated PackageAccessGrant grants = 1;
+  PageResponse page = 2;
+}
+
+// Request for GrantPackageAccess.
+message GrantPackageAccessRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  PackageGranteeKind kind = 4;
+  RepoRef grantee_repo = 5;
+  string team_id = 6;
+  string principal_id = 7;
+  PackageRole role = 8;
+}
+
+// Request for RevokePackageAccess.
+message RevokePackageAccessRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  PackageGranteeKind kind = 4;
+  RepoRef grantee_repo = 5;
+  string team_id = 6;
+  string principal_id = 7;
+}
+
+// Response for RevokePackageAccess.
+message RevokePackageAccessResponse {}
+
+// ---------- Versions ----------
+
+// One file of a package version (a layer or manifest, a tarball, a jar, a nupkg, a gem).
+message PackageFile {
+  string name = 1;
+  uint64 size_bytes = 2;
+  string digest = 3;     // "sha256:<hex>"
+  string media_type = 4;
+  string download_url = 5; // short-lived signed URL, when requested
+}
+
+// One platform of a multi-platform container image.
+message PackagePlatform {
+  string os = 1;
+  string arch = 2;
+  string variant = 3;
+  string digest = 4; // manifest digest for this platform
+}
+
+// One published version of a package.
+message PackageVersion {
+  string id = 1;
+  string package_id = 2;
+  string version = 3;    // version string; for containers the manifest digest when untagged
+  string digest = 4;     // containers: manifest or index digest
+  repeated string tags = 5;
+  repeated PackageFile files = 6;
+  repeated PackagePlatform platforms = 7;
+  string metadata_json = 8; // ecosystem metadata (package.json, pom, nuspec, gemspec, OCI config), JSON
+  uint64 size_bytes = 9;
+  uint64 download_count = 10;
+  Principal publisher = 11;
+  ObjectId source_changeset = 12;
+  string workflow_run_id = 13;
+  bool has_provenance = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp deleted_at = 17; // set while restorable
+}
+
+// Request for ListPackageVersions.
+message ListPackageVersionsRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  bool include_deleted = 4;
+  bool tagged_only = 5;
+  PageRequest page = 6;
+}
+
+// Response for ListPackageVersions.
+message ListPackageVersionsResponse {
+  repeated PackageVersion versions = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetPackageVersion.
+message GetPackageVersionRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version = 4;    // version id, version string, tag or digest
+  bool include_download_urls = 5;
+}
+
+// Request for DeletePackageVersion.
+message DeletePackageVersionRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version = 4;
+}
+
+// Response for DeletePackageVersion.
+message DeletePackageVersionResponse {}
+
+// Request for RestorePackageVersion.
+message RestorePackageVersionRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version_id = 4;
+}
+
+// Request for SetPackageVersionTags.
+message SetPackageVersionTagsRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version = 4;
+  repeated string tags = 5;
+}
+
+// ---------- Provenance ----------
+
+// Request for GetPackageVersionProvenance.
+message GetPackageVersionProvenanceRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version = 4;
+}
+
+// How a package version was built and who signed it.
+message PackageVersionProvenance {
+  string version_id = 1;
+  RepoRef source_repo = 2;
+  string source_ref = 3;
+  ObjectId source_changeset = 4;
+  string workflow_run_id = 5;
+  string workflow_path = 6;
+  string job_id = 7;
+  string signer_identity = 8; // certificate SAN of the signing workflow
+  string issuer = 9;          // OIDC issuer of the signing identity
+  repeated string attestation_ids = 10; // see WorkflowService.ListAttestations
+  Provenance provenance = 11;           // agent provenance of the source changeset
+  bool verified = 12;                   // signatures and digests checked by the server
+}
+
+// ---------- Native publish ----------
+
+// A file the caller intends to upload in a native publish.
+message PackageUploadFile {
+  string name = 1;
+  uint64 size_bytes = 2;
+  string digest = 3; // "sha256:<hex>"
+  string media_type = 4;
+}
+
+// Where to upload one file.
+message PackageUploadTarget {
+  string name = 1;
+  string upload_url = 2;
+  repeated KeyValue upload_headers = 3;
+}
+
+// Request for BeginPackageUpload.
+message BeginPackageUploadRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  string version = 4;
+  repeated PackageUploadFile files = 5;
+  string metadata_json = 6;  // ecosystem manifest, JSON
+  RepoRef link_repo = 7;     // link the package to this repo on first publish
+  PackageVisibility visibility = 8; // first publish only; UNSPECIFIED = inherit
+}
+
+// Response for BeginPackageUpload.
+message BeginPackageUploadResponse {
+  string upload_id = 1;
+  repeated PackageUploadTarget targets = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// Request for FinalizePackageVersion.
+message FinalizePackageVersionRequest {
+  string owner = 1;
+  string upload_id = 2;
+  repeated string tags = 3;
+}
+
+// ---------- Usage ----------
+
+// Request for GetPackageUsage.
+message GetPackageUsageRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;
+  google.protobuf.Timestamp since = 4;
+}
+
+// Downloads of one version.
+message PackageVersionUsage {
+  string version_id = 1;
+  string version = 2;
+  uint64 download_count = 3;
+}
+
+// Download and storage figures of a package.
+message PackageUsage {
+  string package_id = 1;
+  uint64 download_count = 2;
+  uint64 storage_bytes = 3;
+  repeated PackageVersionUsage versions = 4;
+}
+
+// Which versions retention deletes (they stay restorable inside the restore window).
+message PackageRetentionPolicy {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;            // empty = the owner's default
+  uint32 keep_last = 4;       // keep at most this many live versions; 0 = unlimited
+  uint32 untagged_days = 5;   // delete untagged versions older than this; 0 = never
+  uint32 older_than_days = 6; // delete versions older than this, tagged or not; 0 = never
+  bool inherited = 7;         // the package has none of its own; this is the owner default
+}
+
+// Request for GetPackageRetentionPolicy.
+message GetPackageRetentionPolicyRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;            // empty = the owner's default
+}
+
+// Request for SetPackageRetentionPolicy.
+message SetPackageRetentionPolicyRequest {
+  string owner = 1;
+  PackageEcosystem ecosystem = 2;
+  string name = 3;            // empty = the owner's default
+  uint32 keep_last = 4;
+  uint32 untagged_days = 5;
+  uint32 older_than_days = 6;
+}
+
+// Per-owner package settings.
+message PackageOwnerSettings {
+  string owner = 1;
+  bool forbid_public = 2;           // POLICY_DENIED on publishing or making a package public
+  uint64 storage_quota_bytes = 3;   // across the owner's packages; 0 = unlimited
+}
+
+// Request for GetPackageOwnerSettings.
+message GetPackageOwnerSettingsRequest {
+  string owner = 1;
+}
+
+// Request for UpdatePackageOwnerSettings.
+message UpdatePackageOwnerSettingsRequest {
+  string owner = 1;
+  optional bool forbid_public = 2;
+  optional uint64 storage_quota_bytes = 3;
+}

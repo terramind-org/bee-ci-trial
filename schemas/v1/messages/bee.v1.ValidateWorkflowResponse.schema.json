@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "bee.v1.WorkflowDiagnostic": {
+      "description": "One problem found in workflow YAML.",
+      "properties": {
+        "column": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "rule": {
+          "description": "e.g. \"unknown_action\", \"bad_expression\", \"disallowed_action\"",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/bee.v1.WorkflowDiagnosticSeverity"
+        }
+      },
+      "title": "bee.v1.WorkflowDiagnostic",
+      "type": "object"
+    },
+    "bee.v1.WorkflowDiagnosticSeverity": {
+      "description": "Severity of a workflow validation finding.",
+      "enum": [
+        "WORKFLOW_DIAGNOSTIC_SEVERITY_UNSPECIFIED",
+        "WORKFLOW_DIAGNOSTIC_SEVERITY_ERROR",
+        "WORKFLOW_DIAGNOSTIC_SEVERITY_WARNING",
+        "WORKFLOW_DIAGNOSTIC_SEVERITY_NOTICE"
+      ],
+      "title": "bee.v1.WorkflowDiagnosticSeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ValidateWorkflowResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ValidateWorkflow.",
+  "properties": {
+    "diagnostics": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.WorkflowDiagnostic"
+      },
+      "type": "array"
+    },
+    "triggers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "valid": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.ValidateWorkflowResponse",
+  "type": "object"
+}

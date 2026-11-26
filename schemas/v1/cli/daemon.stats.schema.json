@@ -1,0 +1,140 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.stats.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon stats --json`: one such document with `schema` = bee.v1.daemon.stats. Show the node daemon's counters: hits, misses, upstream fetches, cache size. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "properties": {
+        "bytesServed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "decisionChecks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failClosed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "forwarded": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hitRate": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "hits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "integrityFailures": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "misses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refHits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refMisses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "signedUrlFallbacks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "signedUrlFetches": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "store": {
+          "properties": {
+            "bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "capacity": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "corruptDropped": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "evictions": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "objects": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pinned": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "objects",
+            "bytes",
+            "capacity",
+            "evictions",
+            "corruptDropped",
+            "pinned"
+          ],
+          "type": "object"
+        },
+        "tier": {
+          "enum": [
+            "daemon",
+            "regional"
+          ]
+        },
+        "upstreamObjects": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "upstreamRequests": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tier",
+        "hitRate",
+        "store",
+        "hits",
+        "misses",
+        "failClosed",
+        "bytesServed",
+        "upstreamRequests",
+        "upstreamObjects",
+        "decisionChecks",
+        "signedUrlFetches",
+        "signedUrlFallbacks",
+        "integrityFailures",
+        "refHits",
+        "refMisses",
+        "forwarded"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.stats"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon stats",
+  "type": "object"
+}

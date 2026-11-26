@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteRequiredWorkflowRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteRequiredWorkflow.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "requiredWorkflowId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteRequiredWorkflowRequest",
+  "type": "object"
+}

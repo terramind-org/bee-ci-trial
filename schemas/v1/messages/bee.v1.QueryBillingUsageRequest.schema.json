@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "bee.v1.BillingProduct": {
+      "description": "A metered product.",
+      "enum": [
+        "BILLING_PRODUCT_UNSPECIFIED",
+        "BILLING_PRODUCT_ACTIONS_MINUTES",
+        "BILLING_PRODUCT_STORAGE_GB",
+        "BILLING_PRODUCT_WORKSPACES_HOURS",
+        "BILLING_PRODUCT_AGENT_TOKENS",
+        "BILLING_PRODUCT_PACKAGES_TRANSFER",
+        "BILLING_PRODUCT_LFS",
+        "BILLING_PRODUCT_SEATS",
+        "BILLING_PRODUCT_MARKETPLACE"
+      ],
+      "title": "bee.v1.BillingProduct",
+      "type": "string"
+    },
+    "bee.v1.BillingUsageGrouping": {
+      "description": "A dimension to group usage line items by.",
+      "enum": [
+        "BILLING_USAGE_GROUPING_UNSPECIFIED",
+        "BILLING_USAGE_GROUPING_DAY",
+        "BILLING_USAGE_GROUPING_MONTH",
+        "BILLING_USAGE_GROUPING_PRODUCT",
+        "BILLING_USAGE_GROUPING_SKU",
+        "BILLING_USAGE_GROUPING_REPO",
+        "BILLING_USAGE_GROUPING_ORG",
+        "BILLING_USAGE_GROUPING_COST_CENTER",
+        "BILLING_USAGE_GROUPING_PRINCIPAL"
+      ],
+      "title": "bee.v1.BillingUsageGrouping",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.QueryBillingUsageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for QueryBillingUsage.",
+  "properties": {
+    "costCenterId": {
+      "description": "filter",
+      "type": "string"
+    },
+    "endAt": {
+      "description": "exclusive",
+      "format": "date-time",
+      "type": "string"
+    },
+    "groupBy": {
+      "description": "default DAY, PRODUCT",
+      "items": {
+        "$ref": "#/$defs/bee.v1.BillingUsageGrouping"
+      },
+      "type": "array"
+    },
+    "org": {
+      "description": "filter (enterprise scope)",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "products": {
+      "description": "empty = all",
+      "items": {
+        "$ref": "#/$defs/bee.v1.BillingProduct"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "filter"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.EnterpriseScope"
+    },
+    "startAt": {
+      "description": "inclusive",
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.QueryBillingUsageRequest",
+  "type": "object"
+}

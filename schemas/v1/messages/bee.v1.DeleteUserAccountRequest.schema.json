@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteUserAccountRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteUserAccount.",
+  "properties": {
+    "confirmLogin": {
+      "description": "must equal the caller's login",
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteUserAccountRequest",
+  "type": "object"
+}

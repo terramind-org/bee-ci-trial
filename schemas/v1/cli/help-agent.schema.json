@@ -1,0 +1,131 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/help-agent.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee help-agent --json`: one such document with `schema` = bee.v1.help-agent. Print a compact index of every command, its RPC and schema paths, for agents. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "output": {
+                "description": "--json output schema path.",
+                "type": "string"
+              },
+              "request": {
+                "description": "Request message schema path.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rpc": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command",
+              "kind",
+              "rpc",
+              "request",
+              "output",
+              "summary"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "exitCodes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "meaning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "meaning"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "flags": {
+          "type": "string"
+        },
+        "globalFlags": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "env": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "flag": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flag",
+              "env",
+              "description"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "schemas": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "usage": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "usage",
+        "flags",
+        "globalFlags",
+        "exitCodes",
+        "schemas",
+        "commands"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.help-agent"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee help-agent",
+  "type": "object"
+}

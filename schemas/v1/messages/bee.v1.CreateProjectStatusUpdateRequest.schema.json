@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "bee.v1.ProjectStatus": {
+      "description": "Health reported by a status update.",
+      "enum": [
+        "PROJECT_STATUS_UNSPECIFIED",
+        "PROJECT_STATUS_INACTIVE",
+        "PROJECT_STATUS_ON_TRACK",
+        "PROJECT_STATUS_AT_RISK",
+        "PROJECT_STATUS_OFF_TRACK",
+        "PROJECT_STATUS_COMPLETE"
+      ],
+      "title": "bee.v1.ProjectStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateProjectStatusUpdateRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateProjectStatusUpdate.",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "startOn": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.ProjectStatus"
+    },
+    "targetOn": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateProjectStatusUpdateRequest",
+  "type": "object"
+}

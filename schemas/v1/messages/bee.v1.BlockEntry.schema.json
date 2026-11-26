@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "bee.v1.BlockScope": {
+      "description": "Where a block applies.\n\nOneof `scope`: at most one of `personal`, `org` is set.",
+      "properties": {
+        "org": {
+          "type": "string"
+        },
+        "personal": {
+          "description": "the caller's own block list",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.BlockScope",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BlockEntry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One block.",
+  "properties": {
+    "blocked": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "blockedBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "expiresAt": {
+      "description": "unset = permanent",
+      "format": "date-time",
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.BlockScope"
+    }
+  },
+  "title": "bee.v1.BlockEntry",
+  "type": "object"
+}

@@ -1,0 +1,564 @@
+id,area,feature,source,v02_status,verification,scenarios
+F415-001,4.15,"Issues: in §11.8 but no `IssueService` in the proto. Add `IssueService` (CRUD, comments, labels, milestones, assignees).",github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F416-001,4.16,"Releases: mapped in §17.2, no section, no proto. Add `ReleaseService` plus asset storage in the blob store.",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F48-001,4.8,"Webhooks: Create/Delete only. Add List, Update, Ping, delivery log and redeliver.",github,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-002,4.8,"Delete repo, delete org, rename org. Add RPCs with soft-delete and a restore window.",github,MISSING,api-conformance,AS-API-01 AS-API-02
+F48-003,4.8,"CR reopen, CR edit (title/body/target), and comments outside a review. Extend `ChangeService`.",github,MISSING,api-conformance,AS-API-01 AS-API-02
+F49-001,4.9,Policy has no read API (file only). Add `GetEffectivePolicy` and `ValidatePolicy` RPCs.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F48-004,4.8,Repo settings: `settings` is in §11.1 but not in the `Repo` message. Add a typed settings message.,github,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F416-002,4.16,"Create repo: §11.1, `CreateRepo`.",github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-003,4.16,"Visibility (private, internal, public): §11.1.",github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-004,4.16,Rename with redirects (90 days): §11.1.,github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-005,4.16,Description: proto `Repo.description`.,github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-006,4.16,Repo delete and restore: not in the proto. Soft-delete with a 90-day restore.,github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-007,4.16,"Archive (read-only): add an `archived` flag. Policy then denies all writes, Land and leases.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-008,4.16,"Transfer between owners or orgs: conflicts with §6.1. Copy objects into the target org (dedup), keep the repo ULID and redirect.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-009,4.16,"Template repos and ""use this template"": mark a repo as a template, then create a new repo from its tip with a fresh root changeset.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-010,4.16,Topics: a repo tags table plus topic pages.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-011,4.16,Homepage URL and social preview image: repo metadata fields plus a stored blob.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F44-001,4.4,License detection and picker: a derived type that runs licensee-style matching on LICENSE files.,github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F416-012,4.16,"README, CONTRIBUTING, SECURITY.md, CODE_OF_CONDUCT, FUNDING.yml, SUPPORT discovery: derived ""community files"" lookup (repo root, then `.github`, then `docs`).",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-013,4.16,"Citation files (CITATION.cff, ""Cite this repository""): parse CITATION.cff and emit APA and BibTeX.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F44-002,4.4,"Language stats (linguist, `.gitattributes` overrides): a lazy derived type over the tree.",github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F416-014,4.16,"Insights (pulse, contributors, commits, code frequency, traffic, clones, referrers, popular content, dependency graph, network, forks)",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-015,4.16,"Contributors list: computable from Log and provenance, but not specified. Add a derived contributor index that maps placeholder principals.",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-016,4.16,Network graph: a graph API over changesets across forks and refs.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F49-002,4.9,"Rulesets as a distinct object (repo and org level, bypass lists, evaluate mode, rule insights)",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-003,4.9,"Branch protection: land rules, required checks, required approvals (§9.4, §5).",github,OK,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F416-017,4.16,"Require linear history: inherent, since Land rebases (§7.4).",github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-018,4.16,Lock branch and restrict who can push: policy land rules.,github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F49-004,4.9,Require signed commits: verify gpgsig/SSH signatures and add a `require_signed` land rule.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-005,4.9,Tag protection and tag rulesets: add `tags/*` refs governed by policy.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-006,4.9,"Push rules (path, extension, file size, path length restrictions): blob limits (§4.6) and write rules by path exist. Add deny-by-glob, extension and size rules.",github,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F414-001,4.14,Required deployments before merge: needs deployments (§3).,github,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F49-007,4.9,Required workflows (rulesets): needs the workflow engine. Policy names workflows that must pass.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-008,4.9,Required code scanning results (ruleset): needs code scanning.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-009,4.9,Copilot automatic review in rulesets: a policy hook that requests an agent review on CR open.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F416-019,4.16,Autolinks (e.g. `JIRA-123` to a URL): a per-repo regex-to-URL table applied when rendering.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-020,4.16,Custom properties (org-defined repo metadata): typed key/value pairs on repos that policy can match on.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F411-001,4.11,"Git LFS: imported (§17.1) but not served. Add an LFS batch API endpoint backed by the blob store, or map LFS pointers to native large blobs.",github,PARTIAL,compat-suite,AS-GIT-01
+F416-021,4.16,"Releases (notes, assets, drafts, prereleases, latest, generated notes, immutable releases, discussions link)",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-022,4.16,"Tags (lightweight and annotated): imported through git (§17.4), but §5 has no tag namespace. Add `tags/*` refs and an annotated-tag object.",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-023,4.16,"Wikis: §1.2. Back each wiki with a sibling repo `<repo>.wiki`, rendered as markdown and cloneable.",github,EXCLUDED,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-024,4.16,"Forks (phase 3, §11.1, App. A.5): per-repo `object_paths` plus a fork-point check. Fork-sync, cross-fork CRs.",github,EXCLUDED,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-025,4.16,"Fork sync (""Sync fork"") and contribute: the Rebase/Merge RPC against the upstream ref.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-026,4.16,"Branches (list, create, delete, rename): `RefService`. Rename is not explicit; add it.",github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-027,4.16,Default branch: `default_ref`.,github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-028,4.16,"Collaborators and outside collaborators, invitations: repo-level grants through policy groups, plus an invitation flow.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F49-010,4.9,"Repo roles (read, triage, write, maintain, admin): define them as built-in policy groups.",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F416-029,4.16,Deploy keys: replaced by service principals and scoped Biscuit tokens. Provide SSH deploy keys for compatibility.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F411-002,4.11,"Source archive downloads (zip and tar.gz per ref): a streaming archive endpoint from trees, cacheable by tree id.",github,MISSING,compat-suite,AS-GIT-01
+F411-003,4.11,Submodules: gitlink mode (§4.2).,github,OK,compat-suite,AS-GIT-01
+F416-030,4.16,"Symlinks: §4.2, §10.3.",github,OK,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F44-003,4.4,"Blame, history, raw, permalinks: `QueryService`. Content ids give stable permalinks.",github,OK,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-004,4.4,`.git-blame-ignore-revs`: honor it in the blame derived type.,github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F424-001,4.24,"Rich rendering (Markdown/GFM, Mermaid, math, GeoJSON/TopoJSON, STL, Jupyter, CSV, PDF, image diff): a web rendering pipeline with sanitized output.",github,MISSING,api-conformance,
+F44-005,4.4,"Code navigation (symbols, jump to definition, references): a derived symbol index with tree-sitter or stack-graphs.",github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F424-002,4.24,"Web file editor, upload and delete through the UI: the API exists (CreateChangeset). Needs a web UI spec.",github,MISSING,api-conformance,
+F416-031,4.16,"Repo mirroring (push mirror): only during GitHub cutover (§17.5 C). Generalize it to any git remote, both directions, as a setting.",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-032,4.16,"Repository size and health (counts, large-file warnings): admin APIs.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-033,4.16,"Merge button settings (allowed methods, default commit message templates, delete branch on merge, suggest updating branches): repo settings fields.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F413-001,4.13,"Open, close, list: §11.2, `ChangeService`.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-002,4.13,"Reopen and edit title, body or target: not in the proto. Add RPCs.",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-003,4.13,"Revisions (""changes since last review""): §11.2. Better than GitHub.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-004,4.13,"Stacked PRs (GA 2026-10-06): `depends_on` (§11.2). Add stack rebase, auto-retarget and stack-into-queue parity.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-005,4.13,"Draft PRs and ""ready for review"": add a `draft` state that policy cannot land.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-006,4.13,"Requested reviewers (users and teams), auto-assignment (round robin, load balance): a `review_requests` table plus team auto-assignment.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-007,4.13,"CODEOWNERS: owners in policy, file kept (§9.4, §17.2). Also parse `CODEOWNERS` natively so the file stays authoritative if users choose.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-008,4.13,Line and multi-line comments: anchored to a line range (§11.4).,github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-009,4.13,File-level comments: anchor with no line range.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-010,4.13,"Review threads (replies, resolve/unresolve, outdated marking)",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-011,4.13,"Suggested changes (apply suggestion, batch apply): imported only. Add a structured `suggestion` payload and ""apply"" that creates a changeset on the CR.",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-012,4.13,"Review verdicts (approve, request changes, comment): §11.4.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-013,4.13,"Dismiss review and stale-approval dismissal on push: a policy flag, since reviews attach to revisions.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-014,4.13,Require approval of the most recent push by someone other than the pusher: a policy rule.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-015,4.13,Conversation comments (top-level timeline): only review bodies exist. Add CR comments.,github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-016,4.13,"Reactions: archived only. Native reactions on comments, CRs and issues.",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-017,4.13,"Merge methods (merge commit, squash, rebase): only rebase-land. Merges in a stack are rejected (§7.4). Add squash, plus merge-commit land as a policy option.",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-018,4.13,Auto-merge (land when requirements are met): a queued land intent that fires on `check.updated` or `review.submitted`.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-019,4.13,"Merge queue (grouping, required checks on merge groups, jump the queue, size limits)",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-020,4.13,"Required status checks: §9.4, §11.6.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-021,4.13,"Status checks (check suites, annotations, re-run, actions buttons, output markdown, external IDs)",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-022,4.13,Commit statuses API (legacy `state` + `context`): a compat shim mapped onto CheckRun.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-023,4.13,Deployments and environments on PRs: a deployments API (§5).,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-024,4.13,Update branch: the Rebase RPC (§7.3).,github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-025,4.13,"Conflict resolution: structured conflicts plus resolver hook (§7.3.2, §11.6). Add a web conflict editor.",github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-026,4.13,"Revert button: automatic revert CR after post-land failure (§11.6). Add a manual ""revert this CR"" action.",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-027,4.13,"Linked issues and closing keywords (`Fixes #12`): parse the CR body and changeset messages, link them, close on land.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-028,4.13,"Labels, assignees and milestones on CRs: share the issue metadata model.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-029,4.13,"PR templates (`.github/pull_request_template.md`, multiple templates): read them from the target ref.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-030,4.13,"""Viewed"" file state per reviewer: per (reviewer, revision, path) state.",github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-031,4.13,Compare view across arbitrary refs and forks: Diff exists. Add compare-and-open-CR.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-032,4.13,"Diff options (split/unified, whitespace ignore, rename detection, large-diff handling)",github,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-033,4.13,Commit comments: comments anchored to a changeset outside a CR.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-034,4.13,Locking conversations on a CR: needs moderation (§19).,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-035,4.13,Copilot PR summaries and agent reviews: agents can review (§11.4). Add a summary field authored by an agent principal.,github,MISSING,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-036,4.13,Pull request refs (`refs/pull/N/head`): imported. Serve them over git compatibility.,github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-037,4.13,Push-to-open-CR (`push.autoChange`): §17.4.,github,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F414-002,4.14,"Deployments API (statuses, environments, transient and production, deployment history): native objects keyed to a changeset, with events.",github,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F414-003,4.14,"Environments (protection rules, required reviewers, wait timers, branch restrictions, custom protection rules via apps)",github,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F414-004,4.14,Environment secrets and variables: scoped secrets in the secret store (§5).,github,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F415-002,4.15,"Issues CRUD, comments, number preservation: §11.8. No proto.",github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-003,4.15,"Labels (create, color, description, default set): in the model, but no management API.",github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-004,4.15,"Milestones (due date, progress): field only. Add a milestone object.",github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-005,4.15,Assignees: §11.8.,github,OK,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-006,4.15,Issue types (org-defined): an org-level type table.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-007,4.15,"Sub-issues (hierarchy, progress): a parent/child relation.",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-008,4.15,Issue dependencies (blocked by / blocking): a relation table.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-009,4.15,"Issue fields (GA 2026-07: Priority, Effort, Start/Target date, custom): typed org-defined fields on issues.",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-010,4.15,"Issue templates and issue forms (YAML), config.yml, contact links: parsed from the default ref.",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-011,4.15,"Linked PRs and development panel: ""CR can point at the task"" only. Add an explicit link table plus branch/CR creation from an issue.",github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-012,4.15,Closing keywords: see §2.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-013,4.15,Pinned issues: a per-repo pin list.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-014,4.15,Locked issues (with reason): needs moderation.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-015,4.15,Transfer an issue between repos: move the issue and keep a redirect.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-016,4.15,"Mark as duplicate, close reasons (completed, not planned, duplicate): `state_reason`.",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-017,4.15,Task lists and checkboxes progress: markdown-derived.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-018,4.15,Mentions and cross-references timeline events: a timeline event table plus notifications.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-019,4.15,Reactions: archived only.,github,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-020,4.15,Saved replies: per-user snippets.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-021,4.15,"Assign an issue to an agent (Copilot coding agent pattern): assignee is an agent principal, which triggers an agent session (§10).",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-022,4.15,Issue search syntax: see §14.,github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-023,4.15,"Projects (table, board and roadmap views, custom fields, iterations, grouping, slicing, filters, workflows/automations, insights charts, templates, status updates, archive, public projects with MCP access)",github,EXCLUDED,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F415-024,4.15,"Discussions (categories, Q&A answers, polls, announcements, discussion forms, convert issue to discussion, org discussions, spotlight, labels)",github,EXCLUDED,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F414-005,4.14,"Workflow syntax (on, jobs, steps, needs, if, expressions, contexts, defaults, permissions): an act-compatible YAML engine with a conformance test suite.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-006,4.14,"Triggers (push, pull_request, pull_request_target, schedule, workflow_dispatch, repository_dispatch, workflow_run, merge_group, release, issue events, and more)",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-007,4.14,"GitHub-hosted runners (Linux, Windows, macOS, ARM, GPU): runner pools in cells; Firecracker/VM sandboxes.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-008,4.14,Larger runners and static IPs: sized runner classes.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-009,4.14,"Self-hosted runners, runner groups, Actions Runner Controller: speak the actions/runner protocol so stock runners register.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-010,4.14,Custom runner images: an OCI image per runner class.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-011,4.14,Reusable workflows (`workflow_call`): resolved by repo@ref.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-012,4.14,"Composite, JavaScript and Docker actions: run `uses:` actions from a mirrored registry.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-013,4.14,Actions Marketplace: an action index (§17).,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-014,4.14,"Caches (`actions/cache` API): a cache service on the blob store, scoped by ref.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-015,4.14,"Artifacts (upload-artifact v4 API, retention): an artifact service on the blob store.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-016,4.14,"Secrets (repo, env, org), variables, GITHUB_TOKEN with permissions: a secret store, plus GITHUB_TOKEN minted as a scoped Biscuit token.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-017,4.14,OIDC tokens to clouds: an OIDC issuer with GitHub-compatible claims.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-018,4.14,"Concurrency groups, cancel-in-progress: engine scheduler.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-019,4.14,"Matrix (include, exclude, fail-fast, max-parallel): engine.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-020,4.14,"Services containers, container jobs: engine.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-021,4.14,"Job summaries, logs (live, download), annotations: CheckRun output plus a log store.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-022,4.14,"Re-run (failed jobs, with debug logging): rerequest on CheckRun.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-023,4.14,Environments and deployment protection: see §3.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-024,4.14,Artifact attestations and build provenance (Sigstore): a native attestation service. This fits the provenance theme.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-025,4.14,"Actions policies (allowed actions list, fork PR approval, workflow permissions defaults): org and repo policy.",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-026,4.14,Required workflows and org rulesets: policy.,github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-027,4.14,"Starter workflows, usage metrics, billing minutes: needs billing (§21).",github,EXCLUDED,agent-scenario,AS-CI-01 AS-CI-02
+F414-028,4.14,"External CI reporting results: CheckService (§11.6), plus `green/*` refs (§5).",github,PARTIAL,agent-scenario,AS-CI-01 AS-CI-02
+F417-001,4.17,"Container registry (OCI, ghcr.io equivalent): §1.2. An OCI distribution-spec registry on the blob store.",github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-002,4.17,npm registry: an npm registry API.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-003,4.17,Maven and Gradle: a Maven repository layout.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-004,4.17,NuGet: NuGet v3 API.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-005,4.17,RubyGems: gem server API.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-006,4.17,"Package visibility, permissions, linking to a repo, versions, deletion, restore: one package model across registries, authorized through policy and tokens.",github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-007,4.17,Publishing from workflows with GITHUB_TOKEN: Biscuit-scoped package write.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-008,4.17,Package provenance and attestations: tie them to changeset provenance.,github,MISSING,agent-scenario,AS-PKG-01
+F417-009,4.17,"Static hosting from a ref or folder, or from a workflow artifact: §1.2. Serve a tree id from a CDN, keyed by ref tip.",github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-010,4.17,"Custom domains, HTTPS certificates, domain verification: ACME automation (§15.6 already covers certificates).",github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-011,4.17,Jekyll builds: run as a workflow.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F417-012,4.17,Private (access-controlled) Pages: auth through repo read policy.,github,EXCLUDED,agent-scenario,AS-PKG-01
+F414-029,4.14,"Cloud dev environments (devcontainer.json, machine types, prebuilds, secrets, port forwarding, dotfiles, VS Code/JetBrains/browser, idle timeouts, org policies, billing)",github,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F415-025,4.15,"Copilot coding agent (assign an issue, it works in a sandbox, opens a PR, iterates on review comments, session logs)",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F419-001,4.19,"Agent HQ / Mission Control (third-party agents such as Claude and Codex, agent identity, metrics dashboard, Slack and Linear integrations)",github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-002,4.19,"Agent identity and permissions: agent principals with owners, attenuated budgeted tokens (§9.1, §9.2). Better than GitHub.",github,PARTIAL,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-003,4.19,Agent provenance on commits: §10.4.,github,OK,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-004,4.19,MCP server: §12.4. GitHub's MCP server equivalent.,github,OK,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-005,4.19,"Custom agents and instructions (`.github/copilot-instructions.md`, AGENTS.md, `.github/agents/*.md`, prompt files)",github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-006,4.19,Copilot code review (automatic PR review): an agent reviewer triggered by policy (§11.4).,github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-007,4.19,"Copilot Chat on the web, PR summaries, commit message generation: optional model-backed features. They must stay off the critical path (§15.6).",github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-008,4.19,"Copilot Spaces (curated context): saved context bundles (paths, issues, docs) over the API.",github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-009,4.19,Copilot Memory: a per-repo agent memory store.,github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-010,4.19,Copilot Autofix for code scanning: an agent opens a fix CR from an alert.,github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-011,4.19,Agent firewall and network allow-list for agent sandboxes: sandbox egress policy.,github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-012,4.19,"Copilot policies, seats, usage metrics, premium requests and BYOK: org settings plus billing. Provider-agnostic.",github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-013,4.19,One-click conflict resolution by agent: resolver hook (§11.6).,github,PARTIAL,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F419-014,4.19,Copilot code completions and IDE extensions: out of scope for a forge. Expose a model gateway or leave it to IDE vendors.,github,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F418-001,4.18,"Dependency graph (manifests, lockfiles, submission API): a derived type parsing manifests. `diff_class=dependency` already detects them.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-002,4.18,"SBOM export (SPDX, CycloneDX): generated from the dependency graph.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-003,4.18,"Dependabot alerts: match the dependency graph against an advisory DB (OSV, GHSA mirror).",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-004,4.18,"Dependabot security and version updates (`dependabot.yml`, grouped updates): a bot agent principal opens CRs. It can run Renovate or Dependabot-core.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-005,4.18,"Dependency review (on CRs, plus the action): a diff of dependency graphs between revisions, as a required check.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-006,4.18,"Code scanning (CodeQL, SARIF upload, alerts, PR annotations, default and advanced setup)",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-007,4.18,"Secret scanning (partner patterns, custom patterns, validity checks, AI generic detection): a scanner on ingest (blob-level, done once per org thanks to dedup).",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-008,4.18,"Push protection (blocks pushes, delegated bypass): scan at CreateChangeset and Land, reject with `SECRET_DETECTED`, bypass through policy.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-009,4.18,Leaked-secret remediation (purge history): redaction (§13). Better than GitHub's history rewrite.,github,PARTIAL,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-010,4.18,"Repository security advisories (GHSA drafts, CVE requests, temporary private forks): an advisory object plus private-fork mechanics (needs forks).",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-011,4.18,Global advisory database: mirror OSV or GHSA.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-012,4.18,Private vulnerability reporting: a private report intake that becomes an advisory draft.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-013,4.18,"Security overview (org dashboards, risk and coverage): aggregation APIs.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-014,4.18,Security campaigns: bulk alert remediation assigned to agents.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-015,4.18,GitHub Code Quality (GA 2026): quality findings as alerts and checks.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-016,4.18,Artifact attestations (Sigstore): see §7.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-017,4.18,"Vigilant mode and signature verification badges: verify gpgsig, SSH and S/MIME signatures. Show provenance alongside.",github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F418-018,4.18,SECURITY.md and security policy surfacing: community files.,github,MISSING,agent-scenario,AS-SEC-01 AS-SEC-02
+F416-034,4.16,"Gists (public and secret, multi-file, revisions, forks, stars, embed, clone): a lightweight user-owned repo kind, cloneable over git compatibility.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F44-006,4.4,Full-text search: §15.1 mentions it as optional enrichment only.,github,PARTIAL,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-007,4.4,"Code search (regex, symbols, path/language qualifiers, cross-repo): a trigram or zoekt index built from the content-addressed blob store, with path ACLs.",github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-008,4.4,"Issue and PR search syntax (`is:`, `author:`, `label:`, `review:`, `status:`, ...): a query language over forge tables, with GitHub-compatible qualifiers.",github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-009,4.4,"Repo, commit, user, topic, discussion and package search: per-entity indexes.",github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-010,4.4,Saved searches and filters: per-user.,github,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F48-005,4.8,"Event stream and webhooks: §11.7. A machine feed, not per-user notifications.",github,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F416-035,4.16,"Inbox (participating, mentions, review requested, done, saved, custom filters): a per-principal notification table fed from events.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-036,4.16,"Watching (all activity, custom, ignore), subscribe and unsubscribe to a thread: subscription model.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-037,4.16,"Email notifications, reply-by-email, routing per org: email delivery worker.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-038,4.16,Scheduled reminders (Slack and Teams): integration worker.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-039,4.16,"User principal (display name, external ids): §9.1.",github,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-040,4.16,"Profile page, profile README, avatar, bio, status, pronouns, pinned repos, followers and following, org badges: profile model plus UI.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-041,4.16,Contributions graph and activity overview: aggregated from the ref-log and events.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-042,4.16,Achievements: optional. Derive from events.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-043,4.16,"Emails, noreply address, commit email mapping, email privacy: needed for git commit attribution.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-044,4.16,"Account deletion, data export (user migration archive), username change: account lifecycle APIs.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-045,4.16,"Settings (themes, accessibility, keyboard shortcuts, sessions, security log): per-user settings plus a user audit log.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-046,4.16,Stars and star lists: per-user tables.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-047,4.16,Watching: see §15.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-048,4.16,"Explore, Trending, Topics pages, Collections: ranking jobs over stars and events.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F416-049,4.16,Following and the home feed: feed derived from events.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F420-001,4.20,"Sponsors (tiers, one-time and monthly, fiscal hosts, sponsor-only content, FUNDING.yml button)",github,MISSING,agent-scenario,AS-ORG-01
+F420-002,4.20,"Marketplace (apps and actions listing, paid plans, verified publishers): a registry of apps, actions and agents. Agents are listable too.",github,MISSING,agent-scenario,AS-ORG-01
+F49-011,4.9,"GitHub Apps (installations, per-installation permissions, installation tokens, app manifests, user-to-server tokens)",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-012,4.9,"OAuth apps (authorize flow, scopes, device flow for third parties): an OAuth 2 / OIDC provider issuing Biscuit tokens.",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-013,4.9,"Fine-grained PATs: Biscuit delegated tokens (§9.2). Repo, path and action scoped with budgets, which goes beyond fine-grained PATs.",github,OK,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-014,4.9,Classic PATs and git credential compatibility: accept a Biscuit as the HTTP basic-auth password. Translate classic scopes.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-015,4.9,SSH keys (auth and git over SSH): an SSH git transport mapped to principals.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-016,4.9,GPG and SSH signing keys: needed for signature verification.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-017,4.9,"Passwords, 2FA (TOTP, passkeys, security keys), sudo mode: optional local auth. GitHub/OIDC login is specified (§9.1).",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F48-006,4.8,"Webhooks (repo level, HMAC, retries)",github,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-007,4.8,"GitHub REST API compatibility (`/repos/{o}/{r}/pulls`, ...)",github,MISSING,api-conformance,AS-API-01 AS-API-02
+F48-008,4.8,GraphQL API compatibility: a GraphQL facade over the same services. At least cover the subset gh and Projects use.,github,MISSING,api-conformance,AS-API-01 AS-API-02
+F49-018,4.9,"Native typed API (Connect, gRPC, JSON): §12.",github,OK,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-019,4.9,"Rate limits, retry-after, per-delegation-root quotas: §15.4.",github,OK,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-020,4.9,API versioning headers and REST deprecation policy: define them for the compat layer.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-021,4.9,Login with GitHub device flow and OIDC: §9.1.,github,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F420-003,4.20,"Orgs and members: §11.1, `OrgService`.",github,OK,agent-scenario,AS-ORG-01
+F49-022,4.9,"Org roles: only owner, admin and member. Add billing manager, security manager, moderator, app manager and custom org roles.",github,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F416-050,4.16,"Teams, nested teams, team maintainers, team sync, team discussions, team review assignment: first-class teams mapped to policy groups (§9.4 has groups).",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F49-023,4.9,Custom repository roles: named permission bundles in policy.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-024,4.9,"Invitations (pending, expiry), outside collaborators, member privileges (base permissions, who can create repos, fork policy): org settings.",github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F420-004,4.20,"SSO: OIDC login (§9.1). Add SAML SSO per org and enterprise, with session enforcement.",github,PARTIAL,agent-scenario,AS-ORG-01
+F49-025,4.9,SCIM provisioning: a SCIM 2.0 endpoint that creates and removes principals and teams.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F420-005,4.20,"Enterprise accounts (multi-org, enterprise policies, EMU managed users, enterprise owners): an enterprise layer above orgs. Can be cell-aligned (§15.2).",github,MISSING,agent-scenario,AS-ORG-01
+F410-001,4.10,Audit log,github,PARTIAL,agent-scenario,AS-AUDIT-01
+F420-006,4.20,IP allow lists: an org setting enforced at admission (§15.4).,github,MISSING,agent-scenario,AS-ORG-01
+F420-007,4.20,Verified and approved domains: DNS TXT verification.,github,MISSING,agent-scenario,AS-ORG-01
+F49-026,4.9,Require 2FA for members: depends on the 2FA item in §19.,github,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F416-051,4.16,"Org profile, README and pinned repos: profile model.",github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F48-009,4.8,"Org-level webhooks, secrets, variables, runners: see §7 and §19.",github,MISSING,api-conformance,AS-API-01 AS-API-02
+F420-008,4.20,"Data residency and self-hosting (GHE.com, GHES equivalent): cells (§15.2) plus a single binary.",github,OK,agent-scenario,AS-ORG-01
+F420-009,4.20,Repo policies at org level: org default policy (§9.4).,github,PARTIAL,agent-scenario,AS-ORG-01
+F420-010,4.20,"Plans, seats, metered usage (Actions minutes, storage, Codespaces, Copilot, LFS), budgets and spending limits, invoices, cost centers",github,MISSING,agent-scenario,AS-ORG-01
+F47-001,4.7,Native CLI with `--json` and schemas: §12.4.,github,OK,cli-contract,AS-CLI-01
+F415-026,4.15,"`gh` compatibility (pr, issue, run, release, repo, api, extensions such as gh-stack)",github,MISSING,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F47-002,4.7,git CLI compatibility: smart HTTP (§17.4). SSH is missing.,github,PARTIAL,cli-contract,AS-CLI-01
+F424-003,4.24,Desktop app: git compatibility is enough for GitHub Desktop pointed at Beehive. A native app is optional.,github,MISSING,api-conformance,
+F424-004,4.24,"Mobile apps (inbox, review, merge): a responsive web/PWA first.",github,MISSING,api-conformance,
+F424-005,4.24,Web UI specification: React is named (§2) but nothing more is specified. Needs a UI spec per area.,github,MISSING,api-conformance,
+F47-003,4.7,Windows clients: §1.2.,github,EXCLUDED,cli-contract,AS-CLI-01
+F421-001,4.21,"Block users (personal and org): block table, enforced at write paths.",github,MISSING,agent-scenario,AS-MOD-01
+F421-002,4.21,Report content and abuse: report intake plus admin queue.,github,MISSING,agent-scenario,AS-MOD-01
+F421-003,4.21,"Interaction limits (temporary, existing users only, prior contributors): repo and org setting enforced in comment and CR creation.",github,MISSING,agent-scenario,AS-MOD-01
+F421-004,4.21,"Hide or minimize comments (spam, off-topic, outdated, resolved), edit history, delete: comment moderation fields plus edit history.",github,MISSING,agent-scenario,AS-MOD-01
+F421-005,4.21,Lock conversations: lock flag on issues and CRs.,github,MISSING,agent-scenario,AS-MOD-01
+F421-006,4.21,Code of conduct and community profile checklist: derived community files.,github,MISSING,agent-scenario,AS-MOD-01
+F421-007,4.21,Moderator role: org role.,github,MISSING,agent-scenario,AS-MOD-01
+F421-008,4.21,"First-time contributor handling (approve workflow runs, labels): policy plus the workflow engine.",github,MISSING,agent-scenario,AS-MOD-01
+F421-009,4.21,"Content removal (DMCA, legal): redaction (§13) for blobs. Add a takedown process for repos and comments.",github,PARTIAL,agent-scenario,AS-MOD-01
+F412-001,4.12,"GitHub importer (one command, dry run, live sync, dual run, fidelity report): §17.",github,OK,compat-suite,AS-MIG-01
+F412-002,4.12,Identity claiming: §17.2.,github,OK,compat-suite,AS-MIG-01
+F412-003,4.12,"Importers from GitLab, Bitbucket, Azure DevOps and Gitea: reuse the §17 pipeline with per-source adapters.",github,MISSING,compat-suite,AS-MIG-01
+F412-004,4.12,"Export (migration archive out, push to GitHub at any time)",github,MISSING,compat-suite,AS-MIG-01
+F412-005,4.12,"Secrets, deploy keys and webhooks re-entry checklist: §17.2.",github,PARTIAL,compat-suite,AS-MIG-01
+F420-011,4.20,"GitHub Models (catalog, playground, prompt files `.prompt.yml`, evals, inference API with BYOK)",github,MISSING,agent-scenario,AS-ORG-01
+F420-012,4.20,GitHub Spark (natural-language app builder that hosts apps): agent-built apps deployed through Pages and hosting plus a managed runtime.,github,MISSING,agent-scenario,AS-ORG-01
+F420-013,4.20,"Education and Nonprofit programs: business programs, not product features. Mark them N/A or handle as a billing discount.",github,MISSING,agent-scenario,AS-ORG-01
+F420-014,4.20,"Status and availability commitments: SLOs (§16), cells (§15).",github,OK,agent-scenario,AS-ORG-01
+F420-015,4.20,Public status page: the operations item in §15.6 needs an independent status page.,github,MISSING,agent-scenario,AS-ORG-01
+F416-052,4.16,Org dependency insights: org-wide aggregation of the dependency graph.,github,MISSING,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F420-016,4.20,"Slack, Teams, Jira and Linear integrations: event-subscriber apps on webhooks or events (§11.7).",github,MISSING,agent-scenario,AS-ORG-01
+F41-001,4.1,Max length of one path component,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-002,4.1,Text form for derived object kinds,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-003,4.1,Ambiguous id prefix,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-004,4.1,Revision grammar,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-005,4.1,History node object,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-006,4.1,Global invariants list,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-007,4.1,CreateChangeset validation order and subcodes,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-008,4.1,`expected_root_tree` check,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-009,4.1,Identical CreateChangeset twice returns one id with no error,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-010,4.1,Reference tree-building (apply-delta) algorithm,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-011,4.1,Root changeset bootstrap,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-012,4.1,Very large directories,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-013,4.1,Chunked large blobs,scion,DEFERRED,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-014,4.1,Line endings,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-015,4.1,One-way-door review,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-016,4.1,Decision records,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F43-001,4.3,Object-storage key layout,scion,MISSING,agent-scenario,AS-STORE-01
+F43-002,4.3,Full metadata schema,scion,MISSING,agent-scenario,AS-STORE-01
+F43-003,4.3,Per-object state live/quarantined/purged,scion,MISSING,agent-scenario,AS-STORE-01
+F43-004,4.3,Upload records,scion,PARTIAL,agent-scenario,AS-STORE-01
+F43-005,4.3,zstd level setting,scion,MISSING,agent-scenario,AS-STORE-01
+F43-006,4.3,One store method = one transaction; retry rules,scion,PARTIAL,agent-scenario,AS-STORE-01
+F43-007,4.3,Changesets stored only in their metadata row,scion,MISSING,agent-scenario,AS-STORE-01
+F43-008,4.3,fsck violation list,scion,PARTIAL,agent-scenario,AS-STORE-01
+F43-009,4.3,Decoded-object caches that keep serving during a metadata outage,scion,PARTIAL,agent-scenario,AS-STORE-01
+F43-010,4.3,Backups,scion,MISSING,agent-scenario,AS-STORE-01
+F43-011,4.3,GC of orphans and drafts,scion,OK,agent-scenario,AS-STORE-01
+F41-017,4.1,Land states and attempt limits,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-018,4.1,Error when land attempts run out,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-019,4.1,Land with `allow_empty`,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-020,4.1,Rebase of a multi-parent changeset,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-021,4.1,Merge changeset inside a land stack,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-022,4.1,Fast-forward rule on UpdateRef,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-023,4.1,Ref name grammar,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-024,4.1,ResolveRef at an old version,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-025,4.1,CreateRef/DeleteRef reason (for audit) and permission,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-026,4.1,Reference algorithms for rebase and land,scion,PARTIAL,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-027,4.1,Merging stacks that contain merges,scion,MISSING,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F42-001,4.2,Normative line-merge contract with worked examples,scion,PARTIAL,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-002,4.2,"""Touching"" hunk rule",scion,PARTIAL,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-003,4.2,Conflict marker rendering,scion,MISSING,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-004,4.2,Line origins and unified hunks,scion,MISSING,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-005,4.2,Binary-detection boundary,scion,PARTIAL,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-006,4.2,Merge-engine version in rebase determinism,scion,PARTIAL,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-007,4.2,Rename/copy-aware merge,scion,DEFERRED,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-008,4.2,Merges with several best bases (criss-cross),scion,DEFERRED,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-009,4.2,Add/add with different content and no base,scion,MISSING,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F42-010,4.2,Differential test against `git merge-file`,scion,OK,agent-scenario,AS-MERGE-01 AS-MERGE-02 AS-MERGE-03
+F44-011,4.4,Generic derived-data RPC,scion,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F410-002,4.10,Content-bearing flag; purge deletes those records,scion,MISSING,agent-scenario,AS-AUDIT-01
+F44-012,4.4,Old type versions readable until GC,scion,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-013,4.4,"Lazy derivation is iterative, never recursive",scion,PARTIAL,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-014,4.4,Derivation leases,scion,PARTIAL,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-015,4.4,Blame algorithm,scion,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-016,4.4,Path index rows for new trees at their directory path,scion,PARTIAL,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-017,4.4,Log continuing through delete and re-add,scion,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-018,4.4,Copy-detection index,post,MISSING,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-019,4.4,Path-based file search index / code search,post,DEFERRED,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F45-001,4.5,Regional cache servers (`scion-cache`) streaming from memory,post,DEFERRED,agent-scenario,AS-CACHE-01
+F45-002,4.5,Daemon starts from a periodically refreshed snapshot,post,DEFERRED,agent-scenario,AS-CACHE-01
+F45-003,4.5,Every tier above 99% hit rate; no long-lived state,post,MISSING,agent-scenario,AS-CACHE-01
+F45-004,4.5,Serving stored zstd frames unchanged,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-005,4.5,Range reads with offset and length,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-006,4.5,"Per-item status (ok, not found, denied, redacted)",scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-007,4.5,Access class per object (root or restricted),scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-008,4.5,Object total size in the stream,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-009,4.5,ServerInfo contents,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-010,4.5,`scion-tier` response trailer,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-011,4.5,A batch must not fail because one item fails,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-012,4.5,"Daemon cache layout, check on read, temp-file cleanup at startup",scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-013,4.5,Daemon upstream concurrency cap and queue,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-014,4.5,Daemon retries upstream at most 3 times,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-015,4.5,Ref cache TTL,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-016,4.5,Access-decision cache TTL,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-017,4.5,Daemon redaction polling and fail-closed,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-018,4.5,`HasObjects` always forwarded by the daemon,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-019,4.5,Non-object RPCs forwarded byte-for-byte,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-020,4.5,A tier talks only to the tier directly above,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-021,4.5,Daemon socket open to all local users; auth by token,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-022,4.5,Daemon metrics and health listener,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-023,4.5,Daemon stats,scion,MISSING,agent-scenario,AS-CACHE-01
+F45-024,4.5,Fetch reads in batches of 256 objects; objects verified before writing,scion,PARTIAL,agent-scenario,AS-CACHE-01
+F45-025,4.5,API-only use with no checkout,post,OK,agent-scenario,AS-CACHE-01
+F46-001,4.6,Virtualized checkouts (files materialised on demand),post,DEFERRED,agent-scenario,AS-WC-01 AS-WC-02
+F46-002,4.6,`status` backed by a filesystem watcher,post,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-003,4.6,"`.bee/` layout: config, state, index, conflicts dir, lock",scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-004,4.6,File formats: state as canonical TOML; versioned binary index,scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-005,4.6,Advisory lock: one mutating command at a time,scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-006,4.6,Sparse add/remove semantics,scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-007,4.6,`goto`,scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-008,4.6,"`.gitignore` rules (nested files, negation)",scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-009,4.6,Status categories,scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-010,4.6,Commit and amend semantics,scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-011,4.6,"Rebase conflict workflow, `resolve`, `rebase --abort`",scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-012,4.6,Writes use `openat` with no-follow,scion,OK,agent-scenario,AS-WC-01 AS-WC-02
+F46-013,4.6,"Case-collision detection forced on, deterministic",scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-014,4.6,"Client config file, credentials file mode 0600, env overrides",scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-015,4.6,CLI exit codes,scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F46-016,4.6,JSON envelope,scion,PARTIAL,agent-scenario,AS-WC-01 AS-WC-02
+F46-017,4.6,Unified diff output format,scion,MISSING,agent-scenario,AS-WC-01 AS-WC-02
+F49-027,4.9,Signing-key rotation,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-028,4.9,Default token lifetime,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-029,4.9,Service secrets,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-030,4.9,Login by exchanging a GitHub token,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-031,4.9,What happens when GitHub is down,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-032,4.9,Daemon CheckAccess by object id,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-033,4.9,WhoAmI groups and expiry,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-034,4.9,Policy prefix matching,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-035,4.9,Nested groups and cycle detection,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-036,4.9,Ref-pattern precedence,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F410-003,4.10,"Permissions to redact, purge, manage refs and force-update",scion,MISSING,agent-scenario,AS-AUDIT-01
+F49-037,4.9,Invalid policy,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-038,4.9,How the epoch is computed and its trailer format,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F410-004,4.10,"Required read permission for Rebase, IsAncestor, MergeBase, GetDerived and Resolve; ListRedactions open to any valid token",scion,MISSING,agent-scenario,AS-AUDIT-01
+F49-039,4.9,History filtering in Log and Diff without a path,scion,PARTIAL,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-040,4.9,Meta of changesets that touch only restricted paths,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F410-005,4.10,Hiding restricted names / redacting path names (masking at serve time),scion,MISSING,agent-scenario,AS-AUDIT-01
+F49-041,4.9,GitHub team-based groups,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F49-042,4.9,Optional mutual TLS,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F410-006,4.10,Redaction lifecycle: Live → Quarantined → Purged,scion,MISSING,agent-scenario,AS-AUDIT-01
+F410-007,4.10,Redaction details: default quarantine 7 d; move bytes to quarantine; Unredact only from quarantine; PurgeNow; scheduled purge,scion,MISSING,agent-scenario,AS-AUDIT-01
+F49-043,4.9,Propagation bound,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F410-008,4.10,Rule for consumers when an unredaction happens,scion,MISSING,agent-scenario,AS-AUDIT-01
+F410-009,4.10,How reads look for redacted objects,scion,PARTIAL,agent-scenario,AS-AUDIT-01
+F410-010,4.10,Redacted entries carried forward unchanged stay valid,scion,MISSING,agent-scenario,AS-AUDIT-01
+F410-011,4.10,Placeholder text; newly redacted clean files replaced on next mutating command; dirty files reported,scion,PARTIAL,agent-scenario,AS-AUDIT-01
+F410-012,4.10,Redaction tooling,scion,MISSING,agent-scenario,AS-AUDIT-01
+F49-044,4.9,Error choices,scion,MISSING,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F422-001,4.22,TOML configs; unknown keys rejected; `$VAR` resolution,scion,MISSING,fault-test,AS-OPS-01
+F422-002,4.22,Server config sections,scion,MISSING,fault-test,AS-OPS-01
+F422-003,4.22,Daemon config,scion,MISSING,fault-test,AS-OPS-01
+F422-004,4.22,Defaults table,scion,MISSING,fault-test,AS-OPS-01
+F410-013,4.10,Audit log,scion,MISSING,agent-scenario,AS-AUDIT-01
+F422-005,4.22,Health endpoints `/healthz` and `/readyz`,scion,MISSING,fault-test,AS-OPS-01
+F422-006,4.22,Integrity alerting,scion,MISSING,fault-test,AS-OPS-01
+F422-007,4.22,Repo id derivation,scion,PARTIAL,fault-test,AS-OPS-01
+F422-008,4.22,Operational validation before production,scion,MISSING,fault-test,AS-OPS-01
+F422-009,4.22,Rolling upgrade under load,scion,PARTIAL,fault-test,AS-OPS-01
+F422-010,4.22,Required structured-log fields,scion,MISSING,fault-test,AS-OPS-01
+F422-011,4.22,"Never log raw paths, secrets or contents",scion,MISSING,fault-test,AS-OPS-01
+F422-012,4.22,Server and daemon metrics,scion,MISSING,fault-test,AS-OPS-01
+F411-004,4.11,Git gateway metrics,scion,MISSING,compat-suite,AS-GIT-01
+F422-013,4.22,OpenTelemetry tracing,scion,MISSING,fault-test,AS-OPS-01
+F419-015,4.19,"""Superfans"": Claude instances that each watch one component through telemetry and logs",post,MISSING,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F422-014,4.22,Per-principal limits,scion,PARTIAL,fault-test,AS-OPS-01
+F422-015,4.22,Bulk reads cost more,scion,MISSING,fault-test,AS-OPS-01
+F422-016,4.22,Shed load before dependencies saturate,scion,OK,fault-test,AS-OPS-01
+F422-017,4.22,"""Sophisticated rate limiting""",post,PARTIAL,fault-test,AS-OPS-01
+F425-001,4.25,Fuzzing,post,MISSING,model-test,
+F425-002,4.25,Validation profiles,scion,MISSING,model-test,
+F425-003,4.25,Scale and resilience runs,scion,PARTIAL,model-test,
+F425-004,4.25,Detailed test matrix,scion,PARTIAL,model-test,
+F425-005,4.25,Test infrastructure,scion,PARTIAL,model-test,
+F425-006,4.25,Definition-of-done checklist,scion,MISSING,model-test,
+F425-007,4.25,Git gateway tests,scion,PARTIAL,model-test,
+F412-006,4.12,Importer as an RPC mode,scion,MISSING,compat-suite,AS-MIG-01
+F412-007,4.12,Importer runs as a service principal with those rights,scion,MISSING,compat-suite,AS-MIG-01
+F412-008,4.12,Importer flags and incremental re-import,scion,PARTIAL,compat-suite,AS-MIG-01
+F412-009,4.12,Commit-graph equality after re-import,scion,PARTIAL,compat-suite,AS-MIG-01
+F413-038,4.13,Rich semantic approval constraints; directory permissions,post,OK,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F44-020,4.4,Code search,post,DEFERRED,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F415-027,4.15,Issues RPC,scion,PARTIAL,agent-scenario,AS-ISSUE-01 AS-ISSUE-02
+F416-053,4.16,Releases RPC,scion,PARTIAL,agent-scenario,AS-COLLAB-01 AS-COLLAB-02
+F413-039,4.13,Repo context RPC,scion,PARTIAL,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-040,4.13,"Antique has a merge queue (it has its own superfan), yet no global merge-queue lock",post,DEFERRED,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F414-030,4.14,Automated bisect and revert pipelines,post,OK,agent-scenario,AS-CI-01 AS-CI-02
+F414-031,4.14,Pre-deploy testing,post,MISSING,agent-scenario,AS-CI-01 AS-CI-02
+F414-032,4.14,Post-merge testing,post,PARTIAL,agent-scenario,AS-CI-01 AS-CI-02
+F422-018,4.22,Ten failure classes and recovery invariants,scion,PARTIAL,fault-test,AS-OPS-01
+F422-019,4.22,Breaking changes ship as a new package served side by side; unknown fields ignored; missing required fields give `missing_field`,scion,MISSING,fault-test,AS-OPS-01
+F422-020,4.22,Error-code table,scion,PARTIAL,fault-test,AS-OPS-01
+F411-005,4.11,Git gateway contract (whole addendum),scion,PARTIAL,compat-suite,AS-GIT-01
+F422-021,4.22,"Cells, forks, Actions compatibility",scion,DEFERRED,fault-test,AS-OPS-01
+F47-004,4.7,CLI command: `login`,scion,MISSING,cli-contract,AS-CLI-01
+F47-005,4.7,CLI command: `whoami`,scion,MISSING,cli-contract,AS-CLI-01
+F47-006,4.7,CLI command: `checkout <rev> [dir]`,scion,PARTIAL,cli-contract,AS-CLI-01
+F47-007,4.7,CLI command: `sparse add <prefix>…` / `sparse remove <prefix>…`,scion,MISSING,cli-contract,AS-CLI-01
+F47-008,4.7,CLI command: `status`,scion,MISSING,cli-contract,AS-CLI-01
+F47-009,4.7,CLI command: `diff`,scion,MISSING,cli-contract,AS-CLI-01
+F47-010,4.7,CLI command: `commit`,scion,MISSING,cli-contract,AS-CLI-01
+F47-011,4.7,CLI command: `amend`,scion,MISSING,cli-contract,AS-CLI-01
+F47-012,4.7,CLI command: `goto <rev>`,scion,MISSING,cli-contract,AS-CLI-01
+F47-013,4.7,CLI command: `rebase`,scion,MISSING,cli-contract,AS-CLI-01
+F47-014,4.7,CLI command: `resolve <path>`,scion,MISSING,cli-contract,AS-CLI-01
+F47-015,4.7,CLI command: `land`,scion,PARTIAL,cli-contract,AS-CLI-01
+F47-016,4.7,CLI command: `log`,scion,MISSING,cli-contract,AS-CLI-01
+F47-017,4.7,CLI command: `blame <path>`,scion,MISSING,cli-contract,AS-CLI-01
+F47-018,4.7,CLI command: `show [rev]`,scion,MISSING,cli-contract,AS-CLI-01
+F47-019,4.7,CLI command: `cat <rev>:<path>`,scion,MISSING,cli-contract,AS-CLI-01
+F47-020,4.7,CLI command: `redact`,scion,MISSING,cli-contract,AS-CLI-01
+F47-021,4.7,CLI command: `error.schema.json`,scion,OK,cli-contract,AS-CLI-01
+F48-010,4.8,RPC Object.GetServerInfo,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-011,4.8,RPC Object.GetObjects,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-012,4.8,RPC Object.HasObjects,scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-013,4.8,RPC Object.ResolveRef,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-014,4.8,RPC Query.GetChangesets,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-015,4.8,"RPC Query.ReadPath, ListTree, Log, Blame, Diff, IsAncestor, MergeBase, Resolve",scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-016,4.8,RPC Query.**GetDerived**,scion,MISSING,api-conformance,AS-API-01 AS-API-02
+F48-017,4.8,"RPC Write.UploadObjects, Rebase, Land",scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-018,4.8,RPC Write.CreateChangeset,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-019,4.8,RPC Write.Merge,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-020,4.8,RPC Ref.UpdateRef,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-021,4.8,"RPC Ref.CreateRef, DeleteRef",scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-022,4.8,RPC Ref.GetRefLog,scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-023,4.8,RPC Auth.Login,scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-024,4.8,RPC Auth.WhoAmI,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-025,4.8,RPC Auth.CheckAccess,scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-026,4.8,RPC Admin.Redact,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F48-027,4.8,RPC Admin.Unredact,scion,OK,api-conformance,AS-API-01 AS-API-02
+F48-028,4.8,RPC Admin.**PurgeNow**,scion,MISSING,api-conformance,AS-API-01 AS-API-02
+F48-029,4.8,RPC Admin.ListRedactions,scion,PARTIAL,api-conformance,AS-API-01 AS-API-02
+F411-006,4.11,"RPC Git (G).**GetGitObjects, GitListRefs, GitPlanFetch, GitResolve, GitIngestCommits**",scion,MISSING,compat-suite,AS-GIT-01
+F41-028,4.1,"Changesets store only files changed vs first parent, content-addressed",post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-029,4.1,"Server performs history queries, merges, rebases and commits",post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-030,4.1,No fully materialized copy of a repo anywhere; every component scales independently,post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F41-031,4.1,Operations are incremental and lock-free; cost scales with change size,post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F44-021,4.4,"Derived data computed recursively from parents, eagerly or lazily, new indexes without client changes",post,see audit,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-022,4.4,Copy detection index,post,see audit,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F44-023,4.4,Path-based search index,post,see audit,agent-scenario,AS-SEARCH-01 AS-SEARCH-02
+F45-026,4.5,"Three cache tiers (node daemon, regional cache, servers) answering identical RPCs",post,see audit,agent-scenario,AS-CACHE-01
+F45-027,4.5,Each cache tier above 99% hit rate,post,see audit,agent-scenario,AS-CACHE-01
+F45-028,4.5,Daemon starts from periodically refreshed snapshots,post,see audit,agent-scenario,AS-CACHE-01
+F46-018,4.6,Sparse checkouts,post,see audit,agent-scenario,AS-WC-01 AS-WC-02
+F46-019,4.6,Virtualized checkouts materializing files on demand,post,see audit,agent-scenario,AS-WC-01 AS-WC-02
+F41-032,4.1,Write workloads skip the checkout entirely via API,post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F413-041,4.13,Review tool with semantic approval constraints (comment-only vs sensitive logic),post,see audit,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F413-042,4.13,Merge queue adapted for agent scale with no global merge lock,post,see audit,agent-scenario,AS-CR-01 AS-CR-02 AS-CR-03
+F414-033,4.14,Post-merge and pre-deploy automated testing replaces merge locks,post,see audit,agent-scenario,AS-CI-01 AS-CI-02
+F414-034,4.14,Automated bisect and revert pipelines using cheap programmatic history,post,OK,agent-scenario,AS-CI-01 AS-CI-02
+F49-045,4.9,Repository and per-directory access control,post,see audit,agent-scenario,AS-AUTH-01 AS-AUTH-02
+F425-008,4.25,Hermetic simulations of every non-trivial interaction,post,see audit,model-test,
+F425-009,4.25,Fuzzing,post,see audit,model-test,
+F422-022,4.22,Sophisticated rate limiting,post,see audit,fault-test,AS-OPS-01
+F419-016,4.19,Component watcher agents (superfans) with telemetry access,post,see audit,agent-scenario,AS-AGENT-01 AS-AGENT-02
+F412-010,4.12,Ingestion pipeline from git preserving ordering invariants,post,see audit,compat-suite,AS-MIG-01
+F45-029,4.5,"CI checkouts in seconds, not minutes",post,see audit,agent-scenario,AS-CACHE-01
+F423-001,4.23,"One-file CreateChangeset p50 <= 10 ms, p99 <= 50 ms, independent of repo size",post,see audit,perf-harness,
+F423-002,4.23,"Uncontended land p50 <= 30 ms, p99 <= 150 ms",post,see audit,perf-harness,
+F423-003,4.23,"Hot ref: >= 100 lands/s with 1,000 concurrent landers, p99 time-to-land <= 10 s",post,see audit,perf-harness,
+F423-004,4.23,"Sparse checkout of 1,000 files <= 1 s warm, <= 3 s cold",post,see audit,perf-harness,
+F423-005,4.23,"Log, blame, diff p99 <= 200 ms",post,see audit,perf-harness,
+F423-006,4.23,Event delivery p99 <= 1 s,post,see audit,perf-harness,
+F423-007,4.23,">= 10,000 concurrent agent sessions per cell",post,see audit,perf-harness,
+F423-008,4.23,"Availability: reads 99.99%, writes 99.95% per cell per month",post,see audit,perf-harness,
+F411-007,4.11,Native git commit format with change-id trailer and commit-msg hook,post,see audit,compat-suite,AS-GIT-01
+F411-008,4.11,Git tree ordering and author-name sanitising; collision-detecting SHA-1; one object format per repo,post,see audit,compat-suite,AS-GIT-01
+F411-009,4.11,"Protocol v2 capabilities, minimum supported git version, generation-number negotiation",post,see audit,compat-suite,AS-GIT-01
+F411-010,4.11,"Partial clone filters blob:none, blob:limit, tree:<n>; object-info",post,see audit,compat-suite,AS-GIT-01
+F411-011,4.11,Seed packs via packfile-uris and bundle-uri; delta hints and thin packs,post,see audit,compat-suite,AS-GIT-01
+F411-012,4.11,"receive-pack capabilities, atomic push, push ingest checks, ng/ERR error mapping",post,see audit,compat-suite,AS-GIT-01
+F411-013,4.11,Virtual refs for changesets; replace refs for redacted commits,post,see audit,compat-suite,AS-GIT-01
+F411-014,4.11,"Git storage tables, gateway config and per-repo git enable switch",post,see audit,compat-suite,AS-GIT-01
+F411-015,4.11,"Credential helper, HTTP Basic with token, setup and preflight commands",post,see audit,compat-suite,AS-GIT-01
+F411-016,4.11,Git over SSH,post,see audit,compat-suite,AS-GIT-01
+F411-017,4.11,Gateway metrics,post,see audit,compat-suite,AS-GIT-01
+F420-017,4.20,Cloud: multi-tenant signup and onboarding,post,see audit,agent-scenario,AS-ORG-01
+F420-018,4.20,Cloud: region selection and data residency,post,see audit,agent-scenario,AS-ORG-01
+F420-019,4.20,Cloud: usage metering and billing collection,post,see audit,agent-scenario,AS-ORG-01
+F422-023,4.22,Cloud: managed upgrades rolled out cell by cell,post,see audit,fault-test,AS-OPS-01
+F414-035,4.14,"Hosted runner and workspace fleet, same software available to self-hosters",post,see audit,agent-scenario,AS-CI-01 AS-CI-02
+F425-010,4.25,Every suite runs against both a self-hosted server and a cloud staging cell,post,see audit,model-test,
+F414-036,4.14,Workflow corpus (top 500 starred Actions repos + kubernetes) matches GitHub outcomes 100%,post,see audit,agent-scenario,AS-CI-01 AS-CI-02
+F412-011,4.12,"kubernetes/kubernetes migrates with a clean fidelity report, faster than 76 h",post,see audit,compat-suite,AS-MIG-01
+F45-030,4.5,"Signed CDN URLs for immutable object reads, issued after authorization, never for redacted objects",post,see audit,agent-scenario,AS-CACHE-01
+F43-012,4.3,Hot and cold storage tiers with transparent reads and unchanged ids,post,see audit,agent-scenario,AS-STORE-01
+F422-024,4.22,Read-your-writes per session via min_version on replica reads,post,see audit,fault-test,AS-OPS-01
+F41-033,4.1,"Required land coalescer: one fenced owner per protected ref, queued lands committed as one CAS",post,see audit,agent-scenario,AS-CORE-01 AS-CORE-02 AS-CORE-03 AS-CORE-04
+F423-009,4.23,Production gate: metadata benchmark repeated on three zones with synchronous replication before the cloud serves customers,post,see audit,perf-harness,
+F416-054,4.16,"Posts on change requests: one short post (NFC text up to 500 characters, up to four images or one video) per change request, a draft while it is open, published in the land's own transaction; a post by an agent or service waits for a person with Write to approve it; closing discards it, reopening restores it; the author or a repo admin withdraws it.",bee,OK,api-conformance,
+F416-055,4.16,"Following feed: published posts of followed repos, posts by followed people and agents, and their reposts, each once under its newest reason, newest first with cursor paging, and `after` polling (oldest first) for agents; every row checked for repo read.",bee,OK,api-conformance,
+F416-056,4.16,"Follow repos as a person or an agent (separate from stars and watches), a repo's creator follows it, likes and reposts with counters.",bee,OK,api-conformance,
+F416-057,4.16,"Post media: png, jpeg, gif, webp, mp4 and webm sniffed by magic bytes (never SVG, HTML or JavaScript), per-kind limits, a server-computed SHA-256 checked at finalize, expiring uploads, unattached media deleted after a day, and signed downloads that carry the reader's principal chain and are re-authorized when redeemed, served with nosniff, a sandbox CSP and Range.",bee,OK,api-conformance,
+F416-058,4.16,"Inspired by: an issue or change request names the published post that inspired it (the caller's principals must read its repo, else post_not_readable); the link is shown only to readers of the post's repo, adoption counts and the adoptions list cover only repos the reader can read, and an issue's adoption follows a transfer and goes with a delete.",bee,OK,api-conformance,
+F416-059,4.16,"Agents adopt followed upgrades: a maintainer gives their agent a feed trigger (sources it follows as itself, a daily budget and run cap); a post published in a repo it follows starts one debounced ADOPT_EVALUATE run per post in the agent's repo with the post, its change and the target as context, and the run ends not relevant or opens an issue or change request inspired by the post.",bee,OK,api-conformance,
+F416-060,4.16,"Posts as their own unit: CreatePost writes a post with no change request (a person's publishes at once, an agent's or service's waits for a person with Write); a Markdown body (20,000 characters) and an optional article (title and 100,000 characters) beside the summary; attachments checked against the post's repo (any number of change requests, one release, one issue, one agent run; the swarm kind reserved) and read back as cards with number, title and state; media uploaded by the author without a change request; posts on change requests unchanged and read back with their change request attached; likes, reposts, adoptions and the feed apply to both.",bee,OK,api-conformance,
+F413-043,4.13,"Change request brief: outcome, highlights with paths, asks with options, risks with mitigations, rollback and a try-it link; set through BriefService, the CLI, MCP or when opening the change (SPEC §11.9)",briefs,OK,agent-scenario,AS-CR-04
+F413-044,4.13,"Media evidence on change requests: screenshots, before/after, video with captions, benchmarks, image sets, audio, documents, preview links and test reports; inline, upload (Begin/PUT/Finalize with INTEGRITY) or workflow-artifact sources; sniffed bytes, never SVG/HTML/JS; per-kind and per-change limits",briefs,OK,agent-scenario,AS-CR-04
+F413-045,4.13,"Evidence provenance: each item records its revision and is flagged stale after a newer one; ""From the agent"" vs ""Verified by CI"" (check-run reporter and revision head checked); signed downloads re-authorised on redemption (§9.6)",briefs,OK,agent-scenario,AS-CR-04
+F413-046,4.13,"Advisory brief checklist: a pure function of per-path diff classes, brief and evidence (brief, brief:risk, evidence:ui); shown to people and agents, never consulted by landing",briefs,OK,agent-scenario,AS-CR-04
+F414-037,4.14,"Checks and runs in plain words: check output (title, summary, text, annotations), CI-attached evidence and a ""What happened"" run summary",briefs,OK,agent-scenario,AS-CI-01 AS-CR-04
+F424-006,4.24,"Change page as a brief: Brief (default), Code, Checks and For agents tabs; evidence gallery with a keyboard compare slider, click-to-load captioned video and benchmark bars; change.md with the full brief, evidence and diff for agents",briefs,OK,agent-scenario,AS-CR-04
+F424-007,4.24,"Change requests list as a review queue: Needs you, Ready to land, Waiting on agents, Blocked, Recently landed, with hero thumbnails and a status sentence",briefs,OK,agent-scenario,AS-CR-04
+F424-008,4.24,"Evidence media served same-origin through the web app (digest-keyed caching), evidence: images in Markdown, and Lighthouse performance at least 0.90 on the Brief tab",briefs,OK,agent-scenario,AS-CR-04
+F419-017,4.19,"Swarms in one repository with a human owner and agent lead, task claims, attempts, structured hand-backs, policy-checked joins, a lead-only steering channel, state controls and events.",bee,OK,api-conformance,
+F419-018,4.19,"One repository work list for swarms and independent runs, newest activity first with links to the pull requests each produced.",bee,OK,agent-scenario,AS-AGENT-03
+F419-019,4.19,"Deterministic asked-against-done records, signals, human verdicts, and independent agent review",bee,OK,api-conformance,
+F419-020,4.19,"Safety tripwires, separate agent concerns, human attention, and an organization owner’s agent merge freeze",bee,OK,api-conformance,
+F419-021,4.19,"Deterministic spot checks of agent merges and period safety summaries",bee,OK,api-conformance,

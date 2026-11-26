@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateProjectRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateProject.",
+  "properties": {
+    "linkRepos": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "owner": {
+      "description": "org or user name or id",
+      "type": "string"
+    },
+    "public": {
+      "type": "boolean"
+    },
+    "readme": {
+      "type": "string"
+    },
+    "shortDescription": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateProjectRequest",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/import.get-export.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ImportService/GetExport: `data` is a bee.v1.Export in proto3-JSON. `bee import get-export --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Export.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.import.get-export"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee import get-export",
+  "type": "object"
+}

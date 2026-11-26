@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/project.link-project-team.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ProjectService/LinkProjectTeam: `data` is a bee.v1.Project in proto3-JSON. `bee project link-project-team --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Project.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.project.link-project-team"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee project link-project-team",
+  "type": "object"
+}

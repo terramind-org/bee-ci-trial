@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "bee.v1.UserPinnedItemKind": {
+      "description": "What a pinned item is.",
+      "enum": [
+        "USER_PINNED_ITEM_KIND_UNSPECIFIED",
+        "USER_PINNED_ITEM_KIND_REPO",
+        "USER_PINNED_ITEM_KIND_GIST"
+      ],
+      "title": "bee.v1.UserPinnedItemKind",
+      "type": "string"
+    },
+    "bee.v1.UserPinnedItemRef": {
+      "description": "Identifies an item to pin.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.UserPinnedItemKind"
+        }
+      },
+      "title": "bee.v1.UserPinnedItemRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SetUserPinnedItemsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SetUserPinnedItems.",
+  "properties": {
+    "items": {
+      "description": "in display order",
+      "items": {
+        "$ref": "#/$defs/bee.v1.UserPinnedItemRef"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.SetUserPinnedItemsRequest",
+  "type": "object"
+}

@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.LeaseMode": {
+      "enum": [
+        "LEASE_MODE_UNSPECIFIED",
+        "LEASE_MODE_ADVISORY",
+        "LEASE_MODE_EXCLUSIVE"
+      ],
+      "title": "bee.v1.LeaseMode",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Lease.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changeId": {
+      "$ref": "#/$defs/bee.v1.ChangeId"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "holder": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "id": {
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/bee.v1.LeaseMode"
+    },
+    "note": {
+      "type": "string"
+    },
+    "paths": {
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "repoId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Lease",
+  "type": "object"
+}

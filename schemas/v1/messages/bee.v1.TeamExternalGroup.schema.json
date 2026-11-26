@@ -1,0 +1,37 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TeamExternalGroup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An IdP group linked to a team.",
+  "properties": {
+    "groupId": {
+      "description": "the IdP's stable group id",
+      "type": "string"
+    },
+    "groupName": {
+      "type": "string"
+    },
+    "lastSyncedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "linkedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "memberCount": {
+      "description": "members currently synced from this group",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "provider": {
+      "description": "e.g. \"saml\", \"scim\", \"okta\", \"entra\"",
+      "type": "string"
+    },
+    "teamId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.TeamExternalGroup",
+  "type": "object"
+}

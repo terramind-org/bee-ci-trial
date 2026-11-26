@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.SponsorshipRole": {
+      "description": "Which side of a sponsorship to list.",
+      "enum": [
+        "SPONSORSHIP_ROLE_UNSPECIFIED",
+        "SPONSORSHIP_ROLE_SPONSOR",
+        "SPONSORSHIP_ROLE_MAINTAINEE"
+      ],
+      "title": "bee.v1.SponsorshipRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListSponsorshipsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListSponsorships.",
+  "properties": {
+    "includeEnded": {
+      "type": "boolean"
+    },
+    "includePrivate": {
+      "description": "honored for the parties only",
+      "type": "boolean"
+    },
+    "login": {
+      "description": "user or org; empty = the caller",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.SponsorshipRole"
+    }
+  },
+  "title": "bee.v1.ListSponsorshipsRequest",
+  "type": "object"
+}

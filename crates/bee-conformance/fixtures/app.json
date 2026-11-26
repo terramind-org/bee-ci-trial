@@ -1,0 +1,141 @@
+{
+  "service": "bee.v1.AppService",
+  "note": "CreateAppFromManifest makes the app `app-fixture` in org dev and CreateAppInstallation installs it on dev/playground; fixtures that change or delete an app, installation or OAuth app make their own. CreateMarketplaceListing makes the publisher org `app-market-fixture-org` with an app and the listing `app-fixture-listing`, which org dev then buys.",
+  "fixtures": [
+    {"method": "CreateAppFromManifest", "volatile": ["/ok/0/app/clientId", "/ok/0/app/privateKeys/*/fingerprint"],
+     "request": {"org": "{{org}}", "manifestJson": "{\"name\": \"app-fixture\", \"description\": \"made by the CreateAppFromManifest fixture\", \"url\": \"https://example.com/app-fixture\", \"callback_urls\": [\"https://example.com/app-fixture/callback\"], \"setup_url\": \"https://example.com/app-fixture/setup\", \"public\": true, \"default_permissions\": {\"contents\": \"read\", \"issues\": \"write\"}, \"request_oauth_on_install\": false}"}},
+    {"method": "GetApp", "volatile": ["/ok/0/clientId", "/ok/0/privateKeys/*/fingerprint"], "request": {"app": "app-fixture"}},
+    {"method": "UpdateApp", "volatile": ["/ok/0/clientId", "/ok/0/privateKeys/*/fingerprint"],
+     "request": {"app": "app-fixture", "description": "updated by the UpdateApp fixture", "homepageUrl": "https://example.com/app-fixture/home", "callbackUrls": ["https://example.com/app-fixture/callback", "https://example.com/app-fixture/callback2"], "replaceCallbackUrls": true, "permissions": [{"resource": "contents", "level": "APP_PERMISSION_LEVEL_READ"}, {"resource": "issues", "level": "APP_PERMISSION_LEVEL_WRITE"}, {"resource": "metadata", "level": "APP_PERMISSION_LEVEL_READ"}], "replacePermissions": true}},
+    {"method": "DeleteApp",
+     "setup": [{"call": "AppService/CreateAppFromManifest", "save": "d", "request": {"org": "{{org}}", "manifestJson": "{\"name\": \"delete-app-fixture\", \"url\": \"https://example.com/delete-app-fixture\"}"}}],
+     "request": {"app": "{{d.app.id}}"}},
+    {"method": "ListApps", "volatile": ["/ok/0/apps/*/clientId", "/ok/0/apps/*/privateKeys/*/fingerprint"], "request": {"owner": "{{org}}"}},
+    {"method": "CreateAppPrivateKey", "volatile": ["/ok/0/key/fingerprint"], "request": {"app": "app-fixture"}},
+    {"method": "DeleteAppPrivateKey",
+     "setup": [{"call": "AppService/CreateAppPrivateKey", "save": "k", "request": {"app": "app-fixture"}}],
+     "request": {"app": "app-fixture", "keyId": "{{k.key.id}}"}},
+    {"method": "CreateAppInstallation",
+     "request": {"app": "app-fixture", "org": "{{org}}", "repositorySelection": "APP_REPOSITORY_SELECTION_SELECTED", "repos": [{"fullName": "{{repo}}"}]}},
+    {"method": "GetAppInstallation",
+     "setup": [{"call": "AppService/ListAppInstallations", "save": "l", "request": {"app": "app-fixture"}}],
+     "request": {"installationId": "{{l.installations.0.id}}"}},
+    {"method": "ListAppInstallations", "request": {"app": "app-fixture"}},
+    {"method": "AddAppInstallationRepos",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "add-app-installation-repos-fixture", "visibility": "VISIBILITY_PRIVATE"}},
+       {"call": "AppService/ListAppInstallations", "save": "l", "request": {"app": "app-fixture"}}
+     ],
+     "request": {"installationId": "{{l.installations.0.id}}", "repos": [{"fullName": "{{org}}/add-app-installation-repos-fixture"}]}},
+    {"method": "RemoveAppInstallationRepos",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "remove-app-installation-repos-fixture", "visibility": "VISIBILITY_PRIVATE"}},
+       {"call": "AppService/ListAppInstallations", "save": "l", "request": {"app": "app-fixture"}},
+       {"call": "AppService/AddAppInstallationRepos", "request": {"installationId": "{{l.installations.0.id}}", "repos": [{"fullName": "{{org}}/remove-app-installation-repos-fixture"}]}}
+     ],
+     "request": {"installationId": "{{l.installations.0.id}}", "repos": [{"fullName": "{{org}}/remove-app-installation-repos-fixture"}]}},
+    {"method": "ListAppInstallationRepos",
+     "setup": [{"call": "AppService/ListAppInstallations", "save": "l", "request": {"app": "app-fixture"}}],
+     "request": {"installationId": "{{l.installations.0.id}}"}},
+    {"method": "CreateInstallationToken",
+     "setup": [{"call": "AppService/ListAppInstallations", "save": "l", "request": {"app": "app-fixture"}}],
+     "request": {"installationId": "{{l.installations.0.id}}", "repos": [{"fullName": "{{repo}}"}], "permissions": [{"resource": "contents", "level": "APP_PERMISSION_LEVEL_READ"}], "ttlSeconds": 600}},
+    {"method": "SuspendAppInstallation",
+     "setup": [
+       {"call": "AppService/CreateAppFromManifest", "request": {"org": "{{org}}", "manifestJson": "{\"name\": \"suspend-app-installation-fixture\", \"url\": \"https://example.com/suspend\", \"default_permissions\": {\"contents\": \"read\"}}"}},
+       {"call": "AppService/CreateAppInstallation", "save": "i", "request": {"app": "suspend-app-installation-fixture", "org": "{{org}}", "repositorySelection": "APP_REPOSITORY_SELECTION_SELECTED", "repos": [{"fullName": "{{repo}}"}]}}
+     ],
+     "request": {"installationId": "{{i.id}}", "reason": "suspended by the SuspendAppInstallation fixture"}},
+    {"method": "UnsuspendAppInstallation",
+     "setup": [
+       {"call": "AppService/CreateAppFromManifest", "request": {"org": "{{org}}", "manifestJson": "{\"name\": \"unsuspend-app-install-fixture\", \"url\": \"https://example.com/unsuspend\", \"default_permissions\": {\"contents\": \"read\"}}"}},
+       {"call": "AppService/CreateAppInstallation", "save": "i", "request": {"app": "unsuspend-app-install-fixture", "org": "{{org}}", "repositorySelection": "APP_REPOSITORY_SELECTION_SELECTED", "repos": [{"fullName": "{{repo}}"}]}},
+       {"call": "AppService/SuspendAppInstallation", "request": {"installationId": "{{i.id}}", "reason": "to unsuspend"}}
+     ],
+     "request": {"installationId": "{{i.id}}"}},
+    {"method": "DeleteAppInstallation",
+     "setup": [
+       {"call": "AppService/CreateAppFromManifest", "request": {"org": "{{org}}", "manifestJson": "{\"name\": \"delete-app-install-fixture\", \"url\": \"https://example.com/delete-install\", \"default_permissions\": {\"contents\": \"read\"}}"}},
+       {"call": "AppService/CreateAppInstallation", "save": "i", "request": {"app": "delete-app-install-fixture", "org": "{{org}}", "repositorySelection": "APP_REPOSITORY_SELECTION_SELECTED", "repos": [{"fullName": "{{repo}}"}]}}
+     ],
+     "request": {"installationId": "{{i.id}}"}},
+    {"method": "CreateOAuthApp", "volatile": ["/ok/0/app/clientId"],
+     "request": {"org": "{{org}}", "name": "create-oauth-app-fixture", "description": "made by the CreateOAuthApp fixture", "homepageUrl": "https://example.com/oauth-fixture", "callbackUrls": ["https://example.com/oauth-fixture/callback"], "deviceFlowEnabled": true}},
+    {"method": "GetOAuthApp", "volatile": ["/ok/0/clientId"],
+     "setup": [{"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "get-oauth-app-fixture", "homepageUrl": "https://example.com/get-oauth", "callbackUrls": ["https://example.com/get-oauth/callback"]}}],
+     "request": {"oauthApp": "{{o.app.clientId}}"}},
+    {"method": "UpdateOAuthApp", "volatile": ["/ok/0/app/clientId"],
+     "setup": [{"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "update-oauth-app-fixture", "homepageUrl": "https://example.com/update-oauth", "callbackUrls": ["https://example.com/update-oauth/callback"]}}],
+     "request": {"oauthApp": "{{o.app.clientId}}", "description": "updated by the UpdateOAuthApp fixture", "callbackUrls": ["https://example.com/update-oauth/callback", "https://example.com/update-oauth/callback2"], "replaceCallbackUrls": true, "deviceFlowEnabled": true, "resetClientSecret": true}},
+    {"method": "DeleteOAuthApp",
+     "setup": [{"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "delete-oauth-app-fixture", "homepageUrl": "https://example.com/delete-oauth", "callbackUrls": ["https://example.com/delete-oauth/callback"]}}],
+     "request": {"oauthApp": "{{o.app.clientId}}"}},
+    {"method": "ListOAuthApps", "volatile": ["/ok/0/apps/*/clientId"], "request": {"owner": "{{org}}"}},
+    {"method": "ListOAuthAuthorizedApps", "volatile": ["/ok/0/grants/*/clientId"],
+     "setup": [
+       {"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "list-oauth-authorized-apps-fixture", "homepageUrl": "https://example.com/authorized", "callbackUrls": ["https://example.com/authorized/callback"]}},
+       {"call": "AppService/CreateOAuthAuthorization", "request": {"clientId": "{{o.app.clientId}}", "redirectUri": "https://example.com/authorized/callback", "scopes": ["read:user", "repo:read"], "state": "s"}}
+     ],
+     "request": {"principalId": "{{user}}"}},
+    {"method": "CreateOAuthAuthorization",
+     "setup": [{"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "create-oauth-authorization-fixture", "homepageUrl": "https://example.com/authz", "callbackUrls": ["https://example.com/authz/callback"]}}],
+     "request": {"clientId": "{{o.app.clientId}}", "redirectUri": "https://example.com/authz/callback", "scopes": ["read:user", "repo:read"], "state": "create-oauth-authorization-state"}},
+    {"method": "ExchangeOAuthCode",
+     "setup": [
+       {"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "exchange-oauth-code-fixture", "homepageUrl": "https://example.com/exchange", "callbackUrls": ["https://example.com/exchange/callback"]}},
+       {"call": "AppService/CreateOAuthAuthorization", "save": "a", "request": {"clientId": "{{o.app.clientId}}", "redirectUri": "https://example.com/exchange/callback", "scopes": ["repo:read"], "state": "s"}}
+     ],
+     "request": {"clientId": "{{o.app.clientId}}", "clientSecret": "{{o.clientSecret}}", "code": "{{a.code}}", "redirectUri": "https://example.com/exchange/callback"}},
+    {"method": "RefreshOAuthToken",
+     "setup": [
+       {"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "refresh-oauth-token-fixture", "homepageUrl": "https://example.com/refresh", "callbackUrls": ["https://example.com/refresh/callback"]}},
+       {"call": "AppService/CreateOAuthAuthorization", "save": "a", "request": {"clientId": "{{o.app.clientId}}", "redirectUri": "https://example.com/refresh/callback", "scopes": ["repo:read"], "state": "s"}},
+       {"call": "AppService/ExchangeOAuthCode", "save": "e", "request": {"clientId": "{{o.app.clientId}}", "clientSecret": "{{o.clientSecret}}", "code": "{{a.code}}", "redirectUri": "https://example.com/refresh/callback"}}
+     ],
+     "request": {"clientId": "{{o.app.clientId}}", "clientSecret": "{{o.clientSecret}}", "refreshToken": "{{e.tokens.refreshToken}}"}},
+    {"method": "StartOAuthDeviceFlow", "volatile": ["/ok/0/verificationUriComplete"],
+     "setup": [{"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "start-oauth-device-flow-fixture", "homepageUrl": "https://example.com/device", "deviceFlowEnabled": true}}],
+     "request": {"clientId": "{{o.app.clientId}}", "scopes": ["repo:read"]}},
+    {"method": "PollOAuthDeviceFlow",
+     "setup": [
+       {"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "poll-oauth-device-flow-fixture", "homepageUrl": "https://example.com/poll", "deviceFlowEnabled": true}},
+       {"call": "AppService/StartOAuthDeviceFlow", "save": "d", "request": {"clientId": "{{o.app.clientId}}", "scopes": ["repo:read"]}},
+       {"call": "AppService/CreateOAuthAuthorization", "request": {"userCode": "{{d.userCode}}"}}
+     ],
+     "request": {"clientId": "{{o.app.clientId}}", "deviceCode": "{{d.deviceCode}}"}},
+    {"method": "RevokeOAuthGrant",
+     "setup": [
+       {"call": "AppService/CreateOAuthApp", "save": "o", "request": {"org": "{{org}}", "name": "revoke-oauth-grant-fixture", "homepageUrl": "https://example.com/revoke", "callbackUrls": ["https://example.com/revoke/callback"]}},
+       {"call": "AppService/CreateOAuthAuthorization", "request": {"clientId": "{{o.app.clientId}}", "redirectUri": "https://example.com/revoke/callback", "scopes": ["repo:read"], "state": "s"}}
+     ],
+     "request": {"clientId": "{{o.app.clientId}}"}},
+    {"method": "CreateMarketplaceListing",
+     "setup": [
+       {"call": "OrgService/CreateOrg", "request": {"name": "app-market-fixture-org", "display": "App market fixture org"}},
+       {"call": "AppService/CreateAppFromManifest", "save": "m", "request": {"org": "app-market-fixture-org", "manifestJson": "{\"name\": \"app-market-fixture\", \"url\": \"https://example.com/market\", \"public\": true, \"default_permissions\": {\"contents\": \"read\"}}"}}
+     ],
+     "request": {"org": "app-market-fixture-org", "type": "MARKETPLACE_LISTING_TYPE_APP", "slug": "app-fixture-listing", "name": "App fixture listing", "shortDescription": "A listing made by the CreateMarketplaceListing fixture", "fullDescription": "# App fixture\n\nDoes fixture things.", "categories": ["code-quality"], "appId": "{{m.app.id}}", "logoUrl": "https://example.com/market/logo.png", "supportUrl": "https://example.com/market/support", "privacyPolicyUrl": "https://example.com/market/privacy", "termsUrl": "https://example.com/market/terms"}},
+    {"method": "UpdateMarketplaceListing",
+     "request": {"listing": "app-fixture-listing", "shortDescription": "Updated by the UpdateMarketplaceListing fixture", "categories": ["code-quality", "testing"], "replaceCategories": true, "screenshotUrls": ["https://example.com/market/shot1.png"], "replaceScreenshotUrls": true}},
+    {"method": "CreateMarketplacePlan",
+     "request": {"listing": "app-fixture-listing", "name": "Free", "description": "Free forever", "pricingModel": "MARKETPLACE_PRICING_MODEL_FREE", "bullets": ["Unlimited public repos"]}},
+    {"method": "UpdateMarketplacePlan",
+     "setup": [{"call": "AppService/CreateMarketplacePlan", "save": "p", "request": {"listing": "app-fixture-listing", "name": "Pro", "description": "For teams", "pricingModel": "MARKETPLACE_PRICING_MODEL_FLAT", "monthlyPriceMicroUsd": "5000000", "yearlyPriceMicroUsd": "50000000", "freeTrialDays": 14, "bullets": ["Private repos"]}}],
+     "request": {"listing": "app-fixture-listing", "planId": "{{p.id}}", "description": "For teams of any size", "freeTrialDays": 30, "bullets": ["Private repos", "Priority support"], "replaceBullets": true}},
+    {"method": "PublishMarketplaceListing", "request": {"listing": "app-fixture-listing"}},
+    {"method": "GetMarketplaceListing", "request": {"listing": "app-fixture-listing"}},
+    {"method": "ListMarketplaceListings", "request": {"publisher": "app-market-fixture-org", "type": "MARKETPLACE_LISTING_TYPE_APP", "sort": "name"}},
+    {"method": "PurchaseMarketplacePlan",
+     "setup": [{"call": "AppService/GetMarketplaceListing", "save": "l", "request": {"listing": "app-fixture-listing"}}],
+     "request": {"org": "{{org}}", "listing": "app-fixture-listing", "planId": "{{l.plans.0.id}}", "billingCycle": "MARKETPLACE_BILLING_CYCLE_MONTHLY"}},
+    {"method": "ListMarketplacePurchases", "request": {"org": "{{org}}", "includeCancelled": true}},
+    {"method": "CancelMarketplacePurchase",
+     "setup": [{"call": "AppService/ListMarketplacePurchases", "save": "p", "request": {"org": "{{org}}"}}],
+     "request": {"org": "{{org}}", "purchaseId": "{{p.purchases.0.id}}"}},
+    {"method": "GetMarketplacePublisher", "request": {"org": "app-market-fixture-org"}},
+    {"method": "RequestMarketplacePublisherVerification",
+     "request": {"org": "app-market-fixture-org", "domain": "app-market-fixture.example.com", "supportEmail": "support@app-market-fixture.example.com"},
+     "expect": "INVALID_STATE",
+     "note": "Publisher verification needs a verified domain of the org; verifying one (EnterpriseService/CheckVerifiedDomain) needs a real DNS TXT record, which a dev server cannot see, so every domain answers domain_not_verified."}
+  ]
+}

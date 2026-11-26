@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WorkspacePrebuildState": {
+      "description": "Prebuild lifecycle.",
+      "enum": [
+        "WORKSPACE_PREBUILD_STATE_UNSPECIFIED",
+        "WORKSPACE_PREBUILD_STATE_QUEUED",
+        "WORKSPACE_PREBUILD_STATE_RUNNING",
+        "WORKSPACE_PREBUILD_STATE_READY",
+        "WORKSPACE_PREBUILD_STATE_FAILED",
+        "WORKSPACE_PREBUILD_STATE_SUPERSEDED"
+      ],
+      "title": "bee.v1.WorkspacePrebuildState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkspacePrebuild.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One prebuild.",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "configId": {
+      "type": "string"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "durationSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "failureReason": {
+      "type": "string"
+    },
+    "finishedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "logUrl": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.WorkspacePrebuildState"
+    }
+  },
+  "title": "bee.v1.WorkspacePrebuild",
+  "type": "object"
+}

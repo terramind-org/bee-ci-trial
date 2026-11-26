@@ -1,0 +1,279 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SearchRange": {
+      "description": "A byte range within a line or text, half-open, in UTF-8 bytes.",
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.SearchRange",
+      "type": "object"
+    },
+    "bee.v1.SearchRepoHit": {
+      "description": "A repo search result.",
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "forkCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "isFork": {
+          "type": "boolean"
+        },
+        "isTemplate": {
+          "type": "boolean"
+        },
+        "licenseSpdxId": {
+          "type": "string"
+        },
+        "openIssueCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "primaryLanguage": {
+          "type": "string"
+        },
+        "pushedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "score": {
+          "type": "number"
+        },
+        "starCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "textMatches": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchTextMatch"
+          },
+          "type": "array"
+        },
+        "topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "visibility": {
+          "description": "\"public\", \"internal\", \"private\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SearchRepoHit",
+      "type": "object"
+    },
+    "bee.v1.SearchTextMatch": {
+      "description": "Highlighted text for a matched field.",
+      "properties": {
+        "field": {
+          "description": "e.g. \"title\", \"body\"",
+          "type": "string"
+        },
+        "fragment": {
+          "type": "string"
+        },
+        "ranges": {
+          "description": "within fragment",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchRange"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchTextMatch",
+      "type": "object"
+    },
+    "bee.v1.SearchUserHit": {
+      "description": "A user, agent or org search result.",
+      "properties": {
+        "avatarUrl": {
+          "type": "string"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "followerCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "isOrg": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string"
+        },
+        "login": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "publicRepoCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "textMatches": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchTextMatch"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchUserHit",
+      "type": "object"
+    },
+    "bee.v1.TopicCollectionItem": {
+      "description": "One item in a collection.\n\nOneof `item`: at most one of `repo`, `user`, `url` is set.",
+      "properties": {
+        "note": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.SearchRepoHit"
+        },
+        "url": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/bee.v1.SearchUserHit"
+        }
+      },
+      "title": "bee.v1.TopicCollectionItem",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TopicCollection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A curated collection of repos, people and links.",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "imageUrl": {
+      "type": "string"
+    },
+    "itemCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "items": {
+      "description": "GetTopicCollection only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.TopicCollectionItem"
+      },
+      "type": "array"
+    },
+    "slug": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.TopicCollection",
+  "type": "object"
+}

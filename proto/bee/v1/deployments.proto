@@ -1,0 +1,461 @@
+// Beehive deployments and environments for bee.v1 (PRODUCT §4.14).
+// A deployment is a request to ship a changeset to an environment; environments carry
+// protection rules (reviewers, wait timers, ref policies, app rules) and `green/*` gating.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Environments, deployments, deployment statuses and their protection reviews.
+service DeploymentService {
+  // Creates an environment with optional protection rules. Errors: ALREADY_EXISTS.
+  rpc CreateDeploymentEnvironment(CreateDeploymentEnvironmentRequest) returns (DeploymentEnvironment);
+  // Returns one environment. Errors: NOT_FOUND.
+  rpc GetDeploymentEnvironment(GetDeploymentEnvironmentRequest) returns (DeploymentEnvironment);
+  // Lists a repo's environments.
+  rpc ListDeploymentEnvironments(ListDeploymentEnvironmentsRequest) returns (ListDeploymentEnvironmentsResponse);
+  // Updates protection rules; unset fields are unchanged. Errors: NOT_FOUND, INVALID_ARGUMENT.
+  rpc UpdateDeploymentEnvironment(UpdateDeploymentEnvironmentRequest) returns (DeploymentEnvironment);
+  // Deletes an environment with its secrets and variables. Errors: NOT_FOUND.
+  rpc DeleteDeploymentEnvironment(DeleteDeploymentEnvironmentRequest) returns (DeleteDeploymentEnvironmentResponse);
+  // Lists apps installed on the repo that may serve as custom protection rules.
+  rpc ListDeploymentProtectionRuleApps(ListDeploymentProtectionRuleAppsRequest) returns (ListDeploymentProtectionRuleAppsResponse);
+  // Adds an app-backed custom protection rule to an environment. Errors: NOT_FOUND, ALREADY_EXISTS.
+  rpc CreateDeploymentProtectionRule(CreateDeploymentProtectionRuleRequest) returns (DeploymentProtectionRule);
+  // Removes a custom protection rule. Errors: NOT_FOUND.
+  rpc DeleteDeploymentProtectionRule(DeleteDeploymentProtectionRuleRequest) returns (DeleteDeploymentProtectionRuleResponse);
+  // Called by a protection-rule app to approve or reject a gated deployment.
+  // Errors: PERMISSION_DENIED (caller is not the rule's app), INVALID_STATE (not waiting).
+  rpc ReportDeploymentProtectionRuleResult(ReportDeploymentProtectionRuleResultRequest) returns (ReportDeploymentProtectionRuleResultResponse);
+  // Creates a deployment for a ref or changeset. Errors: POLICY_DENIED (required contexts not
+  // green, or the ref is not allowed by the environment's ref policy; payload lists what is
+  // missing), MERGE_CONFLICT (auto_merge could not merge the default ref in),
+  // APPROVAL_REQUIRED (the deployment was created but waits on reviewers; see its status).
+  rpc CreateDeployment(CreateDeploymentRequest) returns (Deployment);
+  // Returns one deployment. Errors: NOT_FOUND.
+  rpc GetDeployment(GetDeploymentRequest) returns (Deployment);
+  // Lists deployments, newest first, with filters.
+  rpc ListDeployments(ListDeploymentsRequest) returns (ListDeploymentsResponse);
+  // Deletes a deployment. Errors: INVALID_STATE (still the active deployment of a
+  // non-transient environment; mark it inactive first).
+  rpc DeleteDeployment(DeleteDeploymentRequest) returns (DeleteDeploymentResponse);
+  // Appends a status to a deployment. Errors: NOT_FOUND, INVALID_STATE (deployment deleted).
+  rpc CreateDeploymentStatus(CreateDeploymentStatusRequest) returns (DeploymentStatus);
+  // Returns one deployment status. Errors: NOT_FOUND.
+  rpc GetDeploymentStatus(GetDeploymentStatusRequest) returns (DeploymentStatus);
+  // Lists a deployment's statuses, newest first.
+  rpc ListDeploymentStatuses(ListDeploymentStatusesRequest) returns (ListDeploymentStatusesResponse);
+  // Lists deployments waiting on human review, optionally for one environment.
+  rpc ListPendingDeploymentReviews(ListPendingDeploymentReviewsRequest) returns (ListPendingDeploymentReviewsResponse);
+  // Approves or rejects a pending deployment. Errors: PERMISSION_DENIED (not a required
+  // reviewer, or self review is prevented), INVALID_STATE (not waiting on review).
+  rpc ReviewPendingDeployment(ReviewPendingDeploymentRequest) returns (Deployment);
+  // Lists past review decisions on a deployment.
+  rpc ListDeploymentReviews(ListDeploymentReviewsRequest) returns (ListDeploymentReviewsResponse);
+  // Reports whether a ref's tip is green (passed post-land testing) and so may deploy.
+  rpc GetDeploymentGreenStatus(GetDeploymentGreenStatusRequest) returns (DeploymentGreenStatus);
+}
+
+// ---------- Environments ----------
+
+// What kind of principal a required reviewer entry names.
+enum DeploymentReviewerKind {
+  DEPLOYMENT_REVIEWER_KIND_UNSPECIFIED = 0;
+  DEPLOYMENT_REVIEWER_KIND_PRINCIPAL = 1; // a human or agent principal
+  DEPLOYMENT_REVIEWER_KIND_TEAM = 2;
+}
+
+// One required reviewer of an environment.
+message DeploymentEnvironmentReviewer {
+  DeploymentReviewerKind kind = 1;
+  Principal principal = 2; // kind PRINCIPAL
+  string team_id = 3;      // kind TEAM
+  string team_slug = 4;    // kind TEAM, output only
+}
+
+// Which refs may deploy to an environment.
+enum DeploymentRefPolicyMode {
+  DEPLOYMENT_REF_POLICY_MODE_UNSPECIFIED = 0;
+  DEPLOYMENT_REF_POLICY_MODE_ALL = 1;            // any ref
+  DEPLOYMENT_REF_POLICY_MODE_PROTECTED_REFS = 2; // only refs protected by policy
+  DEPLOYMENT_REF_POLICY_MODE_CUSTOM = 3;         // only refs matching `ref_policies`
+}
+
+// Whether a ref policy pattern matches branches or tags.
+enum DeploymentRefPolicyType {
+  DEPLOYMENT_REF_POLICY_TYPE_UNSPECIFIED = 0;
+  DEPLOYMENT_REF_POLICY_TYPE_BRANCH = 1;
+  DEPLOYMENT_REF_POLICY_TYPE_TAG = 2;
+}
+
+// A ref pattern allowed to deploy to an environment.
+message DeploymentRefPolicy {
+  string pattern = 1; // glob, e.g. "release/*"
+  DeploymentRefPolicyType type = 2;
+}
+
+// The full set of custom ref policies, wrapped so an update can tell "unchanged" from "empty".
+message DeploymentRefPolicySet {
+  repeated DeploymentRefPolicy policies = 1;
+}
+
+// The full set of required reviewers, wrapped for the same reason.
+message DeploymentReviewerSet {
+  repeated DeploymentEnvironmentReviewer reviewers = 1;
+}
+
+// An app-backed custom protection rule on an environment.
+message DeploymentProtectionRule {
+  string id = 1;
+  string app_id = 2;
+  string app_slug = 3;
+  bool enabled = 4;
+}
+
+// An app that can back a custom protection rule.
+message DeploymentProtectionRuleApp {
+  string app_id = 1;
+  string slug = 2;
+  string name = 3;
+}
+
+// A deployment target of a repo with its protection rules.
+message DeploymentEnvironment {
+  string id = 1;
+  RepoRef repo = 2;
+  string name = 3;
+  repeated DeploymentEnvironmentReviewer reviewers = 4;
+  bool prevent_self_review = 5;  // the deployment's creator may not approve it
+  uint32 wait_timer_seconds = 6; // delay after approval before the job runs, max 30 days
+  DeploymentRefPolicyMode ref_policy_mode = 7;
+  repeated DeploymentRefPolicy ref_policies = 8;
+  repeated DeploymentProtectionRule protection_rules = 9;
+  bool can_admins_bypass = 10;
+  bool require_green = 11; // only refs whose tip is green may deploy (PRODUCT §4.14)
+  string url = 12;         // last successful environment_url
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+// Request for CreateDeploymentEnvironment.
+message CreateDeploymentEnvironmentRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  repeated DeploymentEnvironmentReviewer reviewers = 3;
+  bool prevent_self_review = 4;
+  uint32 wait_timer_seconds = 5;
+  DeploymentRefPolicyMode ref_policy_mode = 6;
+  repeated DeploymentRefPolicy ref_policies = 7;
+  bool can_admins_bypass = 8;
+  bool require_green = 9;
+}
+
+// Request for GetDeploymentEnvironment.
+message GetDeploymentEnvironmentRequest {
+  RepoRef repo = 1;
+  string name = 2;
+}
+
+// Request for ListDeploymentEnvironments.
+message ListDeploymentEnvironmentsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListDeploymentEnvironments.
+message ListDeploymentEnvironmentsResponse {
+  repeated DeploymentEnvironment environments = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateDeploymentEnvironment.
+message UpdateDeploymentEnvironmentRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  DeploymentReviewerSet reviewers = 3; // unset = unchanged
+  optional bool prevent_self_review = 4;
+  optional uint32 wait_timer_seconds = 5;
+  optional DeploymentRefPolicyMode ref_policy_mode = 6;
+  DeploymentRefPolicySet ref_policies = 7; // unset = unchanged
+  optional bool can_admins_bypass = 8;
+  optional bool require_green = 9;
+}
+
+// Request for DeleteDeploymentEnvironment.
+message DeleteDeploymentEnvironmentRequest {
+  RepoRef repo = 1;
+  string name = 2;
+}
+
+// Response for DeleteDeploymentEnvironment.
+message DeleteDeploymentEnvironmentResponse {}
+
+// Request for ListDeploymentProtectionRuleApps.
+message ListDeploymentProtectionRuleAppsRequest {
+  RepoRef repo = 1;
+  string environment = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDeploymentProtectionRuleApps.
+message ListDeploymentProtectionRuleAppsResponse {
+  repeated DeploymentProtectionRuleApp apps = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateDeploymentProtectionRule.
+message CreateDeploymentProtectionRuleRequest {
+  RepoRef repo = 1;
+  string environment = 2;
+  string app_id = 3;
+}
+
+// Request for DeleteDeploymentProtectionRule.
+message DeleteDeploymentProtectionRuleRequest {
+  RepoRef repo = 1;
+  string environment = 2;
+  string rule_id = 3;
+}
+
+// Response for DeleteDeploymentProtectionRule.
+message DeleteDeploymentProtectionRuleResponse {}
+
+// A reviewer's or rule's decision on a gated deployment.
+enum DeploymentReviewDecision {
+  DEPLOYMENT_REVIEW_DECISION_UNSPECIFIED = 0;
+  DEPLOYMENT_REVIEW_DECISION_APPROVED = 1;
+  DEPLOYMENT_REVIEW_DECISION_REJECTED = 2;
+}
+
+// Request for ReportDeploymentProtectionRuleResult.
+message ReportDeploymentProtectionRuleResultRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  string environment = 3;
+  DeploymentReviewDecision decision = 4;
+  string comment = 5;
+}
+
+// Response for ReportDeploymentProtectionRuleResult.
+message ReportDeploymentProtectionRuleResultResponse {}
+
+// ---------- Deployments ----------
+
+// The state carried by a deployment status (GitHub-compatible set).
+enum DeploymentState {
+  DEPLOYMENT_STATE_UNSPECIFIED = 0;
+  DEPLOYMENT_STATE_PENDING = 1;     // created, waiting on protection rules
+  DEPLOYMENT_STATE_QUEUED = 2;
+  DEPLOYMENT_STATE_IN_PROGRESS = 3;
+  DEPLOYMENT_STATE_SUCCESS = 4;
+  DEPLOYMENT_STATE_FAILURE = 5;
+  DEPLOYMENT_STATE_ERROR = 6;
+  DEPLOYMENT_STATE_INACTIVE = 7;    // superseded by a later successful deployment
+}
+
+// Required status contexts for a deployment, wrapped so "unset" (all required contexts)
+// differs from an empty list (skip the check).
+message DeploymentRequiredContexts {
+  repeated string contexts = 1;
+}
+
+// A request to ship a changeset to an environment.
+message Deployment {
+  string id = 1;
+  RepoRef repo = 2;
+  string ref = 3;           // ref name as requested
+  ObjectId changeset = 4;   // resolved changeset that is deployed
+  string task = 5;          // e.g. "deploy", "deploy:migrations"
+  string environment = 6;
+  string original_environment = 7;
+  string description = 8;
+  string payload_json = 9;  // free-form JSON chosen by the creator
+  bool transient_environment = 10; // environment goes away when no longer needed
+  bool production_environment = 11;
+  Principal creator = 12;
+  DeploymentState state = 13; // state of the latest status
+  string workflow_run_id = 14; // set when created by a workflow job
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// Request for CreateDeployment.
+message CreateDeploymentRequest {
+  RepoRef repo = 1;
+  string ref = 2;
+  ObjectId changeset = 3;  // optional pin; must be the ref's tip or reachable from it
+  string task = 4;
+  string environment = 5;
+  string description = 6;
+  string payload_json = 7; // JSON
+  bool transient_environment = 8;
+  bool production_environment = 9;
+  bool auto_merge = 10;    // first merge the default ref into `ref` if it is behind
+  DeploymentRequiredContexts required_contexts = 11; // unset = every required context
+  // When the environment requires green and `ref`'s tip is not green, deploy the newest green
+  // changeset of `ref` (what `green/<ref>` marks) instead of refusing. Ignored with `changeset`.
+  bool deploy_green_tip = 12;
+}
+
+// Request for GetDeployment.
+message GetDeploymentRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+}
+
+// Request for ListDeployments.
+message ListDeploymentsRequest {
+  RepoRef repo = 1;
+  string environment = 2;
+  string ref = 3;
+  ObjectId changeset = 4;
+  string task = 5;
+  DeploymentState state = 6; // filter by latest state; UNSPECIFIED = any
+  string creator_id = 7;
+  PageRequest page = 8;
+}
+
+// Response for ListDeployments.
+message ListDeploymentsResponse {
+  repeated Deployment deployments = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteDeployment.
+message DeleteDeploymentRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+}
+
+// Response for DeleteDeployment.
+message DeleteDeploymentResponse {}
+
+// ---------- Statuses ----------
+
+// One status in a deployment's history.
+message DeploymentStatus {
+  string id = 1;
+  string deployment_id = 2;
+  DeploymentState state = 3;
+  string description = 4;
+  string environment = 5;
+  string log_url = 6;
+  string environment_url = 7;
+  Principal creator = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// Request for CreateDeploymentStatus.
+message CreateDeploymentStatusRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  DeploymentState state = 3;
+  string description = 4;
+  string environment = 5;     // may move the deployment to another environment
+  string log_url = 6;
+  string environment_url = 7;
+  bool auto_inactive = 8;     // on SUCCESS, mark older deployments to the same environment inactive
+}
+
+// Request for GetDeploymentStatus.
+message GetDeploymentStatusRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  string status_id = 3;
+}
+
+// Request for ListDeploymentStatuses.
+message ListDeploymentStatusesRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDeploymentStatuses.
+message ListDeploymentStatusesResponse {
+  repeated DeploymentStatus statuses = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Reviews ----------
+
+// A deployment waiting on an environment's protection rules.
+message DeploymentPendingReview {
+  string deployment_id = 1;
+  string environment = 2;
+  string workflow_run_id = 3; // set when the deployment belongs to a workflow job
+  uint32 wait_timer_seconds = 4;
+  google.protobuf.Timestamp wait_timer_started_at = 5;
+  repeated DeploymentEnvironmentReviewer reviewers = 6;
+  bool caller_can_approve = 7;
+  repeated string pending_rule_app_slugs = 8; // custom rules that have not answered yet
+}
+
+// Request for ListPendingDeploymentReviews.
+message ListPendingDeploymentReviewsRequest {
+  RepoRef repo = 1;
+  string environment = 2; // empty = all environments
+  PageRequest page = 3;
+}
+
+// Response for ListPendingDeploymentReviews.
+message ListPendingDeploymentReviewsResponse {
+  repeated DeploymentPendingReview reviews = 1;
+  PageResponse page = 2;
+}
+
+// Request for ReviewPendingDeployment.
+message ReviewPendingDeploymentRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  DeploymentReviewDecision decision = 3;
+  string comment = 4;
+}
+
+// One recorded decision on a deployment.
+message DeploymentReview {
+  string deployment_id = 1;
+  string environment = 2;
+  DeploymentReviewDecision decision = 3;
+  Principal reviewer = 4; // the human, agent or app that decided
+  string comment = 5;
+  bool bypassed = 6;      // an admin bypassed the rules
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// Request for ListDeploymentReviews.
+message ListDeploymentReviewsRequest {
+  RepoRef repo = 1;
+  string deployment_id = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListDeploymentReviews.
+message ListDeploymentReviewsResponse {
+  repeated DeploymentReview reviews = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Green gating ----------
+
+// Request for GetDeploymentGreenStatus.
+message GetDeploymentGreenStatusRequest {
+  RepoRef repo = 1;
+  string ref = 2;         // e.g. "main"
+  ObjectId changeset = 3; // optional; defaults to the ref's tip
+}
+
+// Whether a ref tip passed post-land testing; `green/<ref>` tracks the newest green tip.
+message DeploymentGreenStatus {
+  string ref = 1;
+  ObjectId tip = 2;
+  bool green = 3;
+  string green_ref = 4;      // e.g. "green/main"
+  ObjectId green_tip = 5;    // newest green changeset on the ref
+  repeated string failing_contexts = 6;
+  repeated string pending_contexts = 7;
+  bool bisect_in_progress = 8; // a failure on the ref is being bisected
+  google.protobuf.Timestamp evaluated_at = 9;
+}

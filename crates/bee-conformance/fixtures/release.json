@@ -1,0 +1,103 @@
+{
+  "service": "bee.v1.ReleaseService",
+  "fixtures": [
+    {"method": "CreateRelease",
+     "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "create-release-v1", "target": {"expr": "main"}, "name": "create-release fixture", "body": "First release of the fixture.", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}},
+    {"method": "GetRelease",
+     "setup": [{"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-v1", "target": {"expr": "main"}, "name": "get-release fixture", "body": "body **bold**", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "includeHtml": true}},
+    {"method": "GetReleaseByTag",
+     "setup": [{"call": "ReleaseService/CreateRelease", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-by-tag-v1", "target": {"expr": "main"}, "name": "get-release-by-tag fixture", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-by-tag-v1"}},
+    {"method": "GetLatestRelease",
+     "setup": [{"call": "ReleaseService/CreateRelease", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-latest-release-v1", "target": {"expr": "main"}, "name": "get-latest-release fixture", "makeLatest": "RELEASE_MAKE_LATEST_TRUE"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "ListReleases",
+     "request": {"repo": {"fullName": "{{repo}}"}, "includeDrafts": true, "includePrereleases": true, "page": {"pageSize": 50}}},
+    {"method": "UpdateRelease",
+     "setup": [{"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "update-release-v1", "target": {"expr": "main"}, "name": "update-release fixture", "draft": true}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "expectedVersion": "{{r.version}}", "name": "update-release fixture (renamed)", "body": "updated body", "prerelease": true}},
+    {"method": "DeleteRelease",
+     "setup": [{"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "delete-release-v1", "target": {"expr": "main"}, "name": "delete-release fixture", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "deleteTag": true}},
+    {"method": "PublishRelease",
+     "setup": [{"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "publish-release-v1", "target": {"expr": "main"}, "name": "publish-release fixture", "draft": true}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}},
+    {"method": "GenerateReleaseNotes",
+     "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "generate-release-notes-v1", "target": {"expr": "main"}, "previousTagName": "create-release-v1"}},
+    {"method": "GetReleaseAttestation",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-attestation-v1", "target": {"expr": "main"}, "name": "get-release-attestation fixture", "draft": true, "immutable": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "attest.tar.gz", "contentType": "application/gzip", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}},
+       {"call": "ReleaseService/PublishRelease", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}"},
+     "expect": "NOT_FOUND",
+     "note": "Attestations are written only by a release-signing worker (Releases::record_attestation), which nothing in bee-server --dev runs (the only caller is a forge unit test), so a published release's attestation stays NOT_FOUND/attestation_pending on a single dev server."},
+    {"method": "BeginReleaseAssetUpload",
+     "setup": [{"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "begin-release-asset-upload-v1", "target": {"expr": "main"}, "name": "begin-release-asset-upload fixture", "draft": true}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "begin-upload.bin", "label": "Binary", "contentType": "application/octet-stream", "size": "5"}},
+    {"method": "FinalizeReleaseAsset",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "finalize-release-asset-v1", "target": {"expr": "main"}, "name": "finalize-release-asset fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "finalize.bin", "size": "5"}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}},
+    {"method": "ListReleaseAssets",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "list-release-assets-v1", "target": {"expr": "main"}, "name": "list-release-assets fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "list.bin", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "page": {"pageSize": 10}}},
+    {"method": "GetReleaseAsset",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-asset-v1", "target": {"expr": "main"}, "name": "get-release-asset fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "get.bin", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}"}},
+    {"method": "UpdateReleaseAsset",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "update-release-asset-v1", "target": {"expr": "main"}, "name": "update-release-asset fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "update.bin", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "name": "update-renamed.bin", "label": "Renamed binary"}},
+    {"method": "DeleteReleaseAsset",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "delete-release-asset-v1", "target": {"expr": "main"}, "name": "delete-release-asset fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "delete.bin", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}"}},
+    {"method": "GetReleaseAssetDownloadUrl",
+     "setup": [
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "tagName": "get-release-asset-download-url-v1", "target": {"expr": "main"}, "name": "get-release-asset-download-url fixture", "draft": true}},
+       {"call": "ReleaseService/BeginReleaseAssetUpload", "save": "a", "request": {"repo": {"fullName": "{{repo}}"}, "releaseId": "{{r.id}}", "name": "download.bin", "size": "5"}},
+       {"call": "ReleaseService/FinalizeReleaseAsset", "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}", "sha256": "LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="}}
+     ],
+     "request": {"repo": {"fullName": "{{repo}}"}, "assetId": "{{a.assetId}}"}},
+    {"method": "GetSourceArchiveUrl",
+     "request": {"repo": {"fullName": "{{repo}}"}, "at": {"expr": "main"}, "format": "SOURCE_ARCHIVE_FORMAT_TAR_GZ", "prefix": "playground-src"}},
+    {"method": "ListRepoTags",
+     "request": {"repo": {"fullName": "{{repo}}"}, "prefix": "create-release", "page": {"pageSize": 20}}},
+    {"method": "GetRepoTag",
+     "setup": [{"call": "ReleaseService/CreateRepoTag", "request": {"repo": {"fullName": "{{repo}}"}, "name": "get-repo-tag-v1", "target": {"expr": "main"}, "message": "get-repo-tag fixture"}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "get-repo-tag-v1"}},
+    {"method": "CreateRepoTag",
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "create-repo-tag-v1", "target": {"expr": "{{base.id}}"}, "message": "create-repo-tag fixture"}},
+    {"method": "DeleteRepoTag",
+     "setup": [{"call": "ReleaseService/CreateRepoTag", "save": "t", "request": {"repo": {"fullName": "{{repo}}"}, "name": "delete-repo-tag-v1", "target": {"expr": "main"}}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "name": "delete-repo-tag-v1", "expectedVersion": "{{t.refVersion}}"}},
+    {"method": "LinkReleaseDiscussion",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "link-release-discussion", "visibility": "VISIBILITY_PRIVATE", "description": "repo with discussions for the LinkReleaseDiscussion fixture", "autoInit": true}},
+       {"call": "RepoService/UpdateRepoSettings", "request": {"repo": {"fullName": "{{org}}/link-release-discussion"}, "hasDiscussions": true}},
+       {"call": "DiscussionService/CreateDiscussionCategory", "save": "c", "request": {"repo": {"fullName": "{{org}}/link-release-discussion"}, "name": "link-release-discussion-announcements", "description": "release announcements", "format": "DISCUSSION_CATEGORY_FORMAT_ANNOUNCEMENT"}},
+       {"call": "ReleaseService/CreateRelease", "save": "r", "request": {"repo": {"fullName": "{{org}}/link-release-discussion"}, "tagName": "link-release-discussion-v1", "target": {"expr": "main"}, "name": "link-release-discussion fixture", "body": "release notes", "makeLatest": "RELEASE_MAKE_LATEST_FALSE"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/link-release-discussion"}, "releaseId": "{{r.id}}", "discussionCategoryId": "{{c.id}}"}}
+  ]
+}

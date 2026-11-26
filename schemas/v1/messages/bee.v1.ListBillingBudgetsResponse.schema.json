@@ -1,0 +1,165 @@
+{
+  "$defs": {
+    "bee.v1.BillingBudget": {
+      "description": "A spending budget with alerts and an optional hard stop.",
+      "properties": {
+        "alertRecipientIds": {
+          "description": "principals notified at each threshold",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "alertThresholdPercents": {
+          "description": "e.g. 75, 90, 100",
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "hardStop": {
+          "description": "block further usage at 100% (QUOTA_EXCEEDED)",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "monthlyAmountMicroUsd": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "product": {
+          "$ref": "#/$defs/bee.v1.BillingProduct",
+          "description": "UNSPECIFIED = all metered products"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.EnterpriseScope"
+        },
+        "spentMicroUsd": {
+          "description": "this month so far",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/bee.v1.BillingBudgetTarget"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.BillingBudget",
+      "type": "object"
+    },
+    "bee.v1.BillingBudgetTarget": {
+      "description": "What a billing budget applies to.\n\nOneof `target`: at most one of `account`, `org`, `repo`, `costCenterId` is set.",
+      "properties": {
+        "account": {
+          "description": "the whole account",
+          "type": "boolean"
+        },
+        "costCenterId": {
+          "type": "string"
+        },
+        "org": {
+          "description": "one org of an enterprise",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.BillingBudgetTarget",
+      "type": "object"
+    },
+    "bee.v1.BillingProduct": {
+      "description": "A metered product.",
+      "enum": [
+        "BILLING_PRODUCT_UNSPECIFIED",
+        "BILLING_PRODUCT_ACTIONS_MINUTES",
+        "BILLING_PRODUCT_STORAGE_GB",
+        "BILLING_PRODUCT_WORKSPACES_HOURS",
+        "BILLING_PRODUCT_AGENT_TOKENS",
+        "BILLING_PRODUCT_PACKAGES_TRANSFER",
+        "BILLING_PRODUCT_LFS",
+        "BILLING_PRODUCT_SEATS",
+        "BILLING_PRODUCT_MARKETPLACE"
+      ],
+      "title": "bee.v1.BillingProduct",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListBillingBudgetsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListBillingBudgets.",
+  "properties": {
+    "budgets": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.BillingBudget"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListBillingBudgetsResponse",
+  "type": "object"
+}

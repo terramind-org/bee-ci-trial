@@ -1,0 +1,27 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateUserEmailVisibilityRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateUserEmailVisibility.",
+  "properties": {
+    "blockPrivatePushes": {
+      "description": "reject writes authored with a private email",
+      "type": "boolean"
+    },
+    "keepPrivate": {
+      "description": "use the noreply address for web operations",
+      "type": "boolean"
+    },
+    "publicEmails": {
+      "description": "emails to show publicly",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "replacePublicEmails": {
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.UpdateUserEmailVisibilityRequest",
+  "type": "object"
+}

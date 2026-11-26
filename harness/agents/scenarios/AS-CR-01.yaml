@@ -1,0 +1,95 @@
+id: AS-CR-01
+area: "4.13"
+title: Open a CR, get it reviewed by another agent, address suggestions, land via auto-merge
+surfaces: both
+timeout: 2400
+budget: { max_turns: 120 }
+notes: >
+  The reviewer is a second fresh agent of the same runtime, started alongside the author. Main
+  requires one approval (agent approvals count), so the CR can only land once the reviewer
+  approves; auto-merge must be enabled before that approval for the land to be automatic.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        src/units.py: |
+          def km_to_miles(km):
+              return km * 0.621371
+  - name: one approval required on main; agent approvals count
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: review-required
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_ACTIVE
+      conditions: { refNameIncludes: ["~DEFAULT_BRANCH"] }
+      rules: [{ requiredApprovals: { count: 1, agentsMayApprove: true, requireLastPushApproval: true } }]
+  - name: the reviewer agent
+    call: AuthService/CreateAgent
+    request: { display: "reviewer-${run.ns}", runtime: "${run.runtime}", purpose: "code review", org: "${run.ns}" }
+    save: { reviewer: "$" }
+  - name: let reviewer join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${reviewer.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${reviewer.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request: { principalId: "${reviewer.id}", scope: { repos: ["${repo.fullName}"], actions: [read, review], session: "${run.session}/reviewer" } }
+    save: { reviewerToken: token }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, add a function `miles_to_km(miles)` to
+  `src/units.py` (the inverse of `km_to_miles`). Open a change request for it targeting main and
+  ask the agent ${reviewer.display} (principal id ${reviewer.id}) to review it. Address every
+  suggestion the reviewer makes. The change request must land automatically as soon as the
+  reviewer approves it; do not land it by hand.
+peers:
+  - name: reviewer
+    token: "${reviewerToken}"
+    prompt: |
+      You review code in the bee repository ${repo.fullName}. A change request will shortly ask
+      for your review; wait for it (check every half minute for up to twenty minutes). Review it
+      carefully. In your first review, leave at least one concrete suggested code change on a
+      specific line rather than approving straight away (for example a docstring, a clearer name
+      or a shared constant). Then wait for the author to address your suggestions, and approve
+      once they have.
+assertions:
+  - name: the worker's CR landed
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, authorId: "${worker.id}" }
+    retry: { attempts: 12, interval_ms: 5000 }
+    expect:
+      - { path: changes, len: 1 }
+      - { path: "changes[0].state", eq: CHANGE_STATE_LANDED }
+      - { path: "changes[0].revisions", len_gte: 2 }
+    save: { cr: "changes[0]" }
+  - name: the reviewer suggested, then approved the latest revision
+    call: ChangeService/ListReviews
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${cr.id}" }
+    expect:
+      - path: reviews
+        some:
+          - { path: reviewer.id, eq: "${reviewer.id}" }
+          - { path: comments, some: [{ path: suggestion, exists: true }] }
+      - path: reviews
+        some:
+          - { path: reviewer.id, eq: "${reviewer.id}" }
+          - { path: verdict, eq: VERDICT_APPROVE }
+          - { path: stale, absent: true }
+  - name: the land was done by auto-merge, not by hand
+    call: EventService/ListEvents
+    request: { repo: { fullName: "${repo.fullName}" }, kinds: ["cr.*"] }
+    expect:
+      - path: events
+        some:
+          - { path: kind, matches: "auto.?merge" }
+          - { path: principal, eq: "${worker.id}" }
+  - name: main has the function
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/units.py}" }
+    expect:
+      - { path: "messages[*].data", decode: base64, matches: "def miles_to_km\\(" }

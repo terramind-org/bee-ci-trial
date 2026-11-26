@@ -1,0 +1,35 @@
+event: push refs/heads/main
+--- .github/workflows/pipeline.yml
+name: Pipeline
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test VERSION=${{ needs.build.outputs.version }}
+  deploy:
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy ${{ needs.build.outputs.version }}
+  report:
+    needs: [test, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "test=${{ needs.test.result }} deploy=${{ needs.deploy.result }}"
+  rollback:
+    needs: deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./rollback

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/search.parse-search-query.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SearchService/ParseSearchQuery: `data` is a bee.v1.ParseSearchQueryResponse in proto3-JSON. `bee search parse-search-query --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ParseSearchQueryResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.search.parse-search-query"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee search parse-search-query",
+  "type": "object"
+}

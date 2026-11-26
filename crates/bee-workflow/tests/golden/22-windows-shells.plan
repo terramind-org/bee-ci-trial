@@ -1,0 +1,43 @@
+# event push action=-
+run .github/workflows/windows.yml "Windows"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job win decided=true
+    instance "win"
+      runs-on: ["windows-2022"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run Get-ChildItem"
+        run: "Get-ChildItem"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+      step 2 "Run echo $SHELL"
+        run: "echo $SHELL"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 3 "Run dir"
+        run: "dir"
+        shell: cmd -> "%ComSpec% /D /E:ON /V:OFF /S /C \"CALL \"{0}\"\""
+      step 4 "Run Write-Host \"legacy\""
+        run: "Write-Host \"legacy\""
+        shell: powershell -> "powershell -command \". '{0}'\""
+  job win-defaults decided=true
+    instance "win-defaults"
+      runs-on: ["windows-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./bootstrap.sh"
+        run: "./bootstrap.sh"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+        working-directory: "./tools"
+      step 2 "Run python --version"
+        run: "python --version"
+        shell: python -> "python {0}"
+        working-directory: "./py"
+  job linux-sh decided=true
+    instance "linux-sh"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ls -la"
+        run: "ls -la"
+        shell: sh -> "sh -e {0}"

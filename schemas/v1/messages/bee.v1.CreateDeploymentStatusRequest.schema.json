@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "bee.v1.DeploymentState": {
+      "description": "The state carried by a deployment status (GitHub-compatible set).",
+      "enum": [
+        "DEPLOYMENT_STATE_UNSPECIFIED",
+        "DEPLOYMENT_STATE_PENDING",
+        "DEPLOYMENT_STATE_QUEUED",
+        "DEPLOYMENT_STATE_IN_PROGRESS",
+        "DEPLOYMENT_STATE_SUCCESS",
+        "DEPLOYMENT_STATE_FAILURE",
+        "DEPLOYMENT_STATE_ERROR",
+        "DEPLOYMENT_STATE_INACTIVE"
+      ],
+      "title": "bee.v1.DeploymentState",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateDeploymentStatusRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateDeploymentStatus.",
+  "properties": {
+    "autoInactive": {
+      "description": "on SUCCESS, mark older deployments to the same environment inactive",
+      "type": "boolean"
+    },
+    "deploymentId": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "environment": {
+      "description": "may move the deployment to another environment",
+      "type": "string"
+    },
+    "environmentUrl": {
+      "type": "string"
+    },
+    "logUrl": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.DeploymentState"
+    }
+  },
+  "title": "bee.v1.CreateDeploymentStatusRequest",
+  "type": "object"
+}

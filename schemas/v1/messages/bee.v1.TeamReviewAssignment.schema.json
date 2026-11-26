@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "bee.v1.TeamReviewAlgorithm": {
+      "description": "How a review request to a team is turned into individual reviewers.",
+      "enum": [
+        "TEAM_REVIEW_ALGORITHM_UNSPECIFIED",
+        "TEAM_REVIEW_ALGORITHM_ROUND_ROBIN",
+        "TEAM_REVIEW_ALGORITHM_LOAD_BALANCE"
+      ],
+      "title": "bee.v1.TeamReviewAlgorithm",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.TeamReviewAssignment.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A team's automatic review assignment settings.",
+  "properties": {
+    "algorithm": {
+      "$ref": "#/$defs/bee.v1.TeamReviewAlgorithm"
+    },
+    "countChildTeamMembers": {
+      "description": "child team members are eligible",
+      "type": "boolean"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "excludedMemberIds": {
+      "description": "never assigned",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "memberCount": {
+      "description": "reviewers assigned per request",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "notifyTeam": {
+      "description": "also notify the whole team, not only the assignees",
+      "type": "boolean"
+    },
+    "skipAgents": {
+      "description": "assign only human members",
+      "type": "boolean"
+    },
+    "teamId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.TeamReviewAssignment",
+  "type": "object"
+}

@@ -1,0 +1,99 @@
+id: AS-CR-03
+area: "4.13"
+title: Work a five-CR stack through review and the merge queue
+surfaces: both
+timeout: 3000
+budget: { max_turns: 150 }
+notes: >
+  Main requires the merge queue and one approval, so a direct land is refused and every CR has
+  to be approved by the reviewer peer and go through the queue.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        shop/__init__.py: ""
+  - name: merge queue and one approval on main
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: queue-and-review
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_ACTIVE
+      conditions: { refNameIncludes: ["~DEFAULT_BRANCH"] }
+      rules:
+        - { requiredApprovals: { count: 1, agentsMayApprove: true } }
+        - { mergeQueue: { maxEntriesToMerge: 5, minEntriesToMerge: 1 } }
+    save: { ruleset: "$" }
+  - name: the reviewer agent
+    call: AuthService/CreateAgent
+    request: { display: "queue-reviewer-${run.ns}", runtime: "${run.runtime}", purpose: "code review", org: "${run.ns}" }
+    save: { reviewer: "$" }
+  - name: let reviewer join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${reviewer.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${reviewer.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request: { principalId: "${reviewer.id}", scope: { repos: ["${repo.fullName}"], actions: [read, review] } }
+    save: { reviewerToken: token }
+agent:
+  token: "${workerToken}"
+prompt: |
+  In the bee repository ${repo.fullName}, build a small shopping-cart module as a stack of five
+  change requests, each building on the previous one:
+
+  1. `shop/money.py`: a `Money` value type (integer cents);
+  2. `shop/item.py`: an `Item` with a name and a `Money` price;
+  3. `shop/cart.py`: a `Cart` that can add and remove items;
+  4. `shop/totals.py`: the cart total;
+  5. `shop/discounts.py`: a percentage discount applied to the total.
+
+  Ask ${reviewer.display} (principal id ${reviewer.id}) to review each one, and get the whole
+  stack landed on main through the merge queue.
+peers:
+  - name: reviewer
+    token: "${reviewerToken}"
+    prompt: |
+      You review code in the bee repository ${repo.fullName}. Over the next half hour, change
+      requests will ask for your review. Keep checking every half minute. Review each one and
+      approve it if it is correct; if it is not, request changes and re-review after the author
+      updates it. Stop once you have approved five change requests.
+assertions:
+  - name: five CRs by the worker landed, stacked
+    call: ChangeService/ListChanges
+    request: { repo: { fullName: "${repo.fullName}" }, state: CHANGE_STATE_LANDED, authorId: "${worker.id}" }
+    retry: { attempts: 20, interval_ms: 6000 }
+    expect:
+      - { path: changes, len: 5 }
+      - path: changes
+        count_gte: 4
+        where:
+          - { path: dependsOn, truthy: true }
+    save: { landedIds: "changes[*].id" }
+  - name: each was approved by the reviewer
+    call: ChangeService/ListReviews
+    each: "${landedIds}"
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${item}" }
+    expect:
+      - path: reviews
+        some:
+          - { path: reviewer.id, eq: "${reviewer.id}" }
+          - { path: verdict, eq: VERDICT_APPROVE }
+  - name: the queue rule was in force the whole time
+    call: PolicyService/GetRuleset
+    request: { rulesetId: "${ruleset.id}" }
+    expect:
+      - { path: enforcement, eq: RULESET_ENFORCEMENT_ACTIVE }
+      - { path: "rules[*].mergeQueue", len: 1 }
+  - name: all five files are on main
+    call: QueryService/ListTree
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:shop}" }
+    expect:
+      - { path: "entries[*].path", decode: base64, matches: "(^|/)money\\.py$" }
+      - { path: "entries[*].path", decode: base64, matches: "(^|/)item\\.py$" }
+      - { path: "entries[*].path", decode: base64, matches: "(^|/)cart\\.py$" }
+      - { path: "entries[*].path", decode: base64, matches: "(^|/)totals\\.py$" }
+      - { path: "entries[*].path", decode: base64, matches: "(^|/)discounts\\.py$" }

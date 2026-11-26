@@ -1,0 +1,29 @@
+# End-to-end check of the production Docker Compose stack (deploy/compose.yml): builds both
+# images, starts Postgres, S3, the server and the web app, and drives them with the CLI, git and
+# HTTP, including a backup, a restore into a fresh stack and a restart (scripts/check-selfhost.sh).
+name: selfhost
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selfhost-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selfhost-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the production compose stack
+        env:
+          CI: "true"
+          # The hosted runner has 4 CPUs and 16 GiB: compile with all of them.
+          BEE_CHECK_CARGO_BUILD_JOBS: "4"
+        run: scripts/check-selfhost.sh

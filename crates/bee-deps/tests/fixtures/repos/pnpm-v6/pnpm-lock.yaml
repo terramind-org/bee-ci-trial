@@ -1,0 +1,30 @@
+lockfileVersion: '6.0'
+
+dependencies:
+  '@babel/core':
+    specifier: 7.23.0
+    version: 7.23.0(supports-color@8.1.1)
+
+devDependencies:
+  rimraf:
+    specifier: ^5.0.0
+    version: 5.0.5
+
+packages:
+
+  /@babel/core@7.23.0(supports-color@8.1.1):
+    resolution: {integrity: sha512-cccc}
+    engines: {node: '>=6.9.0'}
+    dependencies:
+      semver: 6.3.1
+    dev: false
+
+  /rimraf@5.0.5:
+    resolution: {integrity: sha512-dddd}
+    hasBin: true
+    dev: true
+
+  /semver@6.3.1:
+    resolution: {integrity: sha512-eeee}
+    hasBin: true
+    dev: false

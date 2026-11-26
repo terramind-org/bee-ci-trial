@@ -1,0 +1,20 @@
+[package]
+name = "bee-store"
+description = "Storage traits for metadata (refs, changesets, indexes) and blobs, plus write-ordering rules."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+async-trait = "=0.1.92"
+tokio = { version = "=1.53.3", features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "=1.53.3", features = ["time", "rt", "rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

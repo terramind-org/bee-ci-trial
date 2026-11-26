@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/security.request-code-scanning-autofix.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SecurityService/RequestCodeScanningAutofix: `data` is a bee.v1.RequestCodeScanningAutofixResponse in proto3-JSON. `bee security request-code-scanning-autofix --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.RequestCodeScanningAutofixResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.security.request-code-scanning-autofix"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee security request-code-scanning-autofix",
+  "type": "object"
+}

@@ -1,0 +1,11 @@
+feature_id,test
+F413-043,web:e2e/brief.spec.ts::brief tab answers outcome, status and needs you first
+F413-045,web:e2e/brief.spec.ts::sources are labelled and stale evidence is flagged
+F414-037,web:e2e/runs.spec.ts::a failed run opens with a What happened summary in words
+F424-006,web:e2e/brief.spec.ts::brief tab answers outcome, status and needs you first
+F424-006,web:e2e/brief.spec.ts::before and after slider works with the keyboard
+F424-006,web:e2e/brief.spec.ts::video loads on demand with captions
+F424-006,web:e2e/brief.spec.ts::change.md returns the brief, evidence and full diff
+F424-007,web:e2e/queue.spec.ts::groups changes in a fixed order, each change once
+F424-007,web:e2e/queue.spec.ts::a row shows the outcome line and the hero thumbnail from the brief
+F424-008,web:e2e/brief.spec.ts::before and after slider works with the keyboard

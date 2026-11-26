@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ResolveGitSshKeyResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ResolveGitSshKey.",
+  "properties": {
+    "deployKey": {
+      "description": "a repo deploy key, limited to `repo`",
+      "type": "boolean"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "keyId": {
+      "type": "string"
+    },
+    "principal": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "readOnly": {
+      "type": "boolean"
+    },
+    "sessionToken": {
+      "description": "short-lived Biscuit for the rest of the SSH session",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ResolveGitSshKeyResponse",
+  "type": "object"
+}

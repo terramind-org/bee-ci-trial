@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/project.delete-project-field.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ProjectService/DeleteProjectField: `data` is a bee.v1.DeleteProjectFieldResponse in proto3-JSON. `bee project delete-project-field --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteProjectFieldResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.project.delete-project-field"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee project delete-project-field",
+  "type": "object"
+}

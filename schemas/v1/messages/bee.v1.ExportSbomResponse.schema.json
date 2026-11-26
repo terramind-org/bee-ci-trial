@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.SbomFormat": {
+      "description": "SBOM document format.",
+      "enum": [
+        "SBOM_FORMAT_UNSPECIFIED",
+        "SBOM_FORMAT_SPDX_JSON",
+        "SBOM_FORMAT_CYCLONEDX_JSON"
+      ],
+      "title": "bee.v1.SbomFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ExportSbomResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ExportSbom.\n\nOneof `body`: at most one of `document`, `signedUrl` is set.",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "document": {
+      "description": "JSON document",
+      "type": "string"
+    },
+    "format": {
+      "$ref": "#/$defs/bee.v1.SbomFormat"
+    },
+    "signedUrl": {
+      "type": "string"
+    },
+    "urlExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ExportSbomResponse",
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/enterprise.add-enterprise-org.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.EnterpriseService/AddEnterpriseOrg: `data` is a bee.v1.EnterpriseOrg in proto3-JSON. `bee enterprise add-enterprise-org --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.EnterpriseOrg.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.enterprise.add-enterprise-org"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee enterprise add-enterprise-org",
+  "type": "object"
+}

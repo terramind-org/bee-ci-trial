@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/user.begin-user-avatar-upload.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.UserService/BeginUserAvatarUpload: `data` is a bee.v1.BeginUserAvatarUploadResponse in proto3-JSON. `bee user begin-user-avatar-upload --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BeginUserAvatarUploadResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.user.begin-user-avatar-upload"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee user begin-user-avatar-upload",
+  "type": "object"
+}

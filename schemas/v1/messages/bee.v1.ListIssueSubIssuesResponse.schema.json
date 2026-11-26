@@ -1,0 +1,159 @@
+{
+  "$defs": {
+    "bee.v1.IssueState": {
+      "description": "Open or closed.",
+      "enum": [
+        "ISSUE_STATE_UNSPECIFIED",
+        "ISSUE_STATE_OPEN",
+        "ISSUE_STATE_CLOSED"
+      ],
+      "title": "bee.v1.IssueState",
+      "type": "string"
+    },
+    "bee.v1.IssueStateReason": {
+      "description": "Why an issue is in its current state.",
+      "enum": [
+        "ISSUE_STATE_REASON_UNSPECIFIED",
+        "ISSUE_STATE_REASON_COMPLETED",
+        "ISSUE_STATE_REASON_NOT_PLANNED",
+        "ISSUE_STATE_REASON_DUPLICATE",
+        "ISSUE_STATE_REASON_REOPENED"
+      ],
+      "title": "bee.v1.IssueStateReason",
+      "type": "string"
+    },
+    "bee.v1.IssueSubIssueProgress": {
+      "description": "Progress of an issue's direct and nested sub-issues.",
+      "properties": {
+        "completed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "percentCompleted": {
+          "description": "0..100, over all descendants",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.IssueSubIssueProgress",
+      "type": "object"
+    },
+    "bee.v1.IssueSummary": {
+      "description": "Short identity of a related issue, returned inside other resources.",
+      "properties": {
+        "assignees": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Principal"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issueTypeName": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.IssueState"
+        },
+        "stateReason": {
+          "$ref": "#/$defs/bee.v1.IssueStateReason"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.IssueSummary",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListIssueSubIssuesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListIssueSubIssues.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "progress": {
+      "$ref": "#/$defs/bee.v1.IssueSubIssueProgress"
+    },
+    "subIssues": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.IssueSummary"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListIssueSubIssuesResponse",
+  "type": "object"
+}

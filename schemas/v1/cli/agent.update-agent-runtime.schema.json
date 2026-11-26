@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/agent.update-agent-runtime.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AgentService/UpdateAgentRuntime: `data` is a bee.v1.AgentRuntime in proto3-JSON. `bee agent update-agent-runtime --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.AgentRuntime.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.agent.update-agent-runtime"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee agent update-agent-runtime",
+  "type": "object"
+}

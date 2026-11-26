@@ -1,0 +1,117 @@
+{
+  "service": "bee.v1.PackageService",
+  "note": "A package comes into existence at BeginPackageUpload (the first publish creates it), so package-level fixtures begin an npm upload of their own package in setup. A version only exists once its file bytes were PUT to the signed upload URL and FinalizePackageVersion verified them. bee-server hands out those URLs at <server>/pkg/... but serves no /pkg/ route (the upload step gets HTTP 404), so no version can be published and the version-level fixtures pin the error a well-formed request gets.",
+  "fixtures": [
+    {"method": "ListPackages",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-packages-fixture", "version": "1.0.0", "files": [{"name": "list-packages-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}], "metadataJson": "{\"name\":\"list-packages-fixture\",\"version\":\"1.0.0\"}", "linkRepo": {"fullName": "{{repo}}"}}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "repo": {"fullName": "{{repo}}"}, "page": {"pageSize": 50}}},
+    {"method": "GetPackage",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-fixture", "version": "1.0.0", "files": [{"name": "get-package-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}], "metadataJson": "{\"name\":\"get-package-fixture\",\"version\":\"1.0.0\"}"}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-fixture"}},
+    {"method": "UpdatePackage",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "update-package-fixture", "version": "1.0.0", "files": [{"name": "update-package-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}], "linkRepo": {"fullName": "{{repo}}"}}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "update-package-fixture", "description": "updated by the UpdatePackage fixture", "inheritAccessFromRepo": true}},
+    {"method": "DeletePackage",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "delete-package-fixture", "version": "1.0.0", "files": [{"name": "delete-package-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "delete-package-fixture"}},
+    {"method": "RestorePackage",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-fixture", "version": "1.0.0", "files": [{"name": "restore-package-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}},
+       {"call": "PackageService/DeletePackage", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-fixture"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-fixture"}},
+    {"method": "SetPackageVisibility",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "set-package-visibility-fixture", "version": "1.0.0", "files": [{"name": "set-package-visibility-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}], "visibility": "PACKAGE_VISIBILITY_PRIVATE"}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "set-package-visibility-fixture", "visibility": "PACKAGE_VISIBILITY_INTERNAL"}},
+    {"method": "LinkPackageToRepo",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "link-package-to-repo-fixture", "version": "1.0.0", "files": [{"name": "link-package-to-repo-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "link-package-to-repo-fixture", "repo": {"fullName": "{{repo}}"}}},
+    {"method": "UnlinkPackageFromRepo",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "unlink-package-from-repo-fixture", "version": "1.0.0", "files": [{"name": "unlink-package-from-repo-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}], "linkRepo": {"fullName": "{{repo}}"}}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "unlink-package-from-repo-fixture"}},
+    {"method": "ListPackageAccessGrants",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-package-access-grants-fixture", "version": "1.0.0", "files": [{"name": "list-package-access-grants-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}},
+       {"call": "PackageService/GrantPackageAccess", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-package-access-grants-fixture", "kind": "PACKAGE_GRANTEE_KIND_REPO", "granteeRepo": {"fullName": "{{repo}}"}, "role": "PACKAGE_ROLE_READ"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-package-access-grants-fixture", "page": {"pageSize": 20}}},
+    {"method": "GrantPackageAccess",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "grant-package-access-fixture", "version": "1.0.0", "files": [{"name": "grant-package-access-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "grant-package-access-fixture", "kind": "PACKAGE_GRANTEE_KIND_REPO", "granteeRepo": {"fullName": "{{repo}}"}, "role": "PACKAGE_ROLE_WRITE"}},
+    {"method": "RevokePackageAccess",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "revoke-package-access-fixture", "version": "1.0.0", "files": [{"name": "revoke-package-access-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}]}},
+       {"call": "PackageService/GrantPackageAccess", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "revoke-package-access-fixture", "kind": "PACKAGE_GRANTEE_KIND_REPO", "granteeRepo": {"fullName": "{{repo}}"}, "role": "PACKAGE_ROLE_READ"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "revoke-package-access-fixture", "kind": "PACKAGE_GRANTEE_KIND_REPO", "granteeRepo": {"fullName": "{{repo}}"}}},
+    {"method": "ListPackageVersions",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-package-versions-fixture", "version": "1.0.0", "files": [{"name": "list-package-versions-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}]}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}", "tags": ["latest"]}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "list-package-versions-fixture", "includeDeleted": true, "page": {"pageSize": 20}}},
+    {"method": "GetPackageVersion",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-version-fixture", "version": "1.0.0", "files": [{"name": "get-package-version-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}], "metadataJson": "{\"name\":\"get-package-version-fixture\",\"version\":\"1.0.0\"}"}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}", "tags": ["latest"]}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-version-fixture", "version": "1.0.0", "includeDownloadUrls": true}},
+    {"method": "DeletePackageVersion",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "delete-package-version-fixture", "version": "1.0.0", "files": [{"name": "delete-package-version-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}]}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "delete-package-version-fixture", "version": "1.0.0"}},
+    {"method": "RestorePackageVersion",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-version-fixture", "version": "1.0.0", "files": [{"name": "restore-package-version-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}]}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "save": "v", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}"}},
+       {"call": "PackageService/DeletePackageVersion", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-version-fixture", "version": "1.0.0"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "restore-package-version-fixture", "versionId": "{{v.id}}"}},
+    {"method": "SetPackageVersionTags",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "set-package-version-tags-fixture", "version": "1.0.0", "files": [{"name": "set-package-version-tags-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}]}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "set-package-version-tags-fixture", "version": "1.0.0", "tags": ["latest", "stable"]}},
+    {"method": "GetPackageVersionProvenance",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-version-provenance-fixture", "version": "1.0.0", "files": [{"name": "get-package-version-provenance-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}], "linkRepo": {"fullName": "{{repo}}"}}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-version-provenance-fixture", "version": "1.0.0"}, "expect": "NOT_FOUND", "note": "A version has provenance only when a workflow publishes it with an attestation (the job token's OIDC identity); a version published by a user has none, so the published version answers NOT_FOUND."},
+    {"method": "BeginPackageUpload",
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "begin-package-upload-fixture", "version": "1.0.0", "files": [{"name": "begin-package-upload-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}], "metadataJson": "{\"name\":\"begin-package-upload-fixture\",\"version\":\"1.0.0\"}", "linkRepo": {"fullName": "{{repo}}"}, "visibility": "PACKAGE_VISIBILITY_PRIVATE"}},
+    {"method": "FinalizePackageVersion",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "finalize-package-version-fixture", "version": "1.0.0", "files": [{"name": "finalize-package-version-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}], "metadataJson": "{\"name\":\"finalize-package-version-fixture\",\"version\":\"1.0.0\"}"}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}}
+     ],
+     "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}", "tags": ["latest"]}},
+    {"method": "GetPackageUsage",
+     "setup": [
+       {"call": "PackageService/BeginPackageUpload", "save": "b", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-usage-fixture", "version": "1.0.0", "files": [{"name": "get-package-usage-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "mediaType": "application/octet-stream"}]}},
+       {"upload": {"url": "{{b.targets.0.uploadUrl}}", "text": "hello", "headers": {"Content-Type": "application/octet-stream"}}},
+       {"call": "PackageService/FinalizePackageVersion", "request": {"owner": "{{org}}", "uploadId": "{{b.uploadId}}"}}
+     ],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-usage-fixture", "since": "2020-01-01T00:00:00Z"}},
+    {"method": "GetPackageRetentionPolicy",
+     "setup": [{"call": "PackageService/BeginPackageUpload", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-retention-policy-fixture", "version": "1.0.0", "files": [{"name": "get-package-retention-policy-fixture-1.0.0.tgz", "sizeBytes": "5", "digest": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}], "metadataJson": "{\"name\":\"get-package-retention-policy-fixture\",\"version\":\"1.0.0\"}"}},
+               {"call": "PackageService/SetPackageRetentionPolicy", "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-retention-policy-fixture", "keepLast": 5, "untaggedDays": 30, "olderThanDays": 365}}],
+     "request": {"owner": "{{org}}", "ecosystem": "PACKAGE_ECOSYSTEM_NPM", "name": "get-package-retention-policy-fixture"}},
+    {"method": "SetPackageRetentionPolicy",
+     "setup": [{"call": "OrgService/CreateOrg", "request": {"name": "set-package-retention-policy-fixture-org", "display": "SetPackageRetentionPolicy fixture org"}}],
+     "request": {"owner": "set-package-retention-policy-fixture-org", "keepLast": 10, "untaggedDays": 14, "olderThanDays": 180}},
+    {"method": "GetPackageOwnerSettings", "request": {"owner": "{{org}}"}},
+    {"method": "UpdatePackageOwnerSettings",
+     "setup": [{"call": "OrgService/CreateOrg", "request": {"name": "update-package-owner-settings-fixture-org", "display": "UpdatePackageOwnerSettings fixture org"}}],
+     "request": {"owner": "update-package-owner-settings-fixture-org", "forbidPublic": true, "storageQuotaBytes": "1073741824"}}
+  ]
+}

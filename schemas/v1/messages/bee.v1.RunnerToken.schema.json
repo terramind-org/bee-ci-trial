@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RunnerToken.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A short-lived runner registration or removal token.",
+  "properties": {
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "token": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RunnerToken",
+  "type": "object"
+}

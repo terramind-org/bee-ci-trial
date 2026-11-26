@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "bee.v1.AccessClass": {
+      "description": "Whether an object is readable by every repo reader or only by principals allowed on a\nrestricted path (SPEC §9.3, §10.2).",
+      "enum": [
+        "ACCESS_CLASS_UNSPECIFIED",
+        "ACCESS_CLASS_ROOT",
+        "ACCESS_CLASS_RESTRICTED"
+      ],
+      "title": "bee.v1.AccessClass",
+      "type": "string"
+    },
+    "bee.v1.ItemStatus": {
+      "description": "Per-item outcome in a batch read; one failed item never fails the batch.",
+      "enum": [
+        "ITEM_STATUS_UNSPECIFIED",
+        "ITEM_STATUS_OK",
+        "ITEM_STATUS_NOT_FOUND",
+        "ITEM_STATUS_PERMISSION_DENIED",
+        "ITEM_STATUS_REDACTED"
+      ],
+      "title": "bee.v1.ItemStatus",
+      "type": "string"
+    },
+    "bee.v1.ObjectEncoding": {
+      "description": "Byte encoding of object data on the wire.",
+      "enum": [
+        "OBJECT_ENCODING_UNSPECIFIED",
+        "OBJECT_ENCODING_RAW",
+        "OBJECT_ENCODING_ZSTD"
+      ],
+      "title": "bee.v1.ObjectEncoding",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ObjectChunk.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accessClass": {
+      "$ref": "#/$defs/bee.v1.AccessClass",
+      "description": "lets caches decide who may be served from cache"
+    },
+    "data": {
+      "contentEncoding": "base64",
+      "description": "bytes in `encoding`; the decoded bytes are verified against id",
+      "type": "string"
+    },
+    "encoding": {
+      "$ref": "#/$defs/bee.v1.ObjectEncoding"
+    },
+    "errorReason": {
+      "description": "per-object failure, e.g. REDACTED, PERMISSION_DENIED",
+      "type": "string"
+    },
+    "id": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "last": {
+      "type": "boolean"
+    },
+    "offset": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "signedUrl": {
+      "description": "Set instead of data when allow_signed_urls was requested (SPEC §10.5). Verify bytes against id.",
+      "type": "string"
+    },
+    "signedUrlExpiresUnix": {
+      "format": "int64",
+      "pattern": "^-?[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.ItemStatus",
+      "description": "typed form of error_reason; OK for served objects"
+    },
+    "totalSize": {
+      "description": "decoded size of the whole object",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.ObjectChunk",
+  "type": "object"
+}

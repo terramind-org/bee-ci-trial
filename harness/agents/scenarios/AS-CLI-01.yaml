@@ -1,0 +1,80 @@
+id: AS-CLI-01
+area: "4.7"
+title: Using only --help, find, review and land an open change request
+surfaces: cli
+timeout: 900
+budget: { max_turns: 60 }
+requires: ["bin:bee"]
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Seed"
+      files:
+        src/strings.py: |
+          def shout(s: str) -> str:
+              return s.upper()
+  - name: register the author agent
+    call: AuthService/CreateAgent
+    request: { display: "author-${run.ns}", runtime: codex, purpose: "feature work", org: "${run.ns}" }
+    save: { author: "$" }
+  - name: let author join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${author.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${author.id}", role: REPO_ROLE_WRITE }
+  - call: AuthService/MintToken
+    request: { principalId: "${author.id}", scope: { repos: ["${repo.fullName}"], actions: [read, commit, manage_refs] } }
+    save: { authorToken: token }
+  - name: an already landed CR, as noise
+    commit: { repo: "${repo.fullName}", ref: main, message: "Add whisper", files: { src/whisper.py: "def whisper(s):\n    return s.lower()\n" } }
+  - name: the open CR, with a review requested from the worker
+    commit:
+      repo: "${repo.fullName}"
+      ref: main
+      as: "${authorToken}"
+      land: false
+      ref_name: ws/trim
+      change: trim
+      message: "Trim before shouting"
+      files:
+        src/strings.py: |
+          def shout(s: str) -> str:
+              return s.strip().upper()
+    save: head
+  - call: ChangeService/OpenChange
+    as: "${authorToken}"
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      targetRef: main
+      head: "${head.id}"
+      title: "Trim whitespace before shouting"
+      body: "`shout('  hi ')` returned `'  HI '`; it should return `'HI'`."
+      reviewerIds: ["${worker.id}"]
+    save: { cr: "$" }
+agent:
+  token: "${workerToken}"
+prompt: |
+  There is an open change request waiting for your review in the bee repository
+  ${repo.fullName}. Find it, review it (approve it if it is correct), and land it. Use the
+  `bee` command-line tool; its help output is your documentation.
+assertions:
+  - name: the worker approved the CR
+    call: ChangeService/ListReviews
+    request: { repo: { fullName: "${repo.fullName}" }, changeRequestId: "${cr.id}" }
+    expect:
+      - path: reviews
+        some:
+          - { path: reviewer.id, eq: "${worker.id}" }
+          - { path: verdict, eq: VERDICT_APPROVE }
+  - name: the CR landed
+    call: ChangeService/GetChange
+    request: { repo: { fullName: "${repo.fullName}" }, id: "${cr.id}" }
+    expect:
+      - { path: state, eq: CHANGE_STATE_LANDED }
+  - name: main has the change
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:src/strings.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, contains: "s.strip().upper()" }

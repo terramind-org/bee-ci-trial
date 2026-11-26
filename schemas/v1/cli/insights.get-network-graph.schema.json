@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/insights.get-network-graph.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.InsightsService/GetNetworkGraph: `data` is a bee.v1.GetNetworkGraphResponse in proto3-JSON. `bee insights get-network-graph --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.GetNetworkGraphResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.insights.get-network-graph"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee insights get-network-graph",
+  "type": "object"
+}

@@ -1,0 +1,17 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateAppFromManifestRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateAppFromManifest.",
+  "properties": {
+    "manifestJson": {
+      "description": "App manifest as JSON: name, url, hook_attributes, redirect_url, callback_urls, setup_url,\npublic, default_permissions (resource -> \"read\"|\"write\"|\"admin\"), default_events.",
+      "type": "string"
+    },
+    "org": {
+      "description": "owning org; empty = the caller's user account",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateAppFromManifestRequest",
+  "type": "object"
+}

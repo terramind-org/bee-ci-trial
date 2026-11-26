@@ -1,0 +1,975 @@
+{
+  "service": "bee.v1.DiscussionService",
+  "note": "Every fixture works in dev/discussion-fixtures, a repo the first fixture creates with discussions enabled (so dev/playground's settings stay untouched), with shared categories fx-open, fx-qa and fx-poll and labels disc-label-a/b.",
+  "fixtures": [
+    {
+      "method": "CreateDiscussionCategory",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "discussion-fixtures",
+            "visibility": "VISIBILITY_PUBLIC",
+            "description": "discussion fixtures home",
+            "autoInit": true
+          }
+        },
+        {
+          "call": "RepoService/UpdateRepoSettings",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "hasDiscussions": true
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionCategory",
+          "save": "o",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "fx-open",
+            "emoji": ":speech_balloon:",
+            "description": "fx-open",
+            "format": "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionCategory",
+          "save": "q",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "fx-qa",
+            "emoji": ":speech_balloon:",
+            "description": "fx-qa",
+            "format": "DISCUSSION_CATEGORY_FORMAT_QUESTION_ANSWER"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionCategory",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "fx-poll",
+            "emoji": ":speech_balloon:",
+            "description": "fx-poll",
+            "format": "DISCUSSION_CATEGORY_FORMAT_POLL"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "disc-label-a",
+            "color": "1d76db",
+            "description": "a"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "disc-label-b",
+            "color": "0e8a16",
+            "description": "b"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "name": "create-category-fixture",
+        "emoji": ":bulb:",
+        "description": "made by the fixture",
+        "format": "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED",
+        "section": "Fixtures"
+      }
+    },
+    {
+      "method": "UpdateDiscussionCategory",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussionCategory",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "update-category-fixture",
+            "emoji": ":speech_balloon:",
+            "description": "update-category-fixture",
+            "format": "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "categoryId": "{{c.id}}",
+        "name": "update-category-fixture-renamed",
+        "emoji": ":rocket:",
+        "description": "updated",
+        "section": "Fixtures",
+        "expectedVersion": "{{c.version}}"
+      }
+    },
+    {
+      "method": "DeleteDiscussionCategory",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussionCategory",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "name": "delete-category-fixture",
+            "emoji": ":speech_balloon:",
+            "description": "delete-category-fixture",
+            "format": "DISCUSSION_CATEGORY_FORMAT_OPEN_ENDED"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "{{c.id}}",
+            "title": "delete-category-fixture discussion",
+            "body": "delete-category-fixture discussion body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "categoryId": "{{c.id}}",
+        "moveToCategoryId": "fx-open"
+      }
+    },
+    {
+      "method": "ListDiscussionCategories",
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "CreateDiscussion",
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "categoryId": "fx-open",
+        "title": "create-discussion-fixture",
+        "body": "Hello from the fixture",
+        "labels": [
+          "disc-label-a"
+        ]
+      }
+    },
+    {
+      "method": "GetDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "get-discussion-fixture",
+            "body": "get-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "id": "{{d.id}}",
+        "includeHtml": true
+      }
+    },
+    {
+      "method": "GetDiscussionByNumber",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "get-discussion-by-number-fixture",
+            "body": "get-discussion-by-number-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "includeHtml": true
+      }
+    },
+    {
+      "method": "ListDiscussions",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "list-discussions-fixture",
+            "body": "list-discussions-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "categoryId": "fx-open",
+        "includeClosed": true,
+        "sort": "DISCUSSION_SORT_CREATED",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "UpdateDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "update-discussion-fixture",
+            "body": "update-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "title": "update-discussion-fixture-renamed",
+        "body": "edited body",
+        "categoryId": "fx-qa",
+        "expectedVersion": "{{d.version}}"
+      }
+    },
+    {
+      "method": "DeleteDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "delete-discussion-fixture",
+            "body": "delete-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    },
+    {
+      "method": "CloseDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "close-discussion-fixture",
+            "body": "close-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "reason": "DISCUSSION_STATE_REASON_OUTDATED"
+      }
+    },
+    {
+      "method": "ReopenDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "reopen-discussion-fixture",
+            "body": "reopen-discussion-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CloseDiscussion",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "reason": "DISCUSSION_STATE_REASON_RESOLVED"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    },
+    {
+      "method": "CreateDiscussionComment",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "create-discussion-comment-fixture",
+            "body": "create-discussion-comment-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "top-level comment"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "body": "a reply from the fixture",
+        "replyToCommentId": "{{c.comment.id}}"
+      }
+    },
+    {
+      "method": "ListDiscussionComments",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "list-discussion-comments-fixture",
+            "body": "list-discussion-comments-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c1",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "first"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c2",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "second"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "includeHtml": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "ListDiscussionCommentReplies",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "list-replies-fixture",
+            "body": "list-replies-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "top"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "r",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "reply",
+            "replyToCommentId": "{{c.comment.id}}"
+          }
+        }
+      ],
+      "request": {
+        "commentId": "{{c.comment.id}}",
+        "includeHtml": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "MarkDiscussionAnswer",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-qa",
+            "title": "mark-answer-fixture",
+            "body": "mark-answer-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "the answer"
+          }
+        }
+      ],
+      "request": {
+        "commentId": "{{c.comment.id}}"
+      }
+    },
+    {
+      "method": "UnmarkDiscussionAnswer",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-qa",
+            "title": "unmark-answer-fixture",
+            "body": "unmark-answer-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "the answer"
+          }
+        },
+        {
+          "call": "DiscussionService/MarkDiscussionAnswer",
+          "request": {
+            "commentId": "{{c.comment.id}}"
+          }
+        }
+      ],
+      "request": {
+        "commentId": "{{c.comment.id}}"
+      }
+    },
+    {
+      "method": "VoteDiscussionPoll",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-poll",
+            "title": "vote-poll-fixture",
+            "body": "vote-poll-fixture body",
+            "pollQuestion": "Which option?",
+            "pollOptions": [
+              "alpha",
+              "beta"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "optionId": "{{d.poll.options.0.id}}"
+      }
+    },
+    {
+      "method": "GetDiscussionPoll",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-poll",
+            "title": "get-poll-fixture",
+            "body": "get-poll-fixture body",
+            "pollQuestion": "Which option?",
+            "pollOptions": [
+              "alpha",
+              "beta"
+            ]
+          }
+        },
+        {
+          "call": "DiscussionService/VoteDiscussionPoll",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "optionId": "{{d.poll.options.1.id}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    },
+    {
+      "method": "LockDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "lock-discussion-fixture",
+            "body": "lock-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "reason": "DISCUSSION_LOCK_REASON_RESOLVED"
+      }
+    },
+    {
+      "method": "UnlockDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "unlock-discussion-fixture",
+            "body": "unlock-discussion-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/LockDiscussion",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "reason": "DISCUSSION_LOCK_REASON_OFF_TOPIC"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    },
+    {
+      "method": "PinDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "pin-discussion-fixture",
+            "body": "pin-discussion-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "pattern": "dot",
+        "gradient": "blue"
+      }
+    },
+    {
+      "method": "UnpinDiscussion",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "unpin-discussion-fixture",
+            "body": "unpin-discussion-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/PinDiscussion",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    },
+    {
+      "method": "ListPinnedDiscussions",
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        }
+      }
+    },
+    {
+      "method": "ConvertIssueToDiscussion",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "i",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "title": "convert-issue-to-discussion-fixture",
+            "body": "to convert"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueComment",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{i.number}}",
+            "body": "moves along"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "issueNumber": "{{i.number}}",
+        "categoryId": "fx-open"
+      }
+    },
+    {
+      "method": "ConvertDiscussionToIssue",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "convert-discussion-to-issue-fixture",
+            "body": "convert-discussion-to-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "targetRepo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "title": "convert-discussion-to-issue-fixture issue",
+        "body": "opened from a discussion"
+      }
+    },
+    {
+      "method": "AddDiscussionLabels",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "add-labels-fixture",
+            "body": "add-labels-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "labels": [
+          "disc-label-a",
+          "disc-label-b"
+        ]
+      }
+    },
+    {
+      "method": "RemoveDiscussionLabels",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "remove-labels-fixture",
+            "body": "remove-labels-fixture body",
+            "labels": [
+              "disc-label-a",
+              "disc-label-b"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "labels": [
+          "disc-label-a"
+        ]
+      }
+    },
+    {
+      "method": "SetDiscussionLabels",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "set-labels-fixture",
+            "body": "set-labels-fixture body",
+            "labels": [
+              "disc-label-a"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "labels": [
+          "disc-label-b"
+        ]
+      }
+    },
+    {
+      "method": "AddDiscussionUpvote",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "add-upvote-fixture",
+            "body": "add-upvote-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/CreateDiscussionComment",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}",
+            "body": "upvote me"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}",
+        "commentId": "{{c.comment.id}}"
+      }
+    },
+    {
+      "method": "RemoveDiscussionUpvote",
+      "setup": [
+        {
+          "call": "DiscussionService/CreateDiscussion",
+          "save": "d",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "categoryId": "fx-open",
+            "title": "remove-upvote-fixture",
+            "body": "remove-upvote-fixture body"
+          }
+        },
+        {
+          "call": "DiscussionService/AddDiscussionUpvote",
+          "request": {
+            "repo": {
+              "fullName": "{{org}}/discussion-fixtures"
+            },
+            "number": "{{d.number}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/discussion-fixtures"
+        },
+        "number": "{{d.number}}"
+      }
+    }
+  ]
+}

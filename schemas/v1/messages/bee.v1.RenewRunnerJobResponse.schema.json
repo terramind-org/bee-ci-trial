@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RenewRunnerJobResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for RenewRunnerJob.",
+  "properties": {
+    "cancelRequested": {
+      "description": "stop the job and complete it as CANCELLED",
+      "type": "boolean"
+    },
+    "forceCancel": {
+      "description": "stop without running `always()` steps",
+      "type": "boolean"
+    },
+    "leaseExpiresAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RenewRunnerJobResponse",
+  "type": "object"
+}

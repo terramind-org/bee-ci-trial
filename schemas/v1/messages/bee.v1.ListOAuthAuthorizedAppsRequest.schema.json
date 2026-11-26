@@ -1,0 +1,32 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListOAuthAuthorizedAppsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListOAuthAuthorizedApps.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "principalId": {
+      "description": "empty = caller",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListOAuthAuthorizedAppsRequest",
+  "type": "object"
+}

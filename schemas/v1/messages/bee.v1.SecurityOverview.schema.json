@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecurityAlertCounts": {
+      "description": "Open alert counts for one bucket.",
+      "properties": {
+        "critical": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "dismissedInWindow": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "fixedInWindow": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "high": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "low": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "medium": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "totalOpen": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.SecurityAlertCounts",
+      "type": "object"
+    },
+    "bee.v1.SecurityAlertKind": {
+      "description": "Kind of alert counted by the overview and targeted by campaigns.",
+      "enum": [
+        "SECURITY_ALERT_KIND_UNSPECIFIED",
+        "SECURITY_ALERT_KIND_DEPENDENCY",
+        "SECURITY_ALERT_KIND_CODE_SCANNING",
+        "SECURITY_ALERT_KIND_SECRET_SCANNING",
+        "SECURITY_ALERT_KIND_CODE_QUALITY"
+      ],
+      "title": "bee.v1.SecurityAlertKind",
+      "type": "string"
+    },
+    "bee.v1.SecurityOverviewRepo": {
+      "description": "Counts for one repo.",
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/bee.v1.SecurityAlertCounts"
+        },
+        "enabledFeatures": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SecurityAlertKind"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SecurityOverviewRepo",
+      "type": "object"
+    },
+    "bee.v1.SecurityOverviewTool": {
+      "description": "Counts for one tool.",
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/bee.v1.SecurityAlertCounts"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SecurityAlertKind"
+        },
+        "toolName": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecurityOverviewTool",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SecurityOverview.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Org-wide security posture.",
+  "properties": {
+    "meanTimeToRemediateSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "org": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse",
+      "description": "pages over repos"
+    },
+    "repos": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecurityOverviewRepo"
+      },
+      "type": "array"
+    },
+    "reposTotal": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reposWithCodeScanningEnabled": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reposWithDependencyAlertsEnabled": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reposWithPushProtectionEnabled": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reposWithSecretScanningEnabled": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecurityOverviewTool"
+      },
+      "type": "array"
+    },
+    "totals": {
+      "$ref": "#/$defs/bee.v1.SecurityAlertCounts"
+    }
+  },
+  "title": "bee.v1.SecurityOverview",
+  "type": "object"
+}

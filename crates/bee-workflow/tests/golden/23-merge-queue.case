@@ -1,0 +1,24 @@
+event: merge_group base=main
+--- .github/workflows/required.yml
+name: Required checks
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.merge_group.head_sha || github.sha }}
+      - run: make test
+      - if: github.event_name == 'merge_group'
+        run: echo "queue head ${{ github.event.merge_group.head_ref }}"
+--- .github/workflows/pr-only.yml
+on: pull_request
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make lint

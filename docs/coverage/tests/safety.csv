@@ -1,0 +1,9 @@
+feature_id,test
+F419-019,safety::safety_read_report_resolve_and_override
+F419-019,safety::safety_samples_agent_merge_and_accepts_independent_review
+F419-020,safety::safety_refuses_self_review_and_tripwire_reaches_answerable_person
+F419-020,safety::safety_concern_is_not_a_finding
+F419-020,safety_stop::safety_stop_blocks_agent_native_and_pull_request_lands_until_resume
+F419-020,safety_stop::safety_resume_wakes_a_held_queue_on_a_nondefault_ref
+F419-021,safety::safety_samples_agent_merge_and_accepts_independent_review
+F419-021,safety::safety_summary_counts_human_resolution

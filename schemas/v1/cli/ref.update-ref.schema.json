@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/ref.update-ref.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RefService/UpdateRef: `data` is a bee.v1.Ref in proto3-JSON. `bee ref update-ref --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Ref.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.ref.update-ref"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee ref update-ref",
+  "type": "object"
+}

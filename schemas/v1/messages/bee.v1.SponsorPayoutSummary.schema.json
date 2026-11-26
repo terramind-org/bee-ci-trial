@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.SponsorPayout": {
+      "description": "One completed or scheduled payout.",
+      "properties": {
+        "amountCents": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "paidAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "description": "\"scheduled\", \"paid\", \"failed\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SponsorPayout",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SponsorPayoutSummary.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A maintainee's payout totals.",
+  "properties": {
+    "currency": {
+      "type": "string"
+    },
+    "maintainee": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "nextPayoutAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "paidLast30DaysCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "paidLifetimeCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "pendingCents": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "recentPayouts": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SponsorPayout"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.SponsorPayoutSummary",
+  "type": "object"
+}

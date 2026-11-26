@@ -1,0 +1,29 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.unpin.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon unpin --json`: one such document with `schema` = bee.v1.daemon.unpin. Release a pinned set; its objects become evictable again. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "removed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "removed"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.unpin"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon unpin",
+  "type": "object"
+}

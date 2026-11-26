@@ -1,0 +1,24 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Autolink.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Turns `<key_prefix><number>` in text into a link.",
+  "properties": {
+    "alphanumeric": {
+      "description": "the reference may contain letters",
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "keyPrefix": {
+      "description": "e.g. \"JIRA-\"",
+      "type": "string"
+    },
+    "urlTemplate": {
+      "description": "must contain \"<num>\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Autolink",
+  "type": "object"
+}

@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "bee.v1.MetricAggregation": {
+      "description": "Aggregation across series.",
+      "enum": [
+        "METRIC_AGGREGATION_UNSPECIFIED",
+        "METRIC_AGGREGATION_SUM",
+        "METRIC_AGGREGATION_AVG",
+        "METRIC_AGGREGATION_MAX",
+        "METRIC_AGGREGATION_MIN",
+        "METRIC_AGGREGATION_RATE",
+        "METRIC_AGGREGATION_P50",
+        "METRIC_AGGREGATION_P90",
+        "METRIC_AGGREGATION_P99"
+      ],
+      "title": "bee.v1.MetricAggregation",
+      "type": "string"
+    },
+    "bee.v1.MetricLabelMatcher": {
+      "description": "Selects series by label.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "op": {
+          "$ref": "#/$defs/bee.v1.MetricMatchOp"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.MetricLabelMatcher",
+      "type": "object"
+    },
+    "bee.v1.MetricMatchOp": {
+      "description": "How a label matcher compares.",
+      "enum": [
+        "METRIC_MATCH_OP_UNSPECIFIED",
+        "METRIC_MATCH_OP_EQUAL",
+        "METRIC_MATCH_OP_NOT_EQUAL",
+        "METRIC_MATCH_OP_REGEX",
+        "METRIC_MATCH_OP_NOT_REGEX"
+      ],
+      "title": "bee.v1.MetricMatchOp",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.QueryMetricsRangeRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for QueryMetricsRange.",
+  "properties": {
+    "aggregation": {
+      "$ref": "#/$defs/bee.v1.MetricAggregation"
+    },
+    "cell": {
+      "type": "string"
+    },
+    "end": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "groupBy": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "matchers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.MetricLabelMatcher"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "start": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "stepSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "windowSeconds": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.QueryMetricsRangeRequest",
+  "type": "object"
+}

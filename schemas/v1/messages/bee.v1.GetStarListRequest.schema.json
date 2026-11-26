@@ -1,0 +1,12 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetStarListRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetStarList.",
+  "properties": {
+    "starListId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetStarListRequest",
+  "type": "object"
+}

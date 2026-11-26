@@ -1,0 +1,15 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+util = { path = "../util", version = "0.1.0" }
+regex = "1.10"
+
+[dev-dependencies]
+tempfile = "3.10.1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", optional = true }

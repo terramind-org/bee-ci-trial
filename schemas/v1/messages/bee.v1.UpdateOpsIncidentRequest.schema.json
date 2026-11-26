@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "bee.v1.OpsComponentStatus": {
+      "description": "Status of a status page component.",
+      "enum": [
+        "OPS_COMPONENT_STATUS_UNSPECIFIED",
+        "OPS_COMPONENT_STATUS_OPERATIONAL",
+        "OPS_COMPONENT_STATUS_DEGRADED",
+        "OPS_COMPONENT_STATUS_PARTIAL_OUTAGE",
+        "OPS_COMPONENT_STATUS_MAJOR_OUTAGE",
+        "OPS_COMPONENT_STATUS_MAINTENANCE"
+      ],
+      "title": "bee.v1.OpsComponentStatus",
+      "type": "string"
+    },
+    "bee.v1.OpsIncidentState": {
+      "description": "Incident lifecycle.",
+      "enum": [
+        "OPS_INCIDENT_STATE_UNSPECIFIED",
+        "OPS_INCIDENT_STATE_INVESTIGATING",
+        "OPS_INCIDENT_STATE_IDENTIFIED",
+        "OPS_INCIDENT_STATE_MONITORING",
+        "OPS_INCIDENT_STATE_RESOLVED"
+      ],
+      "title": "bee.v1.OpsIncidentState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateOpsIncidentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateOpsIncident.",
+  "properties": {
+    "body": {
+      "description": "required: the update text",
+      "type": "string"
+    },
+    "componentIds": {
+      "description": "non-empty replaces",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "componentStatus": {
+      "$ref": "#/$defs/bee.v1.OpsComponentStatus"
+    },
+    "id": {
+      "type": "string"
+    },
+    "impact": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.OpsIncidentState"
+    }
+  },
+  "title": "bee.v1.UpdateOpsIncidentRequest",
+  "type": "object"
+}

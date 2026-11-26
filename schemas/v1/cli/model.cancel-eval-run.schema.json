@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/model.cancel-eval-run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModelService/CancelEvalRun: `data` is a bee.v1.EvalRun in proto3-JSON. `bee model cancel-eval-run --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.EvalRun.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.model.cancel-eval-run"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee model cancel-eval-run",
+  "type": "object"
+}

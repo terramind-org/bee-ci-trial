@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "bee.v1.KeyValue": {
+      "description": "A key/value pair with a string value (metadata, custom properties, variables).",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.KeyValue",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginReleaseAssetUploadResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for BeginReleaseAssetUpload.",
+  "properties": {
+    "assetId": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "uploadHeaders": {
+      "description": "headers the PUT must carry",
+      "items": {
+        "$ref": "#/$defs/bee.v1.KeyValue"
+      },
+      "type": "array"
+    },
+    "uploadUrl": {
+      "description": "signed URL; PUT the bytes here",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.BeginReleaseAssetUploadResponse",
+  "type": "object"
+}

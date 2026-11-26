@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "bee.v1.OpsRollout": {
+      "description": "A cell-by-cell rollout of a binary, config or schema change.",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.OpsRolloutCell"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fromVersion": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "description": "\"binary\", \"config\", \"schema\"",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "startedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.OpsRolloutState"
+        },
+        "toVersion": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsRollout",
+      "type": "object"
+    },
+    "bee.v1.OpsRolloutCell": {
+      "description": "Progress of a rollout in one cell.",
+      "properties": {
+        "cell": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "nodesTotal": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "nodesUpdated": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sloRegression": {
+          "description": "the SLO that triggered automatic rollback, if any",
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.OpsRolloutState"
+        }
+      },
+      "title": "bee.v1.OpsRolloutCell",
+      "type": "object"
+    },
+    "bee.v1.OpsRolloutState": {
+      "description": "Rollout lifecycle.",
+      "enum": [
+        "OPS_ROLLOUT_STATE_UNSPECIFIED",
+        "OPS_ROLLOUT_STATE_PENDING",
+        "OPS_ROLLOUT_STATE_IN_PROGRESS",
+        "OPS_ROLLOUT_STATE_PAUSED",
+        "OPS_ROLLOUT_STATE_SUCCEEDED",
+        "OPS_ROLLOUT_STATE_ROLLING_BACK",
+        "OPS_ROLLOUT_STATE_ROLLED_BACK",
+        "OPS_ROLLOUT_STATE_FAILED"
+      ],
+      "title": "bee.v1.OpsRolloutState",
+      "type": "string"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListOpsRolloutsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListOpsRollouts.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "rollouts": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsRollout"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListOpsRolloutsResponse",
+  "type": "object"
+}

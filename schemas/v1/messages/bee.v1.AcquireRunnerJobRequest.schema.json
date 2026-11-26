@@ -1,0 +1,26 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AcquireRunnerJobRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for AcquireRunnerJob.",
+  "properties": {
+    "labels": {
+      "description": "labels offered right now; empty = registered labels",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "maxJobs": {
+      "description": "concurrent jobs this runner accepts; 0 = 1",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "runnerId": {
+      "description": "caller authenticates with the runner credential",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.AcquireRunnerJobRequest",
+  "type": "object"
+}

@@ -1,0 +1,168 @@
+{
+  "$defs": {
+    "bee.v1.DeploymentEnvironmentReviewer": {
+      "description": "One required reviewer of an environment.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.DeploymentReviewerKind"
+        },
+        "principal": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "kind PRINCIPAL"
+        },
+        "teamId": {
+          "description": "kind TEAM",
+          "type": "string"
+        },
+        "teamSlug": {
+          "description": "kind TEAM, output only",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.DeploymentEnvironmentReviewer",
+      "type": "object"
+    },
+    "bee.v1.DeploymentRefPolicy": {
+      "description": "A ref pattern allowed to deploy to an environment.",
+      "properties": {
+        "pattern": {
+          "description": "glob, e.g. \"release/*\"",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/bee.v1.DeploymentRefPolicyType"
+        }
+      },
+      "title": "bee.v1.DeploymentRefPolicy",
+      "type": "object"
+    },
+    "bee.v1.DeploymentRefPolicyMode": {
+      "description": "Which refs may deploy to an environment.",
+      "enum": [
+        "DEPLOYMENT_REF_POLICY_MODE_UNSPECIFIED",
+        "DEPLOYMENT_REF_POLICY_MODE_ALL",
+        "DEPLOYMENT_REF_POLICY_MODE_PROTECTED_REFS",
+        "DEPLOYMENT_REF_POLICY_MODE_CUSTOM"
+      ],
+      "title": "bee.v1.DeploymentRefPolicyMode",
+      "type": "string"
+    },
+    "bee.v1.DeploymentRefPolicyType": {
+      "description": "Whether a ref policy pattern matches branches or tags.",
+      "enum": [
+        "DEPLOYMENT_REF_POLICY_TYPE_UNSPECIFIED",
+        "DEPLOYMENT_REF_POLICY_TYPE_BRANCH",
+        "DEPLOYMENT_REF_POLICY_TYPE_TAG"
+      ],
+      "title": "bee.v1.DeploymentRefPolicyType",
+      "type": "string"
+    },
+    "bee.v1.DeploymentReviewerKind": {
+      "description": "What kind of principal a required reviewer entry names.",
+      "enum": [
+        "DEPLOYMENT_REVIEWER_KIND_UNSPECIFIED",
+        "DEPLOYMENT_REVIEWER_KIND_PRINCIPAL",
+        "DEPLOYMENT_REVIEWER_KIND_TEAM"
+      ],
+      "title": "bee.v1.DeploymentReviewerKind",
+      "type": "string"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateDeploymentEnvironmentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateDeploymentEnvironment.",
+  "properties": {
+    "canAdminsBypass": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "preventSelfReview": {
+      "type": "boolean"
+    },
+    "refPolicies": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DeploymentRefPolicy"
+      },
+      "type": "array"
+    },
+    "refPolicyMode": {
+      "$ref": "#/$defs/bee.v1.DeploymentRefPolicyMode"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "requireGreen": {
+      "type": "boolean"
+    },
+    "reviewers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DeploymentEnvironmentReviewer"
+      },
+      "type": "array"
+    },
+    "waitTimerSeconds": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.CreateDeploymentEnvironmentRequest",
+  "type": "object"
+}

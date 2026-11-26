@@ -1,0 +1,44 @@
+# Development stack: one server in --dev mode (SQLite and disk, no external service) and the web
+# app. Not for production. Walkthrough: docs/self-hosting.md ("Quick start").
+#
+#   docker compose -f deploy/compose.dev.yml up --build
+#
+# Host ports: BEE_API_PORT (server, default 7420), BEE_SSH_PORT (git over SSH, 2222) and
+# BEE_WEB_PORT (web app, 3100), read from the environment or a .env file beside this one.
+#
+# The dev tokens are written to /data/credentials in the bee-dev-data volume:
+#   docker compose -f deploy/compose.dev.yml exec bee-server cat /data/credentials
+
+name: bee-dev
+
+services:
+  bee-server:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: bee-server:dev
+    command: ["--dev", "--listen", "0.0.0.0:7420", "--data-dir", "/data"]
+    environment:
+      BEE_GIT_SSH_LISTEN: 0.0.0.0:2222
+    volumes:
+      - bee-dev-data:/data
+    ports:
+      - "${BEE_API_PORT:-7420}:7420"
+      - "${BEE_SSH_PORT:-2222}:2222"
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: bee-web:dev
+    depends_on:
+      bee-server:
+        condition: service_healthy
+    environment:
+      BEE_API_URL: http://bee-server:7420
+      PORT: "3100"
+    ports:
+      - "${BEE_WEB_PORT:-3100}:3100"
+
+volumes:
+  bee-dev-data:

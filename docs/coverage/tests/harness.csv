@@ -1,0 +1,9 @@
+feature_id,test
+F425-005,harness:self-test::scenarios.test.ts::PRODUCT §4 scenarios > there is exactly one file per scenario
+F425-005,harness:self-test::scenarios.test.ts::PRODUCT §4 scenarios > --dry-run --scenarios all exits 0
+F425-005,harness:self-test::assert.test.ts::assertions > expect_error matches SPEC §12.2 reasons
+F425-005,harness:self-test::runner.test.ts::orchestration > a correct agent passes 3/3 and the matrix is ok
+F425-005,harness:self-test::runner.test.ts::orchestration > an agent that does nothing fails every run, from assertions alone
+F425-005,harness:self-test::runner.test.ts::orchestration > 2/3 is not a pass
+F425-005,harness:self-test::runner.test.ts::orchestration > an agent past its timeout is killed and the run is a timeout
+F425-005,harness:self-test::runner.test.ts::orchestration > agents never see the harness admin token

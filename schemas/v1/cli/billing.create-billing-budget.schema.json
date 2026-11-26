@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/billing.create-billing-budget.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.BillingService/CreateBillingBudget: `data` is a bee.v1.BillingBudget in proto3-JSON. `bee billing create-billing-budget --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BillingBudget.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.billing.create-billing-budget"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee billing create-billing-budget",
+  "type": "object"
+}

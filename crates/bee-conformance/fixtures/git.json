@@ -1,0 +1,28 @@
+{
+  "service": "bee.v1.GitService",
+  "fixtures": [
+    {"method": "GetGitObjects",
+     "setup": [{"call": "GitService/GitListRefs", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "refPrefixes": ["refs/heads/main"]}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "oids": ["{{r.refs.0.oid}}"]}},
+    {"method": "GitListRefs", "request": {"repo": {"fullName": "{{repo}}"}, "symrefs": true, "peel": true, "unborn": true}},
+    {"method": "GitPlanFetch", "request": {"repo": {"fullName": "{{repo}}"}, "wantRefs": ["refs/heads/main"], "done": true, "ofsDelta": true, "clientAgent": "git/2.45.1"}},
+    {"method": "GitResolve",
+     "setup": [{"call": "GitService/GitListRefs", "save": "r", "request": {"repo": {"fullName": "{{repo}}"}, "refPrefixes": ["refs/heads/main"]}}],
+     "request": {"repo": {"fullName": "{{repo}}"}, "queries": [{"beeId": "{{base.objectId}}"}, {"gitOid": "{{r.refs.0.oid}}"}]}},
+    {"method": "CreateGitPackUpload", "request": {"repo": {"fullName": "{{repo}}"}, "sizeBytes": "253", "sha256": "6708059bdb63d0896be45aec1944d2118f098ab9ce419dfb670acfcac8e0afaa"}},
+    {"method": "GitIngestCommits",
+     "note": "The pack is a fixed root commit (1f68d82d5277793679f640e6b38c6cb78b3484d4, one file INGEST.md, author/committer dates pinned) built with git and pushed to a fresh repo as a new branch.",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "git-ingest-commits-fixture"}}],
+     "request": {"repo": {"fullName": "{{org}}/git-ingest-commits-fixture"}, "commands": [{"refName": "refs/heads/ingested", "oldOid": "0000000000000000000000000000000000000000", "newOid": "1f68d82d5277793679f640e6b38c6cb78b3484d4"}], "packBytes": "UEFDSwAAAAIAAAADmQt4nJWMWwrCMBBF/7OK/Eslad4g4lbiZFIDxpZ0Cl2+gdYFeL8uB86hhsiDSSlmC+CEA+uTUsZrKXO0SYdONEBQyT9Z3Og1N57LTltDfjvPA/dYlzdeYa53Lp1142isEPwi+lintRDh3yKbCg3lM+FKwxFZfwn2BTJzOwylAnicMzQwMDMxUfD0c3cNDtHLTWFomfJlnfXN6YsqtRcuF/nG47XH+/9uAOq/Dy25Anicy8xLTy0uSU1RSKpUKMlIVXDPLPEECznn5+ZmlhQrpGVWlJQWpXIBAETLD2uvKqd+I9n6hj8NYue5VKDbkYw8Ag==", "clientAgent": "git/2.45.1", "quiet": true}},
+    {"method": "GetGitConfig", "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "UpdateGitConfig",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "update-git-config-fixture"}}],
+     "request": {"repo": {"fullName": "{{org}}/update-git-config-fixture"}, "lfsEnabled": true, "pushAutoChange": true, "minClientVersion": "2.30.0"}},
+    {"method": "GitLfsBatch", "request": {"repo": {"fullName": "{{repo}}"}, "operation": "GIT_LFS_OPERATION_UPLOAD", "transfers": ["basic"], "ref": "refs/heads/main", "objects": [{"oid": "4f3c0a8b2e1d9c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b", "size": "12"}], "hashAlgo": "sha256"}},
+    {"method": "GitPreflight", "request": {"repo": {"fullName": "{{repo}}"}, "clientGitVersion": "2.45.1", "transport": "https", "protocolVersion": 2, "lfsInstalled": true}},
+    {"method": "CreateGitCredential", "request": {"repos": [{"fullName": "{{repo}}"}], "host": "localhost", "ttlSeconds": 600}},
+    {"method": "ResolveGitSshKey",
+     "setup": [{"call": "RepoService/AddDeployKey", "request": {"repo": {"fullName": "{{repo}}"}, "title": "resolve-git-ssh-key fixture", "publicKey": "ssh-ed25519 CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ", "readOnly": true}}],
+     "request": {"keyType": "ssh-ed25519", "publicKey": "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ", "repo": {"fullName": "{{repo}}"}, "command": "git-upload-pack", "remoteIp": "127.0.0.1"}}
+  ]
+}

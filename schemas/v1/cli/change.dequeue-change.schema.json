@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/change.dequeue-change.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ChangeService/DequeueChange: `data` is a bee.v1.DequeueChangeResponse in proto3-JSON. `bee change dequeue-change --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DequeueChangeResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.change.dequeue-change"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee change dequeue-change",
+  "type": "object"
+}

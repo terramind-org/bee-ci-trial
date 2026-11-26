@@ -1,0 +1,2065 @@
+{
+  "service": "bee.v1.IssueService",
+  "note": "Issues act on fresh issues in dev/playground; templates and the transfer target live in dev/issue-fixtures, a repo the ListIssueTemplates fixture creates. Changes use numbers 1001-1004.",
+  "fixtures": [
+    {
+      "method": "CreateIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "create-issue-label",
+            "color": "d73a4a",
+            "description": "create-issue-label"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueMilestone",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "create-issue-milestone",
+            "description": "create-issue-milestone",
+            "dueOn": "2030-01-15T00:00:00Z"
+          },
+          "save": "m"
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "title": "create-issue-fixture",
+        "body": "Filed by the fixture",
+        "assignees": [
+          "{{userName}}"
+        ],
+        "labels": [
+          "create-issue-label"
+        ],
+        "milestoneNumber": "{{m.number}}"
+      }
+    },
+    {
+      "method": "GetIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-issue-fixture",
+            "body": "get-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "id": "{{t.id}}",
+        "includeHtml": true
+      }
+    },
+    {
+      "method": "GetIssueByNumber",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-issue-by-number-fixture",
+            "body": "get-issue-by-number-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "includeHtml": true
+      }
+    },
+    {
+      "method": "ListIssues",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "list-issues-label",
+            "color": "d73a4a",
+            "description": "list-issues-label"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-issues-fixture",
+            "body": "list-issues-fixture body",
+            "labels": [
+              "list-issues-label"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "allStates": true,
+        "labels": [
+          "list-issues-label"
+        ],
+        "sort": "ISSUE_SORT_CREATED",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "UpdateIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "update-issue-fixture",
+            "body": "update-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "title": "update-issue-fixture-renamed",
+        "body": "edited",
+        "expectedVersion": "{{t.version}}"
+      }
+    },
+    {
+      "method": "DeleteIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "delete-issue-fixture",
+            "body": "delete-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "CloseIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "close-issue-fixture",
+            "body": "close-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "reason": "ISSUE_STATE_REASON_NOT_PLANNED",
+        "comment": "closing from the fixture"
+      }
+    },
+    {
+      "method": "ReopenIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "reopen-issue-fixture",
+            "body": "reopen-issue-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/CloseIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "comment": "reopening from the fixture"
+      }
+    },
+    {
+      "method": "MarkIssueDuplicate",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "o",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "mark-duplicate-original",
+            "body": "mark-duplicate-original body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "mark-duplicate-fixture",
+            "body": "mark-duplicate-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "duplicateOf": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{o.number}}"
+        }
+      }
+    },
+    {
+      "method": "UnmarkIssueDuplicate",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "o",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "unmark-duplicate-original",
+            "body": "unmark-duplicate-original body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "unmark-duplicate-fixture",
+            "body": "unmark-duplicate-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/MarkIssueDuplicate",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "duplicateOf": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{o.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "reopen": true
+      }
+    },
+    {
+      "method": "CreateIssueComment",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "create-comment-fixture",
+            "body": "create-comment-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "body": "comment from the fixture"
+      }
+    },
+    {
+      "method": "ListIssueComments",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-comments-fixture",
+            "body": "list-comments-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueComment",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "body": "first"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueComment",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "body": "second"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "includeHtml": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "CreateIssueLabel",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "name": "create-label-fixture",
+        "color": "0e8a16",
+        "description": "made by the fixture"
+      }
+    },
+    {
+      "method": "GetIssueLabel",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "get-label-fixture",
+            "color": "d73a4a",
+            "description": "get-label-fixture"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "name": "get-label-fixture"
+      }
+    },
+    {
+      "method": "UpdateIssueLabel",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "update-label-fixture",
+            "color": "d73a4a",
+            "description": "update-label-fixture"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "name": "update-label-fixture",
+        "newName": "update-label-fixture-renamed",
+        "color": "fbca04",
+        "description": "updated"
+      }
+    },
+    {
+      "method": "DeleteIssueLabel",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "delete-label-fixture",
+            "color": "d73a4a",
+            "description": "delete-label-fixture"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "name": "delete-label-fixture"
+      }
+    },
+    {
+      "method": "ListIssueLabels",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "query": "fixture",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "AddIssueLabels",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "add-labels-fixture",
+            "color": "d73a4a",
+            "description": "add-labels-fixture"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-labels-fixture",
+            "body": "add-labels-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "labels": [
+          "add-labels-fixture",
+          "add-labels-fixture-new"
+        ],
+        "createMissing": true
+      }
+    },
+    {
+      "method": "RemoveIssueLabels",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "remove-labels-a",
+            "color": "d73a4a",
+            "description": "remove-labels-a"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "remove-labels-b",
+            "color": "d73a4a",
+            "description": "remove-labels-b"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-labels-fixture",
+            "body": "remove-labels-fixture body",
+            "labels": [
+              "remove-labels-a",
+              "remove-labels-b"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "labels": [
+          "remove-labels-a"
+        ]
+      }
+    },
+    {
+      "method": "SetIssueLabels",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "set-labels-a",
+            "color": "d73a4a",
+            "description": "set-labels-a"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "set-labels-b",
+            "color": "d73a4a",
+            "description": "set-labels-b"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "set-labels-fixture",
+            "body": "set-labels-fixture body",
+            "labels": [
+              "set-labels-a"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "labels": [
+          "set-labels-b"
+        ],
+        "expectedVersion": "{{t.version}}"
+      }
+    },
+    {
+      "method": "CreateIssueMilestone",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "title": "create-milestone-fixture",
+        "description": "made by the fixture",
+        "dueOn": "2030-06-01T00:00:00Z"
+      }
+    },
+    {
+      "method": "GetIssueMilestone",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueMilestone",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-milestone-fixture",
+            "description": "get-milestone-fixture",
+            "dueOn": "2030-01-15T00:00:00Z"
+          },
+          "save": "m"
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{m.number}}"
+      }
+    },
+    {
+      "method": "UpdateIssueMilestone",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueMilestone",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "update-milestone-fixture",
+            "description": "update-milestone-fixture",
+            "dueOn": "2030-01-15T00:00:00Z"
+          },
+          "save": "m"
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{m.number}}",
+        "title": "update-milestone-fixture-renamed",
+        "description": "updated",
+        "clearDueOn": true,
+        "state": "MILESTONE_STATE_CLOSED"
+      }
+    },
+    {
+      "method": "DeleteIssueMilestone",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueMilestone",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "delete-milestone-fixture",
+            "description": "delete-milestone-fixture",
+            "dueOn": "2030-01-15T00:00:00Z"
+          },
+          "save": "m"
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{m.number}}"
+      }
+    },
+    {
+      "method": "ListIssueMilestones",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "allStates": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "SetIssueMilestone",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueMilestone",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "set-milestone-fixture",
+            "description": "set-milestone-fixture",
+            "dueOn": "2030-01-15T00:00:00Z"
+          },
+          "save": "m"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "set-milestone-fixture",
+            "body": "set-milestone-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "milestoneNumber": "{{m.number}}"
+      }
+    },
+    {
+      "method": "AddIssueAssignees",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-assignees-fixture",
+            "body": "add-assignees-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "assignees": [
+          "{{userName}}"
+        ]
+      }
+    },
+    {
+      "method": "RemoveIssueAssignees",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-assignees-fixture",
+            "body": "remove-assignees-fixture body",
+            "assignees": [
+              "{{user}}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "assignees": [
+          "{{user}}"
+        ]
+      }
+    },
+    {
+      "method": "ListIssueAssignableUsers",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "query": "{{userName}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "CreateIssueType",
+      "request": {
+        "org": "{{org}}",
+        "name": "create-type-fixture",
+        "description": "made by the fixture",
+        "color": "0e8a16",
+        "enabled": true
+      }
+    },
+    {
+      "method": "UpdateIssueType",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueType",
+          "request": {
+            "org": "{{org}}",
+            "name": "update-type-fixture",
+            "description": "update-type-fixture",
+            "color": "1d76db",
+            "enabled": true
+          },
+          "save": "y"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "id": "{{y.id}}",
+        "name": "update-type-fixture-renamed",
+        "description": "updated",
+        "color": "5319e7",
+        "enabled": true,
+        "expectedVersion": "{{y.version}}"
+      }
+    },
+    {
+      "method": "DeleteIssueType",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueType",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-type-fixture",
+            "description": "delete-type-fixture",
+            "color": "1d76db",
+            "enabled": true
+          },
+          "save": "y"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "id": "{{y.id}}"
+      }
+    },
+    {
+      "method": "ListIssueTypes",
+      "request": {
+        "org": "{{org}}",
+        "includeDisabled": true,
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "SetIssueType",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueType",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-type-fixture",
+            "description": "set-type-fixture",
+            "color": "1d76db",
+            "enabled": true
+          },
+          "save": "y"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "set-type-fixture",
+            "body": "set-type-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "issueType": "{{y.id}}"
+      }
+    },
+    {
+      "method": "AddIssueSubIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-sub-issue-parent",
+            "body": "add-sub-issue-parent body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-sub-issue-child",
+            "body": "add-sub-issue-child body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{p.number}}",
+        "subIssue": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{c.number}}"
+        }
+      }
+    },
+    {
+      "method": "RemoveIssueSubIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-sub-issue-parent",
+            "body": "remove-sub-issue-parent body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-sub-issue-child",
+            "body": "remove-sub-issue-child body"
+          }
+        },
+        {
+          "call": "IssueService/AddIssueSubIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{p.number}}",
+            "subIssue": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{c.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{p.number}}",
+        "subIssue": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{c.number}}"
+        }
+      }
+    },
+    {
+      "method": "ReorderIssueSubIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "reorder-sub-issue-parent",
+            "body": "reorder-sub-issue-parent body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "a",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "reorder-sub-issue-a",
+            "body": "reorder-sub-issue-a body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "b",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "reorder-sub-issue-b",
+            "body": "reorder-sub-issue-b body"
+          }
+        },
+        {
+          "call": "IssueService/AddIssueSubIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{p.number}}",
+            "subIssue": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{a.number}}"
+            }
+          }
+        },
+        {
+          "call": "IssueService/AddIssueSubIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{p.number}}",
+            "subIssue": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{b.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{p.number}}",
+        "subIssue": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{b.number}}"
+        },
+        "beforeId": "{{a.id}}"
+      }
+    },
+    {
+      "method": "ListIssueSubIssues",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-sub-issues-parent",
+            "body": "list-sub-issues-parent body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-sub-issues-child",
+            "body": "list-sub-issues-child body",
+            "parent": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{p.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{p.number}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "GetIssueParent",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "p",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-parent-parent",
+            "body": "get-parent-parent body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "c",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "get-parent-child",
+            "body": "get-parent-child body",
+            "parent": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{p.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{c.number}}"
+      }
+    },
+    {
+      "method": "AddIssueDependency",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-dependency-blocked",
+            "body": "add-dependency-blocked body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "b",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "add-dependency-blocker",
+            "body": "add-dependency-blocker body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "blockedBy": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{b.number}}"
+        }
+      }
+    },
+    {
+      "method": "RemoveIssueDependency",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-dependency-blocked",
+            "body": "remove-dependency-blocked body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "b",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "remove-dependency-blocker",
+            "body": "remove-dependency-blocker body"
+          }
+        },
+        {
+          "call": "IssueService/AddIssueDependency",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "blockedBy": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{b.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "blockedBy": {
+          "repo": {
+            "fullName": "{{repo}}"
+          },
+          "number": "{{b.number}}"
+        }
+      }
+    },
+    {
+      "method": "ListIssueDependencies",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-dependencies-blocked",
+            "body": "list-dependencies-blocked body"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "b",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "list-dependencies-blocker",
+            "body": "list-dependencies-blocker body"
+          }
+        },
+        {
+          "call": "IssueService/AddIssueDependency",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "blockedBy": {
+              "repo": {
+                "fullName": "{{repo}}"
+              },
+              "number": "{{b.number}}"
+            }
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "direction": "ISSUE_DEPENDENCY_DIRECTION_BLOCKED_BY",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "CreateIssueField",
+      "request": {
+        "org": "{{org}}",
+        "name": "create-field-fixture",
+        "description": "made by the fixture",
+        "kind": "ISSUE_FIELD_KIND_SINGLE_SELECT",
+        "options": [
+          {
+            "name": "small",
+            "color": "0e8a16"
+          },
+          {
+            "name": "large",
+            "color": "d73a4a"
+          }
+        ]
+      }
+    },
+    {
+      "method": "UpdateIssueField",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueField",
+          "request": {
+            "org": "{{org}}",
+            "name": "update-field-fixture",
+            "description": "update-field-fixture",
+            "kind": "ISSUE_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "low",
+                "color": "0e8a16"
+              },
+              {
+                "name": "high",
+                "color": "d73a4a"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "id": "{{f.id}}",
+        "name": "update-field-fixture-renamed",
+        "description": "updated",
+        "options": [
+          {
+            "id": "{{f.options.0.id}}",
+            "name": "low",
+            "color": "0e8a16"
+          },
+          {
+            "name": "medium",
+            "color": "fbca04"
+          }
+        ],
+        "setOptions": true,
+        "expectedVersion": "{{f.version}}"
+      }
+    },
+    {
+      "method": "DeleteIssueField",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueField",
+          "request": {
+            "org": "{{org}}",
+            "name": "delete-field-fixture",
+            "description": "delete-field-fixture",
+            "kind": "ISSUE_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "low",
+                "color": "0e8a16"
+              },
+              {
+                "name": "high",
+                "color": "d73a4a"
+              }
+            ]
+          },
+          "save": "f"
+        }
+      ],
+      "request": {
+        "org": "{{org}}",
+        "id": "{{f.id}}"
+      }
+    },
+    {
+      "method": "ListIssueFields",
+      "request": {
+        "org": "{{org}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "SetIssueFieldValues",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueField",
+          "request": {
+            "org": "{{org}}",
+            "name": "set-field-values-fixture",
+            "description": "set-field-values-fixture",
+            "kind": "ISSUE_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "low",
+                "color": "0e8a16"
+              },
+              {
+                "name": "high",
+                "color": "d73a4a"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "set-field-values-fixture",
+            "body": "set-field-values-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "values": [
+          {
+            "fieldId": "{{f.id}}",
+            "optionId": "{{f.options.1.id}}"
+          }
+        ]
+      }
+    },
+    {
+      "method": "ClearIssueFieldValue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueField",
+          "request": {
+            "org": "{{org}}",
+            "name": "clear-field-value-fixture",
+            "description": "clear-field-value-fixture",
+            "kind": "ISSUE_FIELD_KIND_SINGLE_SELECT",
+            "options": [
+              {
+                "name": "low",
+                "color": "0e8a16"
+              },
+              {
+                "name": "high",
+                "color": "d73a4a"
+              }
+            ]
+          },
+          "save": "f"
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "clear-field-value-fixture",
+            "body": "clear-field-value-fixture body",
+            "fieldValues": [
+              {
+                "fieldId": "{{f.id}}",
+                "optionId": "{{f.options.0.id}}"
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "fieldId": "{{f.id}}"
+      }
+    },
+    {
+      "method": "ListIssueTemplates",
+      "setup": [
+        {
+          "call": "RepoService/CreateRepo",
+          "request": {
+            "org": "{{org}}",
+            "name": "issue-fixtures",
+            "visibility": "VISIBILITY_PUBLIC",
+            "description": "issue fixtures",
+            "autoInit": true
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{org}}/issue-fixtures",
+            "parent": "main",
+            "files": {
+              ".beehive/ISSUE_TEMPLATE/bug.yml": "name: Bug report\ndescription: File a bug\ntitle: \"[Bug]: \"\nlabels: [bug]\nbody:\n  - type: input\n    id: version\n    attributes:\n      label: Version\n    validations:\n      required: true\n  - type: textarea\n    id: logs\n    attributes:\n      label: Logs\n",
+              ".beehive/ISSUE_TEMPLATE/feature.md": "---\nname: Feature\nabout: Ask for a thing\nlabels: enhancement\n---\n## Describe\n",
+              ".beehive/ISSUE_TEMPLATE/config.yml": "blank_issues_enabled: false\ncontact_links:\n  - name: Chat\n    url: https://example.com/chat\n    about: Ask there\n"
+            },
+            "message": "add issue templates",
+            "change": 1001,
+            "land": "main"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/issue-fixtures"
+        }
+      }
+    },
+    {
+      "method": "GetIssueTemplateConfig",
+      "request": {
+        "repo": {
+          "fullName": "{{org}}/issue-fixtures"
+        }
+      }
+    },
+    {
+      "method": "PinIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "pin-issue-fixture",
+            "body": "pin-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "UnpinIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "unpin-issue-fixture",
+            "body": "unpin-issue-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/PinIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "ListPinnedIssues",
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        }
+      }
+    },
+    {
+      "method": "LockIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "lock-issue-fixture",
+            "body": "lock-issue-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "reason": "ISSUE_LOCK_REASON_RESOLVED"
+      }
+    },
+    {
+      "method": "UnlockIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "unlock-issue-fixture",
+            "body": "unlock-issue-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/LockIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "reason": "ISSUE_LOCK_REASON_OFF_TOPIC"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "TransferIssue",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "transfer-issue-label",
+            "color": "d73a4a",
+            "description": "transfer-issue-label"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "transfer-issue-fixture",
+            "body": "transfer-issue-fixture body",
+            "labels": [
+              "transfer-issue-label"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "targetRepo": {
+          "fullName": "{{org}}/issue-fixtures"
+        },
+        "createLabels": true
+      }
+    },
+    {
+      "method": "ListIssueTimeline",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssueLabel",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "name": "timeline-label",
+            "color": "d73a4a",
+            "description": "timeline-label"
+          }
+        },
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "timeline-fixture",
+            "body": "timeline-fixture body"
+          }
+        },
+        {
+          "call": "IssueService/AddIssueLabels",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "labels": [
+              "timeline-label"
+            ]
+          }
+        },
+        {
+          "call": "IssueService/CreateIssueComment",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "body": "timeline comment"
+          }
+        },
+        {
+          "call": "IssueService/CloseIssue",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    },
+    {
+      "method": "LinkIssueChange",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "link-change-fixture",
+            "body": "link-change-fixture body"
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{repo}}",
+            "parent": "main",
+            "files": {
+              "docs/fixtures-link-issue-change.md": "link-issue-change fixture\n"
+            },
+            "message": "link-issue-change fixture",
+            "change": 1002,
+            "createRef": "fixtures/link-issue-change"
+          },
+          "save": "cc"
+        },
+        {
+          "call": "ChangeService/OpenChange",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "targetRef": "main",
+            "head": "{{cc.objectId}}",
+            "title": "link-issue-change fixture",
+            "body": "link-issue-change fixture"
+          },
+          "save": "c"
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "changeRequestId": "{{c.id}}",
+        "closes": true
+      }
+    },
+    {
+      "method": "UnlinkIssueChange",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "unlink-change-fixture",
+            "body": "unlink-change-fixture body"
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{repo}}",
+            "parent": "main",
+            "files": {
+              "docs/fixtures-unlink-issue-change.md": "unlink-issue-change fixture\n"
+            },
+            "message": "unlink-issue-change fixture",
+            "change": 1003,
+            "createRef": "fixtures/unlink-issue-change"
+          },
+          "save": "cc"
+        },
+        {
+          "call": "ChangeService/OpenChange",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "targetRef": "main",
+            "head": "{{cc.objectId}}",
+            "title": "unlink-issue-change fixture",
+            "body": "unlink-issue-change fixture"
+          },
+          "save": "c"
+        },
+        {
+          "call": "IssueService/LinkIssueChange",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "changeRequestId": "{{c.id}}"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "changeRequestId": "{{c.id}}"
+      }
+    },
+    {
+      "method": "GetIssueDevelopment",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "development-fixture",
+            "body": "development-fixture body"
+          }
+        },
+        {
+          "commit": {
+            "repo": "{{repo}}",
+            "parent": "main",
+            "files": {
+              "docs/fixtures-issue-development.md": "issue-development fixture\n"
+            },
+            "message": "issue-development fixture",
+            "change": 1004,
+            "createRef": "fixtures/issue-development"
+          },
+          "save": "cc"
+        },
+        {
+          "call": "ChangeService/OpenChange",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "targetRef": "main",
+            "head": "{{cc.objectId}}",
+            "title": "issue-development fixture",
+            "body": "issue-development fixture"
+          },
+          "save": "c"
+        },
+        {
+          "call": "IssueService/LinkIssueChange",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "number": "{{t.number}}",
+            "changeRequestId": "{{c.id}}",
+            "closes": true
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "CreateIssueBranch",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "create-branch-fixture",
+            "body": "create-branch-fixture body"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}",
+        "refName": "fixtures/create-issue-branch",
+        "baseRef": "main"
+      }
+    },
+    {
+      "method": "GetIssueTaskListProgress",
+      "setup": [
+        {
+          "call": "IssueService/CreateIssue",
+          "save": "t",
+          "request": {
+            "repo": {
+              "fullName": "{{repo}}"
+            },
+            "title": "task-list-fixture",
+            "body": "Tasks:\n- [x] first\n- [ ] second\n- [ ] third\n"
+          }
+        }
+      ],
+      "request": {
+        "repo": {
+          "fullName": "{{repo}}"
+        },
+        "number": "{{t.number}}"
+      }
+    },
+    {
+      "method": "CreateSavedReply",
+      "request": {
+        "title": "create-saved-reply-fixture",
+        "body": "Thanks for the report!"
+      }
+    },
+    {
+      "method": "GetSavedReply",
+      "setup": [
+        {
+          "call": "IssueService/CreateSavedReply",
+          "request": {
+            "title": "get-saved-reply-fixture",
+            "body": "get-saved-reply-fixture body"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "id": "{{s.id}}"
+      }
+    },
+    {
+      "method": "UpdateSavedReply",
+      "setup": [
+        {
+          "call": "IssueService/CreateSavedReply",
+          "request": {
+            "title": "update-saved-reply-fixture",
+            "body": "update-saved-reply-fixture body"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "id": "{{s.id}}",
+        "title": "update-saved-reply-fixture-renamed",
+        "body": "edited",
+        "expectedVersion": "{{s.version}}"
+      }
+    },
+    {
+      "method": "DeleteSavedReply",
+      "setup": [
+        {
+          "call": "IssueService/CreateSavedReply",
+          "request": {
+            "title": "delete-saved-reply-fixture",
+            "body": "delete-saved-reply-fixture body"
+          },
+          "save": "s"
+        }
+      ],
+      "request": {
+        "id": "{{s.id}}"
+      }
+    },
+    {
+      "method": "ListSavedReplies",
+      "request": {
+        "query": "saved-reply-fixture",
+        "page": {
+          "pageSize": 50
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SendAgentRunMessageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SendAgentRunMessage.",
+  "properties": {
+    "body": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SendAgentRunMessageRequest",
+  "type": "object"
+}

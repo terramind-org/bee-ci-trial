@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/model.list-prompt-files.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModelService/ListPromptFiles: `data` is a bee.v1.ListPromptFilesResponse in proto3-JSON. `bee model list-prompt-files --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListPromptFilesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.model.list-prompt-files"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee model list-prompt-files",
+  "type": "object"
+}

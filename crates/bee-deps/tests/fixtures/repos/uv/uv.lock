@@ -1,0 +1,43 @@
+version = 1
+requires-python = ">=3.11"
+
+[[package]]
+name = "agent-tool"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
+
+[[package]]
+name = "annotated-types"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/annotated_types-0.6.0.tar.gz", hash = "sha256:563339e807e53ffd9c267e99fc6d9ea23eb5a2b14b14ee78c0e5b0f2d1f7a5a0", size = 14000 }
+
+[[package]]
+name = "httpx"
+version = "0.27.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5", size = 126000 }
+
+[[package]]
+name = "pydantic"
+version = "2.6.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-types" },
+]
+sdist = { url = "https://files.pythonhosted.org/pydantic-2.6.4.tar.gz", hash = "sha256:b1704e0847db01817624a6b86766967f552dd9dbf3afba4004409f908dcc84e6", size = 700000 }
+
+[[package]]
+name = "ruff"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/ruff-0.4.1.tar.gz", hash = "sha256:8dd2a9e5e6e7f0ff1d1e1f6f62f1b2a1b0c6a4b6e1f4f08b5c0a7c2c7d5b3e9f", size = 2500000 }

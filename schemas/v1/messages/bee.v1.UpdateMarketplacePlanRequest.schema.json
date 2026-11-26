@@ -1,0 +1,56 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateMarketplacePlanRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateMarketplacePlan. Unset fields are unchanged.",
+  "properties": {
+    "bullets": {
+      "description": "replaces the list when replace_bullets is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "freeTrialDays": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "listing": {
+      "type": "string"
+    },
+    "monthlyPriceMicroUsd": {
+      "description": "INVALID_STATE once the plan has purchases",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "planId": {
+      "type": "string"
+    },
+    "replaceBullets": {
+      "type": "boolean"
+    },
+    "retired": {
+      "type": "boolean"
+    },
+    "yearlyPriceMicroUsd": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.UpdateMarketplacePlanRequest",
+  "type": "object"
+}

@@ -1,0 +1,175 @@
+# Move to .github/workflows/release.yml to activate; kept here because workflow-file pushes are restricted.
+name: Release
+
+on:
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "crates/**"
+      - "proto/**"
+      - "Dockerfile"
+      - "apps/web/Dockerfile"
+      - "scripts/package-release.sh"
+      - "ci/workflows/release.yml"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  binaries:
+    name: Binaries (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    # A cold macOS build took 72 minutes on a hosted runner.
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: aarch64-apple-darwin
+            os: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+      - name: Install protoc (macOS)
+        if: runner.os == 'macOS'
+        run: brew install protobuf
+      - name: Install pinned Rust toolchain
+        run: |
+          channel="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)"
+          rustup toolchain install "$channel" --profile minimal --target "${{ matrix.target }}"
+          rustup default "$channel"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: Build binaries
+        run: cargo build --release --locked --target "${{ matrix.target }}" -p bee-cli -p bee-server -p bee-daemon -p bee-github
+      - name: Determine release version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Package binaries
+        run: scripts/package-release.sh "${{ matrix.target }}" "${{ steps.version.outputs.value }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bee-${{ matrix.target }}
+          path: |
+            dist/bee-${{ steps.version.outputs.value }}-${{ matrix.target }}.tar.gz
+            dist/bee-${{ steps.version.outputs.value }}-${{ matrix.target }}.tar.gz.sha256
+          if-no-files-found: error
+
+  images:
+    name: Container images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        if: startsWith(github.ref, 'refs/tags/v')
+      - uses: docker/setup-buildx-action@v3
+      - name: Set image metadata
+        id: meta
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+            echo "platforms=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
+            echo "server_tags<<EOF" >> "$GITHUB_OUTPUT"
+            echo "ghcr.io/terramind-org/bee-server:${version}" >> "$GITHUB_OUTPUT"
+            echo "ghcr.io/terramind-org/bee-server:latest" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "web_tags<<EOF" >> "$GITHUB_OUTPUT"
+            echo "ghcr.io/terramind-org/bee-web:${version}" >> "$GITHUB_OUTPUT"
+            echo "ghcr.io/terramind-org/bee-web:latest" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          else
+            echo "platforms=linux/amd64" >> "$GITHUB_OUTPUT"
+            echo "server_tags=bee-server:pr" >> "$GITHUB_OUTPUT"
+            echo "web_tags=bee-web:pr" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build bee-server image
+        id: server
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ steps.meta.outputs.platforms }}
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta.outputs.server_tags }}
+          provenance: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          sbom: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      - name: Build bee-web image
+        id: web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          platforms: ${{ steps.meta.outputs.platforms }}
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta.outputs.web_tags }}
+          provenance: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          sbom: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      - uses: sigstore/cosign-installer@v3
+        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Sign container images
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cosign sign --yes "ghcr.io/terramind-org/bee-server@${{ steps.server.outputs.digest }}"
+          cosign sign --yes "ghcr.io/terramind-org/bee-web@${{ steps.web.outputs.digest }}"
+
+  publish:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [binaries, images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: bee-*
+          merge-multiple: true
+      - name: Create checksums
+        run: |
+          cd dist
+          cat ./*.sha256 | sort -k2 > SHA256SUMS
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
+            dist/*.tar.gz dist/*.sha256 dist/SHA256SUMS

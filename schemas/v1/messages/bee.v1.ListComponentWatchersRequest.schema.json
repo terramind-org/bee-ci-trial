@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WatcherState": {
+      "description": "Watcher lifecycle.",
+      "enum": [
+        "WATCHER_STATE_UNSPECIFIED",
+        "WATCHER_STATE_ACTIVE",
+        "WATCHER_STATE_PAUSED",
+        "WATCHER_STATE_ERROR"
+      ],
+      "title": "bee.v1.WatcherState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListComponentWatchersRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListComponentWatchers.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.WatcherState"
+    }
+  },
+  "title": "bee.v1.ListComponentWatchersRequest",
+  "type": "object"
+}

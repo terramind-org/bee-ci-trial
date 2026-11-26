@@ -1,0 +1,59 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.pin.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon pin --json`: one such document with `schema` = bee.v1.daemon.pin. Keep the objects under PATHs in the daemon's cache under a name (never evicted). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "changeset": {
+          "pattern": "^c1_[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "objects": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "changeset",
+        "objects",
+        "skipped"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.pin"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon pin",
+  "type": "object"
+}

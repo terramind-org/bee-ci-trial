@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoWatchLevel": {
+      "description": "How a principal watches a repo.",
+      "enum": [
+        "REPO_WATCH_LEVEL_UNSPECIFIED",
+        "REPO_WATCH_LEVEL_ALL",
+        "REPO_WATCH_LEVEL_PARTICIPATING",
+        "REPO_WATCH_LEVEL_IGNORE",
+        "REPO_WATCH_LEVEL_CUSTOM"
+      ],
+      "title": "bee.v1.RepoWatchLevel",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWatchedReposRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListWatchedRepos.",
+  "properties": {
+    "level": {
+      "$ref": "#/$defs/bee.v1.RepoWatchLevel",
+      "description": "UNSPECIFIED = any watch"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    }
+  },
+  "title": "bee.v1.ListWatchedReposRequest",
+  "type": "object"
+}

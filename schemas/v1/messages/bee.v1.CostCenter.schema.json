@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CostCenter.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A named bucket that usage of its repos, orgs and principals is attributed to.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "description": "ULID",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "orgs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "principalIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repos": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoRef"
+      },
+      "type": "array"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.EnterpriseScope"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CostCenter",
+  "type": "object"
+}

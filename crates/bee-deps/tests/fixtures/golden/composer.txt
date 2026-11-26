@@ -1,0 +1,7 @@
+manifest composer.json composer lock=false count=3
+manifest composer.lock composer lock=true count=5
+composer.lock composer guzzlehttp/guzzle@7.4.5 runtime direct req=^7.4 pkg:composer/guzzlehttp/guzzle@7.4.5 -> composer/psr/http-client@1.0.1
+composer.lock composer monolog/monolog@2.3.0 runtime direct req=^2.0 pkg:composer/monolog/monolog@2.3.0 -> composer/psr/log@2.0.0
+composer.lock composer phpunit/phpunit@10.0.19 dev direct req=^10.0 pkg:composer/phpunit/phpunit@10.0.19
+composer.lock composer psr/http-client@1.0.1 runtime indirect req=- pkg:composer/psr/http-client@1.0.1
+composer.lock composer psr/log@2.0.0 runtime indirect req=- pkg:composer/psr/log@2.0.0

@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "bee.v1.CodeSearchHit": {
+      "description": "One file with matches.",
+      "properties": {
+        "blob": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "indexed changeset"
+        },
+        "language": {
+          "type": "string"
+        },
+        "lineMatches": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.CodeSearchLineMatch"
+          },
+          "type": "array"
+        },
+        "matchCount": {
+          "description": "total matches in the file, may exceed line_matches",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "pathMatched": {
+          "description": "the path itself matched",
+          "type": "boolean"
+        },
+        "ref": {
+          "description": "indexed ref, e.g. \"main\"",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "repoFullName": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "symbols": {
+          "description": "matched symbol definitions, for symbol: queries",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SymbolInfo"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.CodeSearchHit",
+      "type": "object"
+    },
+    "bee.v1.CodeSearchLineMatch": {
+      "description": "One matching line in a file.",
+      "properties": {
+        "contextAfter": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "contextBefore": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "line": {
+          "description": "the line text, UTF-8, possibly cut to a limit",
+          "type": "string"
+        },
+        "lineNumber": {
+          "description": "1-based",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ranges": {
+          "description": "match ranges within `line`",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchRange"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.CodeSearchLineMatch",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SearchFacet": {
+      "description": "Counts per facet value, for filtering a result set.",
+      "properties": {
+        "name": {
+          "description": "e.g. \"language\", \"repo\", \"path\"",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchFacetValue"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchFacet",
+      "type": "object"
+    },
+    "bee.v1.SearchFacetValue": {
+      "description": "One facet value and its count.",
+      "properties": {
+        "count": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SearchFacetValue",
+      "type": "object"
+    },
+    "bee.v1.SearchRange": {
+      "description": "A byte range within a line or text, half-open, in UTF-8 bytes.",
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.SearchRange",
+      "type": "object"
+    },
+    "bee.v1.SymbolInfo": {
+      "description": "A symbol definition.",
+      "properties": {
+        "container": {
+          "description": "enclosing symbol name",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SymbolKind"
+        },
+        "language": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "qualifiedName": {
+          "description": "e.g. \"billing::invoice::Invoice::total\"",
+          "type": "string"
+        },
+        "signature": {
+          "description": "one-line declaration text",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SymbolInfo",
+      "type": "object"
+    },
+    "bee.v1.SymbolKind": {
+      "description": "Kind of a code symbol.",
+      "enum": [
+        "SYMBOL_KIND_UNSPECIFIED",
+        "SYMBOL_KIND_FILE",
+        "SYMBOL_KIND_MODULE",
+        "SYMBOL_KIND_NAMESPACE",
+        "SYMBOL_KIND_PACKAGE",
+        "SYMBOL_KIND_CLASS",
+        "SYMBOL_KIND_METHOD",
+        "SYMBOL_KIND_PROPERTY",
+        "SYMBOL_KIND_FIELD",
+        "SYMBOL_KIND_CONSTRUCTOR",
+        "SYMBOL_KIND_ENUM",
+        "SYMBOL_KIND_INTERFACE",
+        "SYMBOL_KIND_FUNCTION",
+        "SYMBOL_KIND_VARIABLE",
+        "SYMBOL_KIND_CONSTANT",
+        "SYMBOL_KIND_STRUCT",
+        "SYMBOL_KIND_TRAIT",
+        "SYMBOL_KIND_TYPE_ALIAS",
+        "SYMBOL_KIND_MACRO",
+        "SYMBOL_KIND_ENUM_MEMBER"
+      ],
+      "title": "bee.v1.SymbolKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SearchCodeResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for SearchCode.",
+  "properties": {
+    "facets": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.SearchFacet"
+      },
+      "type": "array"
+    },
+    "hits": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.CodeSearchHit"
+      },
+      "type": "array"
+    },
+    "incomplete": {
+      "description": "some shards timed out or repos are not indexed yet",
+      "type": "boolean"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "totalCount": {
+      "description": "approximate for very large sets",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.SearchCodeResponse",
+  "type": "object"
+}

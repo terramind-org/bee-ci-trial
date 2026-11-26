@@ -1,0 +1,26 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Label.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A repo label shared by issues, change requests and discussions.",
+  "properties": {
+    "color": {
+      "description": "six hex digits, no '#'",
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "isDefault": {
+      "description": "part of the repo's default label set",
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Label",
+  "type": "object"
+}

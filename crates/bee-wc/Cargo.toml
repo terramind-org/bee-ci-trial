@@ -1,0 +1,35 @@
+[package]
+name = "bee-wc"
+description = "Working copy: sparse profiles, checkout, status, commit, stacks, conflicts, journal."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-merge = { path = "../bee-merge" }
+bee-object = { path = "../bee-object" }
+bee-proto = { path = "../bee-proto" }
+getrandom = "=0.4.3"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+toml = "=1.1.8"
+
+# Checkout makes its files durable with plain fsync per file and one F_FULLFSYNC (Apple)
+# instead of a full sync per file; std has no safe way to issue either separately.
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "=1.1.5", features = ["fs"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

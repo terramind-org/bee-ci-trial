@@ -1,0 +1,120 @@
+{
+  "service": "bee.v1.PagesService",
+  "note": "Each site fixture creates its own auto-initialised repo, so no Pages site is left on dev/playground and fixtures never depend on one another.",
+  "fixtures": [
+    {"method": "CreatePagesSite",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "create-pages-site", "visibility": "VISIBILITY_PUBLIC", "description": "CreatePagesSite fixture", "autoInit": true}}],
+     "request": {"repo": {"fullName": "{{org}}/create-pages-site"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+    {"method": "GetPagesSite",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "get-pages-site", "visibility": "VISIBILITY_PUBLIC", "description": "GetPagesSite fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/get-pages-site"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/get-pages-site"}}},
+    {"method": "UpdatePagesSite",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "update-pages-site", "visibility": "VISIBILITY_PUBLIC", "description": "UpdatePagesSite fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/update-pages-site"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/update-pages-site"}, "source": {"ref": "main", "path": "/docs"}, "access": "PAGES_ACCESS_PRIVATE"}},
+    {"method": "DeletePagesSite",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "delete-pages-site", "visibility": "VISIBILITY_PUBLIC", "description": "DeletePagesSite fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/delete-pages-site"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/delete-pages-site"}}},
+    {"method": "ListPagesDeployments",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "list-pages-deployments", "visibility": "VISIBILITY_PUBLIC", "description": "ListPagesDeployments fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/list-pages-deployments"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+       {"call": "PagesService/RequestPagesBuild", "request": {"repo": {"fullName": "{{org}}/list-pages-deployments"}}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/list-pages-deployments"}, "page": {"pageSize": 10}}},
+    {"method": "GetPagesDeployment",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "get-pages-deployment", "visibility": "VISIBILITY_PUBLIC", "description": "GetPagesDeployment fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/get-pages-deployment"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+       {"call": "PagesService/RequestPagesBuild", "save": "d", "request": {"repo": {"fullName": "{{org}}/get-pages-deployment"}}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/get-pages-deployment"}, "pagesDeploymentId": "{{d.id}}"}},
+    {"method": "RequestPagesBuild",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "request-pages-build", "visibility": "VISIBILITY_PUBLIC", "description": "RequestPagesBuild fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/request-pages-build"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/request-pages-build"}}},
+    {"method": "CreatePagesDeployment",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "create-pages-deployment", "visibility": "VISIBILITY_PUBLIC", "description": "CreatePagesDeployment fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/create-pages-deployment"}, "buildType": "PAGES_BUILD_TYPE_WORKFLOW", "access": "PAGES_ACCESS_PUBLIC"}},
+       {"commit": {"repo": "{{org}}/create-pages-deployment", "parent": "main", "message": "add pages workflow", "change": 6001, "land": "main", "files": {".github/workflows/pages.yml": "name: Pages\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, create-pages-deployment-fixture]\n    steps:\n      - name: build\n        run: echo build\n"}}, "save": "c"},
+       {"call": "RunnerService/CreateRunnerRegistrationToken", "save": "rt", "request": {"scope": {"kind": "RUNNER_SCOPE_KIND_REPO", "repo": {"fullName": "{{org}}/create-pages-deployment"}}}},
+       {"call": "RunnerService/RegisterRunner", "save": "rr", "request": {"registrationToken": "{{rt.token}}", "name": "create-pages-deployment-runner", "os": "RUNNER_OS_LINUX", "arch": "RUNNER_ARCH_X64", "labels": ["create-pages-deployment-fixture"], "version": "1.0.0"}},
+       {"call": "WorkflowService/DispatchWorkflow", "request": {"repo": {"fullName": "{{org}}/create-pages-deployment"}, "workflow": "pages.yml", "ref": "main"}},
+       {"call": "RunnerService/AcquireRunnerJob", "save": "j", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "maxJobs": 1}},
+       {"call": "WorkflowService/CreateWorkflowArtifactUpload", "save": "u", "token": "{{j.jobToken}}", "request": {"repo": {"fullName": "{{org}}/create-pages-deployment"}, "jobId": "{{j.jobId}}", "name": "github-pages", "archive": true, "contentType": "application/zip", "retentionDays": 1}},
+       {"upload": {"url": "{{u.uploadUrl}}", "base64": "UEsDBAoAAAAAAO9aU13APu65KQAAACkAAAAKAAAAaW5kZXguaHRtbDxoMT5jcmVhdGUtcGFnZXMtZGVwbG95bWVudCBmaXh0dXJlPC9oMT4KUEsBAh4DCgAAAAAA71pTXcA+7rkpAAAAKQAAAAoAAAAAAAAAAAAAAKSBAAAAAGluZGV4Lmh0bWxQSwUGAAAAAAEAAQA4AAAAUQAAAAAA", "headers": {"Content-Type": "application/zip"}}},
+       {"call": "WorkflowService/FinalizeWorkflowArtifact", "token": "{{j.jobToken}}", "request": {"repo": {"fullName": "{{org}}/create-pages-deployment"}, "artifactId": "{{u.artifactId}}", "sizeBytes": "159", "digest": "sha256:4b0bc84aa03172c8e7c4a7a73e785008fb4d936fb07916c46b53238f538a0341"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/create-pages-deployment"}, "artifactId": "{{u.artifactId}}", "changeset": "{{c.objectId}}", "environment": "github-pages"}},
+    {"method": "CancelPagesDeployment",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "cancel-pages-deployment", "visibility": "VISIBILITY_PUBLIC", "description": "CancelPagesDeployment fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/cancel-pages-deployment"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+       {"call": "PagesService/RequestPagesBuild", "save": "d", "request": {"repo": {"fullName": "{{org}}/cancel-pages-deployment"}}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/cancel-pages-deployment"}, "pagesDeploymentId": "{{d.id}}"},
+     "expect": "INVALID_STATE",
+     "note": "Pages builds run to completion inside RequestPagesBuild/CreatePagesDeployment (pages/deploy.rs cancel_deployment), so a stored deployment is always final and cancelling it answers INVALID_STATE (the deployment has finished)."},
+    {"method": "SetPagesCustomDomain",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "set-pages-custom-domain", "visibility": "VISIBILITY_PUBLIC", "description": "SetPagesCustomDomain fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/set-pages-custom-domain"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/set-pages-custom-domain"}, "domain": "set-pages-custom-domain.example.com"}},
+    {"method": "RequestPagesCertificate",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "request-pages-certificate", "visibility": "VISIBILITY_PUBLIC", "description": "RequestPagesCertificate fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/request-pages-certificate"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+       {"call": "PagesService/SetPagesCustomDomain", "request": {"repo": {"fullName": "{{org}}/request-pages-certificate"}, "domain": "request-pages-certificate.example.com"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/request-pages-certificate"}},
+     "expect": "INVALID_STATE",
+     "note": "Issuing a certificate needs the custom domain's DNS to point at Pages. The dev server's in-memory DNS zone starts empty and no RPC publishes records into it, so the domain is never HTTPS-eligible and the strict request answers INVALID_STATE (DNS not ready)."},
+    {"method": "GetPagesHealthCheck",
+     "setup": [
+       {"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "get-pages-health-check", "visibility": "VISIBILITY_PUBLIC", "description": "GetPagesHealthCheck fixture", "autoInit": true}},
+       {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/get-pages-health-check"}, "buildType": "PAGES_BUILD_TYPE_REF", "source": {"ref": "main", "path": "/"}, "access": "PAGES_ACCESS_PUBLIC"}},
+       {"call": "PagesService/SetPagesCustomDomain", "request": {"repo": {"fullName": "{{org}}/get-pages-health-check"}, "domain": "get-pages-health-check.example.com"}}
+     ],
+     "request": {"repo": {"fullName": "{{org}}/get-pages-health-check"}}},
+    {"method": "AddPagesVerifiedDomain",
+     "request": {"org": "{{org}}", "domain": "add-pages-verified-domain.example.com"}},
+    {"method": "ListPagesVerifiedDomains",
+     "setup": [{"call": "PagesService/AddPagesVerifiedDomain", "request": {"org": "{{org}}", "domain": "list-pages-verified-domains.example.com"}}],
+     "request": {"org": "{{org}}", "page": {"pageSize": 20}}},
+    {"method": "VerifyPagesDomain",
+     "setup": [{"call": "PagesService/AddPagesVerifiedDomain", "save": "v", "request": {"org": "{{org}}", "domain": "verify-pages-domain.example.com"}}],
+     "request": {"org": "{{org}}", "verificationId": "{{v.id}}"}},
+    {"method": "DeletePagesVerifiedDomain",
+     "setup": [{"call": "PagesService/AddPagesVerifiedDomain", "save": "v", "request": {"org": "{{org}}", "domain": "delete-pages-verified-domain.example.com"}}],
+     "request": {"org": "{{org}}", "verificationId": "{{v.id}}"}},
+    {"method": "ListPagesPreviews",
+     "setup": [{"call": "RepoService/CreateRepo", "request": {"org": "{{org}}", "name": "list-pages-previews", "visibility": "VISIBILITY_PUBLIC", "description": "ListPagesPreviews fixture", "autoInit": true}},
+               {"call": "PagesService/CreatePagesSite", "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}, "buildType": "PAGES_BUILD_TYPE_WORKFLOW", "access": "PAGES_ACCESS_PUBLIC"}},
+               {"commit": {"repo": "{{org}}/list-pages-previews", "parent": "main", "message": "add pages workflow", "change": 10520, "land": "main", "files": {".github/workflows/pages.yml": "name: Pages\non:\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: [self-hosted, list-pages-previews-fixture]\n    steps:\n      - name: build\n        run: echo build\n"}}, "save": "c"},
+               {"call": "RunnerService/CreateRunnerRegistrationToken", "save": "rt", "request": {"scope": {"kind": "RUNNER_SCOPE_KIND_REPO", "repo": {"fullName": "{{org}}/list-pages-previews"}}}},
+               {"call": "RunnerService/RegisterRunner", "save": "rr", "request": {"registrationToken": "{{rt.token}}", "name": "list-pages-previews-runner", "os": "RUNNER_OS_LINUX", "arch": "RUNNER_ARCH_X64", "labels": ["list-pages-previews-fixture"], "version": "1.0.0"}},
+               {"call": "WorkflowService/DispatchWorkflow", "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}, "workflow": "pages.yml", "ref": "main"}},
+               {"call": "RunnerService/AcquireRunnerJob", "save": "j", "token": "{{rr.credential}}", "request": {"runnerId": "{{rr.runner.id}}", "maxJobs": 1}},
+               {"call": "WorkflowService/CreateWorkflowArtifactUpload", "save": "u", "token": "{{j.jobToken}}", "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}, "jobId": "{{j.jobId}}", "name": "github-pages", "archive": true, "contentType": "application/zip", "retentionDays": 1}},
+               {"upload": {"url": "{{u.uploadUrl}}", "base64": "UEsDBAoAAAAAAO9aU13APu65KQAAACkAAAAKAAAAaW5kZXguaHRtbDxoMT5jcmVhdGUtcGFnZXMtZGVwbG95bWVudCBmaXh0dXJlPC9oMT4KUEsBAh4DCgAAAAAA71pTXcA+7rkpAAAAKQAAAAoAAAAAAAAAAAAAAKSBAAAAAGluZGV4Lmh0bWxQSwUGAAAAAAEAAQA4AAAAUQAAAAAA", "headers": {"Content-Type": "application/zip"}}},
+               {"call": "WorkflowService/FinalizeWorkflowArtifact", "token": "{{j.jobToken}}", "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}, "artifactId": "{{u.artifactId}}", "sizeBytes": "159", "digest": "sha256:4b0bc84aa03172c8e7c4a7a73e785008fb4d936fb07916c46b53238f538a0341"}},
+               {"call": "PagesService/CreatePagesDeployment", "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}, "artifactId": "{{u.artifactId}}", "changeset": "{{c.objectId}}", "environment": "github-pages", "preview": true}}],
+     "request": {"repo": {"fullName": "{{org}}/list-pages-previews"}}},
+    {"method": "GetPagesOrgSettings", "request": {"org": "{{org}}"}},
+    {"method": "UpdatePagesOrgSettings",
+     "setup": [{"call": "OrgService/CreateOrg", "request": {"name": "update-pages-org-settings-fixture-org", "display": "UpdatePagesOrgSettings fixture"}}],
+     "request": {"org": "update-pages-org-settings-fixture-org", "forbidPublic": true}}
+  ]
+}

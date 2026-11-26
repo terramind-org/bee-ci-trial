@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PushProtectionBypassReason": {
+      "description": "Why the requester says the blocked secret is safe to write.",
+      "enum": [
+        "PUSH_PROTECTION_BYPASS_REASON_UNSPECIFIED",
+        "PUSH_PROTECTION_BYPASS_REASON_USED_IN_TESTS",
+        "PUSH_PROTECTION_BYPASS_REASON_FALSE_POSITIVE",
+        "PUSH_PROTECTION_BYPASS_REASON_WILL_FIX_LATER"
+      ],
+      "title": "bee.v1.PushProtectionBypassReason",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SecretFinding": {
+      "description": "One secret found by push protection.",
+      "properties": {
+        "blob": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "patternId": {
+          "type": "string"
+        },
+        "secretType": {
+          "description": "e.g. \"aws_access_key_id\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecretFinding",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RequestPushProtectionBypassRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RequestPushProtectionBypass.",
+  "properties": {
+    "blockId": {
+      "type": "string"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "findings": {
+      "description": "must match the block",
+      "items": {
+        "$ref": "#/$defs/bee.v1.SecretFinding"
+      },
+      "type": "array"
+    },
+    "reason": {
+      "$ref": "#/$defs/bee.v1.PushProtectionBypassReason"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.RequestPushProtectionBypassRequest",
+  "type": "object"
+}

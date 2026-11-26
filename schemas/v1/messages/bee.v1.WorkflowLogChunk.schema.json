@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WorkflowLogChunk.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A slice of a job log.",
+  "properties": {
+    "data": {
+      "contentEncoding": "base64",
+      "description": "UTF-8 text, at most 1 MiB",
+      "type": "string"
+    },
+    "eof": {
+      "description": "the job completed and no more bytes will follow",
+      "type": "boolean"
+    },
+    "offset": {
+      "description": "byte offset of `data` in the job log",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "stepNumber": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.WorkflowLogChunk",
+  "type": "object"
+}

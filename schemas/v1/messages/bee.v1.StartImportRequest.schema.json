@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "bee.v1.ImportPhase": {
+      "enum": [
+        "IMPORT_PHASE_UNSPECIFIED",
+        "IMPORT_PHASE_DRY_RUN",
+        "IMPORT_PHASE_MIRROR",
+        "IMPORT_PHASE_BRIDGE",
+        "IMPORT_PHASE_CUTOVER"
+      ],
+      "title": "bee.v1.ImportPhase",
+      "type": "string"
+    },
+    "bee.v1.ImportSourceKind": {
+      "description": "Where an import comes from.",
+      "enum": [
+        "IMPORT_SOURCE_KIND_UNSPECIFIED",
+        "IMPORT_SOURCE_KIND_GITHUB",
+        "IMPORT_SOURCE_KIND_GITLAB",
+        "IMPORT_SOURCE_KIND_BITBUCKET",
+        "IMPORT_SOURCE_KIND_AZURE_DEVOPS",
+        "IMPORT_SOURCE_KIND_GITEA",
+        "IMPORT_SOURCE_KIND_GIT",
+        "IMPORT_SOURCE_KIND_GITHUB_ARCHIVE"
+      ],
+      "title": "bee.v1.ImportSourceKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.StartImportRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "githubInstallationId": {
+      "description": "preferred; else github_token",
+      "type": "string"
+    },
+    "githubToken": {
+      "description": "write-only",
+      "type": "string"
+    },
+    "org": {
+      "type": "boolean"
+    },
+    "phase": {
+      "$ref": "#/$defs/bee.v1.ImportPhase",
+      "description": "DRY_RUN or MIRROR"
+    },
+    "source": {
+      "description": "\"acme/api\" or \"acme\" with org = true",
+      "type": "string"
+    },
+    "sourceKind": {
+      "$ref": "#/$defs/bee.v1.ImportSourceKind"
+    },
+    "sourceToken": {
+      "description": "write-only credential for non-GitHub sources",
+      "type": "string"
+    },
+    "sourceUrl": {
+      "description": "base URL for self-hosted sources, git remote URL, or archive URL",
+      "type": "string"
+    },
+    "targetOrg": {
+      "description": "Beehive org; defaults to the source org name",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.StartImportRequest",
+  "type": "object"
+}

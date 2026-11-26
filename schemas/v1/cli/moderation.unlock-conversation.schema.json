@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/moderation.unlock-conversation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.ModerationService/UnlockConversation: `data` is a bee.v1.UnlockConversationResponse in proto3-JSON. `bee moderation unlock-conversation --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.UnlockConversationResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.moderation.unlock-conversation"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee moderation unlock-conversation",
+  "type": "object"
+}

@@ -1,0 +1,962 @@
+// User accounts, profiles and social graph for bee.v1: profiles, status, pins, follows,
+// stars and star lists, contribution graph, emails, keys, settings, sessions, security log,
+// account lifecycle, home feed and achievements. See docs/PRODUCT.md §4.16.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/forge.proto";
+
+// Users and the caller's own account. Calls that change an account act on the caller; org
+// admins and agents acting for a user need a token scoped to that user. Agents have profiles
+// too (kind AGENT) but cannot hold emails, SSH keys or web sessions of their own.
+service UserService {
+  // Fetches a user's public profile by login or id. NOT_FOUND when absent or suspended.
+  rpc GetUser(GetUserRequest) returns (UserProfile);
+  // Fetches the caller's own profile, including private fields.
+  rpc GetViewer(GetViewerRequest) returns (UserProfile);
+  // Edits the caller's profile.
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UserProfile);
+  // Starts an avatar upload and returns a signed upload URL.
+  rpc BeginUserAvatarUpload(BeginUserAvatarUploadRequest) returns (BeginUserAvatarUploadResponse);
+  // Completes an avatar upload. INTEGRITY when bytes do not match `sha256`;
+  // INVALID_ARGUMENT (subcode `bad_image`) when not a supported image.
+  rpc FinalizeUserAvatarUpload(FinalizeUserAvatarUploadRequest) returns (UserProfile);
+  // Sets the caller's status message, emoji, busy flag and expiry.
+  rpc SetUserStatus(SetUserStatusRequest) returns (UserStatus);
+  // Clears the caller's status.
+  rpc ClearUserStatus(ClearUserStatusRequest) returns (ClearUserStatusResponse);
+  // Replaces the caller's pinned repos and gists (at most six). NOT_FOUND for unknown items.
+  rpc SetUserPinnedItems(SetUserPinnedItemsRequest) returns (ListUserPinnedItemsResponse);
+  // Lists a user's pinned items, in order.
+  rpc ListUserPinnedItems(ListUserPinnedItemsRequest) returns (ListUserPinnedItemsResponse);
+  // Follows a user. Following twice is a no-op. BLOCKED when the user blocked the caller.
+  rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+  // Unfollows a user.
+  rpc UnfollowUser(UnfollowUserRequest) returns (UnfollowUserResponse);
+  // Lists a user's followers.
+  rpc ListUserFollowers(ListUserFollowersRequest) returns (ListUserFollowersResponse);
+  // Lists who a user follows.
+  rpc ListUserFollowing(ListUserFollowingRequest) returns (ListUserFollowingResponse);
+  // Reports whether one user follows another.
+  rpc IsFollowingUser(IsFollowingUserRequest) returns (IsFollowingUserResponse);
+  // Stars a repo for the caller. Starring twice is a no-op.
+  rpc StarRepo(StarRepoRequest) returns (StarRepoResponse);
+  // Removes the caller's star from a repo.
+  rpc UnstarRepo(UnstarRepoRequest) returns (UnstarRepoResponse);
+  // Reports whether the caller starred a repo.
+  rpc IsRepoStarred(IsRepoStarredRequest) returns (IsRepoStarredResponse);
+  // Lists repos a user starred.
+  rpc ListStarredRepos(ListStarredReposRequest) returns (ListStarredReposResponse);
+  // Lists principals who starred a repo.
+  rpc ListRepoStargazers(ListRepoStargazersRequest) returns (ListRepoStargazersResponse);
+  // Follows a repo: its published posts join the caller's Following feed. Separate from stars
+  // (bookmarks) and watching (notifications). Agents may follow. Following twice is a no-op;
+  // NOT_FOUND when the caller cannot read the repo.
+  rpc FollowRepo(FollowRepoRequest) returns (FollowRepoResponse);
+  // Stops following a repo. Unfollowing a repo not followed is a no-op.
+  rpc UnfollowRepo(UnfollowRepoRequest) returns (UnfollowRepoResponse);
+  // Reports whether the caller follows a repo.
+  rpc IsFollowingRepo(IsFollowingRepoRequest) returns (IsFollowingRepoResponse);
+  // Lists the repos a user or agent follows that the caller can read.
+  rpc ListFollowedRepos(ListFollowedReposRequest) returns (ListFollowedReposResponse);
+  // Lists the principals (humans and agents) who follow a repo.
+  rpc ListRepoFollowers(ListRepoFollowersRequest) returns (ListRepoFollowersResponse);
+  // Creates a star list. ALREADY_EXISTS when the name is taken.
+  rpc CreateStarList(CreateStarListRequest) returns (StarList);
+  // Fetches one star list.
+  rpc GetStarList(GetStarListRequest) returns (StarList);
+  // Lists a user's star lists (private lists only for their owner).
+  rpc ListStarLists(ListStarListsRequest) returns (ListStarListsResponse);
+  // Edits a star list.
+  rpc UpdateStarList(UpdateStarListRequest) returns (StarList);
+  // Deletes a star list. Stars themselves are kept.
+  rpc DeleteStarList(DeleteStarListRequest) returns (DeleteStarListResponse);
+  // Adds a repo to a star list, starring it if needed.
+  rpc AddStarListRepo(AddStarListRepoRequest) returns (StarList);
+  // Removes a repo from a star list. The star is kept.
+  rpc RemoveStarListRepo(RemoveStarListRepoRequest) returns (StarList);
+  // Lists the repos in a star list.
+  rpc ListStarListRepos(ListStarListReposRequest) returns (ListStarListReposResponse);
+  // Daily contribution counts over a year for a user's contribution graph.
+  rpc GetUserContributionGraph(GetUserContributionGraphRequest) returns (UserContributionGraph);
+  // Activity overview: share of changesets, reviews, issues and CRs, and top repos and orgs.
+  rpc GetUserActivityOverview(GetUserActivityOverviewRequest) returns (UserActivityOverview);
+  // Adds an email to the caller's account and sends a verification mail.
+  // ALREADY_EXISTS when another account verified it.
+  rpc AddUserEmail(AddUserEmailRequest) returns (UserEmail);
+  // Removes an email. INVALID_STATE for the primary email.
+  rpc DeleteUserEmail(DeleteUserEmailRequest) returns (DeleteUserEmailResponse);
+  // Lists the caller's emails with verification status and the noreply address.
+  rpc ListUserEmails(ListUserEmailsRequest) returns (ListUserEmailsResponse);
+  // Makes a verified email primary. INVALID_STATE when it is not verified.
+  rpc SetPrimaryUserEmail(SetPrimaryUserEmailRequest) returns (UserEmail);
+  // Sets email privacy: keep emails private, and block writes that expose a private email.
+  rpc UpdateUserEmailVisibility(UpdateUserEmailVisibilityRequest) returns (UpdateUserEmailVisibilityResponse);
+  // Re-sends the verification mail. INVALID_STATE when already verified.
+  rpc ResendUserEmailVerification(ResendUserEmailVerificationRequest) returns (ResendUserEmailVerificationResponse);
+  // Maps commit emails to the principals who verified them, for attribution.
+  // Unknown or unverified emails map to no principal.
+  rpc ResolveUserCommitEmails(ResolveUserCommitEmailsRequest) returns (ResolveUserCommitEmailsResponse);
+  // Adds an SSH key for git authentication. ALREADY_EXISTS when the key is registered;
+  // INVALID_ARGUMENT (subcode `weak_key`) for disallowed algorithms or sizes.
+  rpc AddUserSshKey(AddUserSshKeyRequest) returns (UserSshKey);
+  // Lists a user's SSH authentication keys (public keys only).
+  rpc ListUserSshKeys(ListUserSshKeysRequest) returns (ListUserSshKeysResponse);
+  // Deletes one of the caller's SSH keys.
+  rpc DeleteUserSshKey(DeleteUserSshKeyRequest) returns (DeleteUserSshKeyResponse);
+  // Adds a GPG or SSH signing key used to verify signed changesets and tags.
+  rpc AddUserSigningKey(AddUserSigningKeyRequest) returns (UserSigningKey);
+  // Lists a user's signing keys.
+  rpc ListUserSigningKeys(ListUserSigningKeysRequest) returns (ListUserSigningKeysResponse);
+  // Deletes one of the caller's signing keys. Past signatures by it show as unverified.
+  rpc DeleteUserSigningKey(DeleteUserSigningKeyRequest) returns (DeleteUserSigningKeyResponse);
+  // Returns the caller's account settings.
+  rpc GetUserSettings(GetUserSettingsRequest) returns (UserSettings);
+  // Changes account settings.
+  rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UserSettings);
+  // Lists the caller's active web sessions and a summary of live tokens.
+  rpc ListUserSessions(ListUserSessionsRequest) returns (ListUserSessionsResponse);
+  // Revokes a web session. The current session may not revoke itself (INVALID_STATE).
+  rpc RevokeUserSession(RevokeUserSessionRequest) returns (RevokeUserSessionResponse);
+  // Lists the caller's security log: logins, key, email, token and 2FA changes.
+  rpc ListUserSecurityEvents(ListUserSecurityEventsRequest) returns (ListUserSecurityEventsResponse);
+  // Renames the caller's login. The old login redirects until it is claimed by someone else.
+  // ALREADY_EXISTS when the login is taken; INVALID_ARGUMENT (subcode `bad_login`).
+  rpc RenameUserLogin(RenameUserLoginRequest) returns (UserProfile);
+  // Starts a data export (user migration archive). ALREADY_EXISTS while one is running.
+  rpc RequestUserDataExport(RequestUserDataExportRequest) returns (UserDataExport);
+  // Returns a data export's status and, when ready, a signed download URL.
+  rpc GetUserDataExport(GetUserDataExportRequest) returns (UserDataExport);
+  // Deletes the caller's account. INVALID_ARGUMENT (subcode `confirmation_mismatch`) unless
+  // `confirm_login` matches; INVALID_STATE while the caller is the sole owner of an org.
+  rpc DeleteUserAccount(DeleteUserAccountRequest) returns (DeleteUserAccountResponse);
+  // Lists the caller's home feed: events from followed users and starred or watched repos.
+  rpc ListUserFeedEvents(ListUserFeedEventsRequest) returns (ListUserFeedEventsResponse);
+  // Lists a user's achievements, derived from events.
+  rpc ListUserAchievements(ListUserAchievementsRequest) returns (ListUserAchievementsResponse);
+}
+
+// A linked social account on a profile.
+message UserSocialAccount {
+  string provider = 1;          // e.g. "mastodon", "linkedin", "x", "bluesky", "generic"
+  string url = 2;
+}
+
+// A user's status.
+message UserStatus {
+  string message = 1;
+  string emoji = 2;             // shortcode, e.g. ":palm_tree:"
+  bool busy = 3;                // "limited availability"
+  google.protobuf.Timestamp expires_at = 4;
+  string org = 5;               // visible only to this org's members; empty = everyone
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// A user's profile.
+message UserProfile {
+  Principal principal = 1;
+  string login = 2;
+  string name = 3;
+  string bio = 4;
+  string pronouns = 5;
+  string company = 6;
+  string location = 7;
+  string website = 8;
+  repeated UserSocialAccount social_accounts = 9;
+  string avatar_url = 10;
+  UserStatus status = 11;
+  RepoRef readme_repo = 12;     // the `<login>/<login>` profile README repo, if any
+  string readme_html = 13;      // rendered profile README
+  string public_email = 14;
+  bool hireable = 15;
+  repeated string orgs = 16;    // public org memberships, for badges
+  uint64 follower_count = 17;
+  uint64 following_count = 18;
+  uint64 public_repo_count = 19;
+  uint64 public_gist_count = 20;
+  uint64 star_count = 21;       // repos starred
+  bool viewer_is_following = 22;
+  bool follows_viewer = 23;
+  bool is_site_admin = 24;
+  bool sponsorable = 25;
+  google.protobuf.Timestamp created_at = 26;
+  google.protobuf.Timestamp updated_at = 27;
+  string url = 28;
+}
+
+// A short user reference for lists.
+message UserSummary {
+  Principal principal = 1;
+  string login = 2;
+  string name = 3;
+  string avatar_url = 4;
+  string bio = 5;
+}
+
+// What a pinned item is.
+enum UserPinnedItemKind {
+  USER_PINNED_ITEM_KIND_UNSPECIFIED = 0;
+  USER_PINNED_ITEM_KIND_REPO = 1;
+  USER_PINNED_ITEM_KIND_GIST = 2;
+}
+
+// A pinned repo or gist on a profile.
+message UserPinnedItem {
+  UserPinnedItemKind kind = 1;
+  string id = 2;                // repo or gist id
+  string title = 3;             // repo full name or gist description
+  string description = 4;
+  string language = 5;
+  uint64 star_count = 6;
+  uint64 fork_count = 7;
+}
+
+// A starred repo.
+message StarredRepo {
+  RepoRef repo = 1;
+  string full_name = 2;
+  string description = 3;
+  string language = 4;
+  uint64 star_count = 5;
+  google.protobuf.Timestamp starred_at = 6;
+}
+
+// A stargazer of a repo.
+message StarGazer {
+  UserSummary user = 1;
+  google.protobuf.Timestamp starred_at = 2;
+}
+
+// A user-curated list of starred repos.
+message StarList {
+  string id = 1;
+  Principal owner = 2;
+  string name = 3;
+  string description = 4;
+  bool private = 5;
+  uint32 repo_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// One day in the contribution graph.
+message UserContributionDay {
+  string date = 1;              // YYYY-MM-DD in the requested time zone
+  uint32 count = 2;
+  uint32 level = 3;             // 0..4 intensity bucket
+}
+
+// A year of daily contributions.
+message UserContributionGraph {
+  string login = 1;
+  string from_date = 2;
+  string to_date = 3;
+  uint32 total = 4;
+  repeated UserContributionDay days = 5;
+  bool includes_private = 6;    // private contributions counted anonymously
+}
+
+// Share of contribution types and where they happened.
+message UserActivityOverview {
+  string login = 1;
+  double changesets_percent = 2;
+  double reviews_percent = 3;
+  double issues_percent = 4;
+  double change_requests_percent = 5;
+  repeated string top_repos = 6; // full names
+  repeated string top_orgs = 7;
+  string from_date = 8;
+  string to_date = 9;
+}
+
+// An email on the caller's account.
+message UserEmail {
+  string email = 1;
+  bool verified = 2;
+  bool primary = 3;
+  bool public = 4;              // shown on the profile
+  bool noreply = 5;             // the generated noreply address
+  google.protobuf.Timestamp verified_at = 6;
+  google.protobuf.Timestamp added_at = 7;
+}
+
+// An email and the principal it maps to for commit attribution.
+message UserCommitEmailMapping {
+  string email = 1;
+  Principal principal = 2;      // unset when unknown or unverified
+  bool placeholder = 3;         // mapped to an imported placeholder identity
+}
+
+// An SSH key for git authentication.
+message UserSshKey {
+  string id = 1;
+  string title = 2;
+  string public_key = 3;        // OpenSSH format
+  string fingerprint = 4;       // SHA256:...
+  string algorithm = 5;         // e.g. "ssh-ed25519"
+  bool read_only = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_used_at = 8;
+}
+
+// Kind of signing key.
+enum UserSigningKeyKind {
+  USER_SIGNING_KEY_KIND_UNSPECIFIED = 0;
+  USER_SIGNING_KEY_KIND_GPG = 1;
+  USER_SIGNING_KEY_KIND_SSH = 2;
+}
+
+// A key that verifies signatures on changesets and tags.
+message UserSigningKey {
+  string id = 1;
+  UserSigningKeyKind kind = 2;
+  string title = 3;
+  string public_key = 4;        // armored GPG key or OpenSSH key
+  string key_id = 5;            // GPG long key id or SSH fingerprint
+  repeated string emails = 6;   // GPG user ids' emails that match verified account emails
+  repeated string subkey_ids = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// Account-wide preferences.
+message UserSettings {
+  string theme = 1;             // "light", "dark", "system", or a named theme
+  string dark_theme = 2;
+  string light_theme = 3;
+  string time_zone = 4;         // IANA name
+  string locale = 5;            // BCP 47
+  repeated KeyValue accessibility = 6;     // e.g. "reduce_motion"="true"
+  repeated KeyValue keyboard_shortcuts = 7; // action -> key binding; empty value disables
+  bool keyboard_shortcuts_enabled = 8;
+  string editor_indent = 9;     // e.g. "spaces:2", "tabs:8"
+  string diff_view = 10;        // "unified" or "split"
+  bool show_private_contributions = 11;
+  bool vigilant_mode = 12;      // flag unsigned changesets as unverified
+}
+
+// Kind of an account session.
+enum UserSessionKind {
+  USER_SESSION_KIND_UNSPECIFIED = 0;
+  USER_SESSION_KIND_WEB = 1;
+  USER_SESSION_KIND_MOBILE = 2;
+  USER_SESSION_KIND_CLI = 3;
+}
+
+// An active session on the caller's account.
+message UserSession {
+  string id = 1;
+  UserSessionKind kind = 2;
+  string user_agent = 3;
+  string ip_address = 4;
+  string location = 5;          // approximate, from IP
+  bool current = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_active_at = 8;
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+// Counts of live tokens held by the caller and their agents.
+message UserTokenSummary {
+  uint32 personal_tokens = 1;
+  uint32 agent_tokens = 2;
+  uint32 app_authorizations = 3;
+  google.protobuf.Timestamp oldest_expires_at = 4;
+}
+
+// One entry in the user security log.
+message UserSecurityEvent {
+  string id = 1;
+  string action = 2;            // e.g. "user.login", "ssh_key.add", "two_factor.disable"
+  Principal actor = 3;
+  string ip_address = 4;
+  string user_agent = 5;
+  string location = 6;
+  string details = 7;           // JSON
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// State of a data export.
+enum UserDataExportState {
+  USER_DATA_EXPORT_STATE_UNSPECIFIED = 0;
+  USER_DATA_EXPORT_STATE_PENDING = 1;
+  USER_DATA_EXPORT_STATE_RUNNING = 2;
+  USER_DATA_EXPORT_STATE_READY = 3;
+  USER_DATA_EXPORT_STATE_FAILED = 4;
+  USER_DATA_EXPORT_STATE_EXPIRED = 5;
+}
+
+// A user migration archive.
+message UserDataExport {
+  string id = 1;
+  UserDataExportState state = 2;
+  string download_url = 3;      // signed; READY only
+  google.protobuf.Timestamp url_expires_at = 4;
+  uint64 size = 5;
+  bytes sha256 = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+  string error = 9;
+}
+
+// One event in the home feed.
+message UserFeedEvent {
+  string id = 1;
+  Principal actor = 2;
+  string kind = 3;              // e.g. "star", "fork", "release", "follow", "repo.create"
+  SubjectRef subject = 4;
+  string summary = 5;
+  string payload = 6;           // JSON with kind-specific detail
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// An achievement earned by a user.
+message UserAchievement {
+  string slug = 1;              // e.g. "pair-extraordinaire"
+  string name = 2;
+  string description = 3;
+  string tier = 4;              // e.g. "bronze", "silver", "gold"
+  uint32 count = 5;
+  string image_url = 6;
+  SubjectRef unlocked_by = 7;   // event subject that earned it
+  google.protobuf.Timestamp unlocked_at = 8;
+}
+
+// Request for GetUser.
+message GetUserRequest {
+  oneof user {
+    string login = 1;
+    string id = 2;
+  }
+}
+
+// Request for GetViewer.
+message GetViewerRequest {}
+
+// Request for UpdateUserProfile.
+message UpdateUserProfileRequest {
+  optional string name = 1;
+  optional string bio = 2;
+  optional string pronouns = 3;
+  optional string company = 4;
+  optional string location = 5;
+  optional string website = 6;
+  repeated UserSocialAccount social_accounts = 7; // replaces all when replace_social_accounts
+  bool replace_social_accounts = 8;
+  optional string public_email = 9; // must be verified; empty hides it
+  optional bool hireable = 10;
+}
+
+// Request for BeginUserAvatarUpload.
+message BeginUserAvatarUploadRequest {
+  string content_type = 1;      // "image/png", "image/jpeg" or "image/gif"
+  uint64 size = 2;
+}
+
+// Response for BeginUserAvatarUpload.
+message BeginUserAvatarUploadResponse {
+  string upload_id = 1;
+  string upload_url = 2;
+  repeated KeyValue upload_headers = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for FinalizeUserAvatarUpload.
+message FinalizeUserAvatarUploadRequest {
+  string upload_id = 1;
+  bytes sha256 = 2;
+}
+
+// Request for SetUserStatus.
+message SetUserStatusRequest {
+  string message = 1;
+  string emoji = 2;
+  bool busy = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  string org = 5;
+}
+
+// Request for ClearUserStatus.
+message ClearUserStatusRequest {}
+
+// Response for ClearUserStatus.
+message ClearUserStatusResponse {}
+
+// Request for SetUserPinnedItems.
+message SetUserPinnedItemsRequest {
+  repeated UserPinnedItemRef items = 1; // in display order
+}
+
+// Identifies an item to pin.
+message UserPinnedItemRef {
+  UserPinnedItemKind kind = 1;
+  string id = 2;
+}
+
+// Request for ListUserPinnedItems.
+message ListUserPinnedItemsRequest {
+  string login = 1;
+}
+
+// Response for ListUserPinnedItems.
+message ListUserPinnedItemsResponse {
+  repeated UserPinnedItem items = 1;
+}
+
+// Request for FollowUser.
+message FollowUserRequest {
+  string login = 1;
+}
+
+// Response for FollowUser.
+message FollowUserResponse {}
+
+// Request for UnfollowUser.
+message UnfollowUserRequest {
+  string login = 1;
+}
+
+// Response for UnfollowUser.
+message UnfollowUserResponse {}
+
+// Request for ListUserFollowers.
+message ListUserFollowersRequest {
+  string login = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListUserFollowers.
+message ListUserFollowersResponse {
+  repeated UserSummary users = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListUserFollowing.
+message ListUserFollowingRequest {
+  string login = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListUserFollowing.
+message ListUserFollowingResponse {
+  repeated UserSummary users = 1;
+  PageResponse page = 2;
+}
+
+// Request for IsFollowingUser.
+message IsFollowingUserRequest {
+  string login = 1;             // follower; empty = the caller
+  string target_login = 2;
+}
+
+// Response for IsFollowingUser.
+message IsFollowingUserResponse {
+  bool following = 1;
+}
+
+// Request for StarRepo.
+message StarRepoRequest {
+  RepoRef repo = 1;
+}
+
+// Response for StarRepo.
+message StarRepoResponse {}
+
+// Request for UnstarRepo.
+message UnstarRepoRequest {
+  RepoRef repo = 1;
+}
+
+// Response for UnstarRepo.
+message UnstarRepoResponse {}
+
+// Request for IsRepoStarred.
+message IsRepoStarredRequest {
+  RepoRef repo = 1;
+}
+
+// Response for IsRepoStarred.
+message IsRepoStarredResponse {
+  bool starred = 1;
+  repeated string star_list_ids = 2; // the caller's lists containing it
+}
+
+// Request for ListStarredRepos.
+message ListStarredReposRequest {
+  string login = 1;             // empty = the caller
+  string language = 2;
+  string sort = 3;              // "created" (starred time) or "updated"
+  PageRequest page = 4;
+}
+
+// Response for ListStarredRepos.
+message ListStarredReposResponse {
+  repeated StarredRepo repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListRepoStargazers.
+message ListRepoStargazersRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRepoStargazers.
+message ListRepoStargazersResponse {
+  repeated StarGazer stargazers = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for FollowRepo.
+message FollowRepoRequest {
+  RepoRef repo = 1;
+}
+
+// Response for FollowRepo.
+message FollowRepoResponse {}
+
+// Request for UnfollowRepo.
+message UnfollowRepoRequest {
+  RepoRef repo = 1;
+}
+
+// Response for UnfollowRepo.
+message UnfollowRepoResponse {}
+
+// Request for IsFollowingRepo.
+message IsFollowingRepoRequest {
+  RepoRef repo = 1;
+}
+
+// Response for IsFollowingRepo.
+message IsFollowingRepoResponse {
+  bool following = 1;
+}
+
+// Request for ListFollowedRepos.
+message ListFollowedReposRequest {
+  string user = 1;              // login or principal id; empty = the caller
+  PageRequest page = 2;
+}
+
+// Response for ListFollowedRepos.
+message ListFollowedReposResponse {
+  repeated Repo repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListRepoFollowers.
+message ListRepoFollowersRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRepoFollowers.
+message ListRepoFollowersResponse {
+  repeated Principal followers = 1;
+  PageResponse page = 2;
+}
+
+// Request for CreateStarList.
+message CreateStarListRequest {
+  string name = 1;
+  string description = 2;
+  bool private = 3;
+}
+
+// Request for GetStarList.
+message GetStarListRequest {
+  string star_list_id = 1;
+}
+
+// Request for ListStarLists.
+message ListStarListsRequest {
+  string login = 1;             // empty = the caller
+  PageRequest page = 2;
+}
+
+// Response for ListStarLists.
+message ListStarListsResponse {
+  repeated StarList star_lists = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateStarList.
+message UpdateStarListRequest {
+  string star_list_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional bool private = 4;
+}
+
+// Request for DeleteStarList.
+message DeleteStarListRequest {
+  string star_list_id = 1;
+}
+
+// Response for DeleteStarList.
+message DeleteStarListResponse {}
+
+// Request for AddStarListRepo.
+message AddStarListRepoRequest {
+  string star_list_id = 1;
+  RepoRef repo = 2;
+}
+
+// Request for RemoveStarListRepo.
+message RemoveStarListRepoRequest {
+  string star_list_id = 1;
+  RepoRef repo = 2;
+}
+
+// Request for ListStarListRepos.
+message ListStarListReposRequest {
+  string star_list_id = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListStarListRepos.
+message ListStarListReposResponse {
+  repeated StarredRepo repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetUserContributionGraph.
+message GetUserContributionGraphRequest {
+  string login = 1;
+  string from_date = 2;         // YYYY-MM-DD; default one year before to_date
+  string to_date = 3;           // default today
+  string time_zone = 4;         // IANA name; default UTC
+  string org = 5;               // only contributions in this org
+}
+
+// Request for GetUserActivityOverview.
+message GetUserActivityOverviewRequest {
+  string login = 1;
+  string from_date = 2;
+  string to_date = 3;
+  string org = 4;
+}
+
+// Request for AddUserEmail.
+message AddUserEmailRequest {
+  string email = 1;
+}
+
+// Request for DeleteUserEmail.
+message DeleteUserEmailRequest {
+  string email = 1;
+}
+
+// Response for DeleteUserEmail.
+message DeleteUserEmailResponse {}
+
+// Request for ListUserEmails.
+message ListUserEmailsRequest {}
+
+// Response for ListUserEmails.
+message ListUserEmailsResponse {
+  repeated UserEmail emails = 1;
+  string noreply_address = 2;   // e.g. "<id>+<login>@users.noreply.beehive.example"
+  bool keep_private = 3;
+  bool block_private_pushes = 4;
+}
+
+// Request for SetPrimaryUserEmail.
+message SetPrimaryUserEmailRequest {
+  string email = 1;
+}
+
+// Request for UpdateUserEmailVisibility.
+message UpdateUserEmailVisibilityRequest {
+  optional bool keep_private = 1;          // use the noreply address for web operations
+  optional bool block_private_pushes = 2;  // reject writes authored with a private email
+  repeated string public_emails = 3;       // emails to show publicly
+  bool replace_public_emails = 4;
+}
+
+// Response for UpdateUserEmailVisibility.
+message UpdateUserEmailVisibilityResponse {
+  repeated UserEmail emails = 1;
+  bool keep_private = 2;
+  bool block_private_pushes = 3;
+}
+
+// Request for ResendUserEmailVerification.
+message ResendUserEmailVerificationRequest {
+  string email = 1;
+}
+
+// Response for ResendUserEmailVerification.
+message ResendUserEmailVerificationResponse {
+  google.protobuf.Timestamp sent_at = 1;
+}
+
+// Request for ResolveUserCommitEmails.
+message ResolveUserCommitEmailsRequest {
+  repeated string emails = 1;   // at most 100
+}
+
+// Response for ResolveUserCommitEmails.
+message ResolveUserCommitEmailsResponse {
+  repeated UserCommitEmailMapping mappings = 1; // same order as the request
+}
+
+// Request for AddUserSshKey.
+message AddUserSshKeyRequest {
+  string title = 1;
+  string public_key = 2;
+}
+
+// Request for ListUserSshKeys.
+message ListUserSshKeysRequest {
+  string login = 1;             // empty = the caller
+  PageRequest page = 2;
+}
+
+// Response for ListUserSshKeys.
+message ListUserSshKeysResponse {
+  repeated UserSshKey keys = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteUserSshKey.
+message DeleteUserSshKeyRequest {
+  string key_id = 1;
+}
+
+// Response for DeleteUserSshKey.
+message DeleteUserSshKeyResponse {}
+
+// Request for AddUserSigningKey.
+message AddUserSigningKeyRequest {
+  UserSigningKeyKind kind = 1;
+  string title = 2;
+  string public_key = 3;
+}
+
+// Request for ListUserSigningKeys.
+message ListUserSigningKeysRequest {
+  string login = 1;             // empty = the caller
+  UserSigningKeyKind kind = 2;  // UNSPECIFIED = both
+  PageRequest page = 3;
+}
+
+// Response for ListUserSigningKeys.
+message ListUserSigningKeysResponse {
+  repeated UserSigningKey keys = 1;
+  PageResponse page = 2;
+}
+
+// Request for DeleteUserSigningKey.
+message DeleteUserSigningKeyRequest {
+  string key_id = 1;
+}
+
+// Response for DeleteUserSigningKey.
+message DeleteUserSigningKeyResponse {}
+
+// Request for GetUserSettings.
+message GetUserSettingsRequest {}
+
+// Request for UpdateUserSettings.
+message UpdateUserSettingsRequest {
+  optional string theme = 1;
+  optional string dark_theme = 2;
+  optional string light_theme = 3;
+  optional string time_zone = 4;
+  optional string locale = 5;
+  repeated KeyValue accessibility = 6;     // merged by key; empty value removes
+  repeated KeyValue keyboard_shortcuts = 7; // merged by key
+  optional bool keyboard_shortcuts_enabled = 8;
+  optional string editor_indent = 9;
+  optional string diff_view = 10;
+  optional bool show_private_contributions = 11;
+  optional bool vigilant_mode = 12;
+}
+
+// Request for ListUserSessions.
+message ListUserSessionsRequest {
+  PageRequest page = 1;
+}
+
+// Response for ListUserSessions.
+message ListUserSessionsResponse {
+  repeated UserSession sessions = 1;
+  UserTokenSummary tokens = 2;
+  PageResponse page = 3;
+}
+
+// Request for RevokeUserSession.
+message RevokeUserSessionRequest {
+  string session_id = 1;
+}
+
+// Response for RevokeUserSession.
+message RevokeUserSessionResponse {}
+
+// Request for ListUserSecurityEvents.
+message ListUserSecurityEventsRequest {
+  string action_prefix = 1;     // e.g. "ssh_key."
+  google.protobuf.Timestamp since = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListUserSecurityEvents.
+message ListUserSecurityEventsResponse {
+  repeated UserSecurityEvent events = 1;
+  PageResponse page = 2;
+}
+
+// Request for RenameUserLogin.
+message RenameUserLoginRequest {
+  string new_login = 1;
+}
+
+// Request for RequestUserDataExport.
+message RequestUserDataExportRequest {
+  bool include_repos = 1;       // include owned repos' contents
+  bool include_attachments = 2;
+}
+
+// Request for GetUserDataExport.
+message GetUserDataExportRequest {
+  string export_id = 1;
+}
+
+// Request for DeleteUserAccount.
+message DeleteUserAccountRequest {
+  string confirm_login = 1;     // must equal the caller's login
+  string reason = 2;
+}
+
+// Response for DeleteUserAccount.
+message DeleteUserAccountResponse {
+  google.protobuf.Timestamp purge_after = 1; // restorable by support until then
+}
+
+// Request for ListUserFeedEvents.
+message ListUserFeedEventsRequest {
+  repeated string kinds = 1;    // empty = all
+  PageRequest page = 2;
+}
+
+// Response for ListUserFeedEvents.
+message ListUserFeedEventsResponse {
+  repeated UserFeedEvent events = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListUserAchievements.
+message ListUserAchievementsRequest {
+  string login = 1;
+}
+
+// Response for ListUserAchievements.
+message ListUserAchievementsResponse {
+  repeated UserAchievement achievements = 1;
+}

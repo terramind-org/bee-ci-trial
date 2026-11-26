@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/whoami.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee whoami --json`: one such document with `schema` = bee.v1.whoami. Show the principal, scope and budget of the current token (AuthService/WhoAmI). Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.WhoAmIResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.whoami"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee whoami",
+  "type": "object"
+}

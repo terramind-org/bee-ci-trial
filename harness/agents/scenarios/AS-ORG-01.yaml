@@ -1,0 +1,108 @@
+id: AS-ORG-01
+area: "4.20"
+title: Provision a team through SCIM, grant it a custom role on three repos, verify access
+surfaces: both
+timeout: 1500
+budget: { max_turns: 100 }
+requires: ["fixture:enterprise"]
+notes: >
+  `--fixture enterprise=<slug>` names an enterprise the harness admin owns. Each run attaches its
+  own org to it and gets an org-scoped SCIM token; user names carry the run marker.
+fixtures: [base]
+setup:
+  - call: EnterpriseService/AddEnterpriseOrg
+    request: { enterprise: "${run.fixtures.enterprise}", org: "${run.ns}" }
+  - call: EnterpriseService/CreateScimToken
+    request: { scope: { org: "${run.ns}" }, description: "agent scenario ${run.ns}", ttlSeconds: 7200 }
+    save: { scim: "$" }
+  - name: three more repos (four in total)
+    call: RepoService/CreateRepo
+    each: [ledger, reports, etl]
+    request: { org: "${run.ns}", name: "${item}", visibility: VISIBILITY_PRIVATE, autoInit: true }
+  - name: org admin rights for the worker
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${worker.id}", role: ROLE_ADMIN }
+  - call: AuthService/MintToken
+    request: { principalId: "${worker.id}", scope: { repos: ["${run.ns}/*"], actions: [read, manage_policy, manage_settings], session: "${run.session}" } }
+    save: { adminToken: token }
+agent:
+  token: "${adminToken}"
+  env:
+    SCIM_TOKEN: "${scim.token}"
+prompt: |
+  The bee org ${run.ns} is provisioned from an identity provider over SCIM; a SCIM bearer
+  token is in the SCIM_TOKEN environment variable. Acting as the identity provider:
+
+  1. provision two users, `ana-${run.ns}` and `ben-${run.ns}`;
+  2. provision a group `data-eng` containing both, so that it becomes a team in the org.
+
+  Then, as the org admin, create a custom repository role `data-maintainer` (based on the
+  built-in write role, plus permission to manage repository settings), and grant the
+  `data-eng` team that role on the repositories `ledger`, `reports` and `etl`, but not on
+  `app`. Finally verify that both users have that access on those three repositories and no
+  access to `app`.
+assertions:
+  - name: both users exist through SCIM and are active
+    call: EnterpriseService/ListScimIdentities
+    request: { scope: { org: "${run.ns}" } }
+    expect:
+      - path: identities
+        some:
+          - { path: userName, eq: "ana-${run.ns}" }
+          - { path: active, eq: true }
+      - path: identities
+        some:
+          - { path: userName, eq: "ben-${run.ns}" }
+          - { path: active, eq: true }
+    save: { identities: identities }
+  - name: the data-eng team exists, synced from the IdP, with both users
+    call: TeamService/ListTeams
+    request: { org: "${run.ns}" }
+    expect:
+      - path: teams
+        some:
+          - { path: slug, eq: data-eng }
+          - { path: idpSynced, eq: true }
+          - { path: memberCount, eq: 2 }
+  - call: TeamService/ListTeamMembers
+    request: { org: "${run.ns}", team: data-eng }
+    expect:
+      - { path: members, len: 2 }
+      - path: members
+        every:
+          - { path: externalGroupId, truthy: true }
+  - name: the custom role exists on top of write
+    call: PolicyService/ListCustomRoles
+    request: { org: "${run.ns}" }
+    expect:
+      - path: roles
+        some:
+          - { path: name, eq: data-maintainer }
+          - { path: baseRole, matches: "(?i)write" }
+          - { path: permissions, len_gte: 1 }
+  - name: the team has the role on exactly the three repos
+    call: TeamService/ListTeamRepos
+    request: { org: "${run.ns}", team: data-eng }
+    expect:
+      - { path: repos, len: 3 }
+      - { path: "repos[*].repo.fullName", contains: "${run.ns}/ledger" }
+      - { path: "repos[*].repo.fullName", contains: "${run.ns}/reports" }
+      - { path: "repos[*].repo.fullName", contains: "${run.ns}/etl" }
+      - path: repos
+        every:
+          - { path: role, matches: "data-maintainer" }
+  - name: each user gets the access through the team, and none on app
+    call: RepoService/GetCollaboratorPermission
+    each:
+      - { repo: ledger, user: "${identities[0].principal.id}" }
+      - { repo: reports, user: "${identities[0].principal.id}" }
+      - { repo: etl, user: "${identities[1].principal.id}" }
+    request: { repo: { fullName: "${run.ns}/${item.repo}" }, principalId: "${item.user}" }
+    expect:
+      - { path: role, in: [REPO_ROLE_WRITE, REPO_ROLE_MAINTAIN] }
+      - { path: sources, matches: "team" }
+  - call: RepoService/GetCollaboratorPermission
+    each: ["${identities[0].principal.id}", "${identities[1].principal.id}"]
+    request: { repo: { fullName: "${run.ns}/app" }, principalId: "${item}" }
+    expect:
+      - { path: role, in: [REPO_ROLE_NONE, REPO_ROLE_UNSPECIFIED, null] }

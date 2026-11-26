@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "bee.v1.PackageEcosystem": {
+      "description": "The registry a package belongs to.",
+      "enum": [
+        "PACKAGE_ECOSYSTEM_UNSPECIFIED",
+        "PACKAGE_ECOSYSTEM_CONTAINER",
+        "PACKAGE_ECOSYSTEM_NPM",
+        "PACKAGE_ECOSYSTEM_MAVEN",
+        "PACKAGE_ECOSYSTEM_NUGET",
+        "PACKAGE_ECOSYSTEM_RUBYGEMS",
+        "PACKAGE_ECOSYSTEM_CARGO"
+      ],
+      "title": "bee.v1.PackageEcosystem",
+      "type": "string"
+    },
+    "bee.v1.PackageGranteeKind": {
+      "description": "What an access grant names.",
+      "enum": [
+        "PACKAGE_GRANTEE_KIND_UNSPECIFIED",
+        "PACKAGE_GRANTEE_KIND_REPO",
+        "PACKAGE_GRANTEE_KIND_TEAM",
+        "PACKAGE_GRANTEE_KIND_PRINCIPAL"
+      ],
+      "title": "bee.v1.PackageGranteeKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RevokePackageAccessRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RevokePackageAccess.",
+  "properties": {
+    "ecosystem": {
+      "$ref": "#/$defs/bee.v1.PackageEcosystem"
+    },
+    "granteeRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.PackageGranteeKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    },
+    "teamId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RevokePackageAccessRequest",
+  "type": "object"
+}

@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "bee.v1.OpsCacheTierStats": {
+      "description": "Stats for one cache tier instance.",
+      "properties": {
+        "bytesCached": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "bytesServed": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "cell": {
+          "type": "string"
+        },
+        "evictions": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "failClosed": {
+          "description": "requests refused because authorization could not be checked",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "hits": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "instance": {
+          "type": "string"
+        },
+        "misses": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "policyEpoch": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "redactionEpoch": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tier": {
+          "description": "\"daemon\", \"node\", \"regional\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OpsCacheTierStats",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetOpsCacheStatsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetOpsCacheStats.",
+  "properties": {
+    "tiers": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OpsCacheTierStats"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GetOpsCacheStatsResponse",
+  "type": "object"
+}

@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "bee.v1.CodeScanningSarifStatus": {
+      "description": "Processing status of a SARIF upload.",
+      "enum": [
+        "CODE_SCANNING_SARIF_STATUS_UNSPECIFIED",
+        "CODE_SCANNING_SARIF_STATUS_PENDING",
+        "CODE_SCANNING_SARIF_STATUS_COMPLETE",
+        "CODE_SCANNING_SARIF_STATUS_FAILED"
+      ],
+      "title": "bee.v1.CodeScanningSarifStatus",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CodeScanningSarifUpload.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A SARIF upload and its processing status.",
+  "properties": {
+    "analysisIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "category": {
+      "type": "string"
+    },
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "errors": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "processedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "status": {
+      "$ref": "#/$defs/bee.v1.CodeScanningSarifStatus"
+    },
+    "toolName": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CodeScanningSarifUpload",
+  "type": "object"
+}

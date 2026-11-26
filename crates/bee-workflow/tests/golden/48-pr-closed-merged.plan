@@ -1,0 +1,16 @@
+# event pull_request action=closed
+run .github/workflows/post-merge.yml "Post merge"
+  run-name: "Add search"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job if_merged if="github.event.pull_request.merged == true" decided=true
+    instance "if_merged"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"PR #42 Add search merged\""
+        run: "echo \"PR #42 Add search merged\""
+        shell: default -> "bash -e {0}"
+  job if_closed if="github.event.pull_request.merged == false" decided=false
+    skipped
+# event pull_request_target action=closed

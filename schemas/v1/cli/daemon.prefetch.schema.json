@@ -1,0 +1,115 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/daemon.prefetch.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of `bee daemon prefetch --json`: one such document with `schema` = bee.v1.daemon.prefetch. Load the objects under PATHs into the daemon's cache before anything needs them. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changeset": {
+          "pattern": "^c1_[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "cloned": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "copied": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fetched": {
+          "description": "Objects that had to come from the server.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "linked": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "symlinks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timings": {
+          "additionalProperties": false,
+          "properties": {
+            "fetchMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "listMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "materializeMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "totalMs": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "listMs",
+            "fetchMs",
+            "materializeMs",
+            "totalMs"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "changeset",
+        "files",
+        "symlinks",
+        "bytes",
+        "linked",
+        "cloned",
+        "copied",
+        "fetched",
+        "skipped",
+        "timings"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "bee.v1.daemon.prefetch"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee daemon prefetch",
+  "type": "object"
+}

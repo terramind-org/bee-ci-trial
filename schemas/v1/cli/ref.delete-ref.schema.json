@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/ref.delete-ref.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.RefService/DeleteRef: `data` is a bee.v1.DeleteRefResponse in proto3-JSON. `bee ref delete-ref --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteRefResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.ref.delete-ref"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee ref delete-ref",
+  "type": "object"
+}

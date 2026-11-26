@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetEffectiveOpsConfigResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetEffectiveOpsConfig.",
+  "properties": {
+    "appliedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "configVersion": {
+      "type": "string"
+    },
+    "toml": {
+      "description": "secrets replaced by \"<redacted>\"",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetEffectiveOpsConfigResponse",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+event: push refs/heads/main
+--- .github/workflows/container.yml
+name: Container job
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/octo-org/build-image:2024.10
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+      env:
+        NODE_ENV: test
+      ports:
+        - 80
+      volumes:
+        - my_docker_volume:/volume_mount
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: make ci
+  simple:
+    runs-on: ubuntu-latest
+    container: node:20-bookworm
+    steps:
+      - run: node --version

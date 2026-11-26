@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/wiki.search-wiki-pages.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.WikiService/SearchWikiPages: `data` is a bee.v1.SearchWikiPagesResponse in proto3-JSON. `bee wiki search-wiki-pages --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SearchWikiPagesResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.wiki.search-wiki-pages"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee wiki search-wiki-pages",
+  "type": "object"
+}

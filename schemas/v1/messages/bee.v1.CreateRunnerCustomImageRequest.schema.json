@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "bee.v1.RunnerArch": {
+      "description": "CPU architecture of a runner or machine class.",
+      "enum": [
+        "RUNNER_ARCH_UNSPECIFIED",
+        "RUNNER_ARCH_X64",
+        "RUNNER_ARCH_ARM64"
+      ],
+      "title": "bee.v1.RunnerArch",
+      "type": "string"
+    },
+    "bee.v1.RunnerOs": {
+      "description": "Operating system of a runner or machine class.",
+      "enum": [
+        "RUNNER_OS_UNSPECIFIED",
+        "RUNNER_OS_LINUX",
+        "RUNNER_OS_MACOS",
+        "RUNNER_OS_WINDOWS"
+      ],
+      "title": "bee.v1.RunnerOs",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateRunnerCustomImageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateRunnerCustomImage.",
+  "properties": {
+    "arch": {
+      "$ref": "#/$defs/bee.v1.RunnerArch"
+    },
+    "name": {
+      "type": "string"
+    },
+    "ociReference": {
+      "description": "must be pinned by digest",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "os": {
+      "$ref": "#/$defs/bee.v1.RunnerOs"
+    }
+  },
+  "title": "bee.v1.CreateRunnerCustomImageRequest",
+  "type": "object"
+}

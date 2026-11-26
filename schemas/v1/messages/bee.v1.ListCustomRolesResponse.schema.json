@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "bee.v1.CustomRole": {
+      "description": "A named permission bundle defined by an org.",
+      "properties": {
+        "assignmentCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "baseRole": {
+          "description": "Built-in role this one extends: read, triage, write, maintain (repo roles) or none,\nmember (org roles).",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PolicyRoleKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "permissions": {
+          "description": "names from ListPolicyPermissions, added to the base role",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.CustomRole",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.PolicyRoleKind": {
+      "description": "Whether a role applies to repos or to an org.",
+      "enum": [
+        "POLICY_ROLE_KIND_UNSPECIFIED",
+        "POLICY_ROLE_KIND_REPO",
+        "POLICY_ROLE_KIND_ORG"
+      ],
+      "title": "bee.v1.PolicyRoleKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListCustomRolesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListCustomRoles.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "roles": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.CustomRole"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListCustomRolesResponse",
+  "type": "object"
+}

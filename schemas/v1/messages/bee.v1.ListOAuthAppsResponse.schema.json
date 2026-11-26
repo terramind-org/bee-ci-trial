@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "bee.v1.OAuthApp": {
+      "description": "An OAuth app (a third-party client acting on behalf of users).",
+      "properties": {
+        "callbackUrls": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "deviceFlowEnabled": {
+          "type": "boolean"
+        },
+        "homepageUrl": {
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "description": "org name or user login",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.OAuthApp",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListOAuthAppsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListOAuthApps.",
+  "properties": {
+    "apps": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.OAuthApp"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListOAuthAppsResponse",
+  "type": "object"
+}

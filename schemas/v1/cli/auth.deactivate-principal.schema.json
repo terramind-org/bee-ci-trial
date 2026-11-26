@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/auth.deactivate-principal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AuthService/DeactivatePrincipal: `data` is a bee.v1.Principal in proto3-JSON. `bee auth deactivate-principal --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Principal.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.auth.deactivate-principal"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee auth deactivate-principal",
+  "type": "object"
+}

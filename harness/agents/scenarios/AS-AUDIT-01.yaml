@@ -1,0 +1,89 @@
+id: AS-AUDIT-01
+area: "4.10"
+title: Answer "who changed the land rules for main this month, and on whose behalf" from the audit log alone
+surfaces: both
+timeout: 900
+budget: { max_turns: 60 }
+fixtures: [base]
+setup:
+  - name: the harness admin, the human root of the delegation
+    call: AuthService/WhoAmI
+    request: {}
+    save: { me: principal }
+  - name: a policy agent acting on the admin's behalf
+    call: AuthService/CreateAgent
+    request: { display: "policy-bot-${run.ns}", runtime: codex, purpose: "policy maintenance", org: "${run.ns}" }
+    save: { policyBot: "$" }
+  - name: let policyBot join the org and the repo (forge calls need both)
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${policyBot.id}", role: ROLE_MEMBER }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${policyBot.id}", role: REPO_ROLE_WRITE }
+  - call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${policyBot.id}", role: REPO_ROLE_ADMIN }
+  - call: AuthService/MintToken
+    request: { principalId: "${policyBot.id}", scope: { repos: ["${repo.fullName}"], actions: [read, manage_policy, manage_settings] } }
+    save: { botToken: token }
+  - name: land rules for main
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: main-land-rules
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_ACTIVE
+      conditions: { refNameIncludes: ["~DEFAULT_BRANCH"] }
+      rules: [{ requiredApprovals: { count: 1 } }]
+    save: { mainRules: "$" }
+  - name: rules for release branches (noise)
+    call: PolicyService/CreateRuleset
+    request:
+      repo: { fullName: "${repo.fullName}" }
+      name: release-rules
+      target: RULESET_TARGET_BRANCH
+      enforcement: RULESET_ENFORCEMENT_ACTIVE
+      conditions: { refNameIncludes: ["release/*"] }
+      rules: [{ noForcePush: {} }]
+    save: { releaseRules: "$" }
+  - name: the policy bot changes the main land rules
+    call: PolicyService/UpdateRuleset
+    as: "${botToken}"
+    request:
+      rulesetId: "${mainRules.id}"
+      rules: [{ requiredApprovals: { count: 2, agentsMayApprove: true } }]
+      replaceRules: true
+  - name: the admin changes the release rules (noise)
+    call: PolicyService/UpdateRuleset
+    request: { rulesetId: "${releaseRules.id}", rules: [{ noForcePush: {} }, { noDeletion: {} }], replaceRules: true }
+  - name: the policy bot edits the repo description (noise)
+    call: RepoService/UpdateRepo
+    as: "${botToken}"
+    request: { repo: { fullName: "${repo.fullName}" }, description: "policy-managed" }
+  - name: the worker may read the org's audit log
+    call: OrgService/SetMember
+    request: { org: "${run.ns}", principalId: "${worker.id}", role: ROLE_ADMIN }
+  - call: AuthService/MintToken
+    request: { principalId: "${worker.id}", scope: { repos: ["${run.ns}/*"], actions: [read, manage_policy, manage_settings], session: "${run.session}" } }
+    save: { auditorToken: token }
+agent:
+  token: "${auditorToken}"
+prompt: |
+  For the bee org ${run.ns}: who changed the land rules for `main` in the repository
+  ${repo.fullName} this month, and on whose behalf were they acting? Answer from the audit log.
+
+  Write your answer to `answer.json` in the current directory as:
+  {"changed_by": "<principal id or name>", "on_behalf_of": "<principal id or name>"}
+assertions:
+  - name: ground truth - the audit log records the bot's ruleset change on the admin's behalf
+    call: AuditService/QueryAuditLog
+    request: { org: "${run.ns}", filter: { actorId: "${policyBot.id}" } }
+    expect:
+      - path: entries
+        some:
+          - { path: action, matches: "ruleset|policy" }
+          - { path: on_behalf_of, eq: "${me.id}" }
+  - name: the agent named the bot and the admin
+    answer:
+      file: answer.json
+      expect:
+        - { path: changed_by, in: ["${policyBot.id}", "${policyBot.display}"] }
+        - { path: on_behalf_of, in: ["${me.id}", "${me.display}"] }

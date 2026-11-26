@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "bee.v1.EnterpriseActionsEnablement": {
+      "description": "Which orgs may use Actions.",
+      "enum": [
+        "ENTERPRISE_ACTIONS_ENABLEMENT_UNSPECIFIED",
+        "ENTERPRISE_ACTIONS_ENABLEMENT_NO_POLICY",
+        "ENTERPRISE_ACTIONS_ENABLEMENT_ALL_ORGS",
+        "ENTERPRISE_ACTIONS_ENABLEMENT_SELECTED_ORGS",
+        "ENTERPRISE_ACTIONS_ENABLEMENT_DISABLED"
+      ],
+      "title": "bee.v1.EnterpriseActionsEnablement",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseActionsPolicy": {
+      "description": "Enterprise-wide Actions policy (details of runs live with the workflow service).",
+      "properties": {
+        "allowVerifiedCreators": {
+          "type": "boolean"
+        },
+        "allowedActionPatterns": {
+          "description": "e.g. \"acme/*\", \"org/action@v2\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "allowedActions": {
+          "$ref": "#/$defs/bee.v1.EnterpriseAllowedActions"
+        },
+        "enabledOrgs": {
+          "description": "with SELECTED_ORGS",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "enablement": {
+          "$ref": "#/$defs/bee.v1.EnterpriseActionsEnablement"
+        },
+        "workflowPolicyId": {
+          "description": "reference to a detailed workflow policy, if any",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseActionsPolicy",
+      "type": "object"
+    },
+    "bee.v1.EnterpriseAllowedActions": {
+      "description": "Which actions and reusable workflows may run.",
+      "enum": [
+        "ENTERPRISE_ALLOWED_ACTIONS_UNSPECIFIED",
+        "ENTERPRISE_ALLOWED_ACTIONS_NO_POLICY",
+        "ENTERPRISE_ALLOWED_ACTIONS_ALL",
+        "ENTERPRISE_ALLOWED_ACTIONS_LOCAL_ONLY",
+        "ENTERPRISE_ALLOWED_ACTIONS_SELECTED"
+      ],
+      "title": "bee.v1.EnterpriseAllowedActions",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseBasePermission": {
+      "description": "Base repo permission every org member gets on every repo.",
+      "enum": [
+        "ENTERPRISE_BASE_PERMISSION_UNSPECIFIED",
+        "ENTERPRISE_BASE_PERMISSION_NO_POLICY",
+        "ENTERPRISE_BASE_PERMISSION_NONE",
+        "ENTERPRISE_BASE_PERMISSION_READ",
+        "ENTERPRISE_BASE_PERMISSION_WRITE",
+        "ENTERPRISE_BASE_PERMISSION_ADMIN"
+      ],
+      "title": "bee.v1.EnterpriseBasePermission",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseForkingPolicy": {
+      "description": "Where repos in the enterprise may be forked.",
+      "enum": [
+        "ENTERPRISE_FORKING_POLICY_UNSPECIFIED",
+        "ENTERPRISE_FORKING_POLICY_NO_POLICY",
+        "ENTERPRISE_FORKING_POLICY_DISABLED",
+        "ENTERPRISE_FORKING_POLICY_WITHIN_ORG",
+        "ENTERPRISE_FORKING_POLICY_WITHIN_ENTERPRISE",
+        "ENTERPRISE_FORKING_POLICY_ANYWHERE"
+      ],
+      "title": "bee.v1.EnterpriseForkingPolicy",
+      "type": "string"
+    },
+    "bee.v1.EnterprisePolicyToggle": {
+      "description": "A yes/no member privilege that the enterprise may fix or leave to orgs.",
+      "enum": [
+        "ENTERPRISE_POLICY_TOGGLE_UNSPECIFIED",
+        "ENTERPRISE_POLICY_TOGGLE_NO_POLICY",
+        "ENTERPRISE_POLICY_TOGGLE_ALLOWED",
+        "ENTERPRISE_POLICY_TOGGLE_DISABLED"
+      ],
+      "title": "bee.v1.EnterprisePolicyToggle",
+      "type": "string"
+    },
+    "bee.v1.EnterpriseRepoCreationPolicy": {
+      "description": "Who may create repos in the enterprise's orgs.",
+      "enum": [
+        "ENTERPRISE_REPO_CREATION_POLICY_UNSPECIFIED",
+        "ENTERPRISE_REPO_CREATION_POLICY_NO_POLICY",
+        "ENTERPRISE_REPO_CREATION_POLICY_DISABLED",
+        "ENTERPRISE_REPO_CREATION_POLICY_PRIVATE",
+        "ENTERPRISE_REPO_CREATION_POLICY_PRIVATE_INTERNAL",
+        "ENTERPRISE_REPO_CREATION_POLICY_ALL"
+      ],
+      "title": "bee.v1.EnterpriseRepoCreationPolicy",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EnterprisePolicies.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Typed enterprise policies that bind every org in the enterprise.",
+  "properties": {
+    "actions": {
+      "$ref": "#/$defs/bee.v1.EnterpriseActionsPolicy"
+    },
+    "agentsCanLandWithoutHumanApproval": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "basePermission": {
+      "$ref": "#/$defs/bee.v1.EnterpriseBasePermission"
+    },
+    "enterpriseId": {
+      "type": "string"
+    },
+    "forking": {
+      "$ref": "#/$defs/bee.v1.EnterpriseForkingPolicy"
+    },
+    "membersCanChangeRepoVisibility": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "membersCanCreateTeams": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "membersCanDeleteRepos": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "membersCanInstallApps": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "membersCanInviteOutsideCollaborators": {
+      "$ref": "#/$defs/bee.v1.EnterprisePolicyToggle"
+    },
+    "orgRulesetIds": {
+      "description": "enterprise rulesets applied to every org (PolicyService)",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repoCreation": {
+      "$ref": "#/$defs/bee.v1.EnterpriseRepoCreationPolicy"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.EnterprisePolicies",
+  "type": "object"
+}

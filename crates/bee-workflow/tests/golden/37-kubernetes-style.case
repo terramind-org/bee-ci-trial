@@ -1,0 +1,39 @@
+event: pr revised base=master files=pkg/kubelet/kubelet.go,staging/src/k8s.io/api/core/v1/types.go
+--- .github/workflows/verify.yml
+name: verify
+on:
+  pull_request:
+    branches: [master, 'release-1.[0-9]+']
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'hack/**'
+      - '!**/zz_generated*.go'
+permissions: read-all
+jobs:
+  unit:
+    name: unit (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        package: [pkg/..., cmd/..., staging/...]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - run: make test WHAT=./${{ matrix.package }} KUBE_TIMEOUT=--timeout=80m
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: hack/verify-gofmt.sh
+      - run: hack/verify-codegen.sh
+        continue-on-error: true
+      - run: hack/verify-golint.sh
+        timeout-minutes: 20

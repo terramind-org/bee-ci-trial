@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "bee.v1.EnterpriseScope": {
+      "description": "An org or an enterprise account: the owner of a setting, a bill or a cost center.\n\nOneof `scope`: at most one of `org`, `enterprise` is set.",
+      "properties": {
+        "enterprise": {
+          "description": "enterprise slug or id",
+          "type": "string"
+        },
+        "org": {
+          "description": "org name or id",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.EnterpriseScope",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.VerifiedDomain": {
+      "description": "A domain claimed by an org or enterprise.",
+      "properties": {
+        "challengeExpiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "dnsTxtRecordName": {
+          "description": "e.g. \"_beehive-challenge-acme.example.com\"",
+          "type": "string"
+        },
+        "dnsTxtRecordValue": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "lastCheckedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.EnterpriseScope"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.VerifiedDomainState"
+        },
+        "verifiedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.VerifiedDomain",
+      "type": "object"
+    },
+    "bee.v1.VerifiedDomainState": {
+      "description": "Verification state of a domain.",
+      "enum": [
+        "VERIFIED_DOMAIN_STATE_UNSPECIFIED",
+        "VERIFIED_DOMAIN_STATE_PENDING",
+        "VERIFIED_DOMAIN_STATE_VERIFIED",
+        "VERIFIED_DOMAIN_STATE_FAILED",
+        "VERIFIED_DOMAIN_STATE_APPROVED"
+      ],
+      "title": "bee.v1.VerifiedDomainState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListVerifiedDomainsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListVerifiedDomains.",
+  "properties": {
+    "domains": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.VerifiedDomain"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListVerifiedDomainsResponse",
+  "type": "object"
+}

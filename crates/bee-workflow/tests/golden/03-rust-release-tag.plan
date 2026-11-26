@@ -1,0 +1,66 @@
+# event push action=-
+run .github/workflows/release.yml "Release"
+  run-name: "Update code"
+  event: push ref=refs/tags/v1.4.0 sha=2222222222222222222222222222222222222222
+  permissions: contents=write
+  job build decided=true
+    instance "build-x86_64-unknown-linux-gnu"
+      matrix: {"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest"}
+      strategy: index=0 total=3 fail-fast=true max-parallel=3
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo build --release --target x86_64-unknown-linux-gnu"
+        run: "cargo build --release --target x86_64-unknown-linux-gnu"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 3 "Run actions/upload-artifact@v4"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "widget-v1.4.0-x86_64-unknown-linux-gnu"
+          path: "target/x86_64-unknown-linux-gnu/release/widget"
+    instance "build-aarch64-apple-darwin"
+      matrix: {"target":"aarch64-apple-darwin","os":"macos-14"}
+      strategy: index=1 total=3 fail-fast=true max-parallel=3
+      runs-on: ["macos-14"]
+      permissions: contents=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo build --release --target aarch64-apple-darwin"
+        run: "cargo build --release --target aarch64-apple-darwin"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 3 "Run actions/upload-artifact@v4"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "widget-v1.4.0-aarch64-apple-darwin"
+          path: "target/aarch64-apple-darwin/release/widget"
+    instance "build-x86_64-pc-windows-msvc"
+      matrix: {"target":"x86_64-pc-windows-msvc","os":"windows-latest","ext":".exe"}
+      strategy: index=2 total=3 fail-fast=true max-parallel=3
+      runs-on: ["windows-latest"]
+      permissions: contents=write
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run cargo build --release --target x86_64-pc-windows-msvc"
+        run: "cargo build --release --target x86_64-pc-windows-msvc"
+        shell: bash -> "bash --noprofile --norc -eo pipefail {0}"
+      step 3 "Run actions/upload-artifact@v4"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "widget-v1.4.0-x86_64-pc-windows-msvc"
+          path: "target/x86_64-pc-windows-msvc/release/widget.exe"
+  job publish needs=[build]
+    instance "publish"
+      runs-on: ["ubuntu-latest"]
+      permissions: contents=write
+      timeout-minutes: 360
+      step 1 "Run actions/download-artifact@v4"
+        uses: actions/download-artifact@v4
+      step 2 "Run softprops/action-gh-release@v2"
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "widget-*/*"
+          tag_name: "v1.4.0"

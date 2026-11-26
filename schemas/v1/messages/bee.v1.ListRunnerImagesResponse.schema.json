@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.RunnerArch": {
+      "description": "CPU architecture of a runner or machine class.",
+      "enum": [
+        "RUNNER_ARCH_UNSPECIFIED",
+        "RUNNER_ARCH_X64",
+        "RUNNER_ARCH_ARM64"
+      ],
+      "title": "bee.v1.RunnerArch",
+      "type": "string"
+    },
+    "bee.v1.RunnerImage": {
+      "description": "An OS image hosted runners boot.",
+      "properties": {
+        "arch": {
+          "$ref": "#/$defs/bee.v1.RunnerArch"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "description": "e.g. \"ubuntu-24.04\"",
+          "type": "string"
+        },
+        "ociReference": {
+          "description": "custom images: registry reference with digest",
+          "type": "string"
+        },
+        "os": {
+          "$ref": "#/$defs/bee.v1.RunnerOs"
+        },
+        "sizeBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/bee.v1.RunnerImageSource"
+        }
+      },
+      "title": "bee.v1.RunnerImage",
+      "type": "object"
+    },
+    "bee.v1.RunnerImageSource": {
+      "description": "Where a runner image comes from.",
+      "enum": [
+        "RUNNER_IMAGE_SOURCE_UNSPECIFIED",
+        "RUNNER_IMAGE_SOURCE_PLATFORM",
+        "RUNNER_IMAGE_SOURCE_CUSTOM"
+      ],
+      "title": "bee.v1.RunnerImageSource",
+      "type": "string"
+    },
+    "bee.v1.RunnerOs": {
+      "description": "Operating system of a runner or machine class.",
+      "enum": [
+        "RUNNER_OS_UNSPECIFIED",
+        "RUNNER_OS_LINUX",
+        "RUNNER_OS_MACOS",
+        "RUNNER_OS_WINDOWS"
+      ],
+      "title": "bee.v1.RunnerOs",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRunnerImagesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListRunnerImages.",
+  "properties": {
+    "images": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RunnerImage"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListRunnerImagesResponse",
+  "type": "object"
+}

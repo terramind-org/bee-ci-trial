@@ -1,0 +1,16 @@
+# event pull_request action=opened
+run .github/workflows/org-checks.yml "Org checks"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job security decided=true
+    call "security"
+      inputs: {"fail-on":"high","scan-path":"feature/x"}
+      secrets:
+        SCANNER_TOKEN: "${{ secrets.SCANNER_TOKEN }}"
+      unresolved: octo-org/shared-workflows/.github/workflows/security-scan.yml@v3
+  job license decided=true
+    call "license"
+      inputs: {}
+      unresolved: octo-org/shared-workflows/.github/workflows/license.yaml@0123456789abcdef0123456789abcdef01234567
+# event pull_request_target action=opened

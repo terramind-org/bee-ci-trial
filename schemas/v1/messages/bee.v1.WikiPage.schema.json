@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.WikiPageFormat": {
+      "description": "Markup language of a wiki page, chosen by file extension.",
+      "enum": [
+        "WIKI_PAGE_FORMAT_UNSPECIFIED",
+        "WIKI_PAGE_FORMAT_MARKDOWN",
+        "WIKI_PAGE_FORMAT_ASCIIDOC",
+        "WIKI_PAGE_FORMAT_RST",
+        "WIKI_PAGE_FORMAT_ORG",
+        "WIKI_PAGE_FORMAT_TEXTILE",
+        "WIKI_PAGE_FORMAT_MEDIAWIKI"
+      ],
+      "title": "bee.v1.WikiPageFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WikiPage.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A wiki page at one revision.",
+  "properties": {
+    "blob": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId",
+      "description": "revision the page was read at"
+    },
+    "content": {
+      "description": "raw markup",
+      "type": "string"
+    },
+    "contentHtml": {
+      "description": "sanitized rendering, when requested",
+      "type": "string"
+    },
+    "format": {
+      "$ref": "#/$defs/bee.v1.WikiPageFormat"
+    },
+    "lastEditor": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "path": {
+      "contentEncoding": "base64",
+      "description": "file path in the wiki repo",
+      "type": "string"
+    },
+    "slug": {
+      "description": "URL name, e.g. \"Getting-Started\"",
+      "type": "string"
+    },
+    "title": {
+      "description": "display title derived from the file name",
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.WikiPage",
+  "type": "object"
+}

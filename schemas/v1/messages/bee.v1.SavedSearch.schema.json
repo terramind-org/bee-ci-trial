@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SearchQueryKind": {
+      "description": "Which search grammar a query uses.",
+      "enum": [
+        "SEARCH_QUERY_KIND_UNSPECIFIED",
+        "SEARCH_QUERY_KIND_CODE",
+        "SEARCH_QUERY_KIND_SYMBOLS",
+        "SEARCH_QUERY_KIND_ISSUES",
+        "SEARCH_QUERY_KIND_REPOS",
+        "SEARCH_QUERY_KIND_CHANGESETS",
+        "SEARCH_QUERY_KIND_USERS",
+        "SEARCH_QUERY_KIND_TOPICS",
+        "SEARCH_QUERY_KIND_DISCUSSIONS",
+        "SEARCH_QUERY_KIND_PACKAGES"
+      ],
+      "title": "bee.v1.SearchQueryKind",
+      "type": "string"
+    },
+    "bee.v1.SearchSortOrder": {
+      "description": "Sort direction.",
+      "enum": [
+        "SEARCH_SORT_ORDER_UNSPECIFIED",
+        "SEARCH_SORT_ORDER_DESC",
+        "SEARCH_SORT_ORDER_ASC"
+      ],
+      "title": "bee.v1.SearchSortOrder",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SavedSearch.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A per-user saved search.",
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.SearchQueryKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "order": {
+      "$ref": "#/$defs/bee.v1.SearchSortOrder"
+    },
+    "org": {
+      "description": "scope; empty = global",
+      "type": "string"
+    },
+    "pinned": {
+      "description": "shown in the dashboard sidebar",
+      "type": "boolean"
+    },
+    "query": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "scope; unset = not repo-scoped"
+    },
+    "sort": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SavedSearch",
+  "type": "object"
+}

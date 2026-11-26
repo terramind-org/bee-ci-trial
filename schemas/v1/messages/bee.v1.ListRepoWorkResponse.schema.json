@@ -1,0 +1,719 @@
+{
+  "$defs": {
+    "bee.v1.AgentRun": {
+      "description": "An agent run (session).",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "the agent principal doing the work"
+        },
+        "baseRef": {
+          "type": "string"
+        },
+        "budget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget"
+        },
+        "changeRequests": {
+          "description": "CR numbers produced",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "changesets": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ObjectId"
+          },
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost",
+          "description": "spent so far"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "failureReason": {
+          "description": "an ErrorReason name or runner-specific code",
+          "type": "string"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "leaseIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logRef": {
+          "description": "Blob reference of the run's raw log, set when the run finished.",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "runtimeId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.AgentRunScope"
+        },
+        "session": {
+          "description": "provenance session id",
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "startedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.AgentRunState"
+        },
+        "summary": {
+          "description": "agent's final summary, Markdown",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/bee.v1.AgentTask"
+        },
+        "transcriptRef": {
+          "description": "Blob reference of the run's transcript, set when the run finished.",
+          "type": "string"
+        },
+        "trigger": {
+          "description": "What started the run: \"manual\", \"issue_assignment\", \"mention\", \"watcher\",\n\"review_config\", \"schedule\", \"revise\", \"retry\" or \"feed\".",
+          "type": "string"
+        },
+        "triggerRef": {
+          "description": "The trigger's subject: comment id, watcher id, schedule id, the retried run's id, or the\npost id for \"feed\".",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "workRef": {
+          "description": "e.g. \"ws/<agent>/<run>\"",
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentRun",
+      "type": "object"
+    },
+    "bee.v1.AgentRunBudget": {
+      "description": "Spending and time limits for a run.",
+      "properties": {
+        "maxChangesets": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxDurationSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxInputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxLanded": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxOutputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxUsdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.AgentRunBudget",
+      "type": "object"
+    },
+    "bee.v1.AgentRunScope": {
+      "description": "The access a run's token is attenuated to; never broader than the starter's.",
+      "properties": {
+        "actions": {
+          "description": "read, commit, land, review, lease",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "readPaths": {
+          "description": "prefixes; empty = inherit",
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "refs": {
+          "description": "patterns, e.g. \"ws/*\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writePaths": {
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.AgentRunScope",
+      "type": "object"
+    },
+    "bee.v1.AgentRunState": {
+      "description": "Run lifecycle.",
+      "enum": [
+        "AGENT_RUN_STATE_UNSPECIFIED",
+        "AGENT_RUN_STATE_QUEUED",
+        "AGENT_RUN_STATE_PROVISIONING",
+        "AGENT_RUN_STATE_RUNNING",
+        "AGENT_RUN_STATE_WAITING_FOR_REVIEW",
+        "AGENT_RUN_STATE_SUCCEEDED",
+        "AGENT_RUN_STATE_FAILED",
+        "AGENT_RUN_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.AgentRunState",
+      "type": "string"
+    },
+    "bee.v1.AgentTask": {
+      "description": "The task given to a run.",
+      "properties": {
+        "alert": {
+          "$ref": "#/$defs/bee.v1.SubjectRef",
+          "description": "SECURITY_FIX"
+        },
+        "changeRequest": {
+          "description": "CR number, for REVIEW and REVISE",
+          "type": "string"
+        },
+        "contextBundleIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "issue": {
+          "description": "issue number, for ISSUE",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.AgentTaskKind"
+        },
+        "postId": {
+          "description": "ADOPT_EVALUATE: the post to evaluate",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "FREEFORM, or extra guidance for other kinds",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentTask",
+      "type": "object"
+    },
+    "bee.v1.AgentTaskKind": {
+      "description": "What a run is asked to do.",
+      "enum": [
+        "AGENT_TASK_KIND_UNSPECIFIED",
+        "AGENT_TASK_KIND_ISSUE",
+        "AGENT_TASK_KIND_REVIEW",
+        "AGENT_TASK_KIND_FREEFORM",
+        "AGENT_TASK_KIND_SECURITY_FIX",
+        "AGENT_TASK_KIND_REVISE",
+        "AGENT_TASK_KIND_ADOPT_EVALUATE"
+      ],
+      "title": "bee.v1.AgentTaskKind",
+      "type": "string"
+    },
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.RepoWorkItem": {
+      "description": "Oneof `work`: at most one of `swarm`, `run` is set.",
+      "properties": {
+        "activityAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "changeRequestIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/bee.v1.AgentRun"
+        },
+        "swarm": {
+          "$ref": "#/$defs/bee.v1.Swarm"
+        }
+      },
+      "title": "bee.v1.RepoWorkItem",
+      "type": "object"
+    },
+    "bee.v1.SubjectKind": {
+      "description": "The kind of forge object a SubjectRef names.",
+      "enum": [
+        "SUBJECT_KIND_UNSPECIFIED",
+        "SUBJECT_KIND_REPO",
+        "SUBJECT_KIND_ISSUE",
+        "SUBJECT_KIND_CHANGE_REQUEST",
+        "SUBJECT_KIND_DISCUSSION",
+        "SUBJECT_KIND_COMMENT",
+        "SUBJECT_KIND_CHANGESET",
+        "SUBJECT_KIND_RELEASE",
+        "SUBJECT_KIND_GIST",
+        "SUBJECT_KIND_WIKI_PAGE",
+        "SUBJECT_KIND_CHECK_RUN",
+        "SUBJECT_KIND_WORKFLOW_RUN",
+        "SUBJECT_KIND_SECURITY_ALERT",
+        "SUBJECT_KIND_PROJECT",
+        "SUBJECT_KIND_PACKAGE",
+        "SUBJECT_KIND_DEPLOYMENT",
+        "SUBJECT_KIND_USER",
+        "SUBJECT_KIND_ORG",
+        "SUBJECT_KIND_TEAM",
+        "SUBJECT_KIND_AGENT_RUN",
+        "SUBJECT_KIND_ADVISORY",
+        "SUBJECT_KIND_POST",
+        "SUBJECT_KIND_SWARM",
+        "SUBJECT_KIND_SAFETY_RECORD"
+      ],
+      "title": "bee.v1.SubjectKind",
+      "type": "string"
+    },
+    "bee.v1.SubjectRef": {
+      "description": "Names any forge object generically, for reactions, notifications, moderation, search hits\nand project items. `id` is the object's ULID, or for issues and change requests its number\nin decimal; `repo` is unset for objects that are not repo-scoped.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SubjectKind"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        }
+      },
+      "title": "bee.v1.SubjectRef",
+      "type": "object"
+    },
+    "bee.v1.Swarm": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "budget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget"
+        },
+        "changeRequestIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issue": {
+          "type": "string"
+        },
+        "joins": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SwarmJoin"
+          },
+          "type": "array"
+        },
+        "lead": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "leadRunId": {
+          "type": "string"
+        },
+        "memberRunIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SwarmState"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SwarmTask"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Swarm",
+      "type": "object"
+    },
+    "bee.v1.SwarmAttempt": {
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "finishedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "handBack": {
+          "$ref": "#/$defs/bee.v1.SwarmHandBack"
+        },
+        "outcome": {
+          "$ref": "#/$defs/bee.v1.SwarmAttemptOutcome"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SwarmAttempt",
+      "type": "object"
+    },
+    "bee.v1.SwarmAttemptOutcome": {
+      "enum": [
+        "SWARM_ATTEMPT_OUTCOME_UNSPECIFIED",
+        "SWARM_ATTEMPT_OUTCOME_FINISHED",
+        "SWARM_ATTEMPT_OUTCOME_EMPTY",
+        "SWARM_ATTEMPT_OUTCOME_REFUSED"
+      ],
+      "title": "bee.v1.SwarmAttemptOutcome",
+      "type": "string"
+    },
+    "bee.v1.SwarmHandBack": {
+      "properties": {
+        "concerns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "deviations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "done": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "followUps": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SwarmHandBack",
+      "type": "object"
+    },
+    "bee.v1.SwarmJoin": {
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "budget": {
+          "$ref": "#/$defs/bee.v1.AgentRunBudget"
+        },
+        "decidedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requestedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "requester": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SwarmJoinState"
+        }
+      },
+      "title": "bee.v1.SwarmJoin",
+      "type": "object"
+    },
+    "bee.v1.SwarmJoinState": {
+      "enum": [
+        "SWARM_JOIN_STATE_UNSPECIFIED",
+        "SWARM_JOIN_STATE_PENDING",
+        "SWARM_JOIN_STATE_ACCEPTED",
+        "SWARM_JOIN_STATE_DECLINED",
+        "SWARM_JOIN_STATE_REFUSED"
+      ],
+      "title": "bee.v1.SwarmJoinState",
+      "type": "string"
+    },
+    "bee.v1.SwarmState": {
+      "enum": [
+        "SWARM_STATE_UNSPECIFIED",
+        "SWARM_STATE_PLANNING",
+        "SWARM_STATE_WORKING",
+        "SWARM_STATE_PAUSED",
+        "SWARM_STATE_STOPPED",
+        "SWARM_STATE_FINISHED"
+      ],
+      "title": "bee.v1.SwarmState",
+      "type": "string"
+    },
+    "bee.v1.SwarmTask": {
+      "properties": {
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SwarmAttempt"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runId": {
+          "description": "only while working",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.SwarmTaskState"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SwarmTask",
+      "type": "object"
+    },
+    "bee.v1.SwarmTaskState": {
+      "enum": [
+        "SWARM_TASK_STATE_UNSPECIFIED",
+        "SWARM_TASK_STATE_OPEN",
+        "SWARM_TASK_STATE_WORKING",
+        "SWARM_TASK_STATE_FINISHED",
+        "SWARM_TASK_STATE_EMPTY"
+      ],
+      "title": "bee.v1.SwarmTaskState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListRepoWorkResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.RepoWorkItem"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListRepoWorkResponse",
+  "type": "object"
+}

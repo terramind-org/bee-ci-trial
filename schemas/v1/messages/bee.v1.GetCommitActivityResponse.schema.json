@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "bee.v1.InsightsCommitWeek": {
+      "description": "One week of changeset counts, Sunday first.",
+      "properties": {
+        "days": {
+          "description": "7 entries, Sunday..Saturday",
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "weekStart": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.InsightsCommitWeek",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetCommitActivityResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for GetCommitActivity.",
+  "properties": {
+    "computing": {
+      "type": "boolean"
+    },
+    "weeks": {
+      "description": "52 weeks, oldest first",
+      "items": {
+        "$ref": "#/$defs/bee.v1.InsightsCommitWeek"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GetCommitActivityResponse",
+  "type": "object"
+}

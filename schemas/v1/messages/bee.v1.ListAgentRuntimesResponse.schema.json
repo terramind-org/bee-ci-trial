@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "bee.v1.AgentRuntime": {
+      "description": "A registered agent runtime.",
+      "properties": {
+        "capabilities": {
+          "description": "\"code\", \"review\", \"triage\", \"security_fix\", \"watch\"",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "defaultModels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "image": {
+          "description": "container image reference for the native runner",
+          "type": "string"
+        },
+        "mcpEndpoint": {
+          "description": "URL the runtime's MCP server listens on, if remote",
+          "type": "string"
+        },
+        "name": {
+          "description": "e.g. \"claude-code\"",
+          "type": "string"
+        },
+        "org": {
+          "description": "empty = public marketplace runtime",
+          "type": "string"
+        },
+        "registeredBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "sandbox": {
+          "$ref": "#/$defs/bee.v1.AgentSandboxRequirements"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "vendor": {
+          "description": "e.g. \"anthropic\"",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AgentRuntime",
+      "type": "object"
+    },
+    "bee.v1.AgentSandboxRequirements": {
+      "description": "Sandbox an agent runtime needs.",
+      "properties": {
+        "devcontainerPath": {
+          "type": "string"
+        },
+        "egressDomains": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "gpu": {
+          "type": "boolean"
+        },
+        "machineType": {
+          "description": "WorkspaceService machine type name; empty = default",
+          "type": "string"
+        },
+        "minCpus": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minMemoryBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "networkEgress": {
+          "description": "needs outbound network beyond the model gateway",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.AgentSandboxRequirements",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAgentRuntimesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListAgentRuntimes.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "runtimes": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.AgentRuntime"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListAgentRuntimesResponse",
+  "type": "object"
+}

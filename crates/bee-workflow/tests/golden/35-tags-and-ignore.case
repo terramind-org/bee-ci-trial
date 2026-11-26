@@ -1,0 +1,35 @@
+event: push refs/tags/v1.9.1-alpha files=
+--- .github/workflows/stable-tags.yml
+name: Stable tags
+on:
+  push:
+    tags:
+      - 'v*'
+      - '!v*-alpha'
+      - '!v*-beta*'
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo stable
+--- .github/workflows/prerelease.yml
+name: Prerelease
+on:
+  push:
+    tags-ignore:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+jobs:
+  pre:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "prerelease ${{ github.ref_name }} (${{ github.ref_type }})"
+--- .github/workflows/branches.yml
+name: Branches only
+on:
+  push:
+    branches: ['**']
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo branch

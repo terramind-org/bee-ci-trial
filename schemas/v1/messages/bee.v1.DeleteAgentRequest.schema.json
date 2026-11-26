@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeleteAgentRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for DeleteAgent. Needs being an owner of the agent, or org owner/admin.",
+  "properties": {
+    "agentPrincipalId": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeleteAgentRequest",
+  "type": "object"
+}

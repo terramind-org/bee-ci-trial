@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "bee.v1.AppPermission": {
+      "description": "One resource permission, e.g. contents:write or issues:read.",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/bee.v1.AppPermissionLevel"
+        },
+        "resource": {
+          "description": "Resource name from the permission catalog, e.g. \"contents\", \"metadata\", \"issues\",\n\"change_requests\", \"checks\", \"workflows\", \"members\", \"administration\".",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.AppPermission",
+      "type": "object"
+    },
+    "bee.v1.AppPermissionLevel": {
+      "description": "Access level an app requests or holds on one resource.",
+      "enum": [
+        "APP_PERMISSION_LEVEL_UNSPECIFIED",
+        "APP_PERMISSION_LEVEL_READ",
+        "APP_PERMISSION_LEVEL_WRITE",
+        "APP_PERMISSION_LEVEL_ADMIN"
+      ],
+      "title": "bee.v1.AppPermissionLevel",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateAppRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateApp. Unset fields are unchanged.",
+  "properties": {
+    "app": {
+      "description": "slug or id",
+      "type": "string"
+    },
+    "callbackUrls": {
+      "description": "replaces the list when replace_callback_urls is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "type": "string"
+    },
+    "events": {
+      "description": "replaces the list when replace_events is set",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "homepageUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "permissions": {
+      "description": "replaces the list when replace_permissions is set",
+      "items": {
+        "$ref": "#/$defs/bee.v1.AppPermission"
+      },
+      "type": "array"
+    },
+    "public": {
+      "type": "boolean"
+    },
+    "replaceCallbackUrls": {
+      "type": "boolean"
+    },
+    "replaceEvents": {
+      "type": "boolean"
+    },
+    "replacePermissions": {
+      "type": "boolean"
+    },
+    "requestOauthOnInstall": {
+      "type": "boolean"
+    },
+    "setupUrl": {
+      "type": "string"
+    },
+    "webhookActive": {
+      "type": "boolean"
+    },
+    "webhookSecret": {
+      "description": "sets a new webhook secret (write-only)",
+      "type": "string"
+    },
+    "webhookUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateAppRequest",
+  "type": "object"
+}

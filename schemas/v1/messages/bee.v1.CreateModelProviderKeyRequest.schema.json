@@ -1,0 +1,33 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateModelProviderKeyRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for CreateModelProviderKey.",
+  "properties": {
+    "endpoint": {
+      "type": "string"
+    },
+    "isDefault": {
+      "type": "boolean"
+    },
+    "models": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "secretName": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CreateModelProviderKeyRequest",
+  "type": "object"
+}

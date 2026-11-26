@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "bee.v1.ModerationReportCategory": {
+      "description": "Why content is reported.",
+      "enum": [
+        "MODERATION_REPORT_CATEGORY_UNSPECIFIED",
+        "MODERATION_REPORT_CATEGORY_SPAM",
+        "MODERATION_REPORT_CATEGORY_ABUSE",
+        "MODERATION_REPORT_CATEGORY_HARASSMENT",
+        "MODERATION_REPORT_CATEGORY_OFF_TOPIC",
+        "MODERATION_REPORT_CATEGORY_MALWARE",
+        "MODERATION_REPORT_CATEGORY_COPYRIGHT",
+        "MODERATION_REPORT_CATEGORY_PRIVACY",
+        "MODERATION_REPORT_CATEGORY_AGENT_FLOOD",
+        "MODERATION_REPORT_CATEGORY_OTHER"
+      ],
+      "title": "bee.v1.ModerationReportCategory",
+      "type": "string"
+    },
+    "bee.v1.ModerationReportState": {
+      "description": "Report lifecycle.",
+      "enum": [
+        "MODERATION_REPORT_STATE_UNSPECIFIED",
+        "MODERATION_REPORT_STATE_OPEN",
+        "MODERATION_REPORT_STATE_RESOLVED",
+        "MODERATION_REPORT_STATE_DISMISSED"
+      ],
+      "title": "bee.v1.ModerationReportState",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListContentReportsRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListContentReports.\n\nOneof `queue`: at most one of `repo`, `org`, `site` is set.",
+  "properties": {
+    "category": {
+      "$ref": "#/$defs/bee.v1.ModerationReportCategory"
+    },
+    "org": {
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "site": {
+      "description": "site administrators' queue",
+      "type": "boolean"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.ModerationReportState"
+    }
+  },
+  "title": "bee.v1.ListContentReportsRequest",
+  "type": "object"
+}

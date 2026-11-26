@@ -1,0 +1,11 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetExportRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetExportRequest",
+  "type": "object"
+}

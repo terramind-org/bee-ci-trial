@@ -1,0 +1,44 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RunGcResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bytesCollected": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "changesetsCollected": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "dryRun": {
+      "description": "counts are what would be collected",
+      "type": "boolean"
+    },
+    "finishedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "objectsCollected": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "startedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RunGcResponse",
+  "type": "object"
+}

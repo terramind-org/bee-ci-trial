@@ -1,0 +1,196 @@
+{
+  "format": "sCBOR v1",
+  "frozen": true,
+  "spec": "SPEC.md §3.1, §4",
+  "vectors": [
+    {
+      "description": "The empty tree; only valid as a root.",
+      "encoding_hex": "a200010180",
+      "id": "t1_866dc5c9f6b430095f6df3f3fb87164979d02f0a1f8eff27500a9a7bb33e5355",
+      "kind": "tree",
+      "name": "tree-empty",
+      "value": {
+        "entries": [],
+        "format_version": 1
+      }
+    },
+    {
+      "description": "One regular file.",
+      "encoding_hex": "a200010181a40149524541444d452e6d6402010358220101ccc898b101036cc08dd2c12c37ff699e81cbd7d1cb3f4ff1f5469847634123c70408",
+      "id": "t1_888dbebd3ac0f552a20c53928f7d75ae6eeef10cf3b11ee3e70bb1de655f0e4f",
+      "kind": "tree",
+      "name": "tree-one-file",
+      "value": {
+        "entries": [
+          {
+            "id": "b1_ccc898b101036cc08dd2c12c37ff699e81cbd7d1cb3f4ff1f5469847634123c7",
+            "mode": 1,
+            "name": "README.md",
+            "size": 8
+          }
+        ],
+        "format_version": 1
+      }
+    },
+    {
+      "description": "One entry of each mode: file, executable, symlink, tree, gitlink (SHA-1 and SHA-256).",
+      "encoding_hex": "a200010186a4014866696c652e7478740201035822010142173aaf951b10db722cc40c3bcd55cdb4b9ae148114a9e115cb74d18e7bb8c30405a401446c696e6b02030358220101620bdaf3f5ac74862d1a2ea466ab58c92b7c46441c56f9cb193568cc7c7815bd0408a4014672756e2e736802020358220101bc1f407a11c9377c8b9b13f956b279c8462775105eb958fc9ae3c40de87cc96e040aa40143737263020403582201022acf4c69d44e02f268807294dd5f3d6ba30bc4f9198cd00893f7daa25be52f2d0400a4014b76656e646f722d7368613102050358220200abababababababababababababababababababab0000000000000000000000000400a4014d76656e646f722d73686132353602050358220200cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd0400",
+      "id": "t1_8db211259f49be75a160aaf51c4dead56df89657c75dd59a173a4b0e45546423",
+      "kind": "tree",
+      "name": "tree-all-modes",
+      "value": {
+        "entries": [
+          {
+            "id": "b1_42173aaf951b10db722cc40c3bcd55cdb4b9ae148114a9e115cb74d18e7bb8c3",
+            "mode": 1,
+            "name": "file.txt",
+            "size": 5
+          },
+          {
+            "id": "b1_620bdaf3f5ac74862d1a2ea466ab58c92b7c46441c56f9cb193568cc7c7815bd",
+            "mode": 3,
+            "name": "link",
+            "size": 8
+          },
+          {
+            "id": "b1_bc1f407a11c9377c8b9b13f956b279c8462775105eb958fc9ae3c40de87cc96e",
+            "mode": 2,
+            "name": "run.sh",
+            "size": 10
+          },
+          {
+            "id": "t1_2acf4c69d44e02f268807294dd5f3d6ba30bc4f9198cd00893f7daa25be52f2d",
+            "mode": 4,
+            "name": "src",
+            "size": 0
+          },
+          {
+            "id": "g2_abababababababababababababababababababab000000000000000000000000",
+            "mode": 5,
+            "name": "vendor-sha1",
+            "size": 0
+          },
+          {
+            "id": "g2_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "mode": 5,
+            "name": "vendor-sha256",
+            "size": 0
+          }
+        ],
+        "format_version": 1
+      }
+    },
+    {
+      "description": "Names sort by raw bytes: uppercase before lowercase, `a` < `a-b` < `a.c` < `a0`, non-UTF-8 last.",
+      "encoding_hex": "a200010187a4014c2e737761726d69676e6f726502010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a401415a02010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a401416102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a40143612d6202010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a40143612e6302010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a40142613002010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400a40142ff4102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f32620400",
+      "id": "t1_342b55152b9d379b7007e5e95ae9c346a23235bb48627d446fe852a69332c821",
+      "kind": "tree",
+      "name": "tree-bytewise-order",
+      "value": {
+        "entries": [
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": ".swarmignore",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "Z",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "a",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "a-b",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "a.c",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "a0",
+            "size": 0
+          },
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name_hex": "ff41",
+            "size": 0
+          }
+        ],
+        "format_version": 1
+      }
+    },
+    {
+      "description": "Sizes that need 1, 2, 4 and 8 byte integer heads.",
+      "encoding_hex": "a200010184a4014273310201035822010101060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d8041818a4014273320201035822010102050c171e2128333a3d444f5659606b72757c878e9198a3aaadb4bfc6c9d0db04190100a4014273340201035822010103040d161f2029323b3c454e5758616a73747d868f9099a2abacb5bec7c8d1da041a00010000a4014273380201035822010104030a1118272e353c3b4249505f666d74737a8188979ea5acabb2b9c0cfd6dd041b0000000100000000",
+      "id": "t1_8686f0c6f36fff723bec6d74ecce43ef66322e6630a8459521ae24d416e23ac6",
+      "kind": "tree",
+      "name": "tree-wide-integers",
+      "value": {
+        "entries": [
+          {
+            "id": "b1_01060f141d222b30393e474c555a636871767f848d929ba0a9aeb7bcc5cad3d8",
+            "mode": 1,
+            "name": "s1",
+            "size": 24
+          },
+          {
+            "id": "b1_02050c171e2128333a3d444f5659606b72757c878e9198a3aaadb4bfc6c9d0db",
+            "mode": 1,
+            "name": "s2",
+            "size": 256
+          },
+          {
+            "id": "b1_03040d161f2029323b3c454e5758616a73747d868f9099a2abacb5bec7c8d1da",
+            "mode": 1,
+            "name": "s4",
+            "size": 65536
+          },
+          {
+            "id": "b1_04030a1118272e353c3b4249505f666d74737a8188979ea5acabb2b9c0cfd6dd",
+            "mode": 1,
+            "name": "s8",
+            "size": 4294967296
+          }
+        ],
+        "format_version": 1
+      }
+    },
+    {
+      "description": "Even extension keys 64 and 1000 are preserved and count toward the id.",
+      "encoding_hex": "a400010181a401416102010358220101af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262040018406969676e6f7261626c651903e8820120",
+      "id": "t1_4b7945ea2e257f14d457d0d306f28db18a3adb2784acfbeff9b0799d8f504e17",
+      "kind": "tree",
+      "name": "tree-ignorable-extensions",
+      "value": {
+        "entries": [
+          {
+            "id": "b1_af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+            "mode": 1,
+            "name": "a",
+            "size": 0
+          }
+        ],
+        "extensions": {
+          "1000": "820120",
+          "64": "6969676e6f7261626c65"
+        },
+        "format_version": 1
+      }
+    }
+  ]
+}

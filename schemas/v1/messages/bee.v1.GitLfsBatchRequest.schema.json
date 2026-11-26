@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "bee.v1.GitLfsObjectSpec": {
+      "description": "An LFS object named in a batch request.",
+      "properties": {
+        "oid": {
+          "description": "sha256 hex",
+          "type": "string"
+        },
+        "size": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.GitLfsObjectSpec",
+      "type": "object"
+    },
+    "bee.v1.GitLfsOperation": {
+      "description": "LFS batch operation.",
+      "enum": [
+        "GIT_LFS_OPERATION_UNSPECIFIED",
+        "GIT_LFS_OPERATION_DOWNLOAD",
+        "GIT_LFS_OPERATION_UPLOAD"
+      ],
+      "title": "bee.v1.GitLfsOperation",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GitLfsBatchRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GitLfsBatch.",
+  "properties": {
+    "hashAlgo": {
+      "description": "\"sha256\"",
+      "type": "string"
+    },
+    "objects": {
+      "description": "maximum 1000",
+      "items": {
+        "$ref": "#/$defs/bee.v1.GitLfsObjectSpec"
+      },
+      "type": "array"
+    },
+    "operation": {
+      "$ref": "#/$defs/bee.v1.GitLfsOperation"
+    },
+    "ref": {
+      "description": "ref the objects belong to, for policy",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "transfers": {
+      "description": "e.g. \"basic\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.GitLfsBatchRequest",
+  "type": "object"
+}

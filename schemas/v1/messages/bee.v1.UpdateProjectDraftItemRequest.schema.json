@@ -1,0 +1,39 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateProjectDraftItemRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateProjectDraftItem.",
+  "properties": {
+    "assignees": {
+      "description": "replaces assignees when `set_assignees`",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "body": {
+      "type": "string"
+    },
+    "expectedVersion": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "itemId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "setAssignees": {
+      "type": "boolean"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateProjectDraftItemRequest",
+  "type": "object"
+}

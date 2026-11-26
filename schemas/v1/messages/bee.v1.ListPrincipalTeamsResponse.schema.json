@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Team": {
+      "description": "A team in an organization.",
+      "properties": {
+        "childTeamCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "idpSynced": {
+          "description": "membership managed by linked IdP groups",
+          "type": "boolean"
+        },
+        "memberCount": {
+          "description": "direct members",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notificationsEnabled": {
+          "description": "@-mentions of the team notify its members",
+          "type": "boolean"
+        },
+        "org": {
+          "description": "org name",
+          "type": "string"
+        },
+        "parentTeamId": {
+          "description": "empty for a top-level team",
+          "type": "string"
+        },
+        "policyGroup": {
+          "description": "the policy group name, \"@<org>/<slug>\"",
+          "type": "string"
+        },
+        "privacy": {
+          "$ref": "#/$defs/bee.v1.TeamPrivacy"
+        },
+        "repoCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "slug": {
+          "description": "url-safe, unique in the org",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Team",
+      "type": "object"
+    },
+    "bee.v1.TeamPrivacy": {
+      "description": "Who can see a team.",
+      "enum": [
+        "TEAM_PRIVACY_UNSPECIFIED",
+        "TEAM_PRIVACY_VISIBLE",
+        "TEAM_PRIVACY_SECRET"
+      ],
+      "title": "bee.v1.TeamPrivacy",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListPrincipalTeamsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListPrincipalTeams.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "teams": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Team"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListPrincipalTeamsResponse",
+  "type": "object"
+}

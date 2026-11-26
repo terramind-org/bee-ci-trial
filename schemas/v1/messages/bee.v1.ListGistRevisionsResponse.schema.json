@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "bee.v1.GistRevision": {
+      "description": "One revision of a gist.",
+      "properties": {
+        "additions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "author": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "changeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deletions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "filesChanged": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.GistRevision",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListGistRevisionsResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListGistRevisions.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "revisions": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.GistRevision"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListGistRevisionsResponse",
+  "type": "object"
+}

@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "bee.v1.Gist": {
+      "description": "A gist at one revision.",
+      "properties": {
+        "cloneUrlHttps": {
+          "type": "string"
+        },
+        "cloneUrlSsh": {
+          "type": "string"
+        },
+        "commentCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "commentsLocked": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "embedUrl": {
+          "description": "script URL for embedding",
+          "type": "string"
+        },
+        "files": {
+          "description": "sorted by filename",
+          "items": {
+            "$ref": "#/$defs/bee.v1.GistFile"
+          },
+          "type": "array"
+        },
+        "forkCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "forkOf": {
+          "description": "parent gist id, if a fork",
+          "type": "string"
+        },
+        "head": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "changeset this view was read at"
+        },
+        "id": {
+          "type": "string"
+        },
+        "owner": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "public": {
+          "description": "false = secret (unlisted)",
+          "type": "boolean"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef",
+          "description": "the gist's backing repo"
+        },
+        "starCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Gist",
+      "type": "object"
+    },
+    "bee.v1.GistFile": {
+      "description": "One file in a gist.",
+      "properties": {
+        "binary": {
+          "type": "boolean"
+        },
+        "blob": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "content": {
+          "description": "UTF-8 text; empty when binary or not requested",
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "language": {
+          "description": "detected language name",
+          "type": "string"
+        },
+        "size": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "truncated": {
+          "description": "content was cut; fetch the rest with GetGistFileRawUrl",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.GistFile",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListGistForksResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListGistForks.",
+  "properties": {
+    "forks": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Gist"
+      },
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    }
+  },
+  "title": "bee.v1.ListGistForksResponse",
+  "type": "object"
+}

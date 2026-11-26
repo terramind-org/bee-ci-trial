@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "bee.v1.BriefChecklistItem": {
+      "description": "One thing the brief or evidence should cover.",
+      "properties": {
+        "detail": {
+          "description": "in words, e.g. \"a screenshot of the UI change\"",
+          "type": "string"
+        },
+        "evidenceIds": {
+          "description": "evidence that satisfies it, on this revision",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "\"brief\" (an outcome and at least one highlight), \"brief:risk\" (a risk or a rollback plan)\nor \"evidence:ui\" (a screenshot, before and after, or a video).",
+          "type": "string"
+        },
+        "kinds": {
+          "description": "kinds that satisfy an evidence item",
+          "items": {
+            "$ref": "#/$defs/bee.v1.EvidenceKind"
+          },
+          "type": "array"
+        },
+        "paths": {
+          "description": "paths that raised the item, at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "satisfied": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.BriefChecklistItem",
+      "type": "object"
+    },
+    "bee.v1.EvidenceKind": {
+      "description": "What an evidence item shows. Each kind allows a fixed set of assets (by role); anything else\nis INVALID_ARGUMENT (subcode `bad_evidence`). Every image asset needs alt text.",
+      "enum": [
+        "EVIDENCE_KIND_UNSPECIFIED",
+        "EVIDENCE_KIND_SCREENSHOT",
+        "EVIDENCE_KIND_BEFORE_AFTER",
+        "EVIDENCE_KIND_VIDEO",
+        "EVIDENCE_KIND_BENCHMARK",
+        "EVIDENCE_KIND_IMAGE",
+        "EVIDENCE_KIND_AUDIO",
+        "EVIDENCE_KIND_DOCUMENT",
+        "EVIDENCE_KIND_PREVIEW_LINK",
+        "EVIDENCE_KIND_TEST_REPORT"
+      ],
+      "title": "bee.v1.EvidenceKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BriefChecklist.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What a change request's brief and evidence still owe for one revision. Advisory only.",
+  "properties": {
+    "complete": {
+      "description": "every item satisfied (true when there are no items)",
+      "type": "boolean"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.BriefChecklistItem"
+      },
+      "type": "array"
+    },
+    "revision": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.BriefChecklist",
+  "type": "object"
+}

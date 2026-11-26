@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/billing.list-billing-budgets.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.BillingService/ListBillingBudgets: `data` is a bee.v1.ListBillingBudgetsResponse in proto3-JSON. `bee billing list-billing-budgets --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListBillingBudgetsResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.billing.list-billing-budgets"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee billing list-billing-budgets",
+  "type": "object"
+}

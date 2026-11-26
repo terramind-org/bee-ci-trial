@@ -1,0 +1,239 @@
+// Repository wikis for bee.v1. See docs/PRODUCT.md §4.16.
+// A wiki is a cloneable sibling repo named `<repo>.wiki`; every page edit is a changeset on it.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Wiki pages for a repo. Reads follow the parent repo's read access; writes follow the wiki's
+// edit setting (collaborators only, or anyone who can read). Pages are Markdown (or another
+// supported markup) files at the wiki repo's root and subdirectories.
+service WikiService {
+  // Turns the wiki on, creating the `<repo>.wiki` sibling repo if it does not exist.
+  rpc EnableWiki(EnableWikiRequest) returns (WikiInfo);
+  // Turns the wiki off. The sibling repo is kept and returns if the wiki is enabled again.
+  rpc DisableWiki(DisableWikiRequest) returns (WikiInfo);
+  // Returns the wiki's state, sibling repo reference and clone URLs.
+  rpc GetWiki(GetWikiRequest) returns (WikiInfo);
+  // Lists pages at a revision of the wiki repo.
+  rpc ListWikiPages(ListWikiPagesRequest) returns (ListWikiPagesResponse);
+  // Fetches a page, raw and optionally rendered, at a revision. NOT_FOUND when absent.
+  rpc GetWikiPage(GetWikiPageRequest) returns (WikiPage);
+  // Creates a page; produces one changeset on the wiki repo. ALREADY_EXISTS when the slug is
+  // taken; PERMISSION_DENIED when wiki edits are restricted.
+  rpc CreateWikiPage(CreateWikiPageRequest) returns (WikiPage);
+  // Edits or renames a page; produces one changeset on the wiki repo. VERSION_MISMATCH when
+  // `expected_changeset` is not the page's latest revision.
+  rpc UpdateWikiPage(UpdateWikiPageRequest) returns (WikiPage);
+  // Deletes a page; produces one changeset on the wiki repo.
+  rpc DeleteWikiPage(DeleteWikiPageRequest) returns (DeleteWikiPageResponse);
+  // Lists the revisions that touched a page, newest first.
+  rpc ListWikiPageRevisions(ListWikiPageRevisionsRequest) returns (ListWikiPageRevisionsResponse);
+  // Fetches the custom sidebar (`_Sidebar`). Empty content when none is set.
+  rpc GetWikiSidebar(GetWikiSidebarRequest) returns (WikiPage);
+  // Sets or clears the custom sidebar; produces one changeset on the wiki repo.
+  rpc SetWikiSidebar(SetWikiSidebarRequest) returns (WikiPage);
+  // Fetches the custom footer (`_Footer`). Empty content when none is set.
+  rpc GetWikiFooter(GetWikiFooterRequest) returns (WikiPage);
+  // Sets or clears the custom footer; produces one changeset on the wiki repo.
+  rpc SetWikiFooter(SetWikiFooterRequest) returns (WikiPage);
+  // Full-text search over page titles and bodies at the wiki's head.
+  rpc SearchWikiPages(SearchWikiPagesRequest) returns (SearchWikiPagesResponse);
+}
+
+// Who may edit a wiki.
+enum WikiEditAccess {
+  WIKI_EDIT_ACCESS_UNSPECIFIED = 0;
+  WIKI_EDIT_ACCESS_COLLABORATORS = 1; // principals with write access to the parent repo
+  WIKI_EDIT_ACCESS_READERS = 2;       // anyone who can read the parent repo (public wikis)
+}
+
+// Markup language of a wiki page, chosen by file extension.
+enum WikiPageFormat {
+  WIKI_PAGE_FORMAT_UNSPECIFIED = 0;
+  WIKI_PAGE_FORMAT_MARKDOWN = 1;
+  WIKI_PAGE_FORMAT_ASCIIDOC = 2;
+  WIKI_PAGE_FORMAT_RST = 3;
+  WIKI_PAGE_FORMAT_ORG = 4;
+  WIKI_PAGE_FORMAT_TEXTILE = 5;
+  WIKI_PAGE_FORMAT_MEDIAWIKI = 6;
+}
+
+// A repo's wiki: state and sibling repo.
+message WikiInfo {
+  RepoRef repo = 1;             // the parent repo
+  bool enabled = 2;
+  RepoRef wiki_repo = 3;        // the `<repo>.wiki` sibling repo
+  string default_ref = 4;
+  ObjectId head = 5;            // current head changeset of the wiki repo
+  string clone_url_https = 6;
+  string clone_url_ssh = 7;
+  WikiEditAccess edit_access = 8;
+  uint32 page_count = 9;
+}
+
+// A wiki page at one revision.
+message WikiPage {
+  string slug = 1;              // URL name, e.g. "Getting-Started"
+  string title = 2;             // display title derived from the file name
+  bytes path = 3;               // file path in the wiki repo
+  WikiPageFormat format = 4;
+  string content = 5;           // raw markup
+  string content_html = 6;      // sanitized rendering, when requested
+  ObjectId changeset = 7;       // revision the page was read at
+  ObjectId blob = 8;
+  Principal last_editor = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  string url = 11;
+}
+
+// One page entry in a listing, without content.
+message WikiPageSummary {
+  string slug = 1;
+  string title = 2;
+  bytes path = 3;
+  WikiPageFormat format = 4;
+  uint64 size = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// One revision of a page.
+message WikiPageRevision {
+  ObjectId changeset = 1;
+  Principal author = 2;
+  string message = 3;
+  google.protobuf.Timestamp created_at = 4;
+  bytes path = 5;               // page path at this revision (follows renames)
+}
+
+// One search hit in a wiki.
+message WikiSearchHit {
+  WikiPageSummary page = 1;
+  repeated string snippets = 2; // highlighted excerpts, Markdown-escaped
+  float score = 3;
+}
+
+// Request for EnableWiki.
+message EnableWikiRequest {
+  RepoRef repo = 1;
+  WikiEditAccess edit_access = 2;
+}
+
+// Request for DisableWiki.
+message DisableWikiRequest {
+  RepoRef repo = 1;
+}
+
+// Request for GetWiki.
+message GetWikiRequest {
+  RepoRef repo = 1;
+}
+
+// Request for ListWikiPages.
+message ListWikiPagesRequest {
+  RepoRef repo = 1;             // the parent repo
+  Revision at = 2;              // wiki repo revision; default its head
+  PageRequest page = 3;
+}
+
+// Response for ListWikiPages.
+message ListWikiPagesResponse {
+  repeated WikiPageSummary pages = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWikiPage.
+message GetWikiPageRequest {
+  RepoRef repo = 1;
+  string slug = 2;
+  Revision at = 3;              // wiki repo revision; default its head
+  bool include_html = 4;
+}
+
+// Request for CreateWikiPage.
+message CreateWikiPageRequest {
+  RepoRef repo = 1;
+  string title = 2;
+  string content = 3;
+  WikiPageFormat format = 4;    // default MARKDOWN
+  string message = 5;           // commit message; default "Create <title>"
+}
+
+// Request for UpdateWikiPage.
+message UpdateWikiPageRequest {
+  RepoRef repo = 1;
+  string slug = 2;
+  ObjectId expected_changeset = 3; // page's latest revision as read; unset = any
+  optional string title = 4;    // renames the page
+  optional string content = 5;
+  optional WikiPageFormat format = 6;
+  string message = 7;           // commit message; default "Update <title>"
+}
+
+// Request for DeleteWikiPage.
+message DeleteWikiPageRequest {
+  RepoRef repo = 1;
+  string slug = 2;
+  string message = 3;
+}
+
+// Response for DeleteWikiPage.
+message DeleteWikiPageResponse {
+  ObjectId changeset = 1;       // the changeset that removed the page
+}
+
+// Request for ListWikiPageRevisions.
+message ListWikiPageRevisionsRequest {
+  RepoRef repo = 1;
+  string slug = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListWikiPageRevisions.
+message ListWikiPageRevisionsResponse {
+  repeated WikiPageRevision revisions = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetWikiSidebar.
+message GetWikiSidebarRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bool include_html = 3;
+}
+
+// Request for SetWikiSidebar.
+message SetWikiSidebarRequest {
+  RepoRef repo = 1;
+  string content = 2;           // empty removes the sidebar
+  string message = 3;
+}
+
+// Request for GetWikiFooter.
+message GetWikiFooterRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  bool include_html = 3;
+}
+
+// Request for SetWikiFooter.
+message SetWikiFooterRequest {
+  RepoRef repo = 1;
+  string content = 2;           // empty removes the footer
+  string message = 3;
+}
+
+// Request for SearchWikiPages.
+message SearchWikiPagesRequest {
+  RepoRef repo = 1;
+  string query = 2;
+  PageRequest page = 3;
+}
+
+// Response for SearchWikiPages.
+message SearchWikiPagesResponse {
+  repeated WikiSearchHit hits = 1;
+  PageResponse page = 2;
+}

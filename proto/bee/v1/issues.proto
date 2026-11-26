@@ -1,0 +1,1281 @@
+// Beehive issues for bee.v1: issues, labels, milestones, assignees (agents included), issue
+// types, sub-issues, dependencies, custom fields, templates and forms, pinning, locking,
+// transfer, timeline, development links and saved replies. See docs/PRODUCT.md §4.15.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+import "bee/v1/content.proto";
+import "bee/v1/posts.proto";
+
+// Issues and everything attached to them. Issue numbers share one per-repo number space with
+// change requests, as on GitHub. Comment edits, deletes and reactions go through
+// CommentService; issues only create and list their own comments here.
+service IssueService {
+  // ---------- Issues ----------
+
+  // Opens a new issue. Fails with LOCKED when the repo has issues disabled or archived
+  // (ARCHIVED), and INTERACTION_LIMITED when the caller is outside the repo's interaction limit.
+  rpc CreateIssue(CreateIssueRequest) returns (Issue);
+  // Fetches an issue by its id. Fails with NOT_FOUND, or REDACTED for redacted content.
+  rpc GetIssue(GetIssueRequest) returns (Issue);
+  // Fetches an issue by repo and number. A transferred issue answers from its new location and
+  // sets `Issue.transferred_from`.
+  rpc GetIssueByNumber(GetIssueByNumberRequest) returns (Issue);
+  // Lists issues in a repo with filters and GitHub-compatible search qualifiers.
+  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse);
+  // Edits an issue's title, body and other attributes. Fails with VERSION_MISMATCH when
+  // `expected_version` is stale and LOCKED when the conversation is locked for the caller.
+  rpc UpdateIssue(UpdateIssueRequest) returns (Issue);
+  // Permanently deletes an issue (repo admins only). Its number is never reused.
+  rpc DeleteIssue(DeleteIssueRequest) returns (DeleteIssueResponse);
+  // Closes an issue with a reason. A DUPLICATE close requires `duplicate_of`. Fails with
+  // INVALID_STATE when the issue is already closed.
+  rpc CloseIssue(CloseIssueRequest) returns (Issue);
+  // Reopens a closed issue. Fails with INVALID_STATE when the issue is already open.
+  rpc ReopenIssue(ReopenIssueRequest) returns (Issue);
+  // Marks an issue as a duplicate of another and closes it with reason DUPLICATE.
+  rpc MarkIssueDuplicate(MarkIssueDuplicateRequest) returns (Issue);
+  // Clears a duplicate mark. The issue stays closed unless `reopen` is set.
+  rpc UnmarkIssueDuplicate(UnmarkIssueDuplicateRequest) returns (Issue);
+
+  // ---------- Comments ----------
+
+  // Adds a conversation comment to an issue, optionally closing or reopening it in the same
+  // call. Fails with LOCKED when the conversation is locked and the caller cannot bypass it.
+  rpc CreateIssueComment(CreateIssueCommentRequest) returns (Comment);
+  // Lists an issue's conversation comments, oldest first.
+  rpc ListIssueComments(ListIssueCommentsRequest) returns (ListIssueCommentsResponse);
+
+  // ---------- Labels ----------
+
+  // Creates a repo label. Labels are shared by issues, change requests and discussions.
+  // Fails with ALREADY_EXISTS when the name is taken (names compare case-insensitively).
+  rpc CreateIssueLabel(CreateIssueLabelRequest) returns (Label);
+  // Fetches one repo label by name or id.
+  rpc GetIssueLabel(GetIssueLabelRequest) returns (Label);
+  // Renames or recolors a repo label. Items carrying it keep it.
+  rpc UpdateIssueLabel(UpdateIssueLabelRequest) returns (Label);
+  // Deletes a repo label and removes it from every item.
+  rpc DeleteIssueLabel(DeleteIssueLabelRequest) returns (DeleteIssueLabelResponse);
+  // Lists the repo's labels.
+  rpc ListIssueLabels(ListIssueLabelsRequest) returns (ListIssueLabelsResponse);
+  // Adds labels to an issue. Unknown names fail with NOT_FOUND unless `create_missing` is set.
+  rpc AddIssueLabels(AddIssueLabelsRequest) returns (Issue);
+  // Removes labels from an issue. Labels the issue does not carry are ignored.
+  rpc RemoveIssueLabels(RemoveIssueLabelsRequest) returns (Issue);
+  // Replaces an issue's whole label set.
+  rpc SetIssueLabels(SetIssueLabelsRequest) returns (Issue);
+
+  // ---------- Milestones ----------
+
+  // Creates a repo milestone. Fails with ALREADY_EXISTS when the title is taken.
+  rpc CreateIssueMilestone(CreateIssueMilestoneRequest) returns (Milestone);
+  // Fetches a milestone by number.
+  rpc GetIssueMilestone(GetIssueMilestoneRequest) returns (Milestone);
+  // Edits a milestone's title, description, due date or state.
+  rpc UpdateIssueMilestone(UpdateIssueMilestoneRequest) returns (Milestone);
+  // Deletes a milestone and clears it from every item.
+  rpc DeleteIssueMilestone(DeleteIssueMilestoneRequest) returns (DeleteIssueMilestoneResponse);
+  // Lists a repo's milestones.
+  rpc ListIssueMilestones(ListIssueMilestonesRequest) returns (ListIssueMilestonesResponse);
+  // Sets or clears (number 0) an issue's milestone.
+  rpc SetIssueMilestone(SetIssueMilestoneRequest) returns (Issue);
+
+  // ---------- Assignees ----------
+
+  // Assigns principals to an issue. Agents may be assignees; assigning an agent that is
+  // configured to take work starts an agent run, whose id is returned. Fails with
+  // LIMIT_EXCEEDED detail (RESOURCE_EXHAUSTED) above the per-issue assignee cap, and
+  // BUDGET_EXHAUSTED when the agent run cannot start for lack of budget.
+  rpc AddIssueAssignees(AddIssueAssigneesRequest) returns (AddIssueAssigneesResponse);
+  // Unassigns principals from an issue. Unassigning an agent does not stop its running work
+  // unless `stop_agent_runs` is set.
+  rpc RemoveIssueAssignees(RemoveIssueAssigneesRequest) returns (Issue);
+  // Lists principals that may be assigned to issues in a repo, humans and agents.
+  rpc ListIssueAssignableUsers(ListIssueAssignableUsersRequest) returns (ListIssueAssignableUsersResponse);
+
+  // ---------- Issue types (org level) ----------
+
+  // Defines an issue type for an org. Fails with ALREADY_EXISTS on a duplicate name.
+  rpc CreateIssueType(CreateIssueTypeRequest) returns (IssueType);
+  // Edits an org issue type.
+  rpc UpdateIssueType(UpdateIssueTypeRequest) returns (IssueType);
+  // Deletes an org issue type. Issues of that type become untyped.
+  rpc DeleteIssueType(DeleteIssueTypeRequest) returns (DeleteIssueTypeResponse);
+  // Lists an org's issue types; a repo request returns the types usable in that repo.
+  rpc ListIssueTypes(ListIssueTypesRequest) returns (ListIssueTypesResponse);
+  // Sets or clears an issue's type. Fails with INVALID_ARGUMENT when the type is disabled.
+  rpc SetIssueType(SetIssueTypeRequest) returns (Issue);
+
+  // ---------- Sub-issues ----------
+
+  // Makes an issue a sub-issue of a parent, possibly across repos in the same org. Fails with
+  // INVALID_ARGUMENT on a cycle, INVALID_STATE when the child already has another parent
+  // (unless `replace_parent`), and RESOURCE_EXHAUSTED above the child or depth limit.
+  rpc AddIssueSubIssue(AddIssueSubIssueRequest) returns (Issue);
+  // Detaches a sub-issue from its parent.
+  rpc RemoveIssueSubIssue(RemoveIssueSubIssueRequest) returns (Issue);
+  // Moves a sub-issue within its parent's ordered child list.
+  rpc ReorderIssueSubIssue(ReorderIssueSubIssueRequest) returns (Issue);
+  // Lists a parent's sub-issues in order, with progress counts.
+  rpc ListIssueSubIssues(ListIssueSubIssuesRequest) returns (ListIssueSubIssuesResponse);
+  // Returns an issue's parent, if any.
+  rpc GetIssueParent(GetIssueParentRequest) returns (GetIssueParentResponse);
+
+  // ---------- Dependencies ----------
+
+  // Records that an issue is blocked by another. Fails with INVALID_ARGUMENT on a cycle and
+  // ALREADY_EXISTS when the edge exists.
+  rpc AddIssueDependency(AddIssueDependencyRequest) returns (Issue);
+  // Removes a blocked-by edge.
+  rpc RemoveIssueDependency(RemoveIssueDependencyRequest) returns (Issue);
+  // Lists issues blocking, or blocked by, an issue.
+  rpc ListIssueDependencies(ListIssueDependenciesRequest) returns (ListIssueDependenciesResponse);
+
+  // ---------- Custom fields (org level) ----------
+
+  // Defines a typed custom issue field for an org. Fails with ALREADY_EXISTS on a duplicate
+  // name.
+  rpc CreateIssueField(CreateIssueFieldRequest) returns (IssueField);
+  // Edits a field's name, description, options or iterations. The kind cannot change.
+  rpc UpdateIssueField(UpdateIssueFieldRequest) returns (IssueField);
+  // Deletes a field and every value set for it.
+  rpc DeleteIssueField(DeleteIssueFieldRequest) returns (DeleteIssueFieldResponse);
+  // Lists an org's issue fields; a repo request returns the fields usable in that repo.
+  rpc ListIssueFields(ListIssueFieldsRequest) returns (ListIssueFieldsResponse);
+  // Sets one or more field values on an issue. Fails with INVALID_ARGUMENT when a value does
+  // not match its field's kind or names an unknown option or iteration.
+  rpc SetIssueFieldValues(SetIssueFieldValuesRequest) returns (Issue);
+  // Clears one field value on an issue.
+  rpc ClearIssueFieldValue(ClearIssueFieldValueRequest) returns (Issue);
+
+  // ---------- Templates and forms ----------
+
+  // Lists issue templates and issue forms parsed from `.beehive/ISSUE_TEMPLATE/` (or
+  // `.github/ISSUE_TEMPLATE/`) on the default ref.
+  rpc ListIssueTemplates(ListIssueTemplatesRequest) returns (ListIssueTemplatesResponse);
+  // Returns the template chooser config (config.yml): blank issues and contact links.
+  rpc GetIssueTemplateConfig(GetIssueTemplateConfigRequest) returns (IssueTemplateConfig);
+
+  // ---------- Pinning ----------
+
+  // Pins an issue to the repo's issue list. Fails with RESOURCE_EXHAUSTED when three issues
+  // are already pinned.
+  rpc PinIssue(PinIssueRequest) returns (Issue);
+  // Unpins an issue.
+  rpc UnpinIssue(UnpinIssueRequest) returns (Issue);
+  // Lists a repo's pinned issues in pin order.
+  rpc ListPinnedIssues(ListPinnedIssuesRequest) returns (ListPinnedIssuesResponse);
+
+  // ---------- Locking ----------
+
+  // Locks an issue's conversation so only collaborators can comment. Fails with INVALID_STATE
+  // when already locked.
+  rpc LockIssue(LockIssueRequest) returns (Issue);
+  // Unlocks an issue's conversation.
+  rpc UnlockIssue(UnlockIssueRequest) returns (Issue);
+
+  // ---------- Transfer ----------
+
+  // Moves an issue to another repo of the same owner. The issue gets a new number there and the
+  // old number keeps a redirect. Labels and milestones that do not exist in the target are
+  // dropped. Fails with PERMISSION_DENIED without write access to both repos.
+  rpc TransferIssue(TransferIssueRequest) returns (TransferIssueResponse);
+
+  // ---------- Timeline ----------
+
+  // Lists the issue's timeline: comments, label, assignee and state changes, cross-references,
+  // mentions, linked change requests, agent runs and more, oldest first.
+  rpc ListIssueTimeline(ListIssueTimelineRequest) returns (ListIssueTimelineResponse);
+
+  // ---------- Development panel ----------
+
+  // Links a change request to an issue. `closes` makes landing the CR close the issue.
+  rpc LinkIssueChange(LinkIssueChangeRequest) returns (IssueLinkedChange);
+  // Removes a manual link between an issue and a change request. Links from closing keywords
+  // in the CR body are removed by editing the body.
+  rpc UnlinkIssueChange(UnlinkIssueChangeRequest) returns (UnlinkIssueChangeResponse);
+  // Returns the issue's development panel: linked change requests and branches.
+  rpc GetIssueDevelopment(GetIssueDevelopmentRequest) returns (IssueDevelopment);
+  // Creates a branch ref (and optionally a workspace) for working on an issue and links it.
+  // Fails with ALREADY_EXISTS when the ref exists.
+  rpc CreateIssueBranch(CreateIssueBranchRequest) returns (IssueLinkedBranch);
+
+  // ---------- Task lists ----------
+
+  // Returns task-list checkbox counts parsed from the issue body.
+  rpc GetIssueTaskListProgress(GetIssueTaskListProgressRequest) returns (IssueTaskListProgress);
+
+  // ---------- Saved replies (per user) ----------
+
+  // Creates a saved reply for the caller.
+  rpc CreateSavedReply(CreateSavedReplyRequest) returns (SavedReply);
+  // Fetches one of the caller's saved replies.
+  rpc GetSavedReply(GetSavedReplyRequest) returns (SavedReply);
+  // Edits one of the caller's saved replies.
+  rpc UpdateSavedReply(UpdateSavedReplyRequest) returns (SavedReply);
+  // Deletes one of the caller's saved replies.
+  rpc DeleteSavedReply(DeleteSavedReplyRequest) returns (DeleteSavedReplyResponse);
+  // Lists the caller's saved replies.
+  rpc ListSavedReplies(ListSavedRepliesRequest) returns (ListSavedRepliesResponse);
+}
+
+// ---------- Core resources ----------
+
+// Open or closed.
+enum IssueState {
+  ISSUE_STATE_UNSPECIFIED = 0;
+  ISSUE_STATE_OPEN = 1;
+  ISSUE_STATE_CLOSED = 2;
+}
+
+// Why an issue is in its current state.
+enum IssueStateReason {
+  ISSUE_STATE_REASON_UNSPECIFIED = 0;
+  ISSUE_STATE_REASON_COMPLETED = 1;
+  ISSUE_STATE_REASON_NOT_PLANNED = 2;
+  ISSUE_STATE_REASON_DUPLICATE = 3;
+  ISSUE_STATE_REASON_REOPENED = 4;
+}
+
+// Why a conversation was locked.
+enum IssueLockReason {
+  ISSUE_LOCK_REASON_UNSPECIFIED = 0; // locked without a stated reason
+  ISSUE_LOCK_REASON_OFF_TOPIC = 1;
+  ISSUE_LOCK_REASON_TOO_HEATED = 2;
+  ISSUE_LOCK_REASON_RESOLVED = 3;
+  ISSUE_LOCK_REASON_SPAM = 4;
+}
+
+// Names an issue by id, or by repo and number. Used for cross-repo relations.
+message IssueRef {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string id = 3; // alternative to repo + number
+}
+
+// Short identity of a related issue, returned inside other resources.
+message IssueSummary {
+  string id = 1;
+  string repo_full_name = 2;
+  uint64 number = 3;
+  string title = 4;
+  IssueState state = 5;
+  IssueStateReason state_reason = 6;
+  string issue_type_name = 7;
+  repeated Principal assignees = 8;
+  string url = 9;
+}
+
+// Checkbox counts derived from Markdown task lists in the body.
+message IssueTaskListProgress {
+  uint32 total = 1;
+  uint32 completed = 2;
+}
+
+// Progress of an issue's direct and nested sub-issues.
+message IssueSubIssueProgress {
+  uint32 total = 1;
+  uint32 completed = 2;
+  uint32 percent_completed = 3; // 0..100, over all descendants
+}
+
+// Dependency counts for an issue.
+message IssueDependencySummary {
+  uint32 blocked_by = 1;
+  uint32 blocked_by_open = 2; // blockers still open
+  uint32 blocking = 3;
+}
+
+// An issue.
+message Issue {
+  string id = 1;
+  string repo_id = 2;
+  string repo_full_name = 3;
+  uint64 number = 4;
+  string title = 5;
+  string body = 6;                          // Markdown
+  string body_html = 7;                     // sanitized rendering, when requested
+  IssueState state = 8;
+  IssueStateReason state_reason = 9;
+  IssueRef duplicate_of = 10;               // set when closed as a duplicate
+  Principal author = 11;
+  string author_association = 12;           // "OWNER", "MEMBER", "CONTRIBUTOR", ...
+  repeated Principal assignees = 13;
+  repeated Label labels = 14;
+  Milestone milestone = 15;
+  IssueType issue_type = 16;
+  IssueSummary parent = 17;
+  IssueSubIssueProgress sub_issues = 18;
+  IssueDependencySummary dependencies = 19;
+  IssueTaskListProgress task_list = 20;
+  repeated IssueFieldValue field_values = 21;
+  bool locked = 22;
+  IssueLockReason lock_reason = 23;
+  bool pinned = 24;
+  uint32 comment_count = 25;
+  repeated ReactionGroup reactions = 26;
+  repeated string linked_change_request_ids = 27;
+  repeated string active_agent_run_ids = 28; // agent runs working this issue now
+  google.protobuf.Timestamp created_at = 29;
+  google.protobuf.Timestamp updated_at = 30;
+  google.protobuf.Timestamp closed_at = 31;
+  Principal closed_by = 32;
+  IssueRef transferred_from = 33;           // set on an issue moved from another repo
+  uint64 version = 34;
+  string url = 35;
+  PostRef inspired_by = 36;                 // the post that inspired it; empty when its repo is unreadable
+}
+
+// ---------- Issues RPC messages ----------
+
+// Request for CreateIssue.
+message CreateIssueRequest {
+  RepoRef repo = 1;
+  string title = 2;
+  string body = 3;
+  repeated string assignees = 4;            // principal ids or handles; agents allowed
+  repeated string labels = 5;               // label names
+  uint64 milestone_number = 6;              // 0 = none
+  string issue_type = 7;                    // type name or id; empty = none
+  IssueRef parent = 8;                      // optional parent for a new sub-issue
+  repeated IssueFieldValue field_values = 9;
+  string template = 10;                     // template file name the issue was filed from
+  repeated KeyValue form_responses = 11;    // form field id -> answer; rendered into the body
+  repeated string project_ids = 12;         // projects to add the new issue to
+  // A published post the caller can read that inspired this issue; else INVALID_ARGUMENT
+  // (subcode `post_not_readable`).
+  string inspired_by_post_id = 13;
+}
+
+// Request for GetIssue.
+message GetIssueRequest {
+  string id = 1;
+  bool include_html = 2;
+}
+
+// Request for GetIssueByNumber.
+message GetIssueByNumberRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  bool include_html = 3;
+}
+
+// Sort order for issue lists.
+enum IssueSort {
+  ISSUE_SORT_UNSPECIFIED = 0; // same as CREATED
+  ISSUE_SORT_CREATED = 1;
+  ISSUE_SORT_UPDATED = 2;
+  ISSUE_SORT_COMMENTS = 3;
+  ISSUE_SORT_REACTIONS = 4;
+}
+
+// Request for ListIssues.
+message ListIssuesRequest {
+  RepoRef repo = 1;
+  IssueState state = 2;                     // UNSPECIFIED = open
+  bool all_states = 3;                      // open and closed
+  repeated string labels = 4;               // all must match
+  string assignee = 5;                      // principal id or handle; "none" or "*"
+  string author = 6;
+  string mentioned = 7;
+  string milestone = 8;                     // number, title, "none" or "*"
+  string issue_type = 9;                    // name; "none" for untyped
+  string query = 10;                        // GitHub-compatible qualifiers, e.g. "is:open label:bug"
+  google.protobuf.Timestamp since = 11;     // updated at or after
+  IssueSort sort = 12;
+  bool ascending = 13;
+  PageRequest page = 14;
+}
+
+// Response for ListIssues.
+message ListIssuesResponse {
+  repeated Issue issues = 1;
+  uint64 total_count = 2;
+  PageResponse page = 3;
+}
+
+// Request for UpdateIssue.
+message UpdateIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  optional string title = 3;
+  optional string body = 4;
+  uint64 expected_version = 5;              // 0 = any; otherwise VERSION_MISMATCH when stale
+}
+
+// Request for DeleteIssue.
+message DeleteIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Response for DeleteIssue.
+message DeleteIssueResponse {}
+
+// Request for CloseIssue.
+message CloseIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  IssueStateReason reason = 3;              // UNSPECIFIED = COMPLETED
+  IssueRef duplicate_of = 4;                // required when reason is DUPLICATE
+  string comment = 5;                       // optional closing comment
+  uint64 expected_version = 6;
+}
+
+// Request for ReopenIssue.
+message ReopenIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string comment = 3;
+  uint64 expected_version = 4;
+}
+
+// Request for MarkIssueDuplicate.
+message MarkIssueDuplicateRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  IssueRef duplicate_of = 3;
+}
+
+// Request for UnmarkIssueDuplicate.
+message UnmarkIssueDuplicateRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  bool reopen = 3;
+}
+
+// ---------- Comments ----------
+
+// Request for CreateIssueComment.
+message CreateIssueCommentRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string body = 3;
+  string saved_reply_id = 4;                // optional; records which saved reply was used
+  bool close = 5;                           // close with COMPLETED after commenting
+  bool reopen = 6;
+}
+
+// Request for ListIssueComments.
+message ListIssueCommentsRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  google.protobuf.Timestamp since = 3;
+  bool include_html = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListIssueComments.
+message ListIssueCommentsResponse {
+  repeated Comment comments = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Labels ----------
+
+// Request for CreateIssueLabel.
+message CreateIssueLabelRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  string color = 3;                         // six hex digits, no '#'
+  string description = 4;
+}
+
+// Request for GetIssueLabel.
+message GetIssueLabelRequest {
+  RepoRef repo = 1;
+  string name = 2;                          // name or id
+}
+
+// Request for UpdateIssueLabel.
+message UpdateIssueLabelRequest {
+  RepoRef repo = 1;
+  string name = 2;                          // current name or id
+  optional string new_name = 3;
+  optional string color = 4;
+  optional string description = 5;
+}
+
+// Request for DeleteIssueLabel.
+message DeleteIssueLabelRequest {
+  RepoRef repo = 1;
+  string name = 2;
+}
+
+// Response for DeleteIssueLabel.
+message DeleteIssueLabelResponse {}
+
+// Request for ListIssueLabels.
+message ListIssueLabelsRequest {
+  RepoRef repo = 1;
+  string query = 2;                         // name substring
+  PageRequest page = 3;
+}
+
+// Response for ListIssueLabels.
+message ListIssueLabelsResponse {
+  repeated Label labels = 1;
+  PageResponse page = 2;
+}
+
+// Request for AddIssueLabels.
+message AddIssueLabelsRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated string labels = 3;
+  bool create_missing = 4;                  // create unknown labels with a default color
+}
+
+// Request for RemoveIssueLabels.
+message RemoveIssueLabelsRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated string labels = 3;
+}
+
+// Request for SetIssueLabels.
+message SetIssueLabelsRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated string labels = 3;               // empty clears all labels
+  uint64 expected_version = 4;
+}
+
+// ---------- Milestones ----------
+
+// Request for CreateIssueMilestone.
+message CreateIssueMilestoneRequest {
+  RepoRef repo = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp due_on = 4;
+}
+
+// Request for GetIssueMilestone.
+message GetIssueMilestoneRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for UpdateIssueMilestone.
+message UpdateIssueMilestoneRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  optional string title = 3;
+  optional string description = 4;
+  google.protobuf.Timestamp due_on = 5;     // unset = unchanged
+  bool clear_due_on = 6;
+  MilestoneState state = 7;                 // UNSPECIFIED = unchanged
+}
+
+// Request for DeleteIssueMilestone.
+message DeleteIssueMilestoneRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Response for DeleteIssueMilestone.
+message DeleteIssueMilestoneResponse {}
+
+// Request for ListIssueMilestones.
+message ListIssueMilestonesRequest {
+  RepoRef repo = 1;
+  MilestoneState state = 2;                 // UNSPECIFIED = open
+  bool all_states = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListIssueMilestones.
+message ListIssueMilestonesResponse {
+  repeated Milestone milestones = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetIssueMilestone.
+message SetIssueMilestoneRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  uint64 milestone_number = 3;              // 0 clears
+}
+
+// ---------- Assignees ----------
+
+// Request for AddIssueAssignees.
+message AddIssueAssigneesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated string assignees = 3;            // principal ids or handles
+  string agent_instructions = 4;            // extra instructions passed to any agent run started
+  string base_ref = 5;                      // ref an agent should branch from; empty = default
+}
+
+// An agent run started because an agent was assigned.
+message IssueAgentRunStart {
+  Principal agent = 1;
+  string agent_run_id = 2;
+}
+
+// Response for AddIssueAssignees.
+message AddIssueAssigneesResponse {
+  Issue issue = 1;
+  repeated IssueAgentRunStart agent_runs = 2; // empty when no agent run started
+}
+
+// Request for RemoveIssueAssignees.
+message RemoveIssueAssigneesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated string assignees = 3;
+  bool stop_agent_runs = 4;
+}
+
+// Request for ListIssueAssignableUsers.
+message ListIssueAssignableUsersRequest {
+  RepoRef repo = 1;
+  string query = 2;                         // handle or name prefix
+  PrincipalKind kind = 3;                   // UNSPECIFIED = all
+  PageRequest page = 4;
+}
+
+// Response for ListIssueAssignableUsers.
+message ListIssueAssignableUsersResponse {
+  repeated Principal principals = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Issue types ----------
+
+// An org-defined issue type such as Bug, Feature or Task.
+message IssueType {
+  string id = 1;
+  string org_id = 2;
+  string name = 3;
+  string description = 4;
+  string color = 5;                         // six hex digits, no '#'
+  bool enabled = 6;                         // disabled types stay on existing issues
+  uint32 position = 7;                      // display order
+  google.protobuf.Timestamp created_at = 8;
+  uint64 version = 9;
+}
+
+// Request for CreateIssueType.
+message CreateIssueTypeRequest {
+  string org = 1;
+  string name = 2;
+  string description = 3;
+  string color = 4;
+  bool enabled = 5;
+}
+
+// Request for UpdateIssueType.
+message UpdateIssueTypeRequest {
+  string org = 1;
+  string id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional string color = 5;
+  optional bool enabled = 6;
+  optional uint32 position = 7;
+  uint64 expected_version = 8;
+}
+
+// Request for DeleteIssueType.
+message DeleteIssueTypeRequest {
+  string org = 1;
+  string id = 2;
+}
+
+// Response for DeleteIssueType.
+message DeleteIssueTypeResponse {}
+
+// Request for ListIssueTypes.
+message ListIssueTypesRequest {
+  string org = 1;                           // set org or repo
+  RepoRef repo = 2;
+  bool include_disabled = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListIssueTypes.
+message ListIssueTypesResponse {
+  repeated IssueType issue_types = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetIssueType.
+message SetIssueTypeRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string issue_type = 3;                    // name or id; empty clears
+}
+
+// ---------- Sub-issues ----------
+
+// Request for AddIssueSubIssue.
+message AddIssueSubIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;                        // the parent
+  IssueRef sub_issue = 3;
+  bool replace_parent = 4;                  // move from an existing parent
+  string after_id = 5;                      // insert after this child id; empty = at the end
+}
+
+// Request for RemoveIssueSubIssue.
+message RemoveIssueSubIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;                        // the parent
+  IssueRef sub_issue = 3;
+}
+
+// Request for ReorderIssueSubIssue.
+message ReorderIssueSubIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;                        // the parent
+  IssueRef sub_issue = 3;
+  string after_id = 4;                      // place after this child id; set one of after/before
+  string before_id = 5;
+}
+
+// Request for ListIssueSubIssues.
+message ListIssueSubIssuesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListIssueSubIssues.
+message ListIssueSubIssuesResponse {
+  repeated IssueSummary sub_issues = 1;
+  IssueSubIssueProgress progress = 2;
+  PageResponse page = 3;
+}
+
+// Request for GetIssueParent.
+message GetIssueParentRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Response for GetIssueParent.
+message GetIssueParentResponse {
+  IssueSummary parent = 1;                  // unset when the issue has no parent
+}
+
+// ---------- Dependencies ----------
+
+// Direction of a dependency listing.
+enum IssueDependencyDirection {
+  ISSUE_DEPENDENCY_DIRECTION_UNSPECIFIED = 0;
+  ISSUE_DEPENDENCY_DIRECTION_BLOCKED_BY = 1; // issues that block this one
+  ISSUE_DEPENDENCY_DIRECTION_BLOCKING = 2;   // issues this one blocks
+}
+
+// Request for AddIssueDependency.
+message AddIssueDependencyRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;                        // the blocked issue
+  IssueRef blocked_by = 3;
+}
+
+// Request for RemoveIssueDependency.
+message RemoveIssueDependencyRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  IssueRef blocked_by = 3;
+}
+
+// Request for ListIssueDependencies.
+message ListIssueDependenciesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  IssueDependencyDirection direction = 3;   // required
+  PageRequest page = 4;
+}
+
+// Response for ListIssueDependencies.
+message ListIssueDependenciesResponse {
+  repeated IssueSummary issues = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Custom fields ----------
+
+// Value type of a custom issue field.
+enum IssueFieldKind {
+  ISSUE_FIELD_KIND_UNSPECIFIED = 0;
+  ISSUE_FIELD_KIND_TEXT = 1;
+  ISSUE_FIELD_KIND_NUMBER = 2;
+  ISSUE_FIELD_KIND_DATE = 3;
+  ISSUE_FIELD_KIND_SINGLE_SELECT = 4;
+  ISSUE_FIELD_KIND_ITERATION = 5;
+}
+
+// One choice of a single-select issue field.
+message IssueFieldOption {
+  string id = 1;                            // server-assigned; send empty to create
+  string name = 2;
+  string color = 3;
+  string description = 4;
+}
+
+// One iteration of an iteration issue field.
+message IssueFieldIteration {
+  string id = 1;                            // server-assigned; send empty to create
+  string title = 2;
+  google.protobuf.Timestamp start_on = 3;
+  uint32 duration_days = 4;
+  bool completed = 5;
+}
+
+// An org-defined typed custom field on issues (Priority, Effort, Target date and so on).
+message IssueField {
+  string id = 1;
+  string org_id = 2;
+  string name = 3;
+  string description = 4;
+  IssueFieldKind kind = 5;
+  repeated IssueFieldOption options = 6;     // SINGLE_SELECT only
+  repeated IssueFieldIteration iterations = 7; // ITERATION only
+  repeated string issue_type_ids = 8;       // types the field applies to; empty = all
+  google.protobuf.Timestamp created_at = 9;
+  uint64 version = 10;
+}
+
+// A field value on an issue. Exactly one value matching the field's kind is set.
+message IssueFieldValue {
+  string field_id = 1;
+  string field_name = 2;                    // filled by the server; may be used instead of id on input
+  IssueFieldKind kind = 3;                  // filled by the server
+  oneof value {
+    string text = 4;
+    double number = 5;
+    google.protobuf.Timestamp date_on = 6;
+    string option_id = 7;
+    string iteration_id = 8;
+  }
+}
+
+// Request for CreateIssueField.
+message CreateIssueFieldRequest {
+  string org = 1;
+  string name = 2;
+  string description = 3;
+  IssueFieldKind kind = 4;
+  repeated IssueFieldOption options = 5;
+  repeated IssueFieldIteration iterations = 6;
+  repeated string issue_type_ids = 7;
+}
+
+// Request for UpdateIssueField.
+message UpdateIssueFieldRequest {
+  string org = 1;
+  string id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  repeated IssueFieldOption options = 5;     // replaces the option list when `set_options`
+  bool set_options = 6;
+  repeated IssueFieldIteration iterations = 7; // replaces the iteration list when `set_iterations`
+  bool set_iterations = 8;
+  repeated string issue_type_ids = 9;       // replaces when `set_issue_type_ids`
+  bool set_issue_type_ids = 10;
+  uint64 expected_version = 11;
+}
+
+// Request for DeleteIssueField.
+message DeleteIssueFieldRequest {
+  string org = 1;
+  string id = 2;
+}
+
+// Response for DeleteIssueField.
+message DeleteIssueFieldResponse {}
+
+// Request for ListIssueFields.
+message ListIssueFieldsRequest {
+  string org = 1;                           // set org or repo
+  RepoRef repo = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListIssueFields.
+message ListIssueFieldsResponse {
+  repeated IssueField fields = 1;
+  PageResponse page = 2;
+}
+
+// Request for SetIssueFieldValues.
+message SetIssueFieldValuesRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated IssueFieldValue values = 3;
+}
+
+// Request for ClearIssueFieldValue.
+message ClearIssueFieldValueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string field_id = 3;                      // id or name
+}
+
+// ---------- Templates and forms ----------
+
+// Input element of an issue form.
+enum IssueFormFieldKind {
+  ISSUE_FORM_FIELD_KIND_UNSPECIFIED = 0;
+  ISSUE_FORM_FIELD_KIND_MARKDOWN = 1;       // static text, no input
+  ISSUE_FORM_FIELD_KIND_INPUT = 2;
+  ISSUE_FORM_FIELD_KIND_TEXTAREA = 3;
+  ISSUE_FORM_FIELD_KIND_DROPDOWN = 4;
+  ISSUE_FORM_FIELD_KIND_CHECKBOXES = 5;
+  ISSUE_FORM_FIELD_KIND_UPLOAD = 6;
+}
+
+// One choice in a dropdown or checkboxes form element.
+message IssueFormFieldOption {
+  string label = 1;
+  bool required = 2;                        // checkboxes: must be ticked
+}
+
+// One element of a YAML issue form.
+message IssueFormField {
+  string id = 1;
+  IssueFormFieldKind kind = 2;
+  string label = 3;
+  string description = 4;
+  string placeholder = 5;
+  string default_value = 6;
+  bool required = 7;
+  repeated IssueFormFieldOption options = 8;
+  bool multiple = 9;                        // dropdown allows several choices
+  string render = 10;                       // textarea: render answer as code in this language
+}
+
+// An issue template (Markdown) or issue form (YAML) from the default ref.
+message IssueTemplate {
+  string file_name = 1;                     // e.g. "bug_report.yml"
+  string path = 2;
+  string name = 3;
+  string about = 4;                         // chooser description
+  string title = 5;                         // default issue title
+  string body = 6;                          // Markdown templates only
+  repeated string labels = 7;
+  repeated string assignees = 8;
+  string issue_type = 9;
+  repeated string projects = 10;
+  bool is_form = 11;
+  repeated IssueFormField form_fields = 12;
+  string parse_error = 13;                  // set when the file is invalid; the template is unusable
+}
+
+// A contact link shown in the template chooser.
+message IssueContactLink {
+  string name = 1;
+  string url = 2;
+  string about = 3;
+}
+
+// Template chooser configuration from config.yml.
+message IssueTemplateConfig {
+  bool blank_issues_enabled = 1;
+  repeated IssueContactLink contact_links = 2;
+  string revision = 3;                      // changeset the config was read from
+}
+
+// Request for ListIssueTemplates.
+message ListIssueTemplatesRequest {
+  RepoRef repo = 1;
+}
+
+// Response for ListIssueTemplates.
+message ListIssueTemplatesResponse {
+  repeated IssueTemplate templates = 1;
+  string revision = 2;                      // changeset the templates were read from
+}
+
+// Request for GetIssueTemplateConfig.
+message GetIssueTemplateConfigRequest {
+  RepoRef repo = 1;
+}
+
+// ---------- Pinning ----------
+
+// Request for PinIssue.
+message PinIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for UnpinIssue.
+message UnpinIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for ListPinnedIssues.
+message ListPinnedIssuesRequest {
+  RepoRef repo = 1;
+}
+
+// Response for ListPinnedIssues.
+message ListPinnedIssuesResponse {
+  repeated Issue issues = 1;                // at most three
+}
+
+// ---------- Locking ----------
+
+// Request for LockIssue.
+message LockIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  IssueLockReason reason = 3;
+}
+
+// Request for UnlockIssue.
+message UnlockIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// ---------- Transfer ----------
+
+// Request for TransferIssue.
+message TransferIssueRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  RepoRef target_repo = 3;
+  bool create_labels = 4;                   // create missing labels in the target
+}
+
+// Response for TransferIssue.
+message TransferIssueResponse {
+  Issue issue = 1;                          // the issue at its new location
+  IssueRef redirect_from = 2;               // old repo and number, which now redirect
+}
+
+// ---------- Timeline ----------
+
+// Kind of an issue timeline event.
+enum IssueTimelineEventKind {
+  ISSUE_TIMELINE_EVENT_KIND_UNSPECIFIED = 0;
+  ISSUE_TIMELINE_EVENT_KIND_COMMENTED = 1;
+  ISSUE_TIMELINE_EVENT_KIND_LABELED = 2;
+  ISSUE_TIMELINE_EVENT_KIND_UNLABELED = 3;
+  ISSUE_TIMELINE_EVENT_KIND_ASSIGNED = 4;
+  ISSUE_TIMELINE_EVENT_KIND_UNASSIGNED = 5;
+  ISSUE_TIMELINE_EVENT_KIND_MILESTONED = 6;
+  ISSUE_TIMELINE_EVENT_KIND_DEMILESTONED = 7;
+  ISSUE_TIMELINE_EVENT_KIND_RENAMED = 8;
+  ISSUE_TIMELINE_EVENT_KIND_CLOSED = 9;
+  ISSUE_TIMELINE_EVENT_KIND_REOPENED = 10;
+  ISSUE_TIMELINE_EVENT_KIND_LOCKED = 11;
+  ISSUE_TIMELINE_EVENT_KIND_UNLOCKED = 12;
+  ISSUE_TIMELINE_EVENT_KIND_PINNED = 13;
+  ISSUE_TIMELINE_EVENT_KIND_UNPINNED = 14;
+  ISSUE_TIMELINE_EVENT_KIND_TRANSFERRED = 15;
+  ISSUE_TIMELINE_EVENT_KIND_CROSS_REFERENCED = 16; // referenced from another issue, CR or discussion
+  ISSUE_TIMELINE_EVENT_KIND_REFERENCED = 17;       // referenced from a changeset message
+  ISSUE_TIMELINE_EVENT_KIND_MENTIONED = 18;
+  ISSUE_TIMELINE_EVENT_KIND_CHANGE_LINKED = 19;
+  ISSUE_TIMELINE_EVENT_KIND_CHANGE_UNLINKED = 20;
+  ISSUE_TIMELINE_EVENT_KIND_MARKED_DUPLICATE = 21;
+  ISSUE_TIMELINE_EVENT_KIND_UNMARKED_DUPLICATE = 22;
+  ISSUE_TIMELINE_EVENT_KIND_TYPE_CHANGED = 23;
+  ISSUE_TIMELINE_EVENT_KIND_SUB_ISSUE_ADDED = 24;
+  ISSUE_TIMELINE_EVENT_KIND_SUB_ISSUE_REMOVED = 25;
+  ISSUE_TIMELINE_EVENT_KIND_PARENT_ADDED = 26;
+  ISSUE_TIMELINE_EVENT_KIND_PARENT_REMOVED = 27;
+  ISSUE_TIMELINE_EVENT_KIND_BLOCKED_BY_ADDED = 28;
+  ISSUE_TIMELINE_EVENT_KIND_BLOCKED_BY_REMOVED = 29;
+  ISSUE_TIMELINE_EVENT_KIND_BLOCKING_ADDED = 30;
+  ISSUE_TIMELINE_EVENT_KIND_BLOCKING_REMOVED = 31;
+  ISSUE_TIMELINE_EVENT_KIND_FIELD_CHANGED = 32;
+  ISSUE_TIMELINE_EVENT_KIND_ADDED_TO_PROJECT = 33;
+  ISSUE_TIMELINE_EVENT_KIND_REMOVED_FROM_PROJECT = 34;
+  ISSUE_TIMELINE_EVENT_KIND_PROJECT_STATUS_CHANGED = 35;
+  ISSUE_TIMELINE_EVENT_KIND_BRANCH_CREATED = 36;
+  ISSUE_TIMELINE_EVENT_KIND_AGENT_RUN_STARTED = 37;
+  ISSUE_TIMELINE_EVENT_KIND_AGENT_RUN_FINISHED = 38;
+  ISSUE_TIMELINE_EVENT_KIND_CONVERTED_TO_DISCUSSION = 39;
+  ISSUE_TIMELINE_EVENT_KIND_COMMENT_DELETED = 40;
+}
+
+// One entry in an issue's timeline. Which detail fields are set depends on `kind`.
+message IssueTimelineEvent {
+  string id = 1;
+  IssueTimelineEventKind kind = 2;
+  Principal actor = 3;
+  google.protobuf.Timestamp created_at = 4;
+  Comment comment = 5;                      // COMMENTED
+  Label label = 6;                          // LABELED, UNLABELED
+  Principal assignee = 7;                   // ASSIGNED, UNASSIGNED
+  string milestone_title = 8;               // MILESTONED, DEMILESTONED
+  string previous_title = 9;                // RENAMED
+  string current_title = 10;                // RENAMED
+  IssueStateReason state_reason = 11;       // CLOSED, REOPENED
+  IssueLockReason lock_reason = 12;         // LOCKED
+  SubjectRef source = 13;                   // CROSS_REFERENCED, MENTIONED, CONVERTED_TO_DISCUSSION
+  string change_request_id = 14;            // CHANGE_LINKED, CHANGE_UNLINKED, CLOSED by a CR
+  IssueSummary related_issue = 15;          // duplicate, sub-issue, parent and dependency events
+  string previous_value = 16;               // TYPE_CHANGED, FIELD_CHANGED, PROJECT_STATUS_CHANGED
+  string current_value = 17;
+  string field_name = 18;                   // FIELD_CHANGED
+  string project_id = 19;                   // project events
+  string agent_run_id = 20;                 // AGENT_RUN_*
+  string changeset_id = 21;                 // REFERENCED
+  string ref_name = 22;                     // BRANCH_CREATED
+  string previous_repo_full_name = 23;      // TRANSFERRED
+  // MENTIONED: who was mentioned (`assignee` and `current_value` keep carrying it for older
+  // clients).
+  Principal mentioned_user = 24;
+}
+
+// Request for ListIssueTimeline.
+message ListIssueTimelineRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  repeated IssueTimelineEventKind kinds = 3; // empty = all
+  PageRequest page = 4;
+}
+
+// Response for ListIssueTimeline.
+message ListIssueTimelineResponse {
+  repeated IssueTimelineEvent events = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Development panel ----------
+
+// How a change request came to be linked to an issue.
+enum IssueLinkSource {
+  ISSUE_LINK_SOURCE_UNSPECIFIED = 0;
+  ISSUE_LINK_SOURCE_MANUAL = 1;             // LinkIssueChange
+  ISSUE_LINK_SOURCE_CLOSING_KEYWORD = 2;    // "fixes #12" in the CR body
+  ISSUE_LINK_SOURCE_BRANCH = 3;             // CR opened from a branch created for the issue
+  ISSUE_LINK_SOURCE_AGENT_RUN = 4;          // CR opened by an agent run started from the issue
+}
+
+// A change request linked to an issue.
+message IssueLinkedChange {
+  string change_request_id = 1;
+  string repo_full_name = 2;
+  uint64 number = 3;
+  string title = 4;
+  string state = 5;                         // "open", "landed", "closed"
+  bool closes = 6;                          // landing closes the issue
+  IssueLinkSource source = 7;
+  Principal linked_by = 8;
+  google.protobuf.Timestamp linked_at = 9;
+}
+
+// A branch ref created for working on an issue.
+message IssueLinkedBranch {
+  string repo_full_name = 1;
+  string ref_name = 2;
+  string base_ref = 3;
+  string workspace_id = 4;                  // set when a workspace was created with it
+  Principal created_by = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// The development panel of an issue.
+message IssueDevelopment {
+  repeated IssueLinkedChange changes = 1;
+  repeated IssueLinkedBranch branches = 2;
+}
+
+// Request for LinkIssueChange.
+message LinkIssueChangeRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string change_request_id = 3;
+  bool closes = 4;
+}
+
+// Request for UnlinkIssueChange.
+message UnlinkIssueChangeRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string change_request_id = 3;
+}
+
+// Response for UnlinkIssueChange.
+message UnlinkIssueChangeResponse {}
+
+// Request for GetIssueDevelopment.
+message GetIssueDevelopmentRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// Request for CreateIssueBranch.
+message CreateIssueBranchRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+  string ref_name = 3;                      // empty = derived from number and title
+  string base_ref = 4;                      // empty = default ref
+  RepoRef target_repo = 5;                  // e.g. a fork; unset = same repo
+  bool create_workspace = 6;
+}
+
+// ---------- Task lists ----------
+
+// Request for GetIssueTaskListProgress.
+message GetIssueTaskListProgressRequest {
+  RepoRef repo = 1;
+  uint64 number = 2;
+}
+
+// ---------- Saved replies ----------
+
+// A per-user reusable reply snippet.
+message SavedReply {
+  string id = 1;
+  string title = 2;
+  string body = 3;                          // Markdown
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  uint64 version = 6;
+}
+
+// Request for CreateSavedReply.
+message CreateSavedReplyRequest {
+  string title = 1;
+  string body = 2;
+}
+
+// Request for GetSavedReply.
+message GetSavedReplyRequest {
+  string id = 1;
+}
+
+// Request for UpdateSavedReply.
+message UpdateSavedReplyRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string body = 3;
+  uint64 expected_version = 4;
+}
+
+// Request for DeleteSavedReply.
+message DeleteSavedReplyRequest {
+  string id = 1;
+}
+
+// Response for DeleteSavedReply.
+message DeleteSavedReplyResponse {}
+
+// Request for ListSavedReplies.
+message ListSavedRepliesRequest {
+  string query = 1;                         // title substring
+  PageRequest page = 2;
+}
+
+// Response for ListSavedReplies.
+message ListSavedRepliesResponse {
+  repeated SavedReply saved_replies = 1;
+  PageResponse page = 2;
+}

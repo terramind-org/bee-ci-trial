@@ -1,0 +1,16 @@
+feature_id,test
+F424-004,web:e2e/shell.spec.ts::works at 390px: navigation drawer and review on a phone
+F424-004,web:e2e/shell.spec.ts::serves an installable web app manifest and makes no third-party requests
+F424-004,web:e2e/a11y.spec.ts::axe: 390px layout with the navigation drawer open
+F424-005,web:e2e/shell.spec.ts::g-chords navigate, ? lists shortcuts, y opens copy-as
+F424-005,web:e2e/shell.spec.ts::command palette jumps to a change by title
+F424-005,web:e2e/activity.spec.ts::streams live events without polling and filters them
+F424-005,web:e2e/changes.spec.ts::land is blocked by policy until a second human approves, then queues
+F424-005,web:e2e/changes.spec.ts::resolves a thread and batch-applies a suggestion as a new revision
+F424-005,web:e2e/agents.spec.ts::mints a narrowed token with a budget and shows the secret once
+F424-005,web:e2e/runs.spec.ts::streams a running job's log live until it finishes
+F424-005,web:e2e/code.spec.ts::browses the tree into a highlighted file with the path context
+F424-005,web:e2e/work.spec.ts::assigning an issue to an agent starts its work and moves the card
+F424-005,web:e2e/forge.spec.ts::evaluate mode reports which recent changes a stricter policy would block
+F424-005,web:e2e/import-signin.spec.ts::dry run estimates fidelity, mirror shows progress, report lists every drop
+F424-005,web:e2e/a11y.spec.ts::axe: /changes

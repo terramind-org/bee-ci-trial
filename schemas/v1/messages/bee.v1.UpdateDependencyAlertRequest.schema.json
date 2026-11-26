@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "bee.v1.DependencyAlertDismissReason": {
+      "description": "Why a vulnerability alert was dismissed.",
+      "enum": [
+        "DEPENDENCY_ALERT_DISMISS_REASON_UNSPECIFIED",
+        "DEPENDENCY_ALERT_DISMISS_REASON_FIX_STARTED",
+        "DEPENDENCY_ALERT_DISMISS_REASON_INACCURATE",
+        "DEPENDENCY_ALERT_DISMISS_REASON_NO_BANDWIDTH",
+        "DEPENDENCY_ALERT_DISMISS_REASON_NOT_USED",
+        "DEPENDENCY_ALERT_DISMISS_REASON_TOLERABLE_RISK"
+      ],
+      "title": "bee.v1.DependencyAlertDismissReason",
+      "type": "string"
+    },
+    "bee.v1.DependencyAlertState": {
+      "description": "State of a vulnerability alert.",
+      "enum": [
+        "DEPENDENCY_ALERT_STATE_UNSPECIFIED",
+        "DEPENDENCY_ALERT_STATE_OPEN",
+        "DEPENDENCY_ALERT_STATE_DISMISSED",
+        "DEPENDENCY_ALERT_STATE_FIXED",
+        "DEPENDENCY_ALERT_STATE_AUTO_DISMISSED"
+      ],
+      "title": "bee.v1.DependencyAlertState",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateDependencyAlertRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateDependencyAlert.",
+  "properties": {
+    "dismissedComment": {
+      "type": "string"
+    },
+    "dismissedReason": {
+      "$ref": "#/$defs/bee.v1.DependencyAlertDismissReason"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.DependencyAlertState",
+      "description": "OPEN or DISMISSED"
+    }
+  },
+  "title": "bee.v1.UpdateDependencyAlertRequest",
+  "type": "object"
+}

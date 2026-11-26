@@ -1,0 +1,32 @@
+[package]
+name = "bee-git"
+description = "Git object format, packfiles, and the exact mapping between git objects and bee objects."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+# One test program per crate (tests/main.rs); see its header.
+autotests = false
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-object = { path = "../bee-object" }
+# SHA-1 with collision detection: git ids for SHA-1 repos, rejecting SHAttered-style inputs.
+sha1collisiondetection = { version = "=0.3.4", default-features = false, features = ["std"] }
+# SHA-256 for repositories in git's SHA-256 object format.
+sha2 = "=0.10.9"
+# zlib for loose objects and packfile entries (pure-Rust miniz_oxide backend).
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+# CRC-32 for pack index v2 entries.
+crc32fast = "=1.5.2"
+
+[dev-dependencies]
+proptest = "=1.12.0"
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[lints]
+workspace = true

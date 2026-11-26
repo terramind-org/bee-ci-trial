@@ -1,0 +1,25 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PackageOwnerSettings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Per-owner package settings.",
+  "properties": {
+    "forbidPublic": {
+      "description": "POLICY_DENIED on publishing or making a package public",
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "storageQuotaBytes": {
+      "description": "across the owner's packages; 0 = unlimited",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    }
+  },
+  "title": "bee.v1.PackageOwnerSettings",
+  "type": "object"
+}

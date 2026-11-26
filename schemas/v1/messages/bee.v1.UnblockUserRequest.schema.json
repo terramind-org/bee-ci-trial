@@ -1,0 +1,31 @@
+{
+  "$defs": {
+    "bee.v1.BlockScope": {
+      "description": "Where a block applies.\n\nOneof `scope`: at most one of `personal`, `org` is set.",
+      "properties": {
+        "org": {
+          "type": "string"
+        },
+        "personal": {
+          "description": "the caller's own block list",
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.BlockScope",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UnblockUserRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UnblockUser.",
+  "properties": {
+    "principalId": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.BlockScope"
+    }
+  },
+  "title": "bee.v1.UnblockUserRequest",
+  "type": "object"
+}

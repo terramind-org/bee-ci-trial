@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.SearchRange": {
+      "description": "A byte range within a line or text, half-open, in UTF-8 bytes.",
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.SearchRange",
+      "type": "object"
+    },
+    "bee.v1.SearchRepoHit": {
+      "description": "A repo search result.",
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "forkCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "isFork": {
+          "type": "boolean"
+        },
+        "isTemplate": {
+          "type": "boolean"
+        },
+        "licenseSpdxId": {
+          "type": "string"
+        },
+        "openIssueCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "primaryLanguage": {
+          "type": "string"
+        },
+        "pushedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "score": {
+          "type": "number"
+        },
+        "starCount": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "textMatches": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchTextMatch"
+          },
+          "type": "array"
+        },
+        "topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "visibility": {
+          "description": "\"public\", \"internal\", \"private\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SearchRepoHit",
+      "type": "object"
+    },
+    "bee.v1.SearchTextMatch": {
+      "description": "Highlighted text for a matched field.",
+      "properties": {
+        "field": {
+          "description": "e.g. \"title\", \"body\"",
+          "type": "string"
+        },
+        "fragment": {
+          "type": "string"
+        },
+        "ranges": {
+          "description": "within fragment",
+          "items": {
+            "$ref": "#/$defs/bee.v1.SearchRange"
+          },
+          "type": "array"
+        }
+      },
+      "title": "bee.v1.SearchTextMatch",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.Topic.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A topic: a tag on repos, with an optional curated page.",
+  "properties": {
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "curated": {
+      "type": "boolean"
+    },
+    "description": {
+      "description": "Markdown",
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "featured": {
+      "type": "boolean"
+    },
+    "logoUrl": {
+      "type": "string"
+    },
+    "name": {
+      "description": "lowercase slug, e.g. \"rust\"",
+      "type": "string"
+    },
+    "related": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "released": {
+      "description": "free text, e.g. \"2010\"",
+      "type": "string"
+    },
+    "repoCount": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "shortDescription": {
+      "type": "string"
+    },
+    "topRepos": {
+      "description": "GetTopic only",
+      "items": {
+        "$ref": "#/$defs/bee.v1.SearchRepoHit"
+      },
+      "type": "array"
+    },
+    "wikipediaUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.Topic",
+  "type": "object"
+}

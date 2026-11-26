@@ -1,0 +1,32 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UserStatus.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A user's status.",
+  "properties": {
+    "busy": {
+      "description": "\"limited availability\"",
+      "type": "boolean"
+    },
+    "emoji": {
+      "description": "shortcode, e.g. \":palm_tree:\"",
+      "type": "string"
+    },
+    "expiresAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "org": {
+      "description": "visible only to this org's members; empty = everyone",
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UserStatus",
+  "type": "object"
+}

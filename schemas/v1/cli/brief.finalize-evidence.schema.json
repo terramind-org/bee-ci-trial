@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/brief.finalize-evidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.BriefService/FinalizeEvidence: `data` is a bee.v1.Evidence in proto3-JSON. `bee brief finalize-evidence --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Evidence.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.brief.finalize-evidence"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee brief finalize-evidence",
+  "type": "object"
+}

@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WikiEditAccess": {
+      "description": "Who may edit a wiki.",
+      "enum": [
+        "WIKI_EDIT_ACCESS_UNSPECIFIED",
+        "WIKI_EDIT_ACCESS_COLLABORATORS",
+        "WIKI_EDIT_ACCESS_READERS"
+      ],
+      "title": "bee.v1.WikiEditAccess",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EnableWikiRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for EnableWiki.",
+  "properties": {
+    "editAccess": {
+      "$ref": "#/$defs/bee.v1.WikiEditAccess"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    }
+  },
+  "title": "bee.v1.EnableWikiRequest",
+  "type": "object"
+}

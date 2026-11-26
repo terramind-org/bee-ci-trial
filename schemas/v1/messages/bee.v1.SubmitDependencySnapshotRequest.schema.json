@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "bee.v1.Dependency": {
+      "description": "One resolved package in the dependency graph.",
+      "properties": {
+        "dependencyUrls": {
+          "description": "purls this package depends on",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ecosystem": {
+          "description": "\"npm\", \"cargo\", \"pip\", \"maven\", \"go\", ...",
+          "type": "string"
+        },
+        "licenses": {
+          "description": "SPDX expressions",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "manifestPath": {
+          "description": "manifest or lockfile that declared it",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "packageUrl": {
+          "description": "purl, e.g. \"pkg:cargo/serde@1.0.200\"",
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/$defs/bee.v1.DependencyRelationship"
+        },
+        "scope": {
+          "$ref": "#/$defs/bee.v1.DependencyScope"
+        },
+        "submitted": {
+          "description": "came from the submission API rather than manifest parsing",
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Dependency",
+      "type": "object"
+    },
+    "bee.v1.DependencyRelationship": {
+      "description": "Whether a dependency is declared directly or pulled in transitively.",
+      "enum": [
+        "DEPENDENCY_RELATIONSHIP_UNSPECIFIED",
+        "DEPENDENCY_RELATIONSHIP_DIRECT",
+        "DEPENDENCY_RELATIONSHIP_INDIRECT"
+      ],
+      "title": "bee.v1.DependencyRelationship",
+      "type": "string"
+    },
+    "bee.v1.DependencyScope": {
+      "description": "How a dependency is used.",
+      "enum": [
+        "DEPENDENCY_SCOPE_UNSPECIFIED",
+        "DEPENDENCY_SCOPE_RUNTIME",
+        "DEPENDENCY_SCOPE_DEVELOPMENT"
+      ],
+      "title": "bee.v1.DependencyScope",
+      "type": "string"
+    },
+    "bee.v1.DependencySubmittedManifest": {
+      "description": "Packages one submitted manifest resolved to.",
+      "properties": {
+        "dependencies": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.Dependency"
+          },
+          "type": "array"
+        },
+        "ecosystem": {
+          "type": "string"
+        },
+        "path": {
+          "description": "logical name or file path",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.DependencySubmittedManifest",
+      "type": "object"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SubmitDependencySnapshotRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for SubmitDependencySnapshot.",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "detectorName": {
+      "type": "string"
+    },
+    "detectorVersion": {
+      "type": "string"
+    },
+    "jobCorrelator": {
+      "description": "stable key identifying the submitting job",
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "manifests": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.DependencySubmittedManifest"
+      },
+      "type": "array"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "scannedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SubmitDependencySnapshotRequest",
+  "type": "object"
+}

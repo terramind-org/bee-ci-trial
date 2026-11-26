@@ -1,0 +1,423 @@
+// Releases, release assets, source archives and tags for bee.v1.
+// See docs/PRODUCT.md §4.16 (releases, generated notes, immutable releases, source archives).
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Releases point at a tag and carry notes and downloadable assets. Tags live under `tags/*`
+// refs; who may create, move or delete them is decided by policy (tag protection), which
+// fails with POLICY_DENIED. Comments on a release are created through the release's
+// discussion link; reactions on a release use CommentService.AddReaction with a SubjectRef of
+// kind RELEASE.
+service ReleaseService {
+  // Creates a release. Creates the tag at `target` when it does not exist yet.
+  // ALREADY_EXISTS when a release already uses the tag; POLICY_DENIED when tag protection
+  // forbids creating the tag.
+  rpc CreateRelease(CreateReleaseRequest) returns (Release);
+  // Fetches one release by id. Drafts are visible only to principals with write access.
+  rpc GetRelease(GetReleaseRequest) returns (Release);
+  // Fetches the release for a tag name. NOT_FOUND when the tag has no release.
+  rpc GetReleaseByTag(GetReleaseByTagRequest) returns (Release);
+  // Fetches the release currently marked latest. NOT_FOUND when the repo has none.
+  rpc GetLatestRelease(GetLatestReleaseRequest) returns (Release);
+  // Lists releases, newest first.
+  rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse);
+  // Edits a release. On a published immutable release only name, body and discussion
+  // category may change; changing the tag or target fails with INVALID_STATE.
+  rpc UpdateRelease(UpdateReleaseRequest) returns (Release);
+  // Deletes a release and its assets. The tag is kept unless `delete_tag` is set.
+  rpc DeleteRelease(DeleteReleaseRequest) returns (DeleteReleaseResponse);
+  // Publishes a draft. Publishing an immutable release freezes its tag and assets and records
+  // an attestation. INVALID_STATE when the release is not a draft or an asset upload is
+  // unfinished.
+  rpc PublishRelease(PublishReleaseRequest) returns (Release);
+  // Generates a release name and notes from the change requests landed between the previous
+  // tag and the target, grouped by the label rules in `.github/release.yml`. Pure function of
+  // its inputs; nothing is stored.
+  rpc GenerateReleaseNotes(GenerateReleaseNotesRequest) returns (GenerateReleaseNotesResponse);
+  // Fetches the attestation recorded when an immutable release was published.
+  // INVALID_STATE when the release is not immutable or not published.
+  rpc GetReleaseAttestation(GetReleaseAttestationRequest) returns (ReleaseAttestation);
+  // Starts an asset upload and returns a signed upload URL. INVALID_STATE on a published
+  // immutable release; ALREADY_EXISTS when an asset with the name exists; TOO_LARGE past the
+  // asset size limit.
+  rpc BeginReleaseAssetUpload(BeginReleaseAssetUploadRequest) returns (BeginReleaseAssetUploadResponse);
+  // Completes an upload. INTEGRITY when the uploaded bytes do not match `sha256`.
+  rpc FinalizeReleaseAsset(FinalizeReleaseAssetRequest) returns (ReleaseAsset);
+  // Lists a release's assets.
+  rpc ListReleaseAssets(ListReleaseAssetsRequest) returns (ListReleaseAssetsResponse);
+  // Fetches one asset's metadata.
+  rpc GetReleaseAsset(GetReleaseAssetRequest) returns (ReleaseAsset);
+  // Renames or relabels an asset. INVALID_STATE on a published immutable release.
+  rpc UpdateReleaseAsset(UpdateReleaseAssetRequest) returns (ReleaseAsset);
+  // Deletes an asset. INVALID_STATE on a published immutable release.
+  rpc DeleteReleaseAsset(DeleteReleaseAssetRequest) returns (DeleteReleaseAssetResponse);
+  // Returns a short-lived signed download URL for an asset and counts the download.
+  rpc GetReleaseAssetDownloadUrl(GetReleaseAssetDownloadUrlRequest) returns (GetReleaseAssetDownloadUrlResponse);
+  // Returns a signed URL for a zip or tar.gz archive of a revision. Archives are cached by
+  // tree id, so equal trees share one archive. Paths the caller cannot read are omitted.
+  rpc GetSourceArchiveUrl(GetSourceArchiveUrlRequest) returns (GetSourceArchiveUrlResponse);
+  // Lists tags with their annotated-tag details, newest first.
+  rpc ListRepoTags(ListRepoTagsRequest) returns (ListRepoTagsResponse);
+  // Fetches one tag by name.
+  rpc GetRepoTag(GetRepoTagRequest) returns (RepoTag);
+  // Creates a lightweight or annotated tag. ALREADY_EXISTS when the name is taken;
+  // POLICY_DENIED when tag protection forbids it.
+  rpc CreateRepoTag(CreateRepoTagRequest) returns (RepoTag);
+  // Deletes a tag. INVALID_STATE when a published immutable release uses it; POLICY_DENIED
+  // when tag protection forbids it.
+  rpc DeleteRepoTag(DeleteRepoTagRequest) returns (DeleteRepoTagResponse);
+  // Links a release to a discussion category, creating the release's discussion.
+  // ALREADY_EXISTS when the release already has a discussion.
+  rpc LinkReleaseDiscussion(LinkReleaseDiscussionRequest) returns (Release);
+}
+
+// Whether a release should become the repo's latest release.
+enum ReleaseMakeLatest {
+  RELEASE_MAKE_LATEST_UNSPECIFIED = 0; // same as LEGACY
+  RELEASE_MAKE_LATEST_TRUE = 1;
+  RELEASE_MAKE_LATEST_FALSE = 2;
+  // Latest is the most recent non-draft, non-prerelease by creation date and semver.
+  RELEASE_MAKE_LATEST_LEGACY = 3;
+}
+
+// A release.
+message Release {
+  string id = 1;
+  RepoRef repo = 2;
+  string tag_name = 3;
+  ObjectId target = 4;          // changeset the tag points at
+  string target_ref = 5;        // ref the tag was cut from, when created by CreateRelease
+  string name = 6;
+  string body = 7;              // Markdown
+  string body_html = 8;         // sanitized rendering, when requested
+  bool draft = 9;
+  bool prerelease = 10;
+  bool latest = 11;             // currently the repo's latest release
+  bool immutable = 12;          // once published, the tag and assets are frozen
+  Principal author = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp published_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  repeated ReleaseAsset assets = 17;
+  string discussion_id = 18;    // linked discussion, if any
+  string discussion_category_id = 19;
+  string url = 20;              // web permalink
+  string zipball_url = 21;      // stable source archive URL (redirects to a signed URL)
+  string tarball_url = 22;
+  uint64 version = 23;          // for compare-and-swap updates
+}
+
+// Upload state of a release asset.
+enum ReleaseAssetState {
+  RELEASE_ASSET_STATE_UNSPECIFIED = 0;
+  RELEASE_ASSET_STATE_UPLOADING = 1; // begun, not finalized
+  RELEASE_ASSET_STATE_UPLOADED = 2;
+}
+
+// A file attached to a release.
+message ReleaseAsset {
+  string id = 1;
+  string release_id = 2;
+  string name = 3;
+  string label = 4;
+  string content_type = 5;
+  uint64 size = 6;
+  bytes sha256 = 7;             // 32-byte digest, set once uploaded
+  ReleaseAssetState state = 8;
+  uint64 download_count = 9;
+  Principal uploader = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Signed statement recorded when an immutable release is published.
+message ReleaseAttestation {
+  string release_id = 1;
+  string tag_name = 2;
+  ObjectId target = 3;
+  repeated ReleaseAttestationSubject subjects = 4;
+  string bundle = 5;            // Sigstore bundle, JSON
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// One attested asset: its name and digest.
+message ReleaseAttestationSubject {
+  string name = 1;
+  bytes sha256 = 2;
+}
+
+// Archive format for source downloads.
+enum SourceArchiveFormat {
+  SOURCE_ARCHIVE_FORMAT_UNSPECIFIED = 0;
+  SOURCE_ARCHIVE_FORMAT_ZIP = 1;
+  SOURCE_ARCHIVE_FORMAT_TAR_GZ = 2;
+}
+
+// A tag under `tags/*`, with its annotated-tag object when it has one.
+message RepoTag {
+  string name = 1;              // without the "tags/" prefix
+  ObjectId target = 2;          // changeset the tag resolves to
+  uint64 ref_version = 3;
+  bool annotated = 4;
+  RepoTagAnnotation annotation = 5; // set when annotated
+  bool protected = 6;           // policy restricts who may move or delete it
+  string release_id = 7;        // release using this tag, if any
+}
+
+// The annotated-tag object: tagger, message and optional signature.
+message RepoTagAnnotation {
+  ObjectId id = 1;
+  Principal tagger = 2;
+  Signature tagger_time = 3;
+  string message = 4;
+  bytes signature = 5;          // armored GPG or SSH signature, if signed
+  bool verified = 6;            // signature verifies against a registered signing key
+  string verification_reason = 7; // e.g. "valid", "unknown_key", "bad_signature", "unsigned"
+}
+
+// Request for CreateRelease.
+message CreateReleaseRequest {
+  RepoRef repo = 1;
+  string tag_name = 2;
+  Revision target = 3;          // used when the tag does not exist; default the default ref
+  string name = 4;
+  string body = 5;
+  bool draft = 6;
+  bool prerelease = 7;
+  ReleaseMakeLatest make_latest = 8;
+  bool immutable = 9;
+  bool generate_notes = 10;     // prepend generated notes to `body`
+  string discussion_category_id = 11; // create a linked discussion in this category
+  string previous_tag_name = 12; // base for generated notes; default the previous release tag
+}
+
+// Request for GetRelease.
+message GetReleaseRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  bool include_html = 3;
+}
+
+// Request for GetReleaseByTag.
+message GetReleaseByTagRequest {
+  RepoRef repo = 1;
+  string tag_name = 2;
+  bool include_html = 3;
+}
+
+// Request for GetLatestRelease.
+message GetLatestReleaseRequest {
+  RepoRef repo = 1;
+  bool include_html = 2;
+}
+
+// Request for ListReleases.
+message ListReleasesRequest {
+  RepoRef repo = 1;
+  bool include_drafts = 2;      // ignored without write access
+  bool include_prereleases = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListReleases.
+message ListReleasesResponse {
+  repeated Release releases = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateRelease.
+message UpdateReleaseRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  uint64 expected_version = 3;  // 0 = any; otherwise VERSION_MISMATCH when stale
+  optional string tag_name = 4;
+  optional Revision target = 5;
+  optional string name = 6;
+  optional string body = 7;
+  optional bool draft = 8;      // setting false publishes, like PublishRelease
+  optional bool prerelease = 9;
+  optional ReleaseMakeLatest make_latest = 10;
+  optional bool immutable = 11; // drafts only
+  optional string discussion_category_id = 12;
+}
+
+// Request for DeleteRelease.
+message DeleteReleaseRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  bool delete_tag = 3;
+}
+
+// Response for DeleteRelease.
+message DeleteReleaseResponse {}
+
+// Request for PublishRelease.
+message PublishReleaseRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  ReleaseMakeLatest make_latest = 3;
+}
+
+// Request for GenerateReleaseNotes.
+message GenerateReleaseNotesRequest {
+  RepoRef repo = 1;
+  string tag_name = 2;          // tag for the new release; may not exist yet
+  Revision target = 3;          // used when the tag does not exist; default the default ref
+  string previous_tag_name = 4; // default the previous release's tag
+  bytes config_path = 5;        // default ".github/release.yml"
+}
+
+// Response for GenerateReleaseNotes.
+message GenerateReleaseNotesResponse {
+  string name = 1;
+  string body = 2;              // Markdown
+  repeated SubjectRef change_requests = 3; // change requests included, in order
+  string previous_tag_name = 4; // base actually used
+}
+
+// Request for GetReleaseAttestation.
+message GetReleaseAttestationRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+}
+
+// Request for BeginReleaseAssetUpload.
+message BeginReleaseAssetUploadRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  string name = 3;
+  string label = 4;
+  string content_type = 5;
+  uint64 size = 6;
+}
+
+// Response for BeginReleaseAssetUpload.
+message BeginReleaseAssetUploadResponse {
+  string asset_id = 1;
+  string upload_url = 2;        // signed URL; PUT the bytes here
+  repeated KeyValue upload_headers = 3; // headers the PUT must carry
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Request for FinalizeReleaseAsset.
+message FinalizeReleaseAssetRequest {
+  RepoRef repo = 1;
+  string asset_id = 2;
+  bytes sha256 = 3;             // 32-byte digest of the uploaded bytes
+}
+
+// Request for ListReleaseAssets.
+message ListReleaseAssetsRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListReleaseAssets.
+message ListReleaseAssetsResponse {
+  repeated ReleaseAsset assets = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetReleaseAsset.
+message GetReleaseAssetRequest {
+  RepoRef repo = 1;
+  string asset_id = 2;
+}
+
+// Request for UpdateReleaseAsset.
+message UpdateReleaseAssetRequest {
+  RepoRef repo = 1;
+  string asset_id = 2;
+  optional string name = 3;
+  optional string label = 4;
+}
+
+// Request for DeleteReleaseAsset.
+message DeleteReleaseAssetRequest {
+  RepoRef repo = 1;
+  string asset_id = 2;
+}
+
+// Response for DeleteReleaseAsset.
+message DeleteReleaseAssetResponse {}
+
+// Request for GetReleaseAssetDownloadUrl.
+message GetReleaseAssetDownloadUrlRequest {
+  RepoRef repo = 1;
+  string asset_id = 2;
+}
+
+// Response for GetReleaseAssetDownloadUrl.
+message GetReleaseAssetDownloadUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  bytes sha256 = 3;
+  uint64 size = 4;
+}
+
+// Request for GetSourceArchiveUrl.
+message GetSourceArchiveUrlRequest {
+  RepoRef repo = 1;
+  Revision at = 2;
+  SourceArchiveFormat format = 3;
+  string prefix = 4;            // top-level directory name; default "<repo>-<revision>"
+}
+
+// Response for GetSourceArchiveUrl.
+message GetSourceArchiveUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  ObjectId changeset = 3;       // revision resolved
+  ObjectId tree = 4;            // cache key
+  bool filtered = 5;            // true when unreadable paths were omitted
+}
+
+// Request for ListRepoTags.
+message ListRepoTagsRequest {
+  RepoRef repo = 1;
+  string prefix = 2;            // filter by tag name prefix
+  PageRequest page = 3;
+}
+
+// Response for ListRepoTags.
+message ListRepoTagsResponse {
+  repeated RepoTag tags = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetRepoTag.
+message GetRepoTagRequest {
+  RepoRef repo = 1;
+  string name = 2;
+}
+
+// Request for CreateRepoTag.
+message CreateRepoTagRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  Revision target = 3;
+  string message = 4;           // non-empty creates an annotated tag
+  bytes signature = 5;          // optional armored signature over the annotated tag
+}
+
+// Request for DeleteRepoTag.
+message DeleteRepoTagRequest {
+  RepoRef repo = 1;
+  string name = 2;
+  uint64 expected_version = 3;  // 0 = any; otherwise VERSION_MISMATCH when stale
+}
+
+// Response for DeleteRepoTag.
+message DeleteRepoTagResponse {}
+
+// Request for LinkReleaseDiscussion.
+message LinkReleaseDiscussionRequest {
+  RepoRef repo = 1;
+  string release_id = 2;
+  string discussion_category_id = 3;
+}

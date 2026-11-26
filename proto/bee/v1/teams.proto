@@ -1,0 +1,428 @@
+// Teams in an organization for bee.v1: nesting, membership, repo access, review
+// assignment and IdP group sync. See PRODUCT.md §4.20 and SPEC.md §9.4 (teams are policy groups).
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Manages teams. Every team is also a policy group named "@<org>/<slug>", so a team can be
+// named anywhere policy, rulesets or CODEOWNERS accept a group.
+service TeamService {
+  // Creates a team in an org. Fails with ALREADY_EXISTS when the slug is taken and
+  // INVALID_ARGUMENT (subcode `team_cycle`) when the parent would create a cycle.
+  rpc CreateTeam(CreateTeamRequest) returns (Team);
+  // Returns one team by slug or id.
+  rpc GetTeam(GetTeamRequest) returns (Team);
+  // Changes a team's name, description, privacy, parent or notification setting.
+  rpc UpdateTeam(UpdateTeamRequest) returns (Team);
+  // Deletes a team; child teams move to the deleted team's parent.
+  rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
+  // Lists teams in an org visible to the caller.
+  rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
+  // Lists the direct (or, optionally, all descendant) child teams of a team.
+  rpc ListChildTeams(ListChildTeamsRequest) returns (ListChildTeamsResponse);
+  // Lists the teams a principal belongs to in an org, directly or through nesting.
+  rpc ListPrincipalTeams(ListPrincipalTeamsRequest) returns (ListPrincipalTeamsResponse);
+
+  // Adds a principal to a team or changes its team role. A principal that is not yet an org
+  // member receives a pending invitation instead. Fails with INVALID_STATE when the team is
+  // synced from an IdP group (membership is then managed by the IdP).
+  rpc AddTeamMember(AddTeamMemberRequest) returns (AddTeamMemberResponse);
+  // Removes a principal from a team.
+  rpc RemoveTeamMember(RemoveTeamMemberRequest) returns (RemoveTeamMemberResponse);
+  // Lists the members of a team, optionally including members of child teams.
+  rpc ListTeamMembers(ListTeamMembersRequest) returns (ListTeamMembersResponse);
+  // Returns one principal's membership in a team; NOT_FOUND when it is not a member.
+  rpc GetTeamMembership(GetTeamMembershipRequest) returns (TeamMember);
+  // Lists pending invitations to join a team.
+  rpc ListTeamInvitations(ListTeamInvitationsRequest) returns (ListTeamInvitationsResponse);
+  // Cancels a pending team invitation.
+  rpc CancelTeamInvitation(CancelTeamInvitationRequest) returns (CancelTeamInvitationResponse);
+
+  // Grants a team a role on a repo, or changes the role it already has.
+  rpc GrantTeamRepoAccess(GrantTeamRepoAccessRequest) returns (TeamRepoAccess);
+  // Removes a team's access to a repo.
+  rpc RevokeTeamRepoAccess(RevokeTeamRepoAccessRequest) returns (RevokeTeamRepoAccessResponse);
+  // Lists the repos a team can access and the role on each.
+  rpc ListTeamRepos(ListTeamReposRequest) returns (ListTeamReposResponse);
+  // Lists the teams that have access to a repo.
+  rpc ListRepoTeams(ListRepoTeamsRequest) returns (ListRepoTeamsResponse);
+
+  // Returns a team's code review assignment settings.
+  rpc GetTeamReviewAssignment(GetTeamReviewAssignmentRequest) returns (TeamReviewAssignment);
+  // Changes a team's code review assignment settings.
+  rpc UpdateTeamReviewAssignment(UpdateTeamReviewAssignmentRequest) returns (TeamReviewAssignment);
+
+  // Links an IdP group to a team; membership then follows the group (team sync).
+  rpc LinkTeamExternalGroup(LinkTeamExternalGroupRequest) returns (TeamExternalGroup);
+  // Unlinks an IdP group from a team; current members stay until removed.
+  rpc UnlinkTeamExternalGroup(UnlinkTeamExternalGroupRequest) returns (UnlinkTeamExternalGroupResponse);
+  // Lists the IdP groups linked to a team.
+  rpc ListTeamExternalGroups(ListTeamExternalGroupsRequest) returns (ListTeamExternalGroupsResponse);
+}
+
+// ---------- Teams ----------
+
+// Who can see a team.
+enum TeamPrivacy {
+  TEAM_PRIVACY_UNSPECIFIED = 0;
+  // Visible to every org member.
+  TEAM_PRIVACY_VISIBLE = 1;
+  // Visible only to its members and org owners. Secret teams cannot be nested.
+  TEAM_PRIVACY_SECRET = 2;
+}
+
+// A team in an organization.
+message Team {
+  string id = 1; // ULID
+  string org = 2; // org name
+  string slug = 3; // url-safe, unique in the org
+  string name = 4;
+  string description = 5;
+  TeamPrivacy privacy = 6;
+  string parent_team_id = 7; // empty for a top-level team
+  bool notifications_enabled = 8; // @-mentions of the team notify its members
+  string policy_group = 9; // the policy group name, "@<org>/<slug>"
+  uint32 member_count = 10; // direct members
+  uint32 child_team_count = 11;
+  uint32 repo_count = 12;
+  bool idp_synced = 13; // membership managed by linked IdP groups
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+// Request for CreateTeam.
+message CreateTeamRequest {
+  string org = 1;
+  string slug = 2; // derived from name when empty
+  string name = 3;
+  string description = 4;
+  TeamPrivacy privacy = 5; // default VISIBLE
+  string parent_team = 6; // slug or id; empty for top level
+  bool notifications_enabled = 7;
+  repeated string maintainer_ids = 8; // principals added as maintainers; default the caller
+}
+
+// Request for GetTeam.
+message GetTeamRequest {
+  string org = 1;
+  string team = 2; // slug or id
+}
+
+// Request for UpdateTeam. Unset fields are unchanged.
+message UpdateTeamRequest {
+  string org = 1;
+  string team = 2; // slug or id
+  optional string slug = 3;
+  optional string name = 4;
+  optional string description = 5;
+  optional TeamPrivacy privacy = 6;
+  optional string parent_team = 7; // "" moves the team to top level
+  optional bool notifications_enabled = 8;
+}
+
+// Request for DeleteTeam.
+message DeleteTeamRequest {
+  string org = 1;
+  string team = 2;
+}
+
+// Response for DeleteTeam.
+message DeleteTeamResponse {}
+
+// Request for ListTeams.
+message ListTeamsRequest {
+  string org = 1;
+  string query = 2; // substring of slug or name
+  bool top_level_only = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListTeams.
+message ListTeamsResponse {
+  repeated Team teams = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListChildTeams.
+message ListChildTeamsRequest {
+  string org = 1;
+  string team = 2;
+  bool recursive = 3; // include all descendants, not just direct children
+  PageRequest page = 4;
+}
+
+// Response for ListChildTeams.
+message ListChildTeamsResponse {
+  repeated Team teams = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListPrincipalTeams.
+message ListPrincipalTeamsRequest {
+  string org = 1;
+  string principal_id = 2; // empty = caller
+  bool include_inherited = 3; // include parent teams reached through nesting
+  PageRequest page = 4;
+}
+
+// Response for ListPrincipalTeams.
+message ListPrincipalTeamsResponse {
+  repeated Team teams = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Membership ----------
+
+// A principal's role inside a team.
+enum TeamMemberRole {
+  TEAM_MEMBER_ROLE_UNSPECIFIED = 0;
+  TEAM_MEMBER_ROLE_MEMBER = 1;
+  // May edit the team, manage its members and child teams.
+  TEAM_MEMBER_ROLE_MAINTAINER = 2;
+}
+
+// One principal's membership in a team.
+message TeamMember {
+  string team_id = 1;
+  Principal principal = 2;
+  TeamMemberRole role = 3;
+  bool inherited = 4; // member through a child team, not directly
+  string via_team_id = 5; // set when inherited
+  string external_group_id = 6; // set when the membership comes from IdP team sync
+  google.protobuf.Timestamp added_at = 7;
+}
+
+// A pending invitation to join a team (the invitee is not yet an org member).
+message TeamInvitation {
+  string id = 1; // ULID
+  string team_id = 2;
+  string invitee_principal_id = 3; // set for an existing principal
+  string invitee_email = 4; // set when inviting by email
+  TeamMemberRole role = 5;
+  Principal inviter = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+}
+
+// Request for AddTeamMember.
+message AddTeamMemberRequest {
+  string org = 1;
+  string team = 2;
+  oneof invitee {
+    string principal_id = 3;
+    string email = 4; // invites by email
+  }
+  TeamMemberRole role = 5; // default MEMBER
+}
+
+// Response for AddTeamMember: a membership, or a pending invitation.
+message AddTeamMemberResponse {
+  oneof result {
+    TeamMember member = 1;
+    TeamInvitation invitation = 2;
+  }
+}
+
+// Request for RemoveTeamMember.
+message RemoveTeamMemberRequest {
+  string org = 1;
+  string team = 2;
+  string principal_id = 3;
+}
+
+// Response for RemoveTeamMember.
+message RemoveTeamMemberResponse {}
+
+// Request for ListTeamMembers.
+message ListTeamMembersRequest {
+  string org = 1;
+  string team = 2;
+  TeamMemberRole role = 3; // filter; UNSPECIFIED = all
+  bool include_child_teams = 4;
+  PageRequest page = 5;
+}
+
+// Response for ListTeamMembers.
+message ListTeamMembersResponse {
+  repeated TeamMember members = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetTeamMembership.
+message GetTeamMembershipRequest {
+  string org = 1;
+  string team = 2;
+  string principal_id = 3; // empty = caller
+}
+
+// Request for ListTeamInvitations.
+message ListTeamInvitationsRequest {
+  string org = 1;
+  string team = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListTeamInvitations.
+message ListTeamInvitationsResponse {
+  repeated TeamInvitation invitations = 1;
+  PageResponse page = 2;
+}
+
+// Request for CancelTeamInvitation.
+message CancelTeamInvitationRequest {
+  string org = 1;
+  string team = 2;
+  string invitation_id = 3;
+}
+
+// Response for CancelTeamInvitation.
+message CancelTeamInvitationResponse {}
+
+// ---------- Repo access ----------
+
+// A team's role on one repo.
+message TeamRepoAccess {
+  string team_id = 1;
+  RepoRef repo = 2;
+  // Built-in role name (read, triage, write, maintain, admin) or a custom role id
+  // (see PolicyService custom roles).
+  string role = 3;
+  bool inherited = 4; // granted to a parent team
+  string via_team_id = 5; // set when inherited
+  google.protobuf.Timestamp granted_at = 6;
+}
+
+// Request for GrantTeamRepoAccess.
+message GrantTeamRepoAccessRequest {
+  string org = 1;
+  string team = 2;
+  RepoRef repo = 3; // must belong to the org
+  string role = 4; // read, triage, write, maintain, admin, or a custom role id
+}
+
+// Request for RevokeTeamRepoAccess.
+message RevokeTeamRepoAccessRequest {
+  string org = 1;
+  string team = 2;
+  RepoRef repo = 3;
+}
+
+// Response for RevokeTeamRepoAccess.
+message RevokeTeamRepoAccessResponse {}
+
+// Request for ListTeamRepos.
+message ListTeamReposRequest {
+  string org = 1;
+  string team = 2;
+  bool include_inherited = 3;
+  PageRequest page = 4;
+}
+
+// Response for ListTeamRepos.
+message ListTeamReposResponse {
+  repeated TeamRepoAccess repos = 1;
+  PageResponse page = 2;
+}
+
+// Request for ListRepoTeams.
+message ListRepoTeamsRequest {
+  RepoRef repo = 1;
+  PageRequest page = 2;
+}
+
+// Response for ListRepoTeams.
+message ListRepoTeamsResponse {
+  repeated TeamRepoAccess grants = 1;
+  PageResponse page = 2;
+}
+
+// ---------- Review assignment ----------
+
+// How a review request to a team is turned into individual reviewers.
+enum TeamReviewAlgorithm {
+  TEAM_REVIEW_ALGORITHM_UNSPECIFIED = 0;
+  // Rotate through members, least recently assigned first.
+  TEAM_REVIEW_ALGORITHM_ROUND_ROBIN = 1;
+  // Pick the members with the fewest outstanding review requests.
+  TEAM_REVIEW_ALGORITHM_LOAD_BALANCE = 2;
+}
+
+// A team's automatic review assignment settings.
+message TeamReviewAssignment {
+  string team_id = 1;
+  bool enabled = 2;
+  TeamReviewAlgorithm algorithm = 3;
+  uint32 member_count = 4; // reviewers assigned per request
+  repeated string excluded_member_ids = 5; // never assigned
+  bool notify_team = 6; // also notify the whole team, not only the assignees
+  bool skip_agents = 7; // assign only human members
+  bool count_child_team_members = 8; // child team members are eligible
+}
+
+// Request for GetTeamReviewAssignment.
+message GetTeamReviewAssignmentRequest {
+  string org = 1;
+  string team = 2;
+}
+
+// Request for UpdateTeamReviewAssignment. Unset fields are unchanged.
+message UpdateTeamReviewAssignmentRequest {
+  string org = 1;
+  string team = 2;
+  optional bool enabled = 3;
+  optional TeamReviewAlgorithm algorithm = 4;
+  optional uint32 member_count = 5;
+  repeated string excluded_member_ids = 6; // replaces the list when replace_excluded is set
+  bool replace_excluded = 7;
+  optional bool notify_team = 8;
+  optional bool skip_agents = 9;
+  optional bool count_child_team_members = 10;
+}
+
+// ---------- IdP team sync ----------
+
+// An IdP group linked to a team.
+message TeamExternalGroup {
+  string team_id = 1;
+  string provider = 2; // e.g. "saml", "scim", "okta", "entra"
+  string group_id = 3; // the IdP's stable group id
+  string group_name = 4;
+  google.protobuf.Timestamp linked_at = 5;
+  google.protobuf.Timestamp last_synced_at = 6;
+  uint32 member_count = 7; // members currently synced from this group
+}
+
+// Request for LinkTeamExternalGroup.
+message LinkTeamExternalGroupRequest {
+  string org = 1;
+  string team = 2;
+  string provider = 3;
+  string group_id = 4;
+}
+
+// Request for UnlinkTeamExternalGroup.
+message UnlinkTeamExternalGroupRequest {
+  string org = 1;
+  string team = 2;
+  string provider = 3;
+  string group_id = 4;
+}
+
+// Response for UnlinkTeamExternalGroup.
+message UnlinkTeamExternalGroupResponse {}
+
+// Request for ListTeamExternalGroups.
+message ListTeamExternalGroupsRequest {
+  string org = 1;
+  string team = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListTeamExternalGroups.
+message ListTeamExternalGroupsResponse {
+  repeated TeamExternalGroup groups = 1;
+  PageResponse page = 2;
+}

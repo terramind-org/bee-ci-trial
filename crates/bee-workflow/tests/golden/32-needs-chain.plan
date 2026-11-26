@@ -1,0 +1,47 @@
+# event push action=-
+run .github/workflows/pipeline.yml "Pipeline"
+  run-name: "Update code"
+  event: push ref=refs/heads/main sha=2222222222222222222222222222222222222222
+  permissions: default
+  job build decided=true
+    instance "build"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      outputs:
+        version: "${{ steps.v.outputs.version }}"
+      step 1 "Run echo \"version=1.0.56\" >> \"$GITHUB_OUTPUT\"" id=v
+        run: "echo \"version=1.0.56\" >> \"$GITHUB_OUTPUT\""
+        shell: default -> "bash -e {0}"
+  job test needs=[build]
+    instance "test"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run make test VERSION=${{ needs.build.outputs.version }}"
+        run: "make test VERSION=${{ needs.build.outputs.version }}"
+        shell: default -> "bash -e {0}"
+  job deploy needs=[build, test] if="github.ref == 'refs/heads/main'"
+    instance "deploy"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./deploy ${{ needs.build.outputs.version }}"
+        run: "./deploy ${{ needs.build.outputs.version }}"
+        shell: default -> "bash -e {0}"
+  job report needs=[test, deploy] if="always()"
+    instance "report"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run echo \"test=${{ needs.test.result }} deploy=${{ needs.deploy.result }}\""
+        run: "echo \"test=${{ needs.test.result }} deploy=${{ needs.deploy.result }}\""
+        shell: default -> "bash -e {0}"
+  job rollback needs=[deploy] if="failure()"
+    instance "rollback"
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run ./rollback"
+        run: "./rollback"
+        shell: default -> "bash -e {0}"

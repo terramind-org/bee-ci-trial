@@ -1,0 +1,283 @@
+{
+  "$defs": {
+    "bee.v1.ChangeId": {
+      "description": "16-byte stable identity of a piece of work (SPEC §3.3).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ChangeId",
+      "type": "object"
+    },
+    "bee.v1.Changeset": {
+      "properties": {
+        "changeId": {
+          "$ref": "#/$defs/bee.v1.ChangeId"
+        },
+        "delta": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.DeltaEntry"
+          },
+          "type": "array"
+        },
+        "filtered": {
+          "description": "true when unreadable delta entries were dropped (SPEC §9.3)",
+          "type": "boolean"
+        },
+        "generation": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "meta": {
+          "$ref": "#/$defs/bee.v1.Meta",
+          "description": "included when requested and readable"
+        },
+        "metaId": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "parents": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.ObjectId"
+          },
+          "type": "array"
+        },
+        "root": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        }
+      },
+      "title": "bee.v1.Changeset",
+      "type": "object"
+    },
+    "bee.v1.Cost": {
+      "properties": {
+        "inputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "outputTokens": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "usdMicros": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Cost",
+      "type": "object"
+    },
+    "bee.v1.DeltaEntry": {
+      "description": "Oneof `op`: at most one of `put`, `delete` is set.",
+      "properties": {
+        "delete": {
+          "type": "boolean"
+        },
+        "path": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "put": {
+          "$ref": "#/$defs/bee.v1.Put"
+        }
+      },
+      "title": "bee.v1.DeltaEntry",
+      "type": "object"
+    },
+    "bee.v1.LocalCheck": {
+      "properties": {
+        "durationMs": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.LocalCheck",
+      "type": "object"
+    },
+    "bee.v1.Meta": {
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "authorTime": {
+          "$ref": "#/$defs/bee.v1.Signature"
+        },
+        "committer": {
+          "type": "string"
+        },
+        "committerTime": {
+          "$ref": "#/$defs/bee.v1.Signature"
+        },
+        "creator": {
+          "type": "string"
+        },
+        "extensions": {
+          "description": "e.g. key 64: original git commit headers (SPEC §17.4)",
+          "items": {
+            "$ref": "#/$defs/bee.v1.MetaExtension"
+          },
+          "type": "array"
+        },
+        "message": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/bee.v1.Provenance"
+        }
+      },
+      "title": "bee.v1.Meta",
+      "type": "object"
+    },
+    "bee.v1.MetaExtension": {
+      "description": "An extension entry in Meta, keyed by a small integer (SPEC §4.3).",
+      "properties": {
+        "key": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "value": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.MetaExtension",
+      "type": "object"
+    },
+    "bee.v1.Mode": {
+      "description": "File mode as stored in trees (SPEC §4.2).",
+      "enum": [
+        "MODE_UNSPECIFIED",
+        "MODE_FILE",
+        "MODE_EXECUTABLE",
+        "MODE_SYMLINK",
+        "MODE_TREE"
+      ],
+      "title": "bee.v1.Mode",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Provenance": {
+      "description": "Provenance claims recorded in Meta (SPEC §10.4).",
+      "properties": {
+        "checksRun": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.LocalCheck"
+          },
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/bee.v1.Cost"
+        },
+        "model": {
+          "type": "string"
+        },
+        "principalChain": {
+          "description": "filled by the server",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "promptDigest": {
+          "contentEncoding": "base64",
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Provenance",
+      "type": "object"
+    },
+    "bee.v1.Put": {
+      "properties": {
+        "blob": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "mode": {
+          "$ref": "#/$defs/bee.v1.Mode"
+        },
+        "size": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.Put",
+      "type": "object"
+    },
+    "bee.v1.Signature": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tzOffsetMinutes": {
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "title": "bee.v1.Signature",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateChangesetResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.Changeset"
+    }
+  },
+  "title": "bee.v1.CreateChangesetResponse",
+  "type": "object"
+}

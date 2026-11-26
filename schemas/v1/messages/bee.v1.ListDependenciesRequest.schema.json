@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "bee.v1.DependencyScope": {
+      "description": "How a dependency is used.",
+      "enum": [
+        "DEPENDENCY_SCOPE_UNSPECIFIED",
+        "DEPENDENCY_SCOPE_RUNTIME",
+        "DEPENDENCY_SCOPE_DEVELOPMENT"
+      ],
+      "title": "bee.v1.DependencyScope",
+      "type": "string"
+    },
+    "bee.v1.PageRequest": {
+      "properties": {
+        "pageSize": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageRequest",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListDependenciesRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListDependencies.",
+  "properties": {
+    "ecosystem": {
+      "type": "string"
+    },
+    "manifestPath": {
+      "description": "empty = all manifests",
+      "type": "string"
+    },
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageRequest"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "revision": {
+      "$ref": "#/$defs/bee.v1.Revision",
+      "description": "unset = default branch tip"
+    },
+    "scope": {
+      "$ref": "#/$defs/bee.v1.DependencyScope",
+      "description": "UNSPECIFIED = all"
+    }
+  },
+  "title": "bee.v1.ListDependenciesRequest",
+  "type": "object"
+}

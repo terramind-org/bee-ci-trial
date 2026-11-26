@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Revision": {
+      "description": "A revision expression: ref name, ref@version, changeset id or unique prefix.",
+      "properties": {
+        "expr": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Revision",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DiffRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classify": {
+      "description": "compute diff_class per path",
+      "type": "boolean"
+    },
+    "contextLines": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "detectCopies": {
+      "type": "boolean"
+    },
+    "detectRenames": {
+      "type": "boolean"
+    },
+    "from": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    },
+    "ignoreWhitespace": {
+      "type": "boolean"
+    },
+    "includeHunks": {
+      "type": "boolean"
+    },
+    "maxFiles": {
+      "description": "0 = server default; the last item has truncated = true if cut",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "paths": {
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "to": {
+      "$ref": "#/$defs/bee.v1.Revision"
+    }
+  },
+  "title": "bee.v1.DiffRequest",
+  "type": "object"
+}

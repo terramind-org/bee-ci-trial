@@ -1,0 +1,26 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.BeginSecondFactorEnrollmentResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "enrollmentId": {
+      "type": "string"
+    },
+    "recoveryCodes": {
+      "description": "shown once, for RECOVERY_CODES",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "totpUri": {
+      "description": "otpauth:// URI for TOTP",
+      "type": "string"
+    },
+    "webauthnOptionsJson": {
+      "description": "PublicKeyCredentialCreationOptions for passkeys",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.BeginSecondFactorEnrollmentResponse",
+  "type": "object"
+}

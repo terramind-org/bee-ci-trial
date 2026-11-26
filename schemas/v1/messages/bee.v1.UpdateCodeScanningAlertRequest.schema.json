@@ -1,0 +1,69 @@
+{
+  "$defs": {
+    "bee.v1.CodeScanningAlertState": {
+      "description": "State of a code scanning alert.",
+      "enum": [
+        "CODE_SCANNING_ALERT_STATE_UNSPECIFIED",
+        "CODE_SCANNING_ALERT_STATE_OPEN",
+        "CODE_SCANNING_ALERT_STATE_DISMISSED",
+        "CODE_SCANNING_ALERT_STATE_FIXED"
+      ],
+      "title": "bee.v1.CodeScanningAlertState",
+      "type": "string"
+    },
+    "bee.v1.CodeScanningDismissReason": {
+      "description": "Why a code scanning alert was dismissed.",
+      "enum": [
+        "CODE_SCANNING_DISMISS_REASON_UNSPECIFIED",
+        "CODE_SCANNING_DISMISS_REASON_FALSE_POSITIVE",
+        "CODE_SCANNING_DISMISS_REASON_WONT_FIX",
+        "CODE_SCANNING_DISMISS_REASON_USED_IN_TESTS"
+      ],
+      "title": "bee.v1.CodeScanningDismissReason",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateCodeScanningAlertRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateCodeScanningAlert.",
+  "properties": {
+    "dismissedComment": {
+      "type": "string"
+    },
+    "dismissedReason": {
+      "$ref": "#/$defs/bee.v1.CodeScanningDismissReason"
+    },
+    "number": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.CodeScanningAlertState",
+      "description": "OPEN or DISMISSED"
+    }
+  },
+  "title": "bee.v1.UpdateCodeScanningAlertRequest",
+  "type": "object"
+}

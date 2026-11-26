@@ -1,0 +1,12 @@
+feature_id,test
+F49-022,crates/bee-forge/tests/enterprise_billing.rs::billing_service_permission_matrix
+F49-022,crates/bee-forge/tests/security_service.rs::permission_matrix_over_rpc
+F49-022,crates/bee-forge/tests/enterprise_moderation.rs::as_mod_01_moderator_without_write_access_moderates_and_others_cannot
+F49-022,crates/bee-forge/tests/enterprise_apps.rs::service_permission_matrix
+F49-022,crates/bee-forge/tests/enterprise_teams.rs::custom_roles_are_evaluated_through_policy::memory
+F49-032,crates/bee-server/tests/coverage_4_9.rs::check_object_access_answers_per_object_for_the_subject_token
+F49-043,crates/bee-server/tests/coverage_4_9.rs::a_revocation_reaches_another_server_within_the_refresh_bound
+F49-043,crates/bee-auth/tests/tokens.rs::revocation_cascades_to_derived_tokens_only
+F49-044,crates/bee-server/tests/coverage_4_9.rs::redaction_errors_choose_specific_reasons
+F49-016,crates/bee-forge/tests/coverage_4_9.rs::gpg_and_ssh_signing_keys_are_parsed_stored_and_resolved
+F49-005,crates/bee-server/tests/coverage_4_9.rs::tag_rules_govern_tags_from_refs_releases_and_the_tag_api

@@ -1,0 +1,70 @@
+# event pull_request action=opened
+run .github/workflows/ci.yml "CI"
+  run-name: "Add feature"
+  event: pull_request ref=refs/pull/42/merge sha=ffffffffffffffffffffffffffffffffffffffff
+  permissions: default
+  job test decided=true
+    instance "py3.8 on ubuntu-latest"
+      matrix: {"os":"ubuntu-latest","python":"3.8"}
+      strategy: index=0 total=3 fail-fast=false max-parallel=3
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run astral-sh/setup-uv@v5"
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: "true"
+      step 3 "Run uv python install 3.8"
+        run: "uv python install 3.8"
+        shell: default -> "bash -e {0}"
+      step 4 "Run uv sync --all-extras"
+        run: "uv sync --all-extras"
+        shell: default -> "bash -e {0}"
+      step 5 "Run uv run pytest -q"
+        run: "uv run pytest -q"
+        shell: default -> "bash -e {0}"
+    instance "py3.13 on ubuntu-latest"
+      matrix: {"os":"ubuntu-latest","python":"3.13"}
+      strategy: index=1 total=3 fail-fast=false max-parallel=3
+      runs-on: ["ubuntu-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run astral-sh/setup-uv@v5"
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: "true"
+      step 3 "Run uv python install 3.13"
+        run: "uv python install 3.13"
+        shell: default -> "bash -e {0}"
+      step 4 "Run uv sync --all-extras"
+        run: "uv sync --all-extras"
+        shell: default -> "bash -e {0}"
+      step 5 "Run uv run pytest -q"
+        run: "uv run pytest -q"
+        shell: default -> "bash -e {0}"
+    instance "py3.13 on windows-latest"
+      matrix: {"os":"windows-latest","python":"3.13"}
+      strategy: index=2 total=3 fail-fast=false max-parallel=3
+      runs-on: ["windows-latest"]
+      permissions: default
+      timeout-minutes: 360
+      step 1 "Run actions/checkout@v4"
+        uses: actions/checkout@v4
+      step 2 "Run astral-sh/setup-uv@v5"
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: "true"
+      step 3 "Run uv python install 3.13"
+        run: "uv python install 3.13"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+      step 4 "Run uv sync --all-extras"
+        run: "uv sync --all-extras"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+      step 5 "Run uv run pytest -q"
+        run: "uv run pytest -q"
+        shell: pwsh -> "pwsh -command \". '{0}'\""
+# event pull_request_target action=opened

@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WikiEditAccess": {
+      "description": "Who may edit a wiki.",
+      "enum": [
+        "WIKI_EDIT_ACCESS_UNSPECIFIED",
+        "WIKI_EDIT_ACCESS_COLLABORATORS",
+        "WIKI_EDIT_ACCESS_READERS"
+      ],
+      "title": "bee.v1.WikiEditAccess",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.WikiInfo.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A repo's wiki: state and sibling repo.",
+  "properties": {
+    "cloneUrlHttps": {
+      "type": "string"
+    },
+    "cloneUrlSsh": {
+      "type": "string"
+    },
+    "defaultRef": {
+      "type": "string"
+    },
+    "editAccess": {
+      "$ref": "#/$defs/bee.v1.WikiEditAccess"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "head": {
+      "$ref": "#/$defs/bee.v1.ObjectId",
+      "description": "current head changeset of the wiki repo"
+    },
+    "pageCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "the parent repo"
+    },
+    "wikiRepo": {
+      "$ref": "#/$defs/bee.v1.RepoRef",
+      "description": "the `<repo>.wiki` sibling repo"
+    }
+  },
+  "title": "bee.v1.WikiInfo",
+  "type": "object"
+}

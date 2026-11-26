@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "bee.v1.LandMethod": {
+      "description": "How Land puts a stack onto a ref (PRODUCT §4.13 merge methods).",
+      "enum": [
+        "LAND_METHOD_UNSPECIFIED",
+        "LAND_METHOD_REBASE",
+        "LAND_METHOD_SQUASH",
+        "LAND_METHOD_MERGE_COMMIT"
+      ],
+      "title": "bee.v1.LandMethod",
+      "type": "string"
+    },
+    "bee.v1.MergeQueueEntry": {
+      "description": "One CR's place in a ref's merge queue.",
+      "properties": {
+        "changeNumber": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "changeRequestId": {
+          "type": "string"
+        },
+        "ejectReason": {
+          "description": "ErrorReason name when EJECTED",
+          "type": "string"
+        },
+        "enqueuedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "enqueuedBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "estimatedLandAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "landMethod": {
+          "$ref": "#/$defs/bee.v1.LandMethod",
+          "description": "how the entry lands (UNSPECIFIED = the repo default)"
+        },
+        "onBehalfOf": {
+          "description": "Delegation chain the land is evaluated for (enqueued_by first, the root last).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "position": {
+          "description": "1 = next",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "priority": {
+          "description": "higher jumps ahead within policy limits",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "speculativeHead": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "the queued result being checked"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.MergeQueueState"
+        },
+        "title": {
+          "description": "Title of the change request in the queue (gap G9).",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.MergeQueueEntry",
+      "type": "object"
+    },
+    "bee.v1.MergeQueueState": {
+      "description": "State of a CR in a merge queue.",
+      "enum": [
+        "MERGE_QUEUE_STATE_UNSPECIFIED",
+        "MERGE_QUEUE_STATE_QUEUED",
+        "MERGE_QUEUE_STATE_CHECKING",
+        "MERGE_QUEUE_STATE_LANDING",
+        "MERGE_QUEUE_STATE_LANDED",
+        "MERGE_QUEUE_STATE_EJECTED"
+      ],
+      "title": "bee.v1.MergeQueueState",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetMergeQueueResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.MergeQueueEntry"
+      },
+      "type": "array"
+    },
+    "landsPerMinute": {
+      "description": "recent throughput",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.GetMergeQueueResponse",
+  "type": "object"
+}

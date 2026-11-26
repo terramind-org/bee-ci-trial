@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.DeploymentProtectionRule.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An app-backed custom protection rule on an environment.",
+  "properties": {
+    "appId": {
+      "type": "string"
+    },
+    "appSlug": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.DeploymentProtectionRule",
+  "type": "object"
+}

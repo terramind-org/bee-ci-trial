@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RemoveEnterpriseOrgRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RemoveEnterpriseOrg.",
+  "properties": {
+    "enterprise": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RemoveEnterpriseOrgRequest",
+  "type": "object"
+}

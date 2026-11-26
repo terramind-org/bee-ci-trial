@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/brief.get-brief-checklist.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.BriefService/GetBriefChecklist: `data` is a bee.v1.BriefChecklist in proto3-JSON. `bee brief get-brief-checklist --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.BriefChecklist.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.brief.get-brief-checklist"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee brief get-brief-checklist",
+  "type": "object"
+}

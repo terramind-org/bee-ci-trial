@@ -1,0 +1,19 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetTeamMembershipRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetTeamMembership.",
+  "properties": {
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "description": "empty = caller",
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetTeamMembershipRequest",
+  "type": "object"
+}

@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "bee.v1.PostMediaKind": {
+      "description": "Kind of a post's media.",
+      "enum": [
+        "POST_MEDIA_KIND_UNSPECIFIED",
+        "POST_MEDIA_KIND_IMAGE",
+        "POST_MEDIA_KIND_VIDEO"
+      ],
+      "title": "bee.v1.PostMediaKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.PostMedia.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An image or video attached to a post.",
+  "properties": {
+    "altText": {
+      "description": "required for images, optional for video",
+      "type": "string"
+    },
+    "contentType": {
+      "type": "string"
+    },
+    "durationMs": {
+      "description": "video only",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "height": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/bee.v1.PostMediaKind"
+    },
+    "sha256": {
+      "description": "lowercase hex",
+      "type": "string"
+    },
+    "sizeBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "url": {
+      "description": "signed download URL, filled on every read, never stored",
+      "type": "string"
+    },
+    "width": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.PostMedia",
+  "type": "object"
+}

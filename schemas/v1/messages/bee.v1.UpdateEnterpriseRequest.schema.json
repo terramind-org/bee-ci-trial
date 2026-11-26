@@ -1,0 +1,28 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateEnterpriseRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateEnterprise. Unset fields are unchanged.",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "enterprise": {
+      "type": "string"
+    },
+    "managedUsers": {
+      "description": "Can be turned on only while every member is IdP-provisioned (INVALID_STATE otherwise).",
+      "type": "boolean"
+    },
+    "managedUsersShortcode": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "websiteUrl": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateEnterpriseRequest",
+  "type": "object"
+}

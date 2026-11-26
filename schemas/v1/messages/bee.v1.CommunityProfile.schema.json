@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "bee.v1.CommunityFile": {
+      "description": "Presence of one community health file.",
+      "properties": {
+        "detail": {
+          "description": "e.g. detected code of conduct \"contributor_covenant_2.1\"",
+          "type": "string"
+        },
+        "inherited": {
+          "description": "from the org's `.github` repo",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.CommunityFileKind"
+        },
+        "paths": {
+          "description": "where found: root, then .github, then docs",
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "present": {
+          "type": "boolean"
+        }
+      },
+      "title": "bee.v1.CommunityFile",
+      "type": "object"
+    },
+    "bee.v1.CommunityFileKind": {
+      "description": "A community health file kind.",
+      "enum": [
+        "COMMUNITY_FILE_KIND_UNSPECIFIED",
+        "COMMUNITY_FILE_KIND_README",
+        "COMMUNITY_FILE_KIND_LICENSE",
+        "COMMUNITY_FILE_KIND_CONTRIBUTING",
+        "COMMUNITY_FILE_KIND_SECURITY",
+        "COMMUNITY_FILE_KIND_CODE_OF_CONDUCT",
+        "COMMUNITY_FILE_KIND_FUNDING",
+        "COMMUNITY_FILE_KIND_SUPPORT",
+        "COMMUNITY_FILE_KIND_CITATION",
+        "COMMUNITY_FILE_KIND_ISSUE_TEMPLATE",
+        "COMMUNITY_FILE_KIND_CHANGE_REQUEST_TEMPLATE",
+        "COMMUNITY_FILE_KIND_GOVERNANCE",
+        "COMMUNITY_FILE_KIND_CODEOWNERS"
+      ],
+      "title": "bee.v1.CommunityFileKind",
+      "type": "string"
+    },
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CommunityProfile.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Community profile and health percentage.",
+  "properties": {
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId"
+    },
+    "contentReportsEnabled": {
+      "type": "boolean"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.CommunityFile"
+      },
+      "type": "array"
+    },
+    "hasDescription": {
+      "type": "boolean"
+    },
+    "hasDiscussions": {
+      "type": "boolean"
+    },
+    "healthPercentage": {
+      "description": "0..100",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.CommunityProfile",
+  "type": "object"
+}

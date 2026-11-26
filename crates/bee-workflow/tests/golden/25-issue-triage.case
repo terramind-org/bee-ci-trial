@@ -1,0 +1,26 @@
+event: issue opened title="Crash when parsing empty file" labels=bug
+--- .github/workflows/triage.yml
+name: Triage
+on:
+  issues:
+    types: [opened, reopened]
+permissions:
+  issues: write
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              labels: ['needs-triage']
+            })
+  bug:
+    if: contains(github.event.issue.labels.*.name, 'bug')
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Bug '${{ github.event.issue.title }}' filed"

@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/audit.list-audit-sinks.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AuditService/ListAuditSinks: `data` is a bee.v1.ListAuditSinksResponse in proto3-JSON. `bee audit list-audit-sinks --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.ListAuditSinksResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.audit.list-audit-sinks"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee audit list-audit-sinks",
+  "type": "object"
+}

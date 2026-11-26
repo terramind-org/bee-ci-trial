@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/swarm.decide-swarm-join.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.SwarmService/DecideSwarmJoin: `data` is a bee.v1.SwarmJoin in proto3-JSON. `bee swarm decide-swarm-join --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.SwarmJoin.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.swarm.decide-swarm-join"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee swarm decide-swarm-join",
+  "type": "object"
+}

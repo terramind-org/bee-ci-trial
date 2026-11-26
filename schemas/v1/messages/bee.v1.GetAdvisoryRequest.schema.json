@@ -1,0 +1,15 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetAdvisoryRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetAdvisory.\n\nOneof `key`: at most one of `ghsaId`, `cveId` is set.",
+  "properties": {
+    "cveId": {
+      "type": "string"
+    },
+    "ghsaId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetAdvisoryRequest",
+  "type": "object"
+}

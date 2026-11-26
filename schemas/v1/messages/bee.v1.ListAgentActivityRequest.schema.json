@@ -1,0 +1,42 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListAgentActivityRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for ListAgentActivity. Needs org membership.",
+  "properties": {
+    "agentPrincipalId": {
+      "description": "only events acted by this agent",
+      "type": "string"
+    },
+    "delegationRoot": {
+      "description": "only events whose delegation chain ends here",
+      "type": "string"
+    },
+    "fromSeq": {
+      "description": "0 = oldest retained",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "kinds": {
+      "description": "exact, \"prefix.*\" or \"*\"; empty = all",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "limit": {
+      "description": "default 100, at most 1000",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "org": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ListAgentActivityRequest",
+  "type": "object"
+}

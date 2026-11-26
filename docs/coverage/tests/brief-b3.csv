@@ -1,0 +1,11 @@
+feature_id,test
+F413-043,crates/bee-forge/tests/briefs_brief.rs::set_brief_validates_stamps_and_versions
+F413-043,crates/bee-forge/tests/briefs_brief.rs::open_change_carries_a_brief
+F413-044,crates/bee-forge/tests/briefs_evidence.rs::begin_put_finalize_and_integrity
+F413-044,crates/bee-forge/tests/briefs_evidence.rs::inline_sniffing_refuses_svg_and_mismatch
+F413-044,crates/bee-forge/tests/briefs_evidence.rs::artifact_evidence_is_copied_and_checked
+F413-044,crates/bee-forge/tests/briefs_evidence.rs::listing_heroes_updates_and_limits
+F413-045,crates/bee-forge/tests/briefs_evidence.rs::check_run_evidence_requires_reporter_and_revision
+F413-045,crates/bee-forge/tests/briefs_evidence.rs::evidence_goes_stale_after_new_revision
+F413-046,bee_forge::briefs::checklist::tests::checklist_asks_ui_changes_for_visual_evidence
+F413-046,crates/bee-forge/tests/briefs_brief.rs::checklist_follows_the_revision

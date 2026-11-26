@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "bee.v1.Visibility": {
+      "enum": [
+        "VISIBILITY_UNSPECIFIED",
+        "VISIBILITY_PRIVATE",
+        "VISIBILITY_INTERNAL",
+        "VISIBILITY_PUBLIC"
+      ],
+      "title": "bee.v1.Visibility",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.CreateRepoRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "autoInit": {
+      "description": "add a README in the root changeset",
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string"
+    },
+    "homepage": {
+      "type": "string"
+    },
+    "isTemplate": {
+      "type": "boolean"
+    },
+    "licenseTemplate": {
+      "description": "SPDX id of a license file to add",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "topics": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "visibility": {
+      "$ref": "#/$defs/bee.v1.Visibility"
+    }
+  },
+  "title": "bee.v1.CreateRepoRequest",
+  "type": "object"
+}

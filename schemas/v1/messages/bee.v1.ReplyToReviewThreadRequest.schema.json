@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Suggestion": {
+      "description": "Replacement text for the lines a review comment anchors to.",
+      "properties": {
+        "applied": {
+          "type": "boolean"
+        },
+        "appliedIn": {
+          "$ref": "#/$defs/bee.v1.ObjectId",
+          "description": "changeset that applied it"
+        },
+        "replacement": {
+          "description": "new content for start_line..end_line, without trailing newline",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Suggestion",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ReplyToReviewThreadRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "suggestion": {
+      "$ref": "#/$defs/bee.v1.Suggestion"
+    },
+    "threadId": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ReplyToReviewThreadRequest",
+  "type": "object"
+}

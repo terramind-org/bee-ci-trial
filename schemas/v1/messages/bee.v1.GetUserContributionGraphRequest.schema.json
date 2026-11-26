@@ -1,0 +1,28 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.GetUserContributionGraphRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for GetUserContributionGraph.",
+  "properties": {
+    "fromDate": {
+      "description": "YYYY-MM-DD; default one year before to_date",
+      "type": "string"
+    },
+    "login": {
+      "type": "string"
+    },
+    "org": {
+      "description": "only contributions in this org",
+      "type": "string"
+    },
+    "timeZone": {
+      "description": "IANA name; default UTC",
+      "type": "string"
+    },
+    "toDate": {
+      "description": "default today",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.GetUserContributionGraphRequest",
+  "type": "object"
+}

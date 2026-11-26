@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.PageResponse": {
+      "properties": {
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.PageResponse",
+      "type": "object"
+    },
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.Workspace": {
+      "description": "A cloud workspace.",
+      "properties": {
+        "agentRunId": {
+          "description": "set when serving an agent run",
+          "type": "string"
+        },
+        "baseChangeset": {
+          "$ref": "#/$defs/bee.v1.ObjectId"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/bee.v1.Principal"
+        },
+        "devcontainerPath": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "hasUnexportedChanges": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "idleTimeoutSeconds": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "lastUsedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "machineType": {
+          "type": "string"
+        },
+        "name": {
+          "description": "unique per owner; used in the workspace ref",
+          "type": "string"
+        },
+        "owner": {
+          "$ref": "#/$defs/bee.v1.Principal",
+          "description": "human or agent principal"
+        },
+        "prebuildId": {
+          "description": "prebuild it started from, if any",
+          "type": "string"
+        },
+        "ref": {
+          "description": "ref checked out at creation",
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/bee.v1.RepoRef"
+        },
+        "retentionExpiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "retentionSeconds": {
+          "description": "stopped workspaces are deleted after this",
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "sparsePaths": {
+          "description": "empty = full checkout",
+          "items": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/bee.v1.WorkspaceState"
+        },
+        "stoppedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "workspaceRef": {
+          "description": "\"ws/<principal>/<name>\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Workspace",
+      "type": "object"
+    },
+    "bee.v1.WorkspaceState": {
+      "description": "Workspace lifecycle.",
+      "enum": [
+        "WORKSPACE_STATE_UNSPECIFIED",
+        "WORKSPACE_STATE_QUEUED",
+        "WORKSPACE_STATE_PROVISIONING",
+        "WORKSPACE_STATE_STARTING",
+        "WORKSPACE_STATE_AVAILABLE",
+        "WORKSPACE_STATE_STOPPING",
+        "WORKSPACE_STATE_STOPPED",
+        "WORKSPACE_STATE_REBUILDING",
+        "WORKSPACE_STATE_FAILED",
+        "WORKSPACE_STATE_DELETED"
+      ],
+      "title": "bee.v1.WorkspaceState",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ListWorkspacesResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for ListWorkspaces.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/bee.v1.PageResponse"
+    },
+    "workspaces": {
+      "items": {
+        "$ref": "#/$defs/bee.v1.Workspace"
+      },
+      "type": "array"
+    }
+  },
+  "title": "bee.v1.ListWorkspacesResponse",
+  "type": "object"
+}

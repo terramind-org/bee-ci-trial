@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.EvaluatePolicyActionRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for EvaluatePolicyAction.",
+  "properties": {
+    "action": {
+      "description": "read, commit, land, review, lease, push, force_push, create_ref, delete_ref, redact, admin",
+      "type": "string"
+    },
+    "approverIds": {
+      "description": "hypothetical approvals",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "changeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId",
+      "description": "optional: take paths and diff class from a real changeset"
+    },
+    "diffClass": {
+      "description": "SPEC §11.3, e.g. \"docs\", \"logic\", \"sensitive\"",
+      "type": "string"
+    },
+    "passedChecks": {
+      "description": "hypothetical passing checks",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "paths": {
+      "items": {
+        "contentEncoding": "base64",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "principalId": {
+      "description": "empty = caller",
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "viaChangeRequest": {
+      "description": "the action happens through a change request",
+      "type": "boolean"
+    }
+  },
+  "title": "bee.v1.EvaluatePolicyActionRequest",
+  "type": "object"
+}

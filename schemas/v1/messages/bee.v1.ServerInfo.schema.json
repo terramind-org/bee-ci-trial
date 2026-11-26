@@ -1,0 +1,160 @@
+{
+  "$defs": {
+    "bee.v1.ServerLimits": {
+      "description": "Limits from SPEC §4.6 that clients should respect before sending.",
+      "properties": {
+        "inlineObjectBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxBatchIds": {
+          "description": "ids per GetObjects/HasObjects request",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxDeltaEntries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxNameBytes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxPathBytes": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "maxPathComponents": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxTreeEntries": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.ServerLimits",
+      "type": "object"
+    },
+    "bee.v1.TokenPublicKey": {
+      "description": "A public key that verifies tokens (SPEC §9.2). Several keys may be active during rotation;\nthe first signs, all verify.",
+      "properties": {
+        "algorithm": {
+          "description": "e.g. \"ed25519\"",
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "notAfter": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "publicKey": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.TokenPublicKey",
+      "type": "object"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.ServerInfo.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "algorithms": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "cell": {
+      "type": "string"
+    },
+    "connectBaseUrl": {
+      "description": "base URL of the HTTP/JSON surface",
+      "type": "string"
+    },
+    "edition": {
+      "description": "\"cloud\" | \"enterprise\"; the server always fills it",
+      "type": "string"
+    },
+    "features": {
+      "description": "optional capabilities, e.g. \"signed_urls\", \"zstd\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "githubClientId": {
+      "description": "for device-flow login, when configured",
+      "type": "string"
+    },
+    "limits": {
+      "$ref": "#/$defs/bee.v1.ServerLimits"
+    },
+    "maxBlobBytes": {
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "policyEpoch": {
+      "description": "decimal u64, same as the response trailer (repo given)",
+      "type": "string"
+    },
+    "protocolVersions": {
+      "description": "e.g. \"bee.v1\"",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "redactionEpoch": {
+      "description": "of the requested repo",
+      "format": "uint64",
+      "pattern": "^[0-9]+$",
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "region": {
+      "type": "string"
+    },
+    "tier": {
+      "description": "\"server\" | \"daemon\" | \"cache\"",
+      "type": "string"
+    },
+    "tokenPublicKeys": {
+      "description": "keys that verify Biscuit tokens",
+      "items": {
+        "$ref": "#/$defs/bee.v1.TokenPublicKey"
+      },
+      "type": "array"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.ServerInfo",
+  "type": "object"
+}

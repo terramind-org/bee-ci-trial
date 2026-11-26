@@ -1,0 +1,21 @@
+event: pr revised base=main labels=ci:full,area/core
+--- .github/workflows/full.yml
+name: Full CI
+on:
+  pull_request:
+    types: [opened, synchronize, labeled]
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make quick
+  full:
+    if: contains(github.event.pull_request.labels.*.name, 'CI:FULL')
+    runs-on: ${{ fromJSON('["self-hosted", "gpu"]') }}
+    strategy:
+      matrix:
+        suite: ${{ fromJSON('["a", "b", "c"]') }}
+        exclude:
+          - suite: b
+    steps:
+      - run: make suite-${{ matrix.suite }} LABELS='${{ join(github.event.pull_request.labels.*.name, ' ') }}'

@@ -1,0 +1,24 @@
+event: pr labeled base=main label=safe-to-test labels=safe-to-test,area/api fork=true
+--- .github/workflows/fork-tests.yml
+name: Fork tests
+on:
+  pull_request_target:
+    types: [labeled]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  test:
+    if: contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: make test
+  comment:
+    if: github.event.label.name == 'needs-review'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo skipped

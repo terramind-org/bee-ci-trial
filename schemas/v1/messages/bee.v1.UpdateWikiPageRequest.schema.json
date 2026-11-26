@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "bee.v1.ObjectId": {
+      "description": "34-byte object id: algorithm byte, kind byte, 32-byte digest (SPEC §3.1).",
+      "properties": {
+        "raw": {
+          "contentEncoding": "base64",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.ObjectId",
+      "type": "object"
+    },
+    "bee.v1.RepoRef": {
+      "description": "Every repo-scoped request names its repo by id or by \"org/name\".\n\nOneof `repo`: at most one of `id`, `fullName` is set.",
+      "properties": {
+        "fullName": {
+          "description": "\"org/name\"",
+          "type": "string"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.RepoRef",
+      "type": "object"
+    },
+    "bee.v1.WikiPageFormat": {
+      "description": "Markup language of a wiki page, chosen by file extension.",
+      "enum": [
+        "WIKI_PAGE_FORMAT_UNSPECIFIED",
+        "WIKI_PAGE_FORMAT_MARKDOWN",
+        "WIKI_PAGE_FORMAT_ASCIIDOC",
+        "WIKI_PAGE_FORMAT_RST",
+        "WIKI_PAGE_FORMAT_ORG",
+        "WIKI_PAGE_FORMAT_TEXTILE",
+        "WIKI_PAGE_FORMAT_MEDIAWIKI"
+      ],
+      "title": "bee.v1.WikiPageFormat",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.UpdateWikiPageRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for UpdateWikiPage.",
+  "properties": {
+    "content": {
+      "type": "string"
+    },
+    "expectedChangeset": {
+      "$ref": "#/$defs/bee.v1.ObjectId",
+      "description": "page's latest revision as read; unset = any"
+    },
+    "format": {
+      "$ref": "#/$defs/bee.v1.WikiPageFormat"
+    },
+    "message": {
+      "description": "commit message; default \"Update <title>\"",
+      "type": "string"
+    },
+    "repo": {
+      "$ref": "#/$defs/bee.v1.RepoRef"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "title": {
+      "description": "renames the page",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.UpdateWikiPageRequest",
+  "type": "object"
+}

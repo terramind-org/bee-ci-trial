@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/policy.get-ruleset.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.PolicyService/GetRuleset: `data` is a bee.v1.Ruleset in proto3-JSON. `bee policy get-ruleset --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.Ruleset.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.policy.get-ruleset"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee policy get-ruleset",
+  "type": "object"
+}

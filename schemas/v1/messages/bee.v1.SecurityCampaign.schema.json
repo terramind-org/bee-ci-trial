@@ -1,0 +1,223 @@
+{
+  "$defs": {
+    "bee.v1.Principal": {
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "externalIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "ULID",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/bee.v1.PrincipalKind"
+        },
+        "ownerId": {
+          "description": "agents only",
+          "type": "string"
+        },
+        "runtime": {
+          "description": "agents only, e.g. \"claude-code\"",
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.Principal",
+      "type": "object"
+    },
+    "bee.v1.PrincipalKind": {
+      "enum": [
+        "PRINCIPAL_KIND_UNSPECIFIED",
+        "PRINCIPAL_KIND_HUMAN",
+        "PRINCIPAL_KIND_AGENT",
+        "PRINCIPAL_KIND_SERVICE"
+      ],
+      "title": "bee.v1.PrincipalKind",
+      "type": "string"
+    },
+    "bee.v1.SecurityAlertFilter": {
+      "description": "Which alerts a campaign targets.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/bee.v1.SecurityAlertKind"
+        },
+        "query": {
+          "description": "free text with qualifiers, e.g. \"rule:js/xss\"",
+          "type": "string"
+        },
+        "repoIds": {
+          "description": "empty = all org repos",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "severities": {
+          "items": {
+            "$ref": "#/$defs/bee.v1.SecuritySeverity"
+          },
+          "type": "array"
+        },
+        "toolName": {
+          "type": "string"
+        }
+      },
+      "title": "bee.v1.SecurityAlertFilter",
+      "type": "object"
+    },
+    "bee.v1.SecurityAlertKind": {
+      "description": "Kind of alert counted by the overview and targeted by campaigns.",
+      "enum": [
+        "SECURITY_ALERT_KIND_UNSPECIFIED",
+        "SECURITY_ALERT_KIND_DEPENDENCY",
+        "SECURITY_ALERT_KIND_CODE_SCANNING",
+        "SECURITY_ALERT_KIND_SECRET_SCANNING",
+        "SECURITY_ALERT_KIND_CODE_QUALITY"
+      ],
+      "title": "bee.v1.SecurityAlertKind",
+      "type": "string"
+    },
+    "bee.v1.SecurityCampaignProgress": {
+      "description": "Remediation progress of a campaign.",
+      "properties": {
+        "agentRuns": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "dismissedAlerts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "fixedAlerts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "openAlerts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "openChangeRequests": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "totalAlerts": {
+          "format": "uint64",
+          "pattern": "^[0-9]+$",
+          "type": [
+            "string",
+            "integer"
+          ]
+        }
+      },
+      "title": "bee.v1.SecurityCampaignProgress",
+      "type": "object"
+    },
+    "bee.v1.SecurityCampaignState": {
+      "description": "State of a campaign.",
+      "enum": [
+        "SECURITY_CAMPAIGN_STATE_UNSPECIFIED",
+        "SECURITY_CAMPAIGN_STATE_ACTIVE",
+        "SECURITY_CAMPAIGN_STATE_COMPLETED",
+        "SECURITY_CAMPAIGN_STATE_CANCELLED"
+      ],
+      "title": "bee.v1.SecurityCampaignState",
+      "type": "string"
+    },
+    "bee.v1.SecuritySeverity": {
+      "description": "Severity used by advisories, alerts and findings.",
+      "enum": [
+        "SECURITY_SEVERITY_UNSPECIFIED",
+        "SECURITY_SEVERITY_LOW",
+        "SECURITY_SEVERITY_MEDIUM",
+        "SECURITY_SEVERITY_HIGH",
+        "SECURITY_SEVERITY_CRITICAL"
+      ],
+      "title": "bee.v1.SecuritySeverity",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.SecurityCampaign.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A bulk remediation effort over a filtered set of alerts.",
+  "properties": {
+    "assigneePrincipalIds": {
+      "description": "agents or humans",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "assigneeTeamIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "createdBy": {
+      "$ref": "#/$defs/bee.v1.Principal"
+    },
+    "description": {
+      "type": "string"
+    },
+    "dueAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "filter": {
+      "$ref": "#/$defs/bee.v1.SecurityAlertFilter"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "progress": {
+      "$ref": "#/$defs/bee.v1.SecurityCampaignProgress"
+    },
+    "state": {
+      "$ref": "#/$defs/bee.v1.SecurityCampaignState"
+    },
+    "updatedAt": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.SecurityCampaign",
+  "type": "object"
+}

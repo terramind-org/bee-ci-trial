@@ -1,0 +1,20 @@
+{
+  "$id": "https://bee.dev/schemas/v1/cli/app.start-o-auth-device-flow.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output of RPC /bee.v1.AppService/StartOAuthDeviceFlow: `data` is a bee.v1.StartOAuthDeviceFlowResponse in proto3-JSON. `bee app start-o-auth-device-flow --json` prints one such document. Errors print a document matching schemas/v1/error.schema.json.",
+  "properties": {
+    "data": {
+      "$ref": "https://bee.dev/schemas/v1/messages/bee.v1.StartOAuthDeviceFlowResponse.schema.json"
+    },
+    "schema": {
+      "const": "bee.v1.app.start-o-auth-device-flow"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "title": "bee app start-o-auth-device-flow",
+  "type": "object"
+}

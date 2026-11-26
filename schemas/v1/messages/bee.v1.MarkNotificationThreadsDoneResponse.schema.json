@@ -1,0 +1,14 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.MarkNotificationThreadsDoneResponse.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Response for MarkNotificationThreadsDone.",
+  "properties": {
+    "updatedCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "bee.v1.MarkNotificationThreadsDoneResponse",
+  "type": "object"
+}

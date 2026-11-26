@@ -1,0 +1,78 @@
+id: AS-CI-01
+area: "4.14"
+title: Add a workflow, watch it fail, read the logs and annotations, fix it, see it pass
+surfaces: both
+timeout: 2400
+budget: { max_turns: 120 }
+notes: >
+  Needs a runner able to run ubuntu-latest jobs with Python 3 (the dev server's hosted runner or
+  a registered self-hosted one). The seeded code has a bug that the test catches, so the first
+  run of any correct workflow fails.
+fixtures: [base]
+setup:
+  - commit:
+      repo: "${repo.fullName}"
+      ref: main
+      message: "Add calculator and tests"
+      files:
+        calc.py: |
+          def add(a, b):
+              return a - b
+        test_calc.py: |
+          import unittest
+
+          from calc import add
+
+
+          class AddTest(unittest.TestCase):
+              def test_add(self):
+                  self.assertEqual(add(2, 3), 5)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+    save: seed
+  - name: workflow rights for the worker
+    call: RepoService/AddCollaborator
+    request: { repo: { fullName: "${repo.fullName}" }, principalId: "${worker.id}", role: REPO_ROLE_WRITE }
+agent:
+  token: "${workerToken}"
+prompt: |
+  The bee repository ${repo.fullName} has a Python unit test (`test_calc.py`) but no CI. Add
+  a CI workflow that runs the tests with `python -m unittest` on every push to main, land it, and
+  watch its first run. If it fails, find out why from the run's logs and annotations, fix the
+  cause in the code (not in the test or the workflow), land the fix, and make sure the workflow
+  then passes on main.
+assertions:
+  - name: a workflow file landed
+    call: QueryService/ListTree
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:.github/workflows}" }
+    expect:
+      - { path: entries, len_gte: 1 }
+  - name: at least one run failed
+    call: WorkflowService/ListWorkflowRuns
+    request: { repo: { fullName: "${repo.fullName}" }, conclusion: WORKFLOW_CONCLUSION_FAILURE }
+    expect:
+      - { path: runs, len_gte: 1 }
+  - name: the tip of main
+    call: ObjectService/ResolveRef
+    request: { repo: { fullName: "${repo.fullName}" }, name: main }
+    save: { tip: ref.target }
+  - name: the workflow passed on the tip of main
+    call: WorkflowService/ListWorkflowRuns
+    request: { repo: { fullName: "${repo.fullName}" }, headChangeset: "${tip}" }
+    retry: { attempts: 30, interval_ms: 10000 }
+    expect:
+      - path: runs
+        some:
+          - { path: status, eq: WORKFLOW_STATUS_COMPLETED }
+          - { path: conclusion, eq: WORKFLOW_CONCLUSION_SUCCESS }
+  - name: the fix is in the code, and the test is unchanged
+    call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:calc.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, matches: "return a \\+ b" }
+  - call: QueryService/ReadPath
+    request: { repo: { fullName: "${repo.fullName}" }, at: { expr: main }, path: "${b64:test_calc.py}" }
+    expect:
+      - { path: "messages[0].data", decode: base64, contains: "self.assertEqual(add(2, 3), 5)" }

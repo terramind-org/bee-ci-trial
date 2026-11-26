@@ -1,0 +1,21 @@
+{
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.RevokeOAuthGrantRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request for RevokeOAuthGrant.\n\nOneof `target`: at most one of `clientId`, `tokenId` is set.",
+  "properties": {
+    "clientId": {
+      "description": "revoke the whole grant and every token under it",
+      "type": "string"
+    },
+    "principalId": {
+      "description": "empty = caller; others need org admin over a managed user",
+      "type": "string"
+    },
+    "tokenId": {
+      "description": "revoke one token",
+      "type": "string"
+    }
+  },
+  "title": "bee.v1.RevokeOAuthGrantRequest",
+  "type": "object"
+}

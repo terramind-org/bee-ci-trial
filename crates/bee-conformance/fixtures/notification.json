@@ -1,0 +1,111 @@
+{
+  "service": "bee.v1.NotificationService",
+  "note": "Inbox threads come only from the background fan-out worker, and nobody is notified of their own action unless include_own_activity. UpdateNotificationSettings (early in this file) turns that on for the dev user; each thread fixture then opens an issue assigned to the dev user (a direct ASSIGN notification) and runs StreamNotificationInbox as a barrier: an open event stream the harness reads until it has been idle for 2s, far longer than the 50ms fan-out poll, so the thread exists before ListNotificationThreads picks it (newest first).",
+  "fixtures": [
+    {"method": "GetNotificationSettings",
+     "request": {}},
+    {"method": "UpdateNotificationSettings",
+     "request": {"deliveries": [{"reason": "NOTIFICATION_REASON_ASSIGN", "web": true, "email": false, "mobile": false}], "includeOwnActivity": true, "autoWatchRepos": false, "emailCiFailuresOnly": true, "replyByEmail": true}},
+    {"method": "ListNotificationThreads",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "list-notification-threads fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}}
+     ],
+     "request": {"filter": {"repos": [{"fullName": "{{repo}}"}], "subjectKinds": ["SUBJECT_KIND_ISSUE"], "reasons": ["NOTIFICATION_REASON_ASSIGN"]}, "page": {"pageSize": 50}}},
+    {"method": "GetNotificationThread",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "get-notification-thread fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}}
+     ],
+     "request": {"threadId": "{{l.threads.0.id}}"}},
+    {"method": "GetNotificationUnreadCount",
+     "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}}},
+    {"method": "MarkNotificationThreadsRead",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "mark-notification-threads-read fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}}
+     ],
+     "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}},
+    {"method": "MarkNotificationThreadsUnread",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "mark-notification-threads-unread fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}},
+       {"call": "NotificationService/MarkNotificationThreadsRead", "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}}
+     ],
+     "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}},
+    {"method": "SaveNotificationThreads",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "save-notification-threads fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}}
+     ],
+     "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}},
+    {"method": "UnsaveNotificationThreads",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "unsave-notification-threads fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}},
+       {"call": "NotificationService/SaveNotificationThreads", "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}}
+     ],
+     "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}},
+    {"method": "GetNotificationReplyAddress",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "get-notification-reply-address fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}}
+     ],
+     "request": {"threadId": "{{l.threads.0.id}}"}},
+    {"method": "MarkNotificationThreadsDone",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "request": {"repo": {"fullName": "{{repo}}"}, "title": "mark-notification-threads-done fixture", "assignees": ["{{user}}"]}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/ListNotificationThreads", "save": "l", "request": {"filter": {"repos": [{"fullName": "{{repo}}"}]}, "page": {"pageSize": 1}}}
+     ],
+     "request": {"selector": {"threadIds": ["{{l.threads.0.id}}"]}}},
+    {"method": "GetNotificationSubscription",
+     "setup": [{"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "get-notification-subscription fixture"}}, {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}},
+    {"method": "SubscribeNotificationThread",
+     "setup": [{"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "subscribe-notification-thread fixture"}}, {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}},
+    {"method": "UnsubscribeNotificationThread",
+     "setup": [
+       {"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "unsubscribe-notification-thread fixture"}},
+       {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}},
+       {"call": "NotificationService/SubscribeNotificationThread", "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}}
+     ],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}},
+    {"method": "IgnoreNotificationThread",
+     "setup": [{"call": "IssueService/CreateIssue", "save": "i", "request": {"repo": {"fullName": "{{repo}}"}, "title": "ignore-notification-thread fixture"}}, {"call": "NotificationService/StreamNotificationInbox", "request": {"heartbeatSeconds": 60}}],
+     "request": {"subject": {"kind": "SUBJECT_KIND_ISSUE", "repo": {"fullName": "{{repo}}"}, "id": "{{i.id}}"}}},
+    {"method": "SetRepoWatch",
+     "request": {"repo": {"fullName": "{{repo}}"}, "level": "REPO_WATCH_LEVEL_CUSTOM", "customEvents": ["REPO_WATCH_EVENT_KIND_RELEASES", "REPO_WATCH_EVENT_KIND_SECURITY_ALERTS"]}},
+    {"method": "GetRepoWatch",
+     "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "ListWatchedRepos",
+     "request": {"level": "REPO_WATCH_LEVEL_CUSTOM", "page": {"pageSize": 20}}},
+    {"method": "ListRepoWatchers",
+     "request": {"repo": {"fullName": "{{repo}}"}, "page": {"pageSize": 20}}},
+    {"method": "DeleteRepoWatch",
+     "request": {"repo": {"fullName": "{{repo}}"}}},
+    {"method": "StreamNotificationInbox",
+     "request": {"filter": {"repos": [{"fullName": "{{repo}}"}], "subjectKinds": ["SUBJECT_KIND_ISSUE"]}, "initialSnapshot": true, "heartbeatSeconds": 60},
+     "maxItems": 50},
+    {"method": "CreateNotificationReminder",
+     "request": {"org": "{{org}}", "channel": "NOTIFICATION_REMINDER_CHANNEL_EMAIL", "channelTarget": "create-reminder@example.com", "days": ["NOTIFICATION_REMINDER_DAY_MONDAY", "NOTIFICATION_REMINDER_DAY_THURSDAY"], "times": ["09:00", "14:30"], "timeZone": "Europe/Berlin", "filter": {"repos": [{"fullName": "{{repo}}"}], "ignoreDrafts": true, "minAgeHours": 4}}},
+    {"method": "GetNotificationReminder",
+     "setup": [{"call": "NotificationService/CreateNotificationReminder", "save": "r", "request": {"org": "{{org}}", "channel": "NOTIFICATION_REMINDER_CHANNEL_EMAIL", "channelTarget": "get-reminder@example.com", "days": ["NOTIFICATION_REMINDER_DAY_TUESDAY"], "times": ["10:00"], "timeZone": "UTC"}}],
+     "request": {"reminderId": "{{r.id}}"}},
+    {"method": "ListNotificationReminders",
+     "request": {"org": "{{org}}", "page": {"pageSize": 20}}},
+    {"method": "UpdateNotificationReminder",
+     "setup": [{"call": "NotificationService/CreateNotificationReminder", "save": "r", "request": {"org": "{{org}}", "channel": "NOTIFICATION_REMINDER_CHANNEL_EMAIL", "channelTarget": "update-reminder@example.com", "days": ["NOTIFICATION_REMINDER_DAY_WEDNESDAY"], "times": ["11:00"], "timeZone": "UTC"}}],
+     "request": {"reminderId": "{{r.id}}", "days": ["NOTIFICATION_REMINDER_DAY_FRIDAY"], "times": ["16:00"], "replaceSchedule": true, "timeZone": "America/New_York", "enabled": false}},
+    {"method": "DeleteNotificationReminder",
+     "setup": [{"call": "NotificationService/CreateNotificationReminder", "save": "r", "request": {"org": "{{org}}", "channel": "NOTIFICATION_REMINDER_CHANNEL_EMAIL", "channelTarget": "delete-reminder@example.com", "days": ["NOTIFICATION_REMINDER_DAY_SATURDAY"], "times": ["08:00"], "timeZone": "UTC"}}],
+     "request": {"reminderId": "{{r.id}}"}}
+  ]
+}

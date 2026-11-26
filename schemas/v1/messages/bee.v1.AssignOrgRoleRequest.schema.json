@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "bee.v1.Role": {
+      "enum": [
+        "ROLE_UNSPECIFIED",
+        "ROLE_OWNER",
+        "ROLE_ADMIN",
+        "ROLE_MEMBER",
+        "ROLE_BILLING_MANAGER",
+        "ROLE_SECURITY_MANAGER",
+        "ROLE_MODERATOR",
+        "ROLE_APP_MANAGER"
+      ],
+      "title": "bee.v1.Role",
+      "type": "string"
+    }
+  },
+  "$id": "https://bee.dev/schemas/v1/messages/bee.v1.AssignOrgRoleRequest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "customRoleId": {
+      "description": "a custom org role",
+      "type": "string"
+    },
+    "org": {
+      "type": "string"
+    },
+    "principalId": {
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/bee.v1.Role",
+      "description": "built-in role, or"
+    }
+  },
+  "title": "bee.v1.AssignOrgRoleRequest",
+  "type": "object"
+}

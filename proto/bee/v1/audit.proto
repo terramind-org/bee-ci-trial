@@ -1,0 +1,286 @@
+// Audit log for bee.v1: hash-chained org and enterprise audit entries, live streaming,
+// chain verification, SIEM sinks and export. See docs/PRODUCT.md §3.3 and §4.10.
+syntax = "proto3";
+
+package bee.v1;
+
+import "google/protobuf/timestamp.proto";
+import "bee/v1/common.proto";
+
+// Every state-changing RPC writes one audit entry. Entries form a hash chain per org (and per
+// enterprise) so tampering is detectable. Reading the log needs the org audit permission.
+service AuditService {
+  // Queries entries by actor, delegation root, action prefix, repo, time range and a
+  // free-text phrase with GitHub-compatible qualifiers (e.g. "action:repo.delete actor:bob").
+  // INVALID_ARGUMENT with subcode `bad_phrase` for an unparsable phrase.
+  rpc QueryAuditLog(QueryAuditLogRequest) returns (QueryAuditLogResponse);
+  // Fetches one entry by sequence number or id.
+  rpc GetAuditEntry(GetAuditEntryRequest) returns (AuditEntry);
+  // Streams entries live from a sequence number; entries after it are replayed first, so a
+  // client resumes by passing the last sequence it saw.
+  rpc StreamAuditLog(StreamAuditLogRequest) returns (stream AuditEntry);
+  // Verifies the hash chain over a sequence range and reports the first broken link.
+  rpc VerifyAuditChain(VerifyAuditChainRequest) returns (VerifyAuditChainResponse);
+  // Creates a SIEM streaming sink. Credentials are stored in SecretService and referenced
+  // by name. ALREADY_EXISTS for a duplicate sink name.
+  rpc CreateAuditSink(CreateAuditSinkRequest) returns (AuditSink);
+  // Fetches one sink with its delivery health.
+  rpc GetAuditSink(GetAuditSinkRequest) returns (AuditSink);
+  // Lists sinks for an org or enterprise.
+  rpc ListAuditSinks(ListAuditSinksRequest) returns (ListAuditSinksResponse);
+  // Updates a sink. Unset fields are unchanged.
+  rpc UpdateAuditSink(UpdateAuditSinkRequest) returns (AuditSink);
+  // Deletes a sink. Delivery stops; the log itself is unaffected.
+  rpc DeleteAuditSink(DeleteAuditSinkRequest) returns (DeleteAuditSinkResponse);
+  // Sends a test entry to a sink and reports the delivery result.
+  rpc TestAuditSink(TestAuditSinkRequest) returns (TestAuditSinkResponse);
+  // Starts an export of matching entries as CSV or JSON. Poll GetAuditExport for the URL.
+  rpc ExportAuditLog(ExportAuditLogRequest) returns (AuditExport);
+  // Fetches an export's status and, when ready, its signed download URL.
+  rpc GetAuditExport(GetAuditExportRequest) returns (AuditExport);
+}
+
+// One audit entry. `hash` = BLAKE3 over `prev_hash` and the canonical encoding of every other
+// field except `hash` itself.
+message AuditEntry {
+  uint64 seq = 1;             // per org (or enterprise), strictly increasing, no gaps
+  string id = 2;              // ULID
+  bytes prev_hash = 3;
+  bytes hash = 4;
+  google.protobuf.Timestamp time = 5;
+  Principal actor = 6;
+  repeated string delegation_chain = 7; // principal ids from the actor back to its root
+  string on_behalf_of = 8;    // the root principal id (human or service)
+  string action = 9;          // e.g. "policy.update", "repo.delete", "push_protection.bypass"
+  SubjectRef target = 10;
+  RepoRef repo = 11;
+  string org = 12;
+  string enterprise = 13;
+  string request_id = 14;
+  string ip = 15;             // raw or hashed per the org's setting
+  bool ip_hashed = 16;
+  string user_agent = 17;
+  string before = 18;         // JSON summary of the state before
+  string after = 19;          // JSON summary of the state after
+  string reason = 20;         // reason the actor supplied, if any
+  string token_id = 21;
+  string result = 22;         // "ok" or an ErrorReason name for audited denials
+  string country_code = 23;
+  // What was acted on, in words (gap G4).
+  string target_display = 24;
+  // The policy rule that allowed or denied the action; empty when none applied.
+  string policy_rule = 25;
+}
+
+// Filters shared by queries, exports and streams.
+message AuditLogFilter {
+  string actor_id = 1;
+  string on_behalf_of = 2;    // delegation root principal id
+  repeated string action_prefixes = 3; // e.g. "repo.", "token.revoke"
+  RepoRef repo = 4;
+  SubjectRef target = 5;
+  google.protobuf.Timestamp start = 6;
+  google.protobuf.Timestamp end = 7;
+  string phrase = 8;          // free text with qualifiers: actor:, action:, repo:, created:
+  string request_id = 9;
+  // Only entries whose policy decision denied the action (gap G5).
+  bool denied_only = 10;
+}
+
+// Request for QueryAuditLog.
+message QueryAuditLogRequest {
+  string org = 1;
+  string enterprise = 2;      // set instead of org for the enterprise log
+  AuditLogFilter filter = 3;
+  bool oldest_first = 4;
+  PageRequest page = 5;
+}
+
+// Response for QueryAuditLog.
+message QueryAuditLogResponse {
+  repeated AuditEntry entries = 1;
+  PageResponse page = 2;
+}
+
+// Request for GetAuditEntry.
+message GetAuditEntryRequest {
+  string org = 1;
+  string enterprise = 2;
+  oneof key {
+    uint64 seq = 3;
+    string id = 4;
+  }
+}
+
+// Request for StreamAuditLog.
+message StreamAuditLogRequest {
+  string org = 1;
+  string enterprise = 2;
+  uint64 after_seq = 3;       // 0 = only new entries
+  AuditLogFilter filter = 4;
+}
+
+// Request for VerifyAuditChain.
+message VerifyAuditChainRequest {
+  string org = 1;
+  string enterprise = 2;
+  uint64 from_seq = 3;        // 0 = first entry
+  uint64 to_seq = 4;          // 0 = latest entry
+  bytes expected_head_hash = 5; // optional anchor previously recorded by the caller
+}
+
+// Response for VerifyAuditChain.
+message VerifyAuditChainResponse {
+  bool ok = 1;
+  uint64 verified_from_seq = 2;
+  uint64 verified_to_seq = 3;
+  uint64 first_broken_seq = 4; // 0 when ok
+  string failure = 5;         // "hash_mismatch", "prev_hash_mismatch", "gap", "head_mismatch"
+  bytes head_hash = 6;        // hash of verified_to_seq
+}
+
+// ---------- SIEM sinks ----------
+
+// Destination type of a sink.
+enum AuditSinkKind {
+  AUDIT_SINK_KIND_UNSPECIFIED = 0;
+  AUDIT_SINK_KIND_S3 = 1;
+  AUDIT_SINK_KIND_SPLUNK = 2;
+  AUDIT_SINK_KIND_DATADOG = 3;
+  AUDIT_SINK_KIND_HTTPS = 4;
+}
+
+// Delivery health of a sink.
+enum AuditSinkHealth {
+  AUDIT_SINK_HEALTH_UNSPECIFIED = 0;
+  AUDIT_SINK_HEALTH_HEALTHY = 1;
+  AUDIT_SINK_HEALTH_LAGGING = 2;
+  AUDIT_SINK_HEALTH_FAILING = 3;
+  AUDIT_SINK_HEALTH_PAUSED = 4;
+}
+
+// A streaming destination for audit entries.
+message AuditSink {
+  string id = 1;
+  string org = 2;
+  string enterprise = 3;
+  string name = 4;
+  AuditSinkKind kind = 5;
+  string endpoint = 6;        // bucket URI, HEC URL, site, or HTTPS URL
+  string credential_secret = 7; // SecretService secret name; the value is never returned
+  repeated string action_prefixes = 8; // empty = every action
+  bool enabled = 9;
+  AuditSinkHealth health = 10;
+  uint64 delivered_seq = 11;  // last sequence delivered
+  uint64 lag_entries = 12;
+  string last_error = 13;
+  google.protobuf.Timestamp last_delivered_at = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// Request for CreateAuditSink.
+message CreateAuditSinkRequest {
+  string org = 1;
+  string enterprise = 2;
+  string name = 3;
+  AuditSinkKind kind = 4;
+  string endpoint = 5;
+  string credential_secret = 6;
+  repeated string action_prefixes = 7;
+  uint64 start_seq = 8;       // backfill from here; 0 = new entries only
+}
+
+// Request for GetAuditSink.
+message GetAuditSinkRequest {
+  string id = 1;
+}
+
+// Request for ListAuditSinks.
+message ListAuditSinksRequest {
+  string org = 1;
+  string enterprise = 2;
+  PageRequest page = 3;
+}
+
+// Response for ListAuditSinks.
+message ListAuditSinksResponse {
+  repeated AuditSink sinks = 1;
+  PageResponse page = 2;
+}
+
+// Request for UpdateAuditSink.
+message UpdateAuditSinkRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string endpoint = 3;
+  optional string credential_secret = 4;
+  repeated string action_prefixes = 5; // non-empty replaces
+  optional bool enabled = 6;
+}
+
+// Request for DeleteAuditSink.
+message DeleteAuditSinkRequest {
+  string id = 1;
+}
+
+// Response for DeleteAuditSink.
+message DeleteAuditSinkResponse {}
+
+// Request for TestAuditSink.
+message TestAuditSinkRequest {
+  string id = 1;
+}
+
+// Response for TestAuditSink.
+message TestAuditSinkResponse {
+  bool delivered = 1;
+  uint32 status_code = 2;     // HTTP status from the destination, when applicable
+  string error = 3;
+  uint64 latency_ms = 4;
+}
+
+// ---------- Export ----------
+
+// File format of an export.
+enum AuditExportFormat {
+  AUDIT_EXPORT_FORMAT_UNSPECIFIED = 0;
+  AUDIT_EXPORT_FORMAT_CSV = 1;
+  AUDIT_EXPORT_FORMAT_JSON = 2; // JSON lines
+}
+
+// Export lifecycle.
+enum AuditExportState {
+  AUDIT_EXPORT_STATE_UNSPECIFIED = 0;
+  AUDIT_EXPORT_STATE_PENDING = 1;
+  AUDIT_EXPORT_STATE_READY = 2;
+  AUDIT_EXPORT_STATE_FAILED = 3;
+}
+
+// An audit log export.
+message AuditExport {
+  string id = 1;
+  AuditExportFormat format = 2;
+  AuditExportState state = 3;
+  string signed_url = 4;
+  google.protobuf.Timestamp url_expires_at = 5;
+  uint64 entry_count = 6;
+  uint64 first_seq = 7;
+  uint64 last_seq = 8;
+  bytes head_hash = 9;        // hash of last_seq, for offline verification
+  string error = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// Request for ExportAuditLog.
+message ExportAuditLogRequest {
+  string org = 1;
+  string enterprise = 2;
+  AuditLogFilter filter = 3;
+  AuditExportFormat format = 4;
+}
+
+// Request for GetAuditExport.
+message GetAuditExportRequest {
+  string id = 1;
+}
