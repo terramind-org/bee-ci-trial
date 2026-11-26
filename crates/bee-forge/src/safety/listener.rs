@@ -74,6 +74,7 @@ impl SafetyListener {
                     | "swarm.task_finished"
                     | "agent_run.completed"
                     | "safety.evidence_observed"
+                    | "safety.record_updated"
             )
         {
             return Ok(());
@@ -94,6 +95,23 @@ impl SafetyListener {
                 kind: SafetyWorkKind::Swarm as i32,
                 id: subject.id.clone(),
             },
+            "safety.record_updated" => {
+                // Even an on-demand read can create a tripwire. Its own committed
+                // record event retries intervention if the caller's request fails.
+                let payload: serde_json::Value = serde_json::from_str(&event.payload_json)
+                    .map_err(|_| crate::ForgeError::internal("Invalid Safety outbox payload"))?;
+                let Some(kind) = payload["kind"]
+                    .as_str()
+                    .and_then(SafetyWorkKind::from_str_name)
+                else {
+                    return Err(crate::ForgeError::internal("Missing Safety work kind"));
+                };
+                SafetyRef {
+                    repo: repo_ref_id(&repo.id),
+                    kind: kind as i32,
+                    id: subject.id.clone(),
+                }
+            }
             _ => evidence::work_for_run(agents, &cx, &repo, &subject.id).await?,
         };
         Self::refresh(agents, &repo, work).await

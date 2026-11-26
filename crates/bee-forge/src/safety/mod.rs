@@ -26,7 +26,7 @@ static RECORDS: TableDef = TableDef {
     indexes: &[Index::ScopeN1],
 };
 
-// Scoped to the repository. k1 is the only recipient who can see or acknowledge the item.
+// Scoped to the repository. k1 is the recipient. A missing k1 routes to repo administrators.
 static ATTENTION: TableDef = TableDef {
     name: "forge_safety_attention",
     surface: SURFACE,

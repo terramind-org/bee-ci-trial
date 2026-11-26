@@ -201,11 +201,13 @@ impl SafetyApi {
             .org(caller, &repo.org_id, OrgPerm::ReadAudit)
             .await
             .is_ok();
-        let scan = audit
-            || authz
-                .repo(caller, repo, Action::Commit, &[], None, None)
-                .await
-                .is_ok();
+        let scan = match authz
+            .repo(caller, repo, Action::Commit, &[], None, None)
+            .await
+        {
+            Ok(_) => true,
+            Err(error) => audit && error.reason == ErrorReason::PermissionDenied,
+        };
         EvidenceAccess { scan, audit }
     }
 
@@ -314,17 +316,7 @@ impl SafetyApi {
                     store::retire(&mut tx, repo, &work, &id).await?;
                 }
                 for finding in added {
-                    if let Some(report) = finding.report {
-                        let mut payload = json!({
-                            "finding_id": finding.id, "kind": report.kind().as_str_name(),
-                        });
-                        // The repository event can be read without code-scanning access.
-                        if report.kind() != SafetySignalKind::HarmToCode {
-                            payload["severity"] = json!(report.severity().as_str_name());
-                        }
-                        store::emit(&mut tx, repo, &work, "safety.finding_reported", payload)
-                            .await?;
-                    }
+                    store::report_event(&mut tx, repo, &work, &finding).await?;
                 }
                 tx.commit().await?;
             } else {

@@ -82,13 +82,16 @@ impl Summary {
             groups.insert((work.kind, work.id));
         }
         for finding in record.findings {
-            if finding.state() == SafetyFindingState::Dismissed {
-                continue;
-            }
             let Some(created) = finding.created_at.as_ref().map(ts_ms) else {
                 continue;
             };
             if !period.contains(created) {
+                continue;
+            }
+            if let Some(resolved) = finding.resolved_at.as_ref().map(ts_ms) {
+                self.waits.push(resolved.saturating_sub(created));
+            }
+            if finding.state() == SafetyFindingState::Dismissed {
                 continue;
             }
             let Some(report) = finding.report else {
@@ -102,9 +105,6 @@ impl Summary {
                     .or_default()
                     .entry(report.kind)
                     .or_default() += 1;
-            }
-            if let Some(resolved) = finding.resolved_at.as_ref().map(ts_ms) {
-                self.waits.push(resolved.saturating_sub(created));
             }
         }
     }

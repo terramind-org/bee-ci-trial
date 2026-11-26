@@ -265,10 +265,10 @@ pub(super) async fn save(tx: &mut Tx, row: Row, record: &SafetyRecord) -> Result
     Ok(())
 }
 
-const ADMIN_RECIPIENT: &str = "repository-administrators";
-
 pub(super) fn attention_recipient(row: &Row, person: &str, repo_admin: bool) -> bool {
-    row.k1.as_deref() == Some(person) || (repo_admin && row.k1.as_deref() == Some(ADMIN_RECIPIENT))
+    row.k1
+        .as_deref()
+        .map_or(repo_admin, |recipient| recipient == person)
 }
 
 pub(super) async fn add_attention(tx: &mut Tx, repo: &Repo, item: &SafetyAttention) -> Result<()> {
@@ -276,21 +276,33 @@ pub(super) async fn add_attention(tx: &mut Tx, repo: &Repo, item: &SafetyAttenti
     item.answerable = item
         .answerable
         .filter(|p| p.kind() == PrincipalKind::Human && !p.id.is_empty());
-    // An unset answerable principal is the repository-admin inbox. It is one
-    // shared item, so the first administrator to acknowledge it clears the item.
-    let recipient = item
-        .answerable
-        .as_ref()
-        .map_or(ADMIN_RECIPIENT, |p| p.id.as_str());
     let created = item.created_at.as_ref().map_or(0, ts_ms);
-    tx.insert(
-        &ATTENTION,
-        &Row::new(&repo.id, &item.id)
-            .k1(recipient)
-            .n1(created as i64)
-            .msg(&item),
-    )
-    .await
+    let mut row = Row::new(&repo.id, &item.id).n1(created as i64).msg(&item);
+    if let Some(person) = &item.answerable {
+        row = row.k1(&person.id);
+    }
+    // An unset recipient is the shared repository-admin inbox. The first
+    // administrator to acknowledge the item clears it.
+    tx.insert(&ATTENTION, &row).await
+}
+
+pub(super) async fn report_event(
+    tx: &mut Tx,
+    repo: &Repo,
+    work: &SafetyRef,
+    finding: &SafetyFinding,
+) -> Result<()> {
+    let Some(report) = &finding.report else {
+        return Ok(());
+    };
+    let mut payload = serde_json::json!({
+        "finding_id": finding.id, "kind": report.kind().as_str_name(),
+    });
+    // The repository event can be read without code-scanning access.
+    if report.kind() != SafetySignalKind::HarmToCode {
+        payload["severity"] = serde_json::json!(report.severity().as_str_name());
+    }
+    emit(tx, repo, work, "safety.finding_reported", payload).await
 }
 
 pub(super) async fn retire(tx: &mut Tx, repo: &Repo, work: &SafetyRef, id: &str) -> Result<()> {
@@ -380,7 +392,7 @@ mod tests {
 
     #[test]
     fn fallback_attention_requires_repository_administration() {
-        let fallback = Row::new("repo", "item").k1(ADMIN_RECIPIENT);
+        let fallback = Row::new("repo", "item");
         let addressed = Row::new("repo", "item").k1("owner");
         assert!(attention_recipient(&fallback, "admin", true));
         assert!(!attention_recipient(&fallback, "reader", false));

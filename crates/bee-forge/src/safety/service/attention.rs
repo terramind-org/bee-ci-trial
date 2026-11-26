@@ -35,7 +35,7 @@ impl SafetyApi {
         Ok(())
     }
 
-    // Finding and attention item share the cancellation transaction.
+    // Attention and cancellation commit together. Manual findings use this transaction too.
     pub(super) async fn on_finding(
         &self,
         tx: &mut Tx,
@@ -49,17 +49,7 @@ impl SafetyApi {
         };
         let kind = report.kind();
         if !detectors::automatic(finding) {
-            store::emit(
-                tx,
-                repo,
-                work,
-                "safety.finding_reported",
-                json!({
-                    "finding_id": finding.id, "kind": kind.as_str_name(),
-                    "severity": report.severity().as_str_name(),
-                }),
-            )
-            .await?;
+            store::report_event(tx, repo, work, finding).await?;
         }
         if report.severity() != SafetySeverity::Severe
             || !matches!(

@@ -675,6 +675,15 @@ mod tests {
             vec![],
             0,
         );
+        let unknown = finding(
+            SafetySignalKind::HarmToCode,
+            SafetySeverity::Note,
+            "Origin unknown",
+            vec![],
+            vec![],
+            0,
+        );
+        assert_eq!(verdict(&[unknown], false), SafetyVerdict::AsAsked);
         assert_eq!(verdict(&[], false), SafetyVerdict::AsAsked);
         assert_eq!(
             verdict(std::slice::from_ref(&outside), false),
