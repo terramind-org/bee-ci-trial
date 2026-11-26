@@ -69,11 +69,7 @@ pub(super) fn finding(
     }
 }
 
-pub(super) fn subject_id(
-    kind: SafetySignalKind,
-    subjects: &[SubjectRef],
-    identity: &str,
-) -> String {
+fn subject_id(kind: SafetySignalKind, subjects: &[SubjectRef], identity: &str) -> String {
     let mut hash = blake3::Hasher::new_derive_key("Beehive safety finding subject");
     hash.update(&(kind as i32).to_be_bytes());
     hash.update(&(identity.len() as u64).to_be_bytes());
@@ -123,10 +119,19 @@ pub(super) fn reconcile(
     let mut active = BTreeSet::new();
     for finding in observed {
         active.insert(finding.id.clone());
-        if let Some(old) = existing
-            .iter_mut()
-            .find(|old| old.id == finding.id || legacy_subject(old, &finding))
-        {
+        let existing_index = existing
+            .iter()
+            .position(|old| old.id == finding.id)
+            .or_else(|| {
+                existing
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, old)| legacy_subject(old, &finding))
+                    .max_by_key(|(_, old)| old.state() != SafetyFindingState::Open)
+                    .map(|(index, _)| index)
+            });
+        if let Some(index) = existing_index {
+            let old = &mut existing[index];
             // Preserve the human decision and original observation time.
             old.id.clone_from(&finding.id);
             old.report = finding.report;
@@ -295,6 +300,14 @@ leash_actions! {
     APP_REPOS_ADD = "app.installation_repos_add",
     APP_REPOS_REMOVE = "app.installation_repos_remove",
     ORG_SETTINGS = "org.settings_update",
+    MEMBER_ADD = "member.add",
+    MEMBER_REMOVE = "member.remove",
+    MEMBER_ROLE_CHANGE = "member.role_change",
+    MEMBER_ROLE_ASSIGN = "member.custom_role_assign",
+    MEMBER_ROLE_REVOKE = "member.custom_role_revoke",
+    REPO_SETTINGS = "repo.settings_update",
+    OIDC_TEMPLATE = "actions_policy.oidc_template",
+    SECRET_REPOS = "secret.set_repos",
 }
 
 /// Whether the successful audit operation can change a run's governing settings.
@@ -370,6 +383,14 @@ pub(super) fn repeated_after_refusal(attempts: &[Attempt]) -> Vec<(&Attempt, &At
         let Some(denial) = &attempt.denial else {
             continue;
         };
+        pending.retain(|(earlier, rule, requirement), _| {
+            *earlier != effect
+                || *rule != denial.rule
+                || denial
+                    .missing
+                    .iter()
+                    .any(|missing| missing.as_str() == *requirement)
+        });
         for requirement in &denial.missing {
             let key = (effect, denial.rule.as_str(), requirement.as_str());
             let first = pending.entry(key).or_insert(attempt);
@@ -452,8 +473,7 @@ mod tests {
         use crate::error::ForgeError;
         let approval =
             ForgeError::policy_denied("main", vec!["approval".into()], "Approval required");
-        let checks =
-            ForgeError::policy_denied("main", vec!["check:build".into()], "Build required");
+        let checks = ForgeError::policy_denied("CI", vec!["check:build".into()], "Build required");
         let frozen = ForgeError::policy_denied(
             super::super::control::FROZEN,
             vec!["organization_resume".into()],

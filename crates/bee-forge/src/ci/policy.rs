@@ -860,7 +860,7 @@ impl Ci {
         } else {
             tx.update(&POLICIES, &row).await?;
         }
-        tx.audit(AuditDraft::new("actions_policy.oidc_template", &org_id).target_id(&key))
+        tx.audit(AuditDraft::new(audit_actions::OIDC_TEMPLATE, &org_id).target_id(&key))
             .await?;
         tx.commit().await?;
         self.oidc_template(cx, scope).await

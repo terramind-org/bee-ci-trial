@@ -2,10 +2,10 @@
 //! log and the audit chain.
 //!
 //! Each surface is drained independently, in outbox (ULID) order. An item is removed from
-//! the outbox only after it was appended; appends are idempotent (keyed by the outbox id for
-//! events and the entry id for audit), so a crash between append and removal only repeats a
-//! no-op. If the event log or the audit log is down, items wait in their surface's outbox and
-//! the surface itself keeps working.
+//! the outbox after it is appended and any required Safety refresh succeeds. Log appends
+//! are idempotent (keyed by the outbox id for events and the entry id for audit), so a
+//! crash between append and removal retries the refresh without duplicating the log entry.
+//! If delivery fails, items wait in their surface's outbox.
 //!
 //! Ordering: within a surface, items move in commit order. The background relay runs one
 //! task per surface (so a slow surface database delays only its own items); events of

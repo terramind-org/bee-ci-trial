@@ -12,7 +12,7 @@ use bee_forge::changes::vcs::{LandFacts, NewCommit};
 use bee_forge::ids::ManualClock;
 use bee_forge::safety::{record_landing_attempt, service::SafetyApi};
 use bee_forge::security::model::{CodeAlertRec, InstanceRec};
-use bee_forge::security::{CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY};
+use bee_forge::security::{ANALYSES, CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY};
 use bee_forge::store::{Row, memory::MemoryStore};
 use bee_forge::swarms::service::SwarmApi;
 use bee_forge::{Cx, ForgeError, Result};
@@ -130,6 +130,10 @@ impl LandFacts for RequiredWorkflow {
     ) -> Result<Vec<(String, Option<bee_policy::CheckStatus>)>> {
         use bee_policy::CheckStatus;
         let status = match self.0.load(Ordering::SeqCst) {
+            3 => {
+                self.0.store(1, Ordering::SeqCst);
+                return Err(ForgeError::unavailable("test CI source interrupted"));
+            }
             0 => CheckStatus::Pending,
             1 => CheckStatus::Failure,
             _ => CheckStatus::Success,
@@ -250,7 +254,14 @@ async fn safety_attributes_changed_paths_checks_and_policy_to_the_attempt() {
     );
     let handed_back = get(&world, target.clone()).await;
     assert!(report(&handed_back, SafetySignalKind::SaidVsShown).is_none());
-    workflows.0.store(1, Ordering::SeqCst);
+    world
+        .agents
+        .forge
+        .relay
+        .drain_all(&Cx::system())
+        .await
+        .unwrap();
+    workflows.0.store(3, Ordering::SeqCst);
     // A completion event refreshes the existing hand-back through the durable relay.
     let mut tx = world
         .agents
@@ -268,6 +279,15 @@ async fn safety_attributes_changed_paths_checks_and_policy_to_the_attempt() {
     .await
     .unwrap();
     tx.commit().await.unwrap();
+    assert!(
+        world
+            .agents
+            .forge
+            .relay
+            .drain_all(&Cx::system())
+            .await
+            .is_err()
+    );
     world
         .agents
         .forge
@@ -410,6 +430,11 @@ async fn safety_reads_code_scan_alerts_only_on_attributed_changes() {
                 }),
                 key: format!("scanner:rule:{number}"),
                 first_changeset: (number != 3).then(|| changeset.clone()),
+                first_analysis_id: if number == 2 {
+                    "head-analysis".into()
+                } else {
+                    String::new()
+                },
             },
             InstanceRec {
                 instance: Some(CodeScanningAlertInstance {
@@ -435,6 +460,25 @@ async fn safety_reads_code_scan_alerts_only_on_attributed_changes() {
         .unwrap()
         .target
         .unwrap();
+    for (id, changeset, count) in [
+        ("base-analysis", base.clone(), 0),
+        ("head-analysis", head.clone(), 1),
+    ] {
+        let analysis = CodeScanningAnalysis {
+            id: id.into(),
+            r#ref: "main".into(),
+            changeset: Some(changeset),
+            results_count: count,
+            created_at: Some(bee_forge::ids::ts(1)),
+            ..Default::default()
+        };
+        tx.insert(
+            &ANALYSES,
+            &Row::new(&world.repo.id, id).k1("main").msg(&analysis),
+        )
+        .await
+        .unwrap();
+    }
     for number in [1_u64, 2, 3] {
         let (mut alert, instance) = seed(number, head.clone());
         if number == 1 {

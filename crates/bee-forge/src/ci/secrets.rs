@@ -7,6 +7,7 @@
 //! repos, private and internal repos, or a selected set. A job sees org, then repo, then
 //! environment values, the more specific one winning.
 
+use crate::safety::audit_actions; // Shared with the Safety audit consumer.
 use std::collections::BTreeMap;
 
 use bee_proto::v1::{
@@ -382,7 +383,7 @@ impl Ci {
         )
         .await?;
         tx.audit(
-            AuditDraft::new("secret.set_repos", scope.org_id())
+            AuditDraft::new(audit_actions::SECRET_REPOS, scope.org_id())
                 .target_id(&format!("{key}/{name}"))
                 .after(&serde_json::json!({ "repos": rec.repo_ids }).to_string()),
         )

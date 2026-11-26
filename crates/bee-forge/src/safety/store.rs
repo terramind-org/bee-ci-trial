@@ -46,6 +46,19 @@ pub(super) async fn ensure(agents: &Agents, cx: &Cx, repo: &Repo, work: &SafetyR
     }
 }
 
+pub(super) async fn revision(
+    agents: &Agents,
+    cx: &Cx,
+    repo: &Repo,
+    work: &SafetyRef,
+) -> Result<Option<u64>> {
+    let mut tx = agents.db.begin(SURFACE, cx).await?;
+    Ok(tx
+        .get(&RECORDS, &repo.id, &key(work))
+        .await?
+        .map(|row| row.version))
+}
+
 fn finding_scope(repo: &str, work: &SafetyRef) -> String {
     format!("safety-findings/{repo}/{}", key(work))
 }
@@ -97,6 +110,15 @@ async fn overflow(tx: &mut Tx, scope: &str) -> Result<Vec<(SafetyFinding, Row)>>
 }
 
 fn preview(record: &mut SafetyRecord, available: usize) -> Vec<SafetyFinding> {
+    record.findings.sort_by(|a, b| {
+        let rank = |finding: &SafetyFinding| {
+            (
+                finding.state() == SafetyFindingState::Dismissed,
+                std::cmp::Reverse(finding.report.as_ref().map_or(0, |r| r.severity)),
+            )
+        };
+        rank(a).cmp(&rank(b)).then_with(|| a.id.cmp(&b.id))
+    });
     let mut bytes = 0;
     let count = record
         .findings
@@ -113,7 +135,7 @@ fn preview(record: &mut SafetyRecord, available: usize) -> Vec<SafetyFinding> {
             id: FINDINGS_OMITTED.into(),
             report: Some(SafetyFindingReport {
                 evidence: Some(SafetyEvidence {
-                    observation: format!("and {} more findings", omitted.len()),
+                    observation: format!("and {} more", omitted.len()),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -140,29 +162,37 @@ fn available_for_findings(record: &mut SafetyRecord) -> usize {
 }
 
 pub(super) fn bound_evidence(record: &mut SafetyRecord) {
-    if let Some(done) = record.done.as_mut() {
-        bound_strings(&mut done.paths, 24 * 1024);
-        bound_strings(&mut done.commands, 24 * 1024);
-        bound_strings(&mut done.network_destinations, 8 * 1024);
-        bound_strings(&mut done.merged_change_request_ids, 8 * 1024);
+    let mut asked = std::mem::take(&mut record.asked);
+    let mut done = record.done.take();
+    // Historical reviews and human decisions have priority over the derived preview.
+    let budget = available_for_findings(record);
+    if let Some(done) = done.as_mut() {
+        bound_strings(&mut done.paths, (budget / 5).min(24 * 1024));
+        bound_strings(&mut done.commands, (budget / 5).min(24 * 1024));
+        bound_strings(&mut done.network_destinations, (budget / 16).min(8 * 1024));
+        bound_strings(
+            &mut done.merged_change_request_ids,
+            (budget / 16).min(8 * 1024),
+        );
     }
     let mut asked_bytes = 0;
-    let count = record
-        .asked
+    let count = asked
         .iter()
         .take_while(|ask| {
             asked_bytes += ask.encoded_len() + 8;
-            asked_bytes <= 64 * 1024
+            asked_bytes <= (budget / 3).min(64 * 1024)
         })
         .count();
-    let omitted = record.asked.len() - count;
+    let omitted = asked.len() - count;
     if omitted > 0 {
-        record.asked.truncate(count);
-        record.asked.push(SafetyAsk {
+        asked.truncate(count);
+        asked.push(SafetyAsk {
             text: format!("and {omitted} more requests"),
             source: None,
         });
     }
+    record.asked = asked;
+    record.done = done;
     for finding in &mut record.findings {
         if super::detectors::automatic(finding)
             && let Some(evidence) = finding
@@ -343,7 +373,7 @@ mod tests {
                 .as_ref()
                 .unwrap()
                 .observation,
-            "and 1 more findings",
+            "and 1 more",
         );
         assert!(preview.encoded_len() < MAX_RECORD_BYTES);
     }

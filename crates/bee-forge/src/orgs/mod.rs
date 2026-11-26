@@ -1084,7 +1084,8 @@ impl Orgs {
             )
             .await?;
             tx.audit(
-                AuditDraft::new("member.remove", org_id).target(SubjectKind::User, &principal.id),
+                AuditDraft::new(audit_actions::MEMBER_REMOVE, org_id)
+                    .target(SubjectKind::User, &principal.id),
             )
             .await?;
             None
@@ -1094,7 +1095,7 @@ impl Orgs {
                     m.role = role as i32;
                     tx.update(&MEMBERS, &row.clone().k1(org_role_name(role)).msg(&m))
                         .await?;
-                    (m, "member.role_changed", "member.role_change")
+                    (m, "member.role_changed", audit_actions::MEMBER_ROLE_CHANGE)
                 }
                 None => {
                     let m = Member {
@@ -1111,7 +1112,7 @@ impl Orgs {
                             .msg(&m),
                     )
                     .await?;
-                    (m, "member.added", "member.add")
+                    (m, "member.added", audit_actions::MEMBER_ADD)
                 }
             };
             let after =
@@ -1204,9 +1205,9 @@ impl Orgs {
         tx.audit(
             AuditDraft::new(
                 if add {
-                    "member.custom_role_assign"
+                    audit_actions::MEMBER_ROLE_ASSIGN
                 } else {
-                    "member.custom_role_revoke"
+                    audit_actions::MEMBER_ROLE_REVOKE
                 },
                 org_id,
             )

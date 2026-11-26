@@ -760,7 +760,7 @@ impl Orgs {
         let after = serde_json::to_string(&s).unwrap_or_default();
         Self::repo_payload_event(&mut tx, "repo.settings_updated", &repo, after.clone()).await?;
         tx.audit(
-            AuditDraft::new("repo.settings_update", &repo.org_id)
+            AuditDraft::new(audit_actions::REPO_SETTINGS, &repo.org_id)
                 .repo_id(id)
                 .before(&before)
                 .after(&after),

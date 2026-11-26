@@ -186,6 +186,9 @@ pub struct CodeAlertRec {
     /// The revision of the first observation, retained across rescans and reopening.
     #[prost(message, optional, tag = "3")]
     pub first_changeset: Option<bee_proto::v1::ObjectId>,
+    /// Analysis for the first observation. Safety compares it with a scanned parent.
+    #[prost(string, tag = "4")]
+    pub first_analysis_id: String,
 }
 
 /// An instance of a code scanning alert on one ref and category.

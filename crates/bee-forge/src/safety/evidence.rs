@@ -1041,10 +1041,76 @@ async fn gather_run(
                     Vec::new(),
                     run.finished_at_ms.max(creation_ms),
                 );
+                build.identify_signal(&format!("{target_ref}:{}", hex_of(&head)));
             }
         }
     }
     Ok(())
+}
+
+// Seeing a fingerprint for the first time can mean the revision was scanned first.
+// Require a comparable clean scan on every parent before attributing introduction.
+async fn scan_baseline(
+    agents: &Agents,
+    cx: &Cx,
+    repo: &Repo,
+    first: &CodeScanningAnalysis,
+) -> Result<bool> {
+    use crate::security::{ANALYSES, SURFACE as SECURITY};
+    let Some(changeset) = &first.changeset else {
+        return Ok(false);
+    };
+    let commit = match agents.changes.vcs().commit(repo, changeset).await {
+        Ok(commit) => commit,
+        Err(error)
+            if matches!(
+                error.reason,
+                ErrorReason::NotFound | ErrorReason::MissingObject | ErrorReason::Redacted
+            ) =>
+        {
+            return Ok(false);
+        }
+        Err(error) => return Err(error),
+    };
+    let mut pending: BTreeSet<_> = commit.parents.into_iter().map(|id| id.raw).collect();
+    if pending.is_empty() {
+        return Ok(true);
+    }
+    let Some(at) = first.created_at.as_ref().map(ts_ms) else {
+        return Ok(false);
+    };
+    let mut tx = agents.db.begin(SECURITY, cx).await?;
+    let mut after = None;
+    loop {
+        let analyses = tx
+            .scan_msgs::<CodeScanningAnalysis>(
+                &ANALYSES,
+                &Scan::scope(&repo.id, 128)
+                    .key(crate::store::Key::K1(first.r#ref.clone()))
+                    .after(after),
+            )
+            .await?;
+        after = analyses.last().map(|(_, row)| Cursor::after(row));
+        let done = analyses.len() < 128;
+        for (analysis, _) in analyses {
+            if analysis.tool_name == first.tool_name
+                && analysis.tool_version == first.tool_version
+                && analysis.category == first.category
+                && analysis.error.is_empty()
+                && analysis.results_count == 0
+                && analysis
+                    .created_at
+                    .as_ref()
+                    .is_some_and(|time| ts_ms(time) <= at)
+                && let Some(id) = analysis.changeset
+            {
+                pending.remove(&id.raw);
+            }
+        }
+        if done || pending.is_empty() {
+            return Ok(pending.is_empty());
+        }
+    }
 }
 
 async fn gather_scan_alerts(
@@ -1053,7 +1119,7 @@ async fn gather_scan_alerts(
     repo: &Repo,
     build: &mut Build,
 ) -> Result<()> {
-    use crate::security::{CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY, num_id};
+    use crate::security::{ANALYSES, CODE_ALERTS, CODE_INSTANCES, SURFACE as SECURITY, num_id};
     if build.scan_heads.is_empty()
         || !agents
             .forge
@@ -1066,6 +1132,7 @@ async fn gather_scan_alerts(
     }
     let head_ids: BTreeSet<_> = build.scan_heads.keys().cloned().collect();
     let mut tx = agents.db.begin(SECURITY, cx).await?;
+    let mut observations = Vec::new();
     let mut cursor = None;
     loop {
         let alerts = tx
@@ -1076,6 +1143,7 @@ async fn gather_scan_alerts(
         for (record, _) in alerts {
             let Some(alert) = record.alert else { continue };
             let first = record.first_changeset;
+            let first_analysis_id = record.first_analysis_id;
             if first.as_ref().is_some_and(|id| !head_ids.contains(&id.raw)) {
                 continue;
             }
@@ -1084,7 +1152,7 @@ async fn gather_scan_alerts(
             }
             let scope = format!("{}:{}", repo.id, num_id(alert.number));
             let mut after = None;
-            loop {
+            'instances: loop {
                 let instances = tx
                     .scan_msgs::<InstanceRec>(
                         &CODE_INSTANCES,
@@ -1108,39 +1176,24 @@ async fn gather_scan_alerts(
                     else {
                         continue;
                     };
-                    let alert_subject =
-                        subject(repo, SubjectKind::SecurityAlert, alert.number.to_string());
+                    let analysis = match first.as_ref() {
+                        Some(first) if !first_analysis_id.is_empty() => tx
+                            .get_msg::<CodeScanningAnalysis>(
+                                &ANALYSES,
+                                &repo.id,
+                                &first_analysis_id,
+                            )
+                            .await?
+                            .map(|(analysis, _)| analysis)
+                            .filter(|analysis| analysis.changeset.as_ref() == Some(first)),
+                        _ => None,
+                    };
                     let paths = instance
                         .location
                         .map(|location| vec![String::from_utf8_lossy(&location.path).into_owned()])
                         .unwrap_or_default();
-                    let time_ms = build.at(&alert.updated_at);
-                    let severity = match (
-                        first.is_some(),
-                        alert.rule.as_ref().map(|rule| rule.security_severity()),
-                    ) {
-                        (false, _) => SafetySeverity::Note,
-                        (true, Some(SecuritySeverity::Critical | SecuritySeverity::High)) => {
-                            SafetySeverity::Severe
-                        }
-                        _ => SafetySeverity::Warning,
-                    };
-                    build.signal(
-                        SafetySignalKind::HarmToCode,
-                        severity,
-                        format!(
-                            "Code scanning alert #{} {}",
-                            alert.number,
-                            if first.is_some() {
-                                "was first seen on an attributed revision"
-                            } else {
-                                "is open on an attributed revision; its first observation is unknown"
-                            }
-                        ),
-                        vec![origin, alert_subject],
-                        paths,
-                        time_ms,
-                    );
+                    observations.push((origin, alert, paths, analysis));
+                    break 'instances;
                 }
                 if last {
                     break;
@@ -1148,9 +1201,54 @@ async fn gather_scan_alerts(
             }
         }
         if done {
-            return Ok(());
+            break;
         }
     }
+    drop(tx);
+    let mut baselines = BTreeMap::new();
+    for (origin, alert, paths, analysis) in observations {
+        let mut introduced = false;
+        if let Some(analysis) = analysis {
+            introduced = if let Some(verified) = baselines.get(&analysis.id) {
+                *verified
+            } else {
+                let verified = scan_baseline(agents, cx, repo, &analysis).await?;
+                baselines.insert(analysis.id, verified);
+                verified
+            };
+        }
+        let severity = match (
+            introduced,
+            alert.rule.as_ref().map(|rule| rule.security_severity()),
+        ) {
+            (false, _) => SafetySeverity::Note,
+            (true, Some(SecuritySeverity::Critical | SecuritySeverity::High)) => {
+                SafetySeverity::Severe
+            }
+            (true, _) => SafetySeverity::Warning,
+        };
+        let time_ms = build.at(&alert.updated_at);
+        build.signal(
+            SafetySignalKind::HarmToCode,
+            severity,
+            format!(
+                "Code scanning alert #{} {}",
+                alert.number,
+                if introduced {
+                    "appeared after clean parent scans"
+                } else {
+                    "is open on an attributed revision; when it was introduced is unknown"
+                }
+            ),
+            vec![
+                origin,
+                subject(repo, SubjectKind::SecurityAlert, alert.number.to_string()),
+            ],
+            paths,
+            time_ms,
+        );
+    }
+    Ok(())
 }
 
 pub(super) async fn collect(

@@ -36,22 +36,37 @@ impl SafetyListener {
             Ok(())
         };
         if let Err(error) = &result {
-            eprintln!("Safety outbox refresh failed; will retry: {error}");
+            if let Some(event) = event {
+                eprintln!(
+                    "Safety refresh for {} in {} failed; will retry: {error}",
+                    event.kind, event.repo_id
+                );
+            } else if let Some(audit) = audit {
+                eprintln!(
+                    "Safety refresh for audit {} failed; will retry: {error}",
+                    audit.id
+                );
+            }
         }
         result
     }
 
     async fn event(agents: &Arc<Agents>, event: &Event) -> Result<()> {
-        let all = matches!(
+        let checks = matches!(
             event.kind.as_str(),
             "check.updated"
+                | "check_run.rerequested"
                 | "check_suite.rerequested"
                 | "workflow_run.completed"
-                | "code_scanning.analysis_processed"
-                | "code_scanning_alert.fixed"
-                | "code_scanning_alert.closed_by_user"
-                | "code_scanning_alert.reopened"
         );
+        let all = checks
+            || matches!(
+                event.kind.as_str(),
+                "code_scanning.analysis_processed"
+                    | "code_scanning_alert.fixed"
+                    | "code_scanning_alert.closed_by_user"
+                    | "code_scanning_alert.reopened"
+            );
         if !all
             && !matches!(
                 event.kind.as_str(),
@@ -68,7 +83,7 @@ impl SafetyListener {
             return Ok(());
         };
         if all {
-            return Self::repository(agents, &repo).await;
+            return Self::repository(agents, &repo, checks).await;
         }
         let Some(subject) = event.subject.as_ref() else {
             return Ok(());
@@ -114,13 +129,16 @@ impl SafetyListener {
         Self::refresh(agents, &repo, work).await
     }
 
-    async fn repository(agents: &Arc<Agents>, repo: &Repo) -> Result<()> {
+    async fn repository(agents: &Arc<Agents>, repo: &Repo, checks: bool) -> Result<()> {
         let mut after = String::new();
         let mut failure = None;
         loop {
             let (works, next) =
                 evidence::list_refs(agents, &Cx::system(), repo, &after, 40).await?;
             for work in works {
+                if checks && work.kind() != SafetyWorkKind::Swarm {
+                    continue;
+                }
                 if let Err(error) = Self::refresh(agents, repo, work).await {
                     failure.get_or_insert(error);
                 }
