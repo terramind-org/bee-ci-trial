@@ -40,7 +40,7 @@ jobs:
             {
               echo "### Clippy errors"
               echo "```"
-              sed -n "/^error/,+14p" "$RUNNER_TEMP/safety-clippy.log" | head -200
+              sed -n "/^error/,+14p" "$RUNNER_TEMP/safety-clippy.log" | head -200
               echo "```"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
